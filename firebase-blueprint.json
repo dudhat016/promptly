@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Represents a user in the system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "subscriptionStatus": { "type": "string", "enum": ["free", "pro"] },
+        "stripeCustomerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "subscriptionStatus"]
+    },
+    "Prompt": {
+      "title": "AI Prompt",
+      "description": "An AI prompt shared or sold in the marketplace.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "content": { "type": "string" },
+        "isPaid": { "type": "boolean" },
+        "categoryId": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "model": { "type": "string", "enum": ["GPT-4", "Claude-3", "Gemini Pro", "Llama-3"] },
+        "tags": { "type": "array" },
+        "likesCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "content", "isPaid", "creatorId"]
+    },
+    "Category": {
+      "title": "Prompt Category",
+      "description": "A category for organizing prompts.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" }
+      },
+      "required": ["name", "slug"]
+    },
+    "Favorite": {
+      "title": "Favorite Prompt",
+      "description": "A mapping between a user and a prompt they have favorited.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "promptId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "promptId"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and account settings."
+    },
+    "prompts/{promptId}": {
+      "schema": "Prompt",
+      "description": "The main catalog of AI prompts."
+    },
+    "categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Categories for filtering prompts."
+    },
+    "users/{userId}/favorites/{favoriteId}": {
+      "schema": "Favorite",
+      "description": "User's collection of saved prompts."
+    }
+  }
+}

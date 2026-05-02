@@ -1,0 +1,163 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    function isPro(userId) {
+      return getUserData(userId).subscriptionStatus == 'pro';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'calmingsound016@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // --- Entity Validations ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'subscriptionStatus']) &&
+             data.keys().size() <= 15 &&
+             (data.uid == request.auth.uid || isAdmin()) &&
+             data.email is string && data.email.size() <= 256 &&
+             data.role in ['user', 'admin'] &&
+             data.subscriptionStatus in ['free', 'pro', 'enterprise'];
+    }
+
+    function isValidPrompt(data) {
+      return data.keys().hasAll(['title', 'description', 'content', 'isPaid', 'creatorId']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.content is string && data.content.size() <= 20000 &&
+             data.isPaid is bool &&
+             (data.creatorId == request.auth.uid || isAdmin() || (data.creatorId == 'system' && isAdmin()));
+    }
+
+    // --- Collection Routes ---
+
+    // Categories are public
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      // Admins can update roles/subscriptions
+      allow update: if (isOwner(userId) && 
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']) &&
+                       incoming().updatedAt == request.time) || (isAdmin());
+    }
+
+    // Prompts
+    match /prompts/{promptId} {
+      allow read: if !existing().isPaid || (isSignedIn() && isPro(request.auth.uid)) || isAdmin();
+      allow list: if true; // Security handled by logic (we should filter isPaid = false for lists if not pro)
+      
+      allow create: if isSignedIn() && isEmailVerified() && isValidPrompt(incoming()) && incoming().createdAt == request.time;
+      allow update: if (isOwner(existing().creatorId) || isAdmin()) && 
+                      isValidPrompt(incoming()) && 
+                      incoming().creatorId == existing().creatorId &&
+                      incoming().updatedAt == request.time;
+      allow delete: if isOwner(existing().creatorId) || isAdmin();
+    }
+
+    // Favorites
+    match /users/{userId}/favorites/{favoriteId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Referrals
+    match /referrals/{referralId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.referrerId == request.auth.uid);
+      allow create: if isSignedIn();
+    }
+
+    // Email Notifications & Templates
+    match /notifications/{notificationId} {
+      allow read, write: if isAdmin();
+    }
+    match /templates/{templateId} {
+      allow read: if isSignedIn(); // Allow reading for system services
+      allow write: if isAdmin();
+    }
+
+    // Pricing & Config
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /config/access_levels {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /config/global {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Payouts
+    match /payouts/{payoutId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+      allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 50); // Note: specific query for list
+    }
+    
+    // Marketing & CRM
+    match /marketing_contacts/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /marketing_tags/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /marketing_segments/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /marketing_automations/{id} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Admin list (readonly for everyone for lookup, write only via admin or bootstrap email)
+    match /admins/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || (isSignedIn() && request.auth.token.email == 'calmingsound016@gmail.com');
+    }
+  }
+}
