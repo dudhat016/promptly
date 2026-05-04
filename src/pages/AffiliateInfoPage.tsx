@@ -13,7 +13,7 @@ export default function AffiliateInfoPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 bg-indigo-600/20 text-indigo-400 px-4 py-2 rounded-full border border-indigo-500/30 text-sm font-black uppercase tracking-widest mb-8"
+            className="inline-flex  items-center gap-2 bg-indigo-600/20 text-indigo-400 px-4 py-2 rounded-full border border-indigo-500/30 text-sm font-black uppercase tracking-widest mb-8"
           >
             <Gift className="w-4 h-4" />
             Partner Program
