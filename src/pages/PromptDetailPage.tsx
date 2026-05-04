@@ -1,20 +1,19 @@
-import { arrayUnion, collection, addDoc, doc, getDoc, getDocs, increment, limit, query, orderBy, Timestamp, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, Check, ChevronRight, Clock, Copy, Eye, Heart, Lock, User, Zap, Twitter, Linkedin, Share2, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import ShareModal from '../components/ShareModal';
-import { useEffect, useState } from 'react';
+import { clsx, type ClassValue } from 'clsx';
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { ArrowLeft, Check, ChevronRight, Clock, Copy, Eye, Heart, Lock, Share2, Sparkles, User, Zap } from 'lucide-react';
+import { motion } from 'motion/react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { twMerge } from 'tailwind-merge';
+import ShareModal from '../components/ShareModal';
 import { useAuth } from '../hooks/useAuth';
 import { usePermissions } from '../hooks/usePermissions';
-import { db } from '../lib/firebase';
-import { Prompt, UserProfile, AIModel } from '../types';
 import { useSEO } from '../hooks/useSEO';
-import { useMemo } from 'react';
-import { toast } from 'react-hot-toast';
 import { recordPromptInteraction } from '../lib/affinity';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { db } from '../lib/firebase';
+import { AIModel, Prompt, UserProfile } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -111,12 +110,12 @@ export default function PromptDetailPage() {
 
         if (docSnap) {
           const pData = { id: docSnap.id, ...docSnap.data() } as Prompt;
-          
+
           // SECURITY: Proactively scrub content from the main document
           // The real formula must ONLY come from the private subcollection
           const alreadyUnlocked = (profile?.unlockedPrompts || []).includes(pData.id!);
           const hasAccess = isPro || isAdmin || alreadyUnlocked || !pData.isPaid;
-          
+
           // Scrub initial content to prevent inspection leaks
           if (!hasAccess) {
             delete pData.content;
@@ -212,7 +211,7 @@ export default function PromptDetailPage() {
     if (!prompt || !user || !profile) { navigate('/login'); return; }
     const unlockedCount = (profile.unlockedPrompts || []).length;
     const vaultLimit = config?.vaultLimit || 10;
-    
+
     if (!isPro && !isAdmin && unlockedCount >= vaultLimit) {
       toast.error(`Vault full! Upgrade for more than ${vaultLimit} prompts.`, { icon: '🗄️' });
       return;
@@ -235,7 +234,7 @@ export default function PromptDetailPage() {
         amount: 1,
         createdAt: new Date()
       });
-      
+
       const privateDoc = await getDoc(doc(db, 'prompts', prompt.id!, 'private', 'content'));
       if (privateDoc.exists()) setPrompt({ ...prompt, content: privateDoc.data().formula });
       toast.success("Unlocked! Ready to use.");
@@ -297,8 +296,8 @@ export default function PromptDetailPage() {
 
             <div className="flex flex-wrap gap-2 mb-12">
               {prompt.tags.map(tag => (
-                <Link 
-                  key={tag} 
+                <Link
+                  key={tag}
                   to={`/explore?q=${tag}`}
                   className="bg-muted text-muted-foreground px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-border hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all"
                 >
@@ -327,8 +326,8 @@ export default function PromptDetailPage() {
               <div className={isUnlocked ? "" : "blur-[10px] pointer-events-none select-none overflow-hidden h-[400px] rounded-[2.5rem] border border-border opacity-30"}>
                 <div className="bg-card rounded-[2.5rem] p-8 md:p-12 text-foreground font-mono text-sm leading-loose border border-border shadow-2xl min-h-[400px]">
                   <ReactMarkdown>
-                    {isUnlocked 
-                      ? (prompt.content || "") 
+                    {isUnlocked
+                      ? (prompt.content || "")
                       : `### [PREMIUM BLUEPRINT LOCKED]
 --model v6.0 --parameter [HIDDEN]
 --logic [ENCRYPTED_FLOW]
@@ -347,13 +346,13 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
 
               {!isUnlocked && (
                 <div className="absolute inset-0 flex items-center justify-center p-6 z-10">
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className="bg-card rounded-[3rem] border border-border p-10 shadow-2xl max-w-sm w-full text-center relative overflow-hidden"
                   >
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
-                    
+
                     <div className="mb-8">
                       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
                         <Lock className="w-8 h-8 text-primary" />
@@ -362,7 +361,7 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
                         {isCategoryLocked ? 'Exclusive Vault' : 'Premium Asset'}
                       </h3>
                       <p className="text-muted-foreground text-sm font-medium leading-relaxed mb-6">
-                        {isCategoryLocked 
+                        {isCategoryLocked
                           ? `This collection is reserved for professional Pro members only.`
                           : 'Unlock this expert-engineered formula to reveal the full technical parameters and AI blueprints.'}
                       </p>
@@ -392,7 +391,7 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
             </div>
 
             <div className="flex flex-col md:flex-row items-center gap-4 py-8 border-t border-border">
-              <button 
+              <button
                 onClick={() => setIsShareModalOpen(true)}
                 className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-muted text-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all shadow-sm border border-border"
               >
@@ -425,7 +424,7 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-3">
               <div className="flex justify-between items-center py-3 border-b border-border">
                 <span className="text-xs font-bold text-muted-foreground">Model</span>
@@ -517,8 +516,8 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
       )}
 
       {prompt && (
-        <ShareModal 
-          isOpen={isShareModalOpen} 
+        <ShareModal
+          isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
           title={prompt.title}
           url={window.location.href}
