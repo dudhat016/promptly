@@ -35,7 +35,7 @@ jobs:
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account.json
           echo '${{ secrets.ENV_FILE }}' > .env
 
-      - name: 🚀 Deploy via SFTP
+      - name: 🚀 Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -43,9 +43,10 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
           server-dir: /public_html/promptly/
-          # SFTP is much more reliable than FTP
-          protocol: sftp
-          port: 22
+          # Use FTPS (Secure FTP) on Port 21
+          protocol: ftp
+          port: 21
+          security: loose
           # We only upload what is needed for the production server to run
           exclude: |
             **/.git*
