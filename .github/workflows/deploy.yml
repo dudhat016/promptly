@@ -43,6 +43,11 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
           server-dir: /public_html/promptly/
+          # Hostinger requires Passive mode and often works better with FTPS
+          protocol: ftp
+          port: 21
+          # Add these for reliability
+          security: loose
           # We only upload what is needed for the production server to run
           exclude: |
             **/.git*
