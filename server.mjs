@@ -33,8 +33,15 @@ var init_vite_config = __esm({
           }
         },
         server: {
+          proxy: {
+            "/api": {
+              target: "http://localhost:3000",
+              changeOrigin: true,
+              rewrite: (path3) => path3
+            }
+          },
           // HMR is disabled in AI Studio via DISABLE_HMR env var.
-          // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+          // Do not modifyâ€”file watching is disabled to prevent flickering during agent edits.
           hmr: process.env.DISABLE_HMR !== "true"
         }
       };
@@ -137,6 +144,9 @@ app.post("/api/webhook", express.raw({ type: "application/json" }), async (req, 
   res.json({ received: true });
 });
 app.use(express.json({ limit: "10mb" }));
+app.get("/ping", (req, res) => {
+  res.send("PONG - Server is Alive!");
+});
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });

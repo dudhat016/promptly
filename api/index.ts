@@ -1,115 +1,64 @@
-import express from "express";
-import Stripe from "stripe";
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
-import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const app = express();
-
-// Initialize Firebase Admin
-if (process.env.FIREBASE_SERVICE_ACCOUNT && !admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    if (serviceAccount.private_key) {
-      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-    }
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    console.log("✅ Firebase Admin initialized");
-  } catch (e: any) {
-    console.error("❌ Firebase Admin Init Error:", e.message);
-  }
-}
-
-// Initialize Stripe
-let stripeInstance: Stripe | null = null;
-function getStripe() {
-  if (!stripeInstance && process.env.STRIPE_SECRET_KEY) {
-    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-01-27.acacia" as any,
-    });
-  }
-  return stripeInstance;
-}
-
-// Standard middleware
-app.use(express.json({ limit: '10mb' }));
-
-// API Routes
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", platform: "vercel" });
-});
-
-app.post("/api/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-  const stripe = getStripe();
-  const sig = req.headers["stripe-signature"];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  if (!stripe || !sig || !webhookSecret) {
-    return res.status(400).send("Webhook configuration missing");
-  }
-
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-  } catch (err: any) {
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const userId = session.metadata?.userId;
-
-    if (userId && admin.apps.length > 0) {
-      const db = getFirestore("ai-studio-144262e8-b62f-4b6d-801f-f5b7a636cc0e");
-      await db.collection("users").doc(userId).update({
-        subscriptionStatus: "pro",
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
-  }
-
-  res.json({ received: true });
-});
-
-app.post("/api/test-email", async (req, res) => {
-  if (admin.apps.length === 0) {
-    return res.status(500).json({ error: "Firebase Admin is not connected." });
-  }
-
-  const db = getFirestore("ai-studio-144262e8-b62f-4b6d-801f-f5b7a636cc0e");
-  try {
-    const configSnap = await db.collection("configs").doc("email").get();
-    if (!configSnap.exists) {
-      return res.status(404).json({ error: "Email configuration not found" });
-    }
-
-    const config = configSnap.data();
-    const transporter = nodemailer.createTransport({
-      host: config?.smtpHost,
-      port: parseInt(config?.smtpPort),
-      secure: config?.smtpSecure,
-      auth: {
-        user: config?.smtpUser,
-        pass: config?.smtpPass,
+// Helper for Firebase
+function initFirebase() {
+  if (!admin.apps.length) {
+    try {
+      const saValue = process.env.FIREBASE_SERVICE_ACCOUNT;
+      if (!saValue) {
+        console.warn("⚠️ FIREBASE_SERVICE_ACCOUNT missing");
+        return false;
       }
-    });
-
-    await transporter.sendMail({
-      from: `"${config?.fromName}" <${config?.fromEmail}>`,
-      to: config?.fromEmail,
-      subject: "🚀 Vercel Deployment Success!",
-      text: "Your backend is now running on Vercel Serverless Functions."
-    });
-
-    res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+      
+      const cleanJson = saValue.trim().replace(/^'|'$/g, '').replace(/^"|"$/g, '');
+      const serviceAccount = JSON.parse(cleanJson);
+      
+      if (serviceAccount.private_key) {
+        console.log(`🔑 Key Length: ${serviceAccount.private_key.length}`);
+        // The "Master Fix": Handle literal \n, \\n, and even \\\n
+        serviceAccount.private_key = serviceAccount.private_key
+          .replace(/\\n/g, '\n')
+          .replace(/\\\\n/g, '\n')
+          .replace(/\n\n/g, '\n') // Remove double newlines
+          .trim();
+          
+        if (!serviceAccount.private_key.startsWith('-----BEGIN PRIVATE KEY-----\n')) {
+          serviceAccount.private_key = serviceAccount.private_key.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
+        }
+        if (!serviceAccount.private_key.endsWith('\n-----END PRIVATE KEY-----')) {
+          serviceAccount.private_key = serviceAccount.private_key.replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
+        }
+      }
+      
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      console.log("✅ Firebase Admin Connected Successfully");
+      return true;
+    } catch (e: any) {
+      console.error("❌ Firebase Init Error:", e.message);
+      return false;
+    }
   }
-});
+  return true;
+}
 
-export default app;
+export default async function handler(req: any, res: any) {
+  const { url } = req;
+  console.log("💉 Request Hit:", url);
+
+  const firebaseOk = initFirebase();
+
+  if (url.includes('/api/health')) {
+    return res.status(200).json({ 
+      status: "diagnostic-ok", 
+      firebase: firebaseOk ? "connected" : "failed" 
+    });
+  }
+
+  res.status(200).json({ message: "Main API is Online! 🚀" });
+}

@@ -223,5 +223,11 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin();
     }
+
+    // Asset Vault (Images stored on Hostinger)
+    match /assets/{assetId} {
+      allow read: if true; // Publicly accessible via the site
+      allow write: if isAdmin();
+    }
   }
 }

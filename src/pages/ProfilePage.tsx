@@ -5,7 +5,7 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useSearchParams } from 'react-router-dom';
 import { User, Shield, CreditCard, Settings, Gift, 
   Check, Mail, Camera, Bell, Lock, LogOut,
-  ChevronRight, ExternalLink, Zap, Clock } from 'lucide-react';
+  ChevronRight, ExternalLink, Zap, Clock, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../lib/firebase';
 import { useNavigate, Link } from 'react-router-dom';
@@ -19,7 +19,39 @@ export default function ProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ProfileTab>((searchParams.get('tab') as ProfileTab) || 'account');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload-ftp', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          photoURL: data.url,
+          updatedAt: serverTimestamp()
+        });
+        toast.success('Profile photo updated!');
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload photo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   useEffect(() => {
     const tab = searchParams.get('tab') as ProfileTab;
@@ -86,17 +118,33 @@ export default function ProfilePage() {
                   
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-12 pb-12 border-b border-slate-50">
                     <div className="relative group">
-                      <img src={profile?.photoURL || undefined} className="w-28 h-28 rounded-[2rem] bg-slate-100 object-cover shadow-xl shadow-slate-200" alt="" />
-                      <button className="absolute -bottom-2 -right-2 p-3 bg-slate-900 text-white rounded-2xl shadow-xl border-4 border-white hover:scale-110 transition-transform">
+                      <div className="w-28 h-28 rounded-[2rem] bg-slate-100 overflow-hidden shadow-xl shadow-slate-200 border-4 border-white relative">
+                        <img src={profile?.photoURL || undefined} className="w-full h-full object-cover" alt="" />
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      <label className="absolute -bottom-2 -right-2 p-3 bg-slate-900 text-white rounded-2xl shadow-xl border-4 border-white hover:scale-110 transition-transform cursor-pointer">
                         <Camera className="w-4 h-4" />
-                      </button>
+                        <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
+                      </label>
                     </div>
                     <div>
                       <h3 className="text-xl font-black text-slate-900 mb-1">{profile?.displayName || 'Your Profile'}</h3>
                       <p className="text-slate-500 text-sm font-medium mb-4">Your avatar is used for community comments and your public profile.</p>
                       <div className="flex gap-3">
-                        <button className="text-xs font-black uppercase tracking-widest text-indigo-600 px-4 py-2 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-all">Upload New</button>
-                        <button className="text-xs font-black uppercase tracking-widest text-slate-400 px-4 py-2 hover:bg-slate-50 rounded-xl transition-all">Remove</button>
+                        <label className="text-xs font-black uppercase tracking-widest text-indigo-600 px-4 py-2 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-all cursor-pointer">
+                          {isUploading ? 'Uploading...' : 'Upload New'}
+                          <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
+                        </label>
+                        <button 
+                          onClick={() => updateDoc(doc(db, 'users', user.uid), { photoURL: null })}
+                          className="text-xs font-black uppercase tracking-widest text-slate-400 px-4 py-2 hover:bg-slate-50 rounded-xl transition-all"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   </div>

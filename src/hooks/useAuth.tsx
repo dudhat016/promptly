@@ -122,7 +122,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
               setProfile(data);
 
-              if (data.role === 'admin') seedDatabase();
+              if (data.role === 'admin' && !sessionStorage.getItem('DB_SEEDED')) {
+                seedDatabase();
+                sessionStorage.setItem('DB_SEEDED', 'true');
+              }
 
               // Affinity & CRM Sync
               if (data.affinityProfile) mergeCloudAffinity(data.affinityProfile);

@@ -3,13 +3,14 @@ import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Save, Mail, Shield, Zap, Globe, AlertCircle, Settings, 
-  Search, Lock, Info, Terminal, Layout, CreditCard
+  Search, Lock, Info, Terminal, Layout, CreditCard, Image
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import AdminEmailSettings from './AdminEmailSettings';
+import AdminAssetManager from './AdminAssetManager';
 
-type TabType = 'general' | 'email' | 'seo' | 'security' | 'advanced';
+type TabType = 'general' | 'email' | 'assets' | 'seo' | 'security' | 'advanced';
 
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState<TabType>('general');
@@ -61,6 +62,7 @@ export default function AdminSettings() {
   const tabs = [
     { id: 'general', label: 'General', icon: Info },
     { id: 'email', label: 'Email & SMTP', icon: Mail },
+    { id: 'assets', label: 'Asset Vault', icon: Image },
     { id: 'seo', label: 'Default SEO', icon: Search },
     { id: 'security', label: 'Security', icon: Lock },
     { id: 'advanced', label: 'Advanced', icon: Terminal },
@@ -225,6 +227,17 @@ export default function AdminSettings() {
                 exit={{ opacity: 0, y: -10 }}
               >
                 <AdminEmailSettings />
+              </motion.div>
+            )}
+
+            {activeTab === 'assets' && (
+              <motion.div
+                key="assets"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AdminAssetManager />
               </motion.div>
             )}
 
