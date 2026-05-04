@@ -3,26 +3,53 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Filter, UserPlus, Mail, Tag as TagIcon, 
   MoreVertical, Trash2, Edit2, ChevronDown, Download,
-  CheckCircle2, XCircle, Clock, Database, Users
+  CheckCircle2, XCircle, Clock, Database, Users, Send, X
 } from 'lucide-react';
-import { Contact, Tag, Segment } from '../../types';
+import { Contact, Tag, Segment, EmailTemplate } from '../../types';
+import { EmailService } from '../../services/emailService';
+import { toast } from 'react-hot-toast';
 
 interface Props {
   contacts: Contact[];
   tags: Tag[];
   segments: Segment[];
+  templates: EmailTemplate[];
   onAddContact: () => void;
   onEditContact: (contact: Contact) => void;
   onDeleteContact: (id: string) => void;
 }
 
 export default function ContactManager({ 
-  contacts, tags, segments, 
+  contacts, tags, segments, templates,
   onAddContact, onEditContact, onDeleteContact 
 }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'unsubscribed'>('all');
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
+  const [sendingEmailTo, setSendingEmailTo] = useState<Contact | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (!sendingEmailTo || !selectedTemplate) return;
+    setIsSending(true);
+    try {
+      await EmailService.sendEmailWithTemplate(
+        sendingEmailTo.id,
+        sendingEmailTo.email,
+        selectedTemplate,
+        { name: sendingEmailTo.displayName || 'User' }
+      );
+      toast.success('Campaign email sent!');
+      setSendingEmailTo(null);
+      setSelectedTemplate('');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to send email');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const filteredContacts = contacts.filter(c => {
     const matchesSearch = c.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -163,6 +190,13 @@ export default function ContactManager({
                   </div>
                   
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => setSendingEmailTo(contact)}
+                      className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"
+                      title="Send Email"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </button>
                     <button onClick={() => onEditContact(contact)} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all">
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -194,6 +228,69 @@ export default function ContactManager({
           </div>
         )}
       </div>
+
+      {/* Send Email Modal */}
+      <AnimatePresence>
+        {sendingEmailTo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl"
+            >
+              <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900">Send Campaign</h3>
+                  <p className="text-slate-500 font-medium">To: {sendingEmailTo.email}</p>
+                </div>
+                <button onClick={() => setSendingEmailTo(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-6">
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Select Template</label>
+                  <div className="grid gap-3 max-h-[300px] overflow-y-auto pr-2">
+                    {templates.map(t => (
+                      <button 
+                        key={t.id}
+                        onClick={() => setSelectedTemplate(t.id)}
+                        className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between group ${selectedTemplate === t.id ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 hover:border-slate-200 bg-slate-50/30'}`}
+                      >
+                        <div className="overflow-hidden">
+                          <p className="font-bold text-slate-900 truncate">{t.name}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{t.subject}</p>
+                        </div>
+                        {selectedTemplate === t.id && <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0" />}
+                      </button>
+                    ))}
+                    {templates.length === 0 && <p className="text-center text-slate-400 py-8 text-xs font-bold uppercase">No templates found</p>}
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-4">
+                  <button 
+                    onClick={handleSendEmail}
+                    disabled={!selectedTemplate || isSending}
+                    className="flex-grow bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Send className="w-5 h-5" />
+                    {isSending ? 'Sending...' : 'Send Now'}
+                  </button>
+                  <button 
+                    onClick={() => setSendingEmailTo(null)}
+                    className="px-8 bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {contacts.length > 0 && (
         <div className="flex justify-center pt-8">

@@ -2,13 +2,82 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  /* Modern Theme Colors */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-border: hsl(var(--border));
 }
 
-.markdown-body h1 { @apply text-2xl font-bold mb-4; }
-.markdown-body h2 { @apply text-xl font-bold mb-3 mt-6; }
-.markdown-body p { @apply mb-4; }
-.markdown-body ul { @apply list-disc pl-6 mb-4; }
-.markdown-body ol { @apply list-decimal pl-6 mb-4; }
-.markdown-body code { @apply bg-slate-800 px-1.5 py-0.5 rounded text-indigo-300; }
-.markdown-body pre { @apply bg-slate-800 p-4 rounded-xl overflow-x-auto mb-4 border border-slate-700; }
+:root {
+  --background: 0 0% 100%;
+  --foreground: 224 71.4% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 71.4% 4.1%;
+  --primary: 262.1 83.3% 57.8%;
+  --primary-foreground: 210 20% 98%;
+  --muted: 220 14.3% 95.9%;
+  --muted-foreground: 220 8.9% 46.1%;
+  --accent: 220 14.3% 95.9%;
+  --border: 220 13% 91%;
+  --radius: 0.75rem;
+}
 
+.dark {
+  --background: 224 71.4% 4.1%;
+  --foreground: 210 20% 98%;
+  --card: 224 71.4% 4.1%;
+  --card-foreground: 210 20% 98%;
+  --primary: 263.4 70% 50.4%;
+  --primary-foreground: 210 20% 98%;
+  --muted: 215 27.9% 16.9%;
+  --muted-foreground: 217.9 10.6% 64.9%;
+  --accent: 215 27.9% 16.9%;
+  --border: 215 27.9% 16.9%;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+}
+
+/* Skeleton Shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, 
+    var(--color-muted) 25%, 
+    var(--color-accent) 50%, 
+    var(--color-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: var(--radius);
+}
+
+/* Markdown Support */
+.markdown-body h1 { @apply text-2xl font-bold mb-4 text-foreground; }
+.markdown-body h2 { @apply text-xl font-bold mb-3 mt-6 text-foreground; }
+.markdown-body p { @apply mb-4 text-muted-foreground leading-relaxed; }
+.markdown-body ul { @apply list-disc pl-6 mb-4 space-y-2; }
+.markdown-body code { @apply bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-sm; }
+.markdown-body pre { @apply bg-muted p-4 rounded-xl overflow-x-auto mb-4 border border-border shadow-inner; }

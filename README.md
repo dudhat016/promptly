@@ -18,3 +18,5 @@ View your app in AI Studio: https://ai.studio/apps/144262e8-b62f-4b6d-801f-f5b7a
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+Email: admin@promptly.com
+Password: admin123

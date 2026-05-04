@@ -164,14 +164,34 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
               animate={{ opacity: 1, y: 0 }}
               className="relative z-10 w-full max-w-sm"
             >
-              <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm group">
+              <div 
+                className={`bg-white border-2 rounded-3xl p-6 shadow-sm group cursor-pointer hover:shadow-xl transition-all ${selectedStepId === 'trigger' ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-slate-200'}`}
+                onClick={() => setSelectedStepId('trigger')}
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
                     <Play className="w-5 h-5 fill-current" />
                   </div>
                   <div>
                     <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">Flow Trigger</h4>
-                    <p className="text-xs text-slate-500 font-medium">When a user joins the list</p>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {activeFlow.trigger?.type === 'user_signup' ? 'When a user signs up' : 
+                       activeFlow.trigger?.type === 'user_login' ? 'When a user logs in' :
+                       activeFlow.trigger?.type === 'tag_added' ? `When tag ${activeFlow.trigger?.value ? `"${tags.find(t => t.id === activeFlow.trigger?.value)?.name || activeFlow.trigger.value}"` : ''} is applied` : 
+                       activeFlow.trigger?.type === 'tag_remove' ? `When tag ${activeFlow.trigger?.value ? `"${tags.find(t => t.id === activeFlow.trigger?.value)?.name || activeFlow.trigger.value}"` : ''} is removed` : 
+                       activeFlow.trigger?.type === 'list_applied' ? `When added to list ${activeFlow.trigger?.value ? `"${activeFlow.trigger.value}"` : ''}` :
+                       activeFlow.trigger?.type === 'list_removed' ? `When removed from list ${activeFlow.trigger?.value ? `"${activeFlow.trigger.value}"` : ''}` :
+                       activeFlow.trigger?.type === 'form_submited' ? `When form ${activeFlow.trigger?.value ? `"${activeFlow.trigger.value}"` : ''} submitted` :
+                       activeFlow.trigger?.type === 'contact_created' ? 'When a contact is created' :
+                       activeFlow.trigger?.type === 'subscription_changed' ? 'When subscription changes' :
+                       activeFlow.trigger?.type === 'subscription_payment_recived' ? 'When payment is received' :
+                       activeFlow.trigger?.type === 'subscription_cancled' ? 'When subscription is canceled' :
+                       activeFlow.trigger?.type === 'prompt_favorite' ? 'When a prompt is favorited' :
+                       activeFlow.trigger?.type === 'limit_reached' ? 'When usage limit is reached' :
+                       activeFlow.trigger?.type === 'affiliate_commison' ? 'When affiliate commission earned' :
+                       activeFlow.trigger?.type === 'new_register' ? 'When a new registration occurs' :
+                       `When ${activeFlow.trigger?.type?.replace('_', ' ')}`}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -395,6 +415,63 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                     </button>
                   </div>
 
+                  {selectedStepId === 'trigger' && (
+                     <div className="space-y-6">
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest">Trigger Event</label>
+                        <select 
+                          className="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                          value={activeFlow.trigger?.type || 'user_signup'}
+                          onChange={e => setActiveFlow({ ...activeFlow, trigger: { ...activeFlow.trigger, type: e.target.value as any } })}
+                        >
+                          <option value="user_signup">New Register</option>
+                          <option value="user_login">User Login</option>
+                          <option value="contact_created">Contact Created</option>
+                          <option value="tag_added">Tag Apply</option>
+                          <option value="tag_remove">Tag Remove</option>
+                          <option value="list_applied">List Applied</option>
+                          <option value="list_removed">List Removed</option>
+                          <option value="form_submited">Form Submitted</option>
+                          <option value="subscription_changed">Subscription Changed</option>
+                          <option value="subscription_payment_recived">Subscription Payment Received</option>
+                          <option value="subscription_cancled">Subscription Canceled</option>
+                          <option value="prompt_favorite">Prompt Favorite</option>
+                          <option value="limit_reached">Limit Reached</option>
+                          <option value="affiliate_commison">Affiliate Commission</option>
+                        </select>
+                      </div>
+                      
+                      {['tag_added', 'tag_remove'].includes(activeFlow.trigger?.type || '') && (
+                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest">Select Tag</label>
+                          <select 
+                            className="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                            value={activeFlow.trigger?.value || ''}
+                            onChange={e => setActiveFlow({ ...activeFlow, trigger: { ...activeFlow.trigger!, value: e.target.value } })}
+                          >
+                            <option value="">Any Tag</option>
+                            {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+                      
+                      {['list_applied', 'list_removed', 'form_submited'].includes(activeFlow.trigger?.type || '') && (
+                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest">
+                            {activeFlow.trigger?.type === 'form_submited' ? 'Form Name' : 'List Name'}
+                          </label>
+                          <input 
+                            type="text"
+                            placeholder={activeFlow.trigger?.type === 'form_submited' ? 'e.g. Lead Gen Form' : 'e.g. Newsletter Subscribers'}
+                            className="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                            value={activeFlow.trigger?.value || ''}
+                            onChange={e => setActiveFlow({ ...activeFlow, trigger: { ...activeFlow.trigger!, value: e.target.value } })}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {activeFlow.steps?.find(s => s.id === selectedStepId)?.type === 'wait' && (
                      <div className="space-y-6">
                       <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
@@ -584,6 +661,8 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                           <option value="subscriptionStatus">Subscription Status</option>
                           <option value="tags">Tags</option>
                           <option value="credits">Credits</option>
+                          <option value="button_click">Button Click</option>
+                          <option value="email_response">Email Response</option>
                         </select>
                       </div>
                       <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
@@ -597,6 +676,8 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                           <option value="greater_than">Greater than</option>
                           <option value="less_than">Less than</option>
                           <option value="contains">Contains</option>
+                          <option value="is_positive">Is Positive (Yes)</option>
+                          <option value="is_negative">Is Negative (No)</option>
                         </select>
                       </div>
                       <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
@@ -629,15 +710,10 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                           ))}
                         </select>
                       </div>
-                      
-                      <button className="w-full bg-slate-50 text-slate-600 border border-slate-200 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition-all flex items-center justify-center gap-2">
-                        <Plus className="w-3 h-3" />
-                        Create New Tag
-                      </button>
                     </div>
                   )}
 
-                  {!['wait', 'send_email', 'recommend_prompt', 'ab_test', 'webhook', 'condition', 'add_tag', 'remove_tag', 'notify_user'].includes(activeFlow.steps?.find(s => s.id === selectedStepId)?.type || '') && (
+                  {!['trigger', 'wait', 'send_email', 'recommend_prompt', 'ab_test', 'webhook', 'condition', 'add_tag', 'remove_tag', 'notify_user'].includes(activeFlow.steps?.find(s => s.id === selectedStepId)?.type || (selectedStepId === 'trigger' ? 'trigger' : '')) && (
                     <div className="py-20 text-center">
                       <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
                         <Settings className="w-8 h-8 text-slate-300" />
@@ -646,15 +722,17 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                     </div>
                   )}
                   
+                  {selectedStepId !== 'trigger' && (
                   <div className="mt-12 pt-8 border-t border-slate-100">
                     <button 
-                      onClick={() => removeStep(selectedStepId)}
+                      onClick={() => removeStep(selectedStepId as string)}
                       className="w-full py-4 rounded-xl border border-rose-100 text-rose-600 hover:bg-rose-50 transition-all text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2"
                     >
                       <Trash2 className="w-4 h-4" />
                       Remove Step
                     </button>
                   </div>
+                  )}
                 </motion.div>
               ) : (
                 <motion.div 

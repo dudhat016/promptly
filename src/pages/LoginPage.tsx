@@ -1,15 +1,18 @@
-import { signInWithGoogle, signInAsGuest } from '../lib/firebase';
+import { signInWithGoogle, signInAsGuest, signInWithEmail, signUpWithEmail } from '../lib/firebase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useEffect, useState } from 'react';
 import { Sparkles, LogIn, User } from 'lucide-react';
 import { motion } from 'motion/react';
+import { toast } from 'react-hot-toast';
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     const ref = searchParams.get('ref');
@@ -24,16 +27,27 @@ export default function LoginPage() {
     }
   }, [user, loading, navigate]);
 
-  const handleLogin = async (type: 'google' | 'guest') => {
+  const handleLogin = async (type: 'google' | 'guest' | 'email-signin' | 'email-signup') => {
     setIsLoggingIn(true);
     try {
       if (type === 'google') {
         await signInWithGoogle();
-      } else {
+      } else if (type === 'guest') {
         await signInAsGuest();
+      } else if (type === 'email-signin') {
+        if (!email || !password) throw new Error("Please enter email and password");
+        await signInWithEmail(email, password);
+      } else if (type === 'email-signup') {
+        if (!email || !password) throw new Error("Please enter email and password");
+        await signUpWithEmail(email, password);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login Error:", error);
+      if (error?.code === 'auth/admin-restricted-operation' || error?.code === 'auth/operation-not-allowed') {
+        toast.error("Login method disabled. Please check Firebase settings.");
+      } else {
+        toast.error(`Login failed: ${error.message}`);
+      }
     } finally {
       setIsLoggingIn(false);
     }
@@ -55,6 +69,45 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-4">
+          <div className="space-y-3 mb-6">
+            <input 
+              type="email" 
+              placeholder="Email address" 
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+            />
+            <input 
+              type="password" 
+              placeholder="Password" 
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleLogin('email-signin')}
+                disabled={isLoggingIn}
+                className="flex-1 bg-indigo-600 py-3 rounded-2xl font-bold text-white hover:bg-indigo-700 transition-all shadow-md disabled:opacity-50"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => handleLogin('email-signup')}
+                disabled={isLoggingIn}
+                className="flex-1 bg-slate-900 py-3 rounded-2xl font-bold text-white hover:bg-black transition-all shadow-md disabled:opacity-50"
+              >
+                Sign Up
+              </button>
+            </div>
+          </div>
+
+          <div className="relative flex items-center py-2">
+            <div className="flex-grow border-t border-slate-100"></div>
+            <span className="flex-shrink mx-4 text-slate-400 text-xs font-bold uppercase tracking-widest">or</span>
+            <div className="flex-grow border-t border-slate-100"></div>
+          </div>
+
           <button
             onClick={() => handleLogin('google')}
             disabled={isLoggingIn}
@@ -62,21 +115,6 @@ export default function LoginPage() {
           >
             <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
             Continue with Google
-          </button>
-
-          <div className="relative flex items-center py-4">
-            <div className="flex-grow border-t border-slate-100"></div>
-            <span className="flex-shrink mx-4 text-slate-400 text-xs font-bold uppercase tracking-widest">or</span>
-            <div className="flex-grow border-t border-slate-100"></div>
-          </div>
-
-          <button
-            onClick={() => handleLogin('guest')}
-            disabled={isLoggingIn}
-            className="w-full flex items-center justify-center gap-3 bg-slate-50 border-2 border-transparent py-4 px-6 rounded-2xl font-bold text-slate-600 hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
-          >
-            <User className="w-5 h-5" />
-            Sign in as Guest (Testing)
           </button>
         </div>
 

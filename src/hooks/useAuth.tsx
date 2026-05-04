@@ -1,10 +1,12 @@
-import { useState, useEffect, createContext, useContext } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc, addDoc, updateDoc, increment } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { mergeCloudAffinity, syncAffinityToCloud } from '../lib/affinity';
 import { auth, db } from '../lib/firebase';
-import { UserProfile } from '../types';
 import { seedDatabase } from '../lib/seed';
 import { EmailService } from '../services/emailService';
+import { UserProfile } from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +16,7 @@ interface AuthContextType {
   isPro: boolean;
   toggleFavorite: (promptId: string) => Promise<boolean>;
   isFavorited: (promptId: string) => boolean;
+  syncMarketingTags: (tags: string[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   isPro: false,
   toggleFavorite: async () => false,
   isFavorited: () => false,
+  syncMarketingTags: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -32,82 +36,204 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
+  const syncMarketingTags = async (tags: string[]) => {
+    try {
+      for (const tag of tags) {
+        const tagRef = doc(db, 'marketing_tags', tag);
+        const tagSnap = await getDoc(tagRef);
+
+        if (!tagSnap.exists()) {
+          await setDoc(tagRef, {
+            id: tag,
+            name: tag.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+            contactsCount: 1,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            color: 'indigo'
+          });
+        } else {
+          await updateDoc(tagRef, {
+            contactsCount: increment(1),
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync marketing tags:", err);
+    }
+  };
+
   useEffect(() => {
+    // 1. GUEST MODE FOR LOCAL TESTING
+    if (window.location.hostname === 'localhost' && localStorage.getItem('GUEST_MODE') === 'true') {
+      setUser({ uid: 'guest-123', email: 'guest@testing.com', displayName: 'Guest Tester' } as User);
+      setProfile({
+        uid: 'guest-123',
+        email: 'guest@testing.com',
+        displayName: 'Guest Tester',
+        role: 'admin',
+        subscriptionStatus: 'pro',
+        createdAt: new Date().toISOString()
+      });
+      setLoading(false);
+      return;
+    }
+
+    let unsubscribeProfile: () => void;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (unsubscribeProfile) unsubscribeProfile();
+
       if (user) {
-        try {
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            let data = docSnap.data() as UserProfile;
-            
-            // Auto-elevate specific user to admin if needed
-            if (user.email === 'calmingsound016@gmail.com' && data.role !== 'admin') {
-              data = { ...data, role: 'admin', subscriptionStatus: 'pro' };
-              await updateDoc(docRef, { role: 'admin', subscriptionStatus: 'pro' });
-              // Also add to admins collection for rules
-              await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
-            }
-            
-            setProfile(data);
-            
-            // Log successful login notification once per session
-            const sessionKey = `login_email_${user.uid}`;
-            if (!sessionStorage.getItem(sessionKey)) {
-              EmailService.sendLoginEmail(user.uid, user.email || '');
-              sessionStorage.setItem(sessionKey, 'true');
-            }
-          } else {
-            // Create default profile if not exists
-            const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const referredBy = sessionStorage.getItem('referralCode') || undefined;
-            const isAdminEmail = user.email === 'calmingsound016@gmail.com';
-            
-            const newProfile: UserProfile = {
-              uid: user.uid,
-              email: user.email || '',
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              role: isAdminEmail ? 'admin' : 'user',
-              subscriptionStatus: isAdminEmail ? 'pro' : 'free',
-              createdAt: new Date().toISOString(),
-              referralCode,
-              referredBy,
-              affiliateEarnings: 0
-            };
-            
-            const dbProfile = {
-              ...newProfile,
-              createdAt: serverTimestamp()
-            };
-            
-            await setDoc(docRef, dbProfile);
-            setProfile(newProfile);
+        const docRef = doc(db, 'users', user.uid);
 
-            if (isAdminEmail) {
-              await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
-            }
+        // REAL-TIME LISTENER
+        unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
+          try {
+            if (docSnap.exists()) {
+              let data = docSnap.data() as UserProfile;
 
-            // New registration emails
-            await EmailService.sendWelcomeEmail(user.uid, user.email || '', user.displayName || 'Creator');
-            await EmailService.sendAffiliateJoinEmail(user.uid, user.email || '', referralCode);
-            
-            // Mark login as handled for this session
-            sessionStorage.setItem(`login_email_${user.uid}`, 'true');
+              // Auto-update referral code structure
+              const isOldFormat = data.referralCode && data.referralCode.length === 6 && !/[0-9]{3}$/.test(data.referralCode);
+              if (!data.referralCode || isOldFormat) {
+                const baseName = (user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'USER')
+                  .replace(/[^a-zA-Z0-9]/g, '')
+                  .toUpperCase()
+                  .slice(0, 10);
+                const newCode = `${baseName}${Math.floor(100 + Math.random() * 900)}`;
+                await updateDoc(docRef, { referralCode: newCode });
+                data.referralCode = newCode;
+              }
+
+              // Admin/Demotion Logic
+              const isAdminEmail = user.email === 'calmingsound016@gmail.com' || user.email === 'admin@promptly.com';
+              const isToDemote = user.email === 'learnwithdudhat016@gmail.com';
+
+              if (isAdminEmail && data.role !== 'admin') {
+                const adminUpdates = { role: 'admin' as const, subscriptionStatus: 'pro' as const, credits: 10000 };
+                await updateDoc(docRef, adminUpdates);
+                data = { ...data, ...adminUpdates };
+              } else if (isToDemote && data.role === 'admin') {
+                const userUpdates = { role: 'user' as const, subscriptionStatus: 'free' as const, credits: 5 };
+                await updateDoc(docRef, userUpdates);
+                data = { ...data, ...userUpdates };
+              }
+
+              setProfile(data);
+
+              if (data.role === 'admin') seedDatabase();
+
+              // Affinity & CRM Sync
+              if (data.affinityProfile) mergeCloudAffinity(data.affinityProfile);
+              syncAffinityToCloud(user.uid);
+
+              // Daily Reward
+              const lastReward = data.lastCreditsRewardAt?.toDate ? data.lastCreditsRewardAt.toDate() : (data.lastCreditsRewardAt ? new Date(data.lastCreditsRewardAt) : null);
+              const today = new Date();
+              today.setHours(0,0,0,0);
+
+              if (!lastReward || lastReward < today) {
+                await updateDoc(docRef, {
+                  credits: increment(5),
+                  lastCreditsRewardAt: serverTimestamp(),
+                  lastActiveAt: serverTimestamp()
+                });
+                toast.success("Daily Reward: +5 Credits added! 🎉", { icon: '🎁' });
+              }
+
+              // Session Tracking
+              const sessionKey = `login_email_${user.uid}`;
+              if (!sessionStorage.getItem(sessionKey)) {
+                EmailService.sendLoginEmail(user.uid, user.email || '');
+                sessionStorage.setItem(sessionKey, 'true');
+              }
+            } else {
+              // Create new profile
+              const baseName = (user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'USER')
+                .replace(/[^a-zA-Z0-9]/g, '')
+                .toUpperCase()
+                .slice(0, 10);
+              const referralCode = `${baseName}${Math.floor(100 + Math.random() * 900)}`;
+              const referredBy = localStorage.getItem('referralCode') || null;
+
+              const isAdminEmail = user.email === 'calmingsound016@gmail.com' || user.email === 'admin@promptly.com';
+
+              const newProfile: UserProfile = {
+                uid: user.uid,
+                email: user.email || '',
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                role: isAdminEmail ? 'admin' : 'user',
+                subscriptionStatus: isAdminEmail ? 'pro' : 'free',
+                createdAt: new Date().toISOString(),
+                referralCode,
+                referredBy,
+                affiliateEarnings: 0,
+                credits: isAdminEmail ? 10000 : 50,
+                totalUsedCredits: 0,
+                monthlyLimit: isAdminEmail ? 10000 : 50
+              };
+
+              await setDoc(docRef, { ...newProfile, createdAt: serverTimestamp() });
+              setProfile(newProfile);
+
+              if (isAdminEmail) {
+                await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
+              }
+
+              // New registration emails
+              await EmailService.sendWelcomeEmail(user.uid, user.email || '', user.displayName || 'Creator');
+              await EmailService.sendAffiliateJoinEmail(user.uid, user.email || '', referralCode);
+
+              // Sync to Marketing CRM
+              try {
+                const contactRef = collection(db, 'marketing_contacts');
+                const q = query(contactRef, where('email', '==', user.email));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                  await addDoc(contactRef, {
+                    email: user.email,
+                    displayName: user.displayName || 'New User',
+                    firstName: user.displayName?.split(' ')[0] || '',
+                    lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+                    status: 'active',
+                    source: 'registration',
+                    userId: user.uid,
+                    tags: ['customer', 'user_account'],
+                    createdAt: serverTimestamp(),
+                    lastActiveAt: serverTimestamp()
+                  });
+                  await syncMarketingTags(['customer', 'user_account']);
+                } else {
+                  const existingDoc = querySnapshot.docs[0];
+                  const existingData = existingDoc.data();
+                  const updatedTags = Array.from(new Set([...(existingData.tags || []), 'customer', 'user_account']));
+                  await updateDoc(existingDoc.ref, {
+                    userId: user.uid,
+                    tags: updatedTags,
+                    lastActiveAt: serverTimestamp()
+                  });
+                  const newTags = ['customer', 'user_account'].filter(t => !(existingData.tags || []).includes(t));
+                  if (newTags.length > 0) await syncMarketingTags(newTags);
+                }
+              } catch (crmErr) {
+                console.error("Failed to sync user to Marketing CRM:", crmErr);
+              }
+              sessionStorage.setItem(`login_email_${user.uid}`, 'true');
+            }
+          } catch (err) {
+            console.error("Error in profile listener:", err);
           }
-          
-          // Fetch Favorites
-          const favRef = collection(db, 'users', user.uid, 'favorites');
-          const favSnap = await getDocs(favRef);
-          setFavoriteIds(favSnap.docs.map(d => d.data().promptId));
+        });
 
-          // Seed database if user is admin
-          seedDatabase();
-          
-        } catch (err) {
-          console.error("Error fetching/creating profile:", err);
-        }
+        // Fetch Favorites
+        const favRef = collection(db, 'users', user.uid, 'favorites');
+        getDocs(favRef).then(snap => {
+          setFavoriteIds(snap.docs.map(d => d.data().promptId));
+        });
+
       } else {
         setProfile(null);
         setFavoriteIds([]);
@@ -115,11 +241,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
 
   const toggleFavorite = async (promptId: string) => {
     if (!user) return false;
+    if (user.uid === 'guest-123') {
+      toast.error("Sign in to save favorite prompts!");
+      return false;
+    }
     try {
       const favRef = collection(db, 'users', user.uid, 'favorites');
       const q = query(favRef, where('promptId', '==', promptId));
@@ -151,10 +284,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
     profile,
     loading,
-    isAdmin: profile?.role === 'admin' || user?.email === 'calmingsound016@gmail.com',
-    isPro: profile?.subscriptionStatus === 'pro' || profile?.role === 'admin' || user?.email === 'calmingsound016@gmail.com',
+    isAdmin: profile?.role === 'admin',
+    isPro: profile?.subscriptionStatus === 'pro' || profile?.subscriptionStatus === 'enterprise' || profile?.role === 'admin',
     toggleFavorite,
     isFavorited,
+    syncMarketingTags,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

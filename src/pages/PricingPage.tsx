@@ -2,11 +2,14 @@ import { useAuth } from '../hooks/useAuth';
 import { Check, Zap, ArrowRight, ShieldCheck, CreditCard, Sparkles, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
-import { doc, updateDoc, increment, getDocs, getDoc, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, getDocs, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { PricingPlan, AppConfig } from '../types';
+import { toast } from 'react-hot-toast';
 
 export default function PricingPage() {
+  const navigate = useNavigate();
   const { user, profile, isPro: userIsPro } = useAuth();
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<PricingPlan[]>([]);
@@ -19,19 +22,11 @@ export default function PricingPage() {
       try {
         const [pSnap, cSnap] = await Promise.all([
           getDocs(collection(db, 'plans')),
-          getDoc(doc(db, 'config', 'global'))
+          getDoc(doc(db, 'configs', 'global'))
         ]);
 
         const pData = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as PricingPlan));
-        if (pData.length > 0) {
-          setPlans(pData.sort((a, b) => a.monthlyPrice - b.monthlyPrice));
-        } else {
-          // Fallback if not seeded
-          setPlans([
-            { id: 'free', name: 'Explorer', description: 'Perfect for getting started', monthlyPrice: 0, yearlyPrice: 0, features: ['5 Prompts/day', 'Basic AI Tools'], accessLevel: 'free', limits: { dailyPrompts: 5, favorites: 10 } },
-            { id: 'pro', name: 'Professional', description: 'Best for power users', monthlyPrice: 29, yearlyPrice: 290, features: ['Unlimited Prompts', 'Priority Support', 'Commercial License'], accessLevel: 'pro', isPopular: true, limits: { dailyPrompts: 999, favorites: 999 } }
-          ]);
-        }
+        setPlans(pData.sort((a, b) => a.monthlyPrice - b.monthlyPrice));
 
         if (cSnap.exists()) {
           setConfig(cSnap.data() as AppConfig);
@@ -46,51 +41,8 @@ export default function PricingPage() {
   }, []);
 
   const handleSubscribe = async (plan: PricingPlan) => {
-    if (!user) {
-      window.location.href = '/login';
-      return;
-    }
-    if (plan.accessLevel === 'free') {
-      window.location.href = '/dashboard';
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Simulation of a successful checkout for demo purposes
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const isTrial = config?.freeTrialEnabled && !profile?.trialUsed;
-      const finalStatus = plan.accessLevel === 'enterprise' ? 'enterprise' : 'pro';
-
-      // Upgrade user
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        subscriptionStatus: finalStatus,
-        trialUsed: isTrial ? true : profile?.trialUsed,
-        updatedAt: serverTimestamp()
-      });
-
-      // Reward Affiliate
-      if (profile?.referredBy) {
-        const commission = billingCycle === 'monthly' ? (plan.monthlyPrice * 0.25) : (plan.yearlyPrice * 0.25);
-        const q = query(collection(db, 'users'), where('referralCode', '==', profile.referredBy));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          await updateDoc(doc(db, 'users', snap.docs[0].id), {
-            affiliateEarnings: increment(commission)
-          });
-        }
-      }
-
-      alert(isTrial ? `Trial Started! You have PRO access for ${config?.freeTrialDays} days.` : "Success! Your subscription is active.");
-      window.location.href = '/dashboard';
-    } catch (err) {
-      console.error(err);
-      alert("Something went wrong during checkout.");
-    } finally {
-      setLoading(false);
-    }
+    // Redirect to the dedicated checkout page (login is handled there or not required just to view)
+    navigate(`/checkout?plan=${plan.id}&cycle=${billingCycle}`);
   };
 
   if (fetching) return (
@@ -101,11 +53,12 @@ export default function PricingPage() {
 
   return (
     <div className="container mx-auto px-4 py-24">
-      {/* Trial Banner */}
-      <AnimatePresence>
-        {config?.freeTrialEnabled && !profile?.trialUsed && (
+      {/* Conditional Banners */}
+      <AnimatePresence mode="wait">
+        {config?.activePromotion === 'trial' && !profile?.trialUsed && (
           <motion.div 
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+            key="trial-banner"
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="max-w-4xl mx-auto mb-12"
           >
             <div className="bg-amber-50 border-2 border-amber-200 rounded-[2rem] p-6 flex items-center justify-between shadow-lg shadow-amber-100">
@@ -114,14 +67,43 @@ export default function PricingPage() {
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-black text-slate-900">Limited Time Offer!</h4>
+                  <h4 className="font-black text-slate-900 text-lg tracking-tight">Limited Time Offer!</h4>
                   <p className="text-sm text-slate-600 font-medium">Start any premium plan and get the first <span className="font-bold text-amber-600">{config.freeTrialDays} days FREE</span>.</p>
                 </div>
               </div>
               <div className="hidden md:block">
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl text-xs font-black uppercase text-amber-600 tracking-wider">
+                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl text-xs font-black uppercase text-amber-600 tracking-wider border border-amber-100">
                   <Calendar className="w-4 h-4" />
                   Trial Available
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {config?.activePromotion === 'yearly_bonus' && (
+          <motion.div 
+            key="yearly-banner"
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            className="max-w-4xl mx-auto mb-12"
+          >
+            <div className="bg-emerald-50 border-2 border-emerald-200 rounded-[2rem] p-6 flex items-center justify-between shadow-lg shadow-emerald-100">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-900 text-lg tracking-tight">Annual Value Pack</h4>
+                  <p className="text-sm text-slate-600 font-medium">
+                    Switch to yearly billing and get <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">
+                      {config.yearlyIncentiveType === 'months' ? `${config.yearlyIncentiveValue} MONTHS COMPLETELY FREE` : `${config.yearlyIncentiveValue}% ADDITIONAL DISCOUNT`}
+                    </span>.
+                  </p>
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl text-xs font-black uppercase text-emerald-600 tracking-wider border border-emerald-100">
+                  Best Value
                 </div>
               </div>
             </div>
@@ -145,39 +127,68 @@ export default function PricingPage() {
             className={`px-8 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Yearly
-            <span className="bg-indigo-100 text-indigo-600 text-[10px] px-2 py-0.5 rounded-lg border border-indigo-200">Save 20%</span>
+            {plans.length > 0 && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
+                config?.activePromotion === 'yearly_bonus' 
+                  ? 'bg-emerald-100 text-emerald-600 border-emerald-200 animate-pulse' 
+                  : 'bg-indigo-100 text-indigo-600 border-indigo-200'
+              }`}>
+                {config?.activePromotion === 'yearly_bonus' 
+                  ? (config.yearlyIncentiveType === 'months' 
+                      ? `${config.yearlyIncentiveValue} Months Free!` 
+                      : `Up to ${Math.max(...plans.map(p => p.monthlyPrice > 0 ? Math.round(((p.monthlyPrice * 12 - p.yearlyPrice) / (p.monthlyPrice * 12)) * 100) : 0))}% Off`) 
+                  : 'Save 20%'}
+              </span>
+            )}
           </button>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
-        {plans.map((plan, i) => (
-          <motion.div
-            key={plan.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className={`relative bg-white rounded-[3rem] p-10 border-2 transition-all flex flex-col ${
-              plan.isPopular ? 'border-indigo-600 shadow-2xl shadow-indigo-500/10' : 'border-slate-100 shadow-sm'
-            }`}
-          >
-            {plan.isPopular && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest px-8 py-2.5 rounded-full shadow-xl">
-                Most Popular
+        {plans.map((plan, i) => {
+          const discount = plan.monthlyPrice > 0 ? Math.round(((plan.monthlyPrice * 12 - plan.yearlyPrice) / (plan.monthlyPrice * 12)) * 100) : 0;
+          
+          return (
+            <motion.div
+              key={plan.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className={`relative bg-white rounded-[3rem] p-10 border-2 transition-all flex flex-col ${
+                plan.isPopular ? 'border-indigo-600 shadow-2xl shadow-indigo-500/10' : 'border-slate-100 shadow-sm'
+              }`}
+            >
+              {plan.isPopular && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest px-8 py-2.5 rounded-full shadow-xl">
+                  Most Popular
+                </div>
+              )}
+
+              <div className="mb-10">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-2xl font-black text-slate-900">{plan.name}</h3>
+                  {billingCycle === 'yearly' && discount > 0 && (
+                    <span className="bg-emerald-100 text-emerald-600 text-[10px] font-black px-2 py-1 rounded-lg border border-emerald-200">
+                      -{discount}%
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-500 text-sm font-medium">{plan.description}</p>
               </div>
-            )}
 
-            <div className="mb-10">
-              <h3 className="text-2xl font-black text-slate-900 mb-2">{plan.name}</h3>
-              <p className="text-slate-500 text-sm font-medium">{plan.description}</p>
-            </div>
-
-            <div className="flex items-baseline gap-1 mb-10">
-              <span className="text-6xl font-black text-slate-900 leading-none">
-                ${billingCycle === 'monthly' ? plan.monthlyPrice : Math.floor(plan.yearlyPrice / 12)}
-              </span>
-              <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">/mo</span>
-            </div>
+              <div className="flex flex-col gap-1 mb-10">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-6xl font-black text-slate-900 leading-none">
+                    ${billingCycle === 'monthly' ? plan.monthlyPrice : Math.floor(plan.yearlyPrice / 12)}
+                  </span>
+                  <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">/mo</span>
+                </div>
+                {billingCycle === 'yearly' && (
+                  <p className="text-indigo-600 font-black text-xs uppercase tracking-widest mt-2 animate-in fade-in slide-in-from-top-1">
+                    Billed as ${plan.yearlyPrice}/year
+                  </p>
+                )}
+              </div>
 
             <ul className="space-y-5 mb-12 flex-1">
               {plan.features.map((feature, j) => (
@@ -192,21 +203,22 @@ export default function PricingPage() {
 
             <button
               onClick={() => handleSubscribe(plan)}
-              disabled={loading || (plan.accessLevel === profile?.subscriptionStatus)}
+              disabled={loading || (plan.id === profile?.activePlanId)}
               className={`w-full py-5 rounded-[1.5rem] font-black text-lg transition-all flex items-center justify-center gap-3 ${
                 plan.isPopular 
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 hover:-translate-y-1' 
                   : 'bg-slate-900 text-white hover:bg-black'
               } disabled:opacity-50 disabled:cursor-not-allowed active:scale-95`}
             >
-              {plan.accessLevel === profile?.subscriptionStatus ? 'Current Plan' : (
-                config?.freeTrialEnabled && !profile?.trialUsed && plan.accessLevel !== 'free' ? 'Start Free Trial' : 'Get Started'
+              {plan.id === profile?.activePlanId ? 'Current Plan' : (
+                config?.activePromotion === 'trial' && !profile?.trialUsed && plan.monthlyPrice > 0 ? 'Start Free Trial' : 'Get Started'
               )}
-              {plan.accessLevel !== profile?.subscriptionStatus && <ArrowRight className="w-5 h-5 font-black" />}
+              {plan.id !== profile?.activePlanId && <ArrowRight className="w-5 h-5 font-black" />}
             </button>
           </motion.div>
-        ))}
-      </div>
+        );
+      })}
+    </div>
 
       <div className="mt-24 text-center">
         <div className="inline-flex flex-wrap justify-center gap-8 px-12 py-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
