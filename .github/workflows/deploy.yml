@@ -61,3 +61,4 @@ jobs:
             *.ts
             !server.mjs
             !.htaccess
+            !health.html
