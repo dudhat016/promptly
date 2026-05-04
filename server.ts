@@ -118,6 +118,10 @@ app.post("/api/webhook", express.raw({ type: "application/json" }), async (req, 
 app.use(express.json({ limit: '10mb' }));
 
 // API Routes
+app.get("/ping", (req, res) => {
+  res.send("PONG - Server is Alive!");
+});
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
