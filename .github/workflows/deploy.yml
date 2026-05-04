@@ -35,7 +35,7 @@ jobs:
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account.json
           echo '${{ secrets.ENV_FILE }}' > .env
 
-      - name: 🚀 Deploy via FTP
+      - name: 🚀 Deploy via SFTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -43,11 +43,9 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
           server-dir: /public_html/promptly/
-          # Hostinger requires Passive mode and often works better with FTPS
-          protocol: ftp
-          port: 21
-          # Add these for reliability
-          security: loose
+          # SFTP is much more reliable than FTP
+          protocol: sftp
+          port: 22
           # We only upload what is needed for the production server to run
           exclude: |
             **/.git*
