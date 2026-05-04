@@ -43,9 +43,10 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
           server-dir: /public_html/promptly/
-          # Use FTPS (Secure FTP) on Port 21
+          # Hardened settings for Hostinger stability
           protocol: ftp
           port: 21
+          timeout: 60000
           security: loose
           # We only upload what is needed for the production server to run
           exclude: |
