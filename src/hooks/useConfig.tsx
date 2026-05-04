@@ -37,7 +37,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Use onSnapshot for real-time updates!
-    const unsub = onSnapshot(doc(db, 'configs', 'general'), (doc) => {
+    const unsub = onSnapshot(doc(db, 'configs', 'global'), (doc) => {
       if (doc.exists()) {
         setConfig(prev => ({ ...prev, ...doc.data() }));
       }

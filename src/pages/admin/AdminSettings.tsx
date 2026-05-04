@@ -29,7 +29,7 @@ export default function AdminSettings() {
   useEffect(() => {
     async function loadConfig() {
       try {
-        const docSnap = await getDoc(doc(db, 'configs', 'general'));
+        const docSnap = await getDoc(doc(db, 'configs', 'global'));
         if (docSnap.exists()) {
           setGeneralConfig(prev => ({ ...prev, ...docSnap.data() }));
         }
@@ -45,7 +45,7 @@ export default function AdminSettings() {
   const handleSaveGeneral = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, 'configs', 'general'), {
+      await setDoc(doc(db, 'configs', 'global'), {
         ...generalConfig,
         updatedAt: serverTimestamp()
       });
