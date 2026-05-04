@@ -149,7 +149,7 @@ service cloud.firestore {
     // New Centralized Platform Configuration
     match /configs/{configId} {
       // General branding is public, sensitive settings (SMTP/Email) are Admin-only
-      allow read: if (configId == 'general') || isAdmin();
+      allow read: if (configId == 'global') || isAdmin();
       allow write: if isAdmin();
     }
 
