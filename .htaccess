@@ -1,0 +1,9 @@
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+
+# Proxy all requests to the Node.js process on Port 3000
+RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]

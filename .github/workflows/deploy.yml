@@ -60,3 +60,4 @@ jobs:
             .env.example
             *.ts
             !server.mjs
+            !.htaccess
