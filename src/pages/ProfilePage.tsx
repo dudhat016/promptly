@@ -26,6 +26,12 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Basic validation
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
     setIsUploading(true);
     const formData = new FormData();
     formData.append('file', file);
@@ -38,16 +44,20 @@ export default function ProfilePage() {
 
       const data = await res.json();
       if (data.success) {
+        // Update user profile in Firestore
         await updateDoc(doc(db, 'users', user.uid), {
           photoURL: data.url,
           updatedAt: serverTimestamp()
         });
+        
+        // Success feedback
         toast.success('Profile photo updated!');
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || 'Upload failed');
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to upload photo');
+      console.error('Upload Error:', err);
+      toast.error(err.message || 'Failed to connect to storage');
     } finally {
       setIsUploading(false);
     }

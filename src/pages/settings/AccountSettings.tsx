@@ -38,31 +38,31 @@ export default function AccountSettings() {
 
     setIsUploading(true);
     const toastId = toast.loading('Uploading your new avatar...');
-    try {
-      const reader = new FileReader();
-      const base64Promise = new Promise((resolve) => {
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-      const base64Image = await base64Promise;
+    
+    const formData = new FormData();
+    formData.append('file', file);
 
-      const response = await fetch('/api/upload-avatar', {
+    try {
+      const response = await fetch('/api/upload-ftp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image, userId: user.uid })
+        body: formData,
       });
 
       if (!response.ok) throw new Error('Upload failed');
-      const { url } = await response.json();
+      const data = await response.json();
 
-      await updateDoc(doc(db, 'users', user.uid), {
-        photoURL: url,
-        updatedAt: serverTimestamp()
-      });
-
-      toast.success('Avatar updated!', { id: toastId });
+      if (data.success) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          photoURL: data.url,
+          updatedAt: serverTimestamp()
+        });
+        toast.success('Avatar updated!', { id: toastId });
+      } else {
+        throw new Error(data.error || 'Upload failed');
+      }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to upload image', { id: toastId });
+      console.error('Upload Error:', err);
+      toast.error(err.message || 'Failed to connect to storage', { id: toastId });
     } finally {
       setIsUploading(false);
     }
