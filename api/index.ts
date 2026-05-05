@@ -19,7 +19,6 @@ let isFirebaseInitialized = false;
 async function initFirebase() {
   if (isFirebaseInitialized) return;
 
-  let serviceAccount: any = null;
   try {
     const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (!serviceAccountVar) {
@@ -27,101 +26,34 @@ async function initFirebase() {
     }
 
     const cleanVar = serviceAccountVar.trim().replace(/^["']|["']$/g, '');
-    try {
-      // Deep Clean: Remove surrounding quotes and all whitespace
-      // 1. Try standard JSON parse
-      const sanitized = cleanVar.replace(/\\n/g, '\\n');
-      serviceAccount = JSON.parse(sanitized);
-    } catch (e) {
-      // 2. Try Base64 decode
-      try {
-        const base64Clean = cleanVar.replace(/\s/g, '');
-        const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
-        serviceAccount = JSON.parse(decoded);
-      } catch (innerError) {
-        // 3. ULTIMATE FALLBACK: Regex Extraction
-        console.log("⚠️ JSON parse failed, attempting Regex extraction...");
-        try {
-          // If it was Base64, we need to extract from the decoded version
-          const base64Clean = cleanVar.replace(/\s/g, '');
-          const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
-          
-          const extract = (str: string, key: string) => {
-            const match = str.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
-            return match ? match[1] : null;
-          };
-          
-          // Try to extract from both the raw string and the decoded string
-          const source = decoded.includes('project_id') ? decoded : cleanVar;
-          
-          serviceAccount = {
-            project_id: extract(source, 'project_id'),
-            private_key: extract(source, 'private_key')?.replace(/\\n/g, '\n'),
-            client_email: extract(source, 'client_email'),
-            type: 'service_account'
-          };
-          
-          if (!serviceAccount.project_id || !serviceAccount.private_key) {
-            throw new Error("Keys missing");
-          }
-        } catch (regexError) {
-          throw new Error(`Firebase Config Error: ${cleanVar.substring(0, 20)}... (Length: ${cleanVar.length})`);
-        }
-      }
-    }
+    let serviceAccount: any;
 
-    // CRITICAL: Robust Private Key Reconstruction (Brute-Force Style)
-    if (serviceAccount && serviceAccount.private_key) {
-      const rawKey = serviceAccount.private_key
-        .replace(/-----BEGIN[^-]*-----/g, "")
-        .replace(/-----END[^-]*-----/g, "")
-        .replace(/\\+n/g, "") 
-        .replace(/\\+r/g, "") 
-        .replace(/\s/g, "");
-
-      const lines = rawKey.match(/.{1,64}/g);
-      if (!lines) throw new Error("Private key data is empty.");
-      
-      const wrappedKey = lines.join("\n");
-      const variations = [
-        `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`,
-        `-----BEGIN PRIVATE KEY-----\n${rawKey}\n-----END PRIVATE KEY-----\n`,
-        `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----`
-      ];
-
-      let lastError: any = null;
-      for (const pem of variations) {
-        try {
-          serviceAccount.private_key = pem;
-          if (!admin.apps.length) {
-            admin.initializeApp({
-              credential: admin.credential.cert(serviceAccount)
-            });
-          }
-          lastError = null;
-          break; // Success!
-        } catch (err: any) {
-          lastError = err;
-          // Try next variation
-        }
-      }
-
-      if (lastError) throw lastError;
+    // Step 1: Parse the service account (JSON or Base64)
+    if (cleanVar.startsWith('{')) {
+      // Raw JSON string
+      serviceAccount = JSON.parse(cleanVar);
     } else {
-      if (!admin.apps.length) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-      }
+      // Base64 encoded
+      const decoded = Buffer.from(cleanVar, 'base64').toString('utf8');
+      serviceAccount = JSON.parse(decoded);
     }
-    
+
+    // Step 2: Fix private_key only if it contains literal \n (not real newlines)
+    if (serviceAccount.private_key && !serviceAccount.private_key.includes('\n')) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
+    // Step 3: Initialize Firebase Admin
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    }
     isFirebaseInitialized = true;
     console.log("✅ Firebase Admin initialized successfully");
   } catch (error: any) {
-    const debugInfo = serviceAccount?.private_key 
-      ? `(Len: ${serviceAccount.private_key.length}, Start: ${serviceAccount.private_key.substring(0, 30)})`
-      : "(Key Missing)";
-    throw new Error(`${error.message} ${debugInfo}`);
+    console.error("❌ Firebase init failed:", error.message);
+    throw error;
   }
 }
 

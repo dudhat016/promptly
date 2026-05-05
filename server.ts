@@ -14,7 +14,6 @@ import multiparty from "multiparty";
 
 // Initialize Firebase Admin
 const initFirebase = async () => {
-  let serviceAccount: any = null;
   try {
     if (admin.apps.length > 0) {
       return {
@@ -28,88 +27,26 @@ const initFirebase = async () => {
       throw new Error("FIREBASE_SERVICE_ACCOUNT is missing");
     }
 
-    // Deep Clean: Remove surrounding quotes and all whitespace
     const cleanVar = serviceAccountVar.trim().replace(/^["']|["']$/g, '');
-    
-    try {
-      const sanitized = cleanVar.replace(/\\n/g, '\\n');
-      serviceAccount = JSON.parse(sanitized);
-    } catch (e) {
-      try {
-        const base64Clean = cleanVar.replace(/\s/g, '');
-        const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
-        serviceAccount = JSON.parse(decoded);
-      } catch (innerError: any) {
-        // ULTIMATE FALLBACK: Regex Extraction
-        try {
-          const base64Clean = cleanVar.replace(/\s/g, '');
-          const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
-          
-          const extract = (str: string, key: string) => {
-            const match = str.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
-            return match ? match[1] : null;
-          };
-          
-          const source = decoded.includes('project_id') ? decoded : cleanVar;
-          
-          serviceAccount = {
-            project_id: extract(source, 'project_id'),
-            private_key: extract(source, 'private_key')?.replace(/\\n/g, '\n'),
-            client_email: extract(source, 'client_email'),
-            type: 'service_account'
-          };
-          
-          if (!serviceAccount.project_id || !serviceAccount.private_key) {
-            throw new Error("Keys missing");
-          }
-        } catch (regexError) {
-          throw new Error(`Firebase Config Error: ${innerError.message}`);
-        }
-      }
-    }
+    let serviceAccount: any;
 
-    // Robust Private Key Reconstruction (Brute-Force Style)
-    if (serviceAccount && serviceAccount.private_key) {
-      const rawKey = serviceAccount.private_key
-        .replace(/-----BEGIN[^-]*-----/g, "")
-        .replace(/-----END[^-]*-----/g, "")
-        .replace(/\\+n/g, "")
-        .replace(/\\+r/g, "")
-        .replace(/\s/g, "");
-      
-      const lines = rawKey.match(/.{1,64}/g);
-      if (lines) {
-        const wrappedKey = lines.join("\n");
-        const variations = [
-          `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`,
-          `-----BEGIN PRIVATE KEY-----\n${rawKey}\n-----END PRIVATE KEY-----\n`,
-          `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----`
-        ];
-
-        let lastError: any = null;
-        for (const pem of variations) {
-          try {
-            serviceAccount.private_key = pem;
-            if (!admin.apps.length) {
-              admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
-              });
-            }
-            lastError = null;
-            break;
-          } catch (err: any) {
-            lastError = err;
-          }
-        }
-        if (lastError) throw lastError;
-      }
+    // Step 1: Parse the service account (JSON or Base64)
+    if (cleanVar.startsWith('{')) {
+      serviceAccount = JSON.parse(cleanVar);
     } else {
-      if (!admin.apps.length) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-      }
+      const decoded = Buffer.from(cleanVar, 'base64').toString('utf8');
+      serviceAccount = JSON.parse(decoded);
     }
+
+    // Step 2: Fix private_key only if it contains literal \n (not real newlines)
+    if (serviceAccount.private_key && !serviceAccount.private_key.includes('\n')) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
+    // Step 3: Initialize
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
 
     return {
       db: getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)'),
