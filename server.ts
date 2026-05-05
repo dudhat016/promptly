@@ -28,7 +28,8 @@ const initFirebase = async () => {
     }
 
     let serviceAccount;
-    const cleanVar = serviceAccountVar.trim();
+    // Deep Clean: Remove surrounding quotes and all whitespace
+    const cleanVar = serviceAccountVar.trim().replace(/^["']|["']$/g, '');
     
     try {
       const sanitized = cleanVar.replace(/\\n/g, '\\n');
@@ -41,20 +42,25 @@ const initFirebase = async () => {
       } catch (innerError: any) {
         // ULTIMATE FALLBACK: Regex Extraction
         try {
-          const extract = (key: string) => {
-            const match = cleanVar.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
+          const base64Clean = cleanVar.replace(/\s/g, '');
+          const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
+          
+          const extract = (str: string, key: string) => {
+            const match = str.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
             return match ? match[1] : null;
           };
           
+          const source = decoded.includes('project_id') ? decoded : cleanVar;
+          
           serviceAccount = {
-            project_id: extract('project_id'),
-            private_key: extract('private_key')?.replace(/\\n/g, '\n'),
-            client_email: extract('client_email'),
+            project_id: extract(source, 'project_id'),
+            private_key: extract(source, 'private_key')?.replace(/\\n/g, '\n'),
+            client_email: extract(source, 'client_email'),
             type: 'service_account'
           };
           
           if (!serviceAccount.project_id || !serviceAccount.private_key) {
-            throw new Error("Regex extraction failed");
+            throw new Error("Keys missing");
           }
         } catch (regexError) {
           throw new Error(`Firebase Config Error: ${innerError.message}`);

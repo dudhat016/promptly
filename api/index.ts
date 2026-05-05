@@ -26,10 +26,11 @@ async function initFirebase() {
     }
 
     let serviceAccount;
-    const cleanVar = serviceAccountVar.trim();
+    // Deep Clean: Remove surrounding quotes and all whitespace
+    const cleanVar = serviceAccountVar.trim().replace(/^["']|["']$/g, '');
     
     try {
-      // 1. Try standard JSON parse with basic cleanup
+      // 1. Try standard JSON parse
       const sanitized = cleanVar.replace(/\\n/g, '\\n');
       serviceAccount = JSON.parse(sanitized);
     } catch (e) {
@@ -39,27 +40,33 @@ async function initFirebase() {
         const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
         serviceAccount = JSON.parse(decoded);
       } catch (innerError) {
-        // 3. ULTIMATE FALLBACK: Regex Extraction (For mangled JSON)
+        // 3. ULTIMATE FALLBACK: Regex Extraction
         console.log("⚠️ JSON parse failed, attempting Regex extraction...");
         try {
-          const extract = (key: string) => {
-            const match = cleanVar.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
+          // If it was Base64, we need to extract from the decoded version
+          const base64Clean = cleanVar.replace(/\s/g, '');
+          const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
+          
+          const extract = (str: string, key: string) => {
+            const match = str.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
             return match ? match[1] : null;
           };
           
+          // Try to extract from both the raw string and the decoded string
+          const source = decoded.includes('project_id') ? decoded : cleanVar;
+          
           serviceAccount = {
-            project_id: extract('project_id'),
-            private_key: extract('private_key')?.replace(/\\n/g, '\n'),
-            client_email: extract('client_email'),
+            project_id: extract(source, 'project_id'),
+            private_key: extract(source, 'private_key')?.replace(/\\n/g, '\n'),
+            client_email: extract(source, 'client_email'),
             type: 'service_account'
           };
           
           if (!serviceAccount.project_id || !serviceAccount.private_key) {
-            throw new Error("Regex extraction failed - keys missing");
+            throw new Error("Keys missing");
           }
         } catch (regexError) {
-          console.error("❌ All parsing methods failed.");
-          throw new Error(`Firebase Config Error: Position ${cleanVar.length} chars. Start: ${cleanVar.substring(0, 10)}`);
+          throw new Error(`Firebase Config Error: ${cleanVar.substring(0, 20)}... (Length: ${cleanVar.length})`);
         }
       }
     }
