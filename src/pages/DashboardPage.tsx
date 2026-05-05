@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+import { addDoc, collection, getDocs, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
+import { Clock, Database, Heart, LayoutGrid, Plus, Send, ShieldCheck, Sparkles, Wand2, Zap } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { Link, useSearchParams } from 'react-router-dom';
+import PromptCard from '../components/PromptCard';
 import { useAuth } from '../hooks/useAuth';
+import { useConfig } from '../hooks/useConfig';
 import { usePermissions } from '../hooks/usePermissions';
 import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, Timestamp, doc, getDoc } from 'firebase/firestore';
-import { generateAIPrompt } from '../services/geminiService';
-import { Prompt, AIModel } from '../types';
-import PromptCard from '../components/PromptCard';
 import { EmailService } from '../services/emailService';
-import { Sparkles, Plus, LayoutGrid, Heart, History, Wand2, Search, Zap, Code, Send, Clock, ShieldCheck, Database } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
+import { generateAIPrompt } from '../services/geminiService';
+import { Prompt } from '../types';
 
 // Utility to safely handle Firestore dates
 const parseDate = (date: any): Date => {
@@ -24,14 +25,14 @@ const parseDate = (date: any): Date => {
 export default function DashboardPage() {
   const { user, profile, loading: authLoading, isPro, isAdmin } = useAuth();
   const { permissions, loading: permsLoading } = usePermissions();
+  const { config } = useConfig();
+  const models = config?.models || [];
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'library' | 'favorites' | 'builder'>(
     (searchParams.get('tab') as any) || 'library'
   );
   const [myPrompts, setMyPrompts] = useState<Prompt[]>([]);
   const [favorites, setFavorites] = useState<Prompt[]>([]);
-  const [models, setModels] = useState<AIModel[]>([]);
-  const [config, setConfig] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Stats
@@ -43,6 +44,12 @@ export default function DashboardPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [isPaidPrompt, setIsPaidPrompt] = useState(false);
+
+  useEffect(() => {
+    if (models.length > 0 && !targetModel) {
+      setTargetModel(models[0].id);
+    }
+  }, [models, targetModel]);
 
   useEffect(() => {
     async function fetchData() {
@@ -68,24 +75,12 @@ export default function DashboardPage() {
         const favRef = collection(db, 'users', user.uid, 'favorites');
         const favSnap = await getDocs(favRef);
         const favPromptIds = favSnap.docs.map(d => d.data().promptId);
-        
+
         if (favPromptIds.length > 0) {
           const pRef = collection(db, 'prompts');
           const pQuery = query(pRef, where('__name__', 'in', favPromptIds.slice(0, 10)));
           const pSnap = await getDocs(pQuery);
           setFavorites(pSnap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt)));
-        }
-
-        // Fetch models
-        const mSnap = await getDocs(collection(db, 'models'));
-        const fetchedModels = mSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIModel));
-        setModels(fetchedModels);
-        if (fetchedModels.length > 0) setTargetModel(fetchedModels[0].id);
-
-        // Fetch Global Config
-        const configSnap = await getDoc(doc(db, 'configs', 'global'));
-        if (configSnap.exists()) {
-          setConfig(configSnap.data());
         }
       } catch (err) {
         console.error(err);
@@ -155,7 +150,7 @@ export default function DashboardPage() {
       const docRef = await addDoc(collection(db, 'prompts'), newPrompt);
       setMyPrompts(prev => [{ id: docRef.id, ...newPrompt, createdAt: new Date().toISOString() }, ...prev]);
       setTodayCount(prev => prev + 1);
-      
+
       await EmailService.sendNewPromptEmail(user.uid, user.email || '', newPrompt.title);
 
       toast.success("Prompt saved to your library!");
@@ -179,7 +174,7 @@ export default function DashboardPage() {
         <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
           <Sparkles className="w-64 h-64 text-indigo-600 rotate-12" />
         </div>
-        
+
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
           <div className="flex items-center gap-6">
             <img src={profile?.photoURL || undefined} className="w-20 h-20 rounded-3xl bg-slate-100 object-cover shadow-lg border-4 border-white" alt="" />
@@ -210,7 +205,7 @@ export default function DashboardPage() {
                  </div>
                </div>
                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
-                 <motion.div 
+                 <motion.div
                    initial={{ width: 0 }}
                    animate={{ width: `${Math.min(100, ((profile?.credits || 0) / (profile?.monthlyLimit || 50)) * 100)}%` }}
                    className="h-full rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"
@@ -236,7 +231,7 @@ export default function DashboardPage() {
                  </div>
                </div>
                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
-                 <motion.div 
+                 <motion.div
                    initial={{ width: 0 }}
                    animate={{ width: isPro ? '100%' : `${((profile?.unlockedPrompts || []).length / (config?.vaultLimit || 10)) * 100}%` }}
                    className={`h-full rounded-full transition-colors ${(!isPro && (profile?.unlockedPrompts || []).length >= (config?.vaultLimit || 10) - 1) ? 'bg-rose-500' : 'bg-amber-500'} shadow-[0_0_10px_rgba(245,158,11,0.3)]`}
@@ -260,7 +255,7 @@ export default function DashboardPage() {
                  </div>
                </div>
                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
-                 <motion.div 
+                 <motion.div
                    initial={{ width: 0 }}
                    animate={{ width: `${usagePercent}%` }}
                    className={`h-full rounded-full ${usagePercent > 80 ? 'bg-rose-500' : 'bg-emerald-500'} shadow-[0_0_10px_rgba(16,185,129,0.3)]`}
@@ -288,7 +283,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <button 
+        <button
           onClick={() => handleTabChange('builder')}
           className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
         >
@@ -307,10 +302,10 @@ export default function DashboardPage() {
         {activeTab === 'favorites' && (
           <motion.div key="favorites" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, y: -10 }} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {favorites.length > 0 ? favorites.map(p => (
-              <PromptCard 
-                key={p.id} 
-                prompt={p} 
-                isUnlocked={(profile?.unlockedPrompts || []).includes(p.id!)} 
+              <PromptCard
+                key={p.id}
+                prompt={p}
+                isUnlocked={(profile?.unlockedPrompts || []).includes(p.id!)}
               />
             )) : <EmptyState icon={Heart} title="No favorites yet" desc="Browse the marketplace and save prompts to your collection." onBtnClick={() => window.location.href='/explore'} btnText="Explore Marketplace" />}
           </motion.div>

@@ -7,6 +7,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import TagInput from '../../components/TagInput';
+import { useImageUpload } from '../../hooks/useImageUpload';
+import { Image as ImageIcon, X } from 'lucide-react';
 
 export default function AdminPromptForm() {
   const { id } = useParams();
@@ -17,8 +19,10 @@ export default function AdminPromptForm() {
   const [models, setModels] = useState<AIModel[]>([]);
   const [saving, setSaving] = useState(false);
   const [prompt, setPrompt] = useState<Partial<Prompt>>({
-    title: '', slug: '', description: '', metaTitle: '', metaDescription: '', metaKeywords: '', content: '', model: '', isPaid: false, tags: []
+    title: '', slug: '', description: '', metaTitle: '', metaDescription: '', metaKeywords: '', content: '', imageUrl: '', model: '', isPaid: false, tags: []
   });
+
+  const { uploadImage, isUploading } = useImageUpload();
 
   const [isManualSEO, setIsManualSEO] = useState({
     slug: false,
@@ -281,6 +285,48 @@ export default function AdminPromptForm() {
               }}
               placeholder="Search or create tags..."
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Prompt Preview Image</label>
+            <div className="flex items-start gap-6">
+              {prompt.imageUrl ? (
+                <div className="relative group w-48 h-48 rounded-[2rem] overflow-hidden border-2 border-slate-100 shadow-xl">
+                  <img src={prompt.imageUrl} className="w-full h-full object-cover" alt="Preview" />
+                  <button 
+                    onClick={() => setPrompt(prev => ({ ...prev, imageUrl: '' }))}
+                    className="absolute top-2 right-2 bg-rose-500 text-white p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="w-48 h-48 rounded-[2rem] border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 hover:border-indigo-300 transition-all text-slate-400 hover:text-indigo-600">
+                  <input 
+                    type="file" className="hidden" accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const res = await uploadImage(file, 'prompts');
+                        if (res?.success) setPrompt(prev => ({ ...prev, imageUrl: res.url }));
+                      }
+                    }}
+                  />
+                  {isUploading ? (
+                    <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <ImageIcon className="w-8 h-8 opacity-40" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Upload Image</span>
+                    </>
+                  )}
+                </label>
+              )}
+              <div className="flex-grow pt-4">
+                <p className="text-xs text-slate-400 font-medium leading-relaxed mb-2">Recommended: 1200x800px or 3:2 Aspect Ratio. <br/> This image will be used in marketplace cards and search results.</p>
+                <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg w-fit">Supports PNG, JPG, WEBP</div>
+              </div>
+            </div>
           </div>
 
           <div>

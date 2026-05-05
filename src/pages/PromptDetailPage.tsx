@@ -1,35 +1,19 @@
-import { clsx, type ClassValue } from 'clsx';
-import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { ArrowLeft, Check, ChevronRight, Clock, Copy, Eye, Heart, Lock, Share2, Sparkles, User, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { twMerge } from 'tailwind-merge';
 import ShareModal from '../components/ShareModal';
 import { useAuth } from '../hooks/useAuth';
+import { useConfig } from '../hooks/useConfig';
 import { usePermissions } from '../hooks/usePermissions';
 import { useSEO } from '../hooks/useSEO';
 import { recordPromptInteraction } from '../lib/affinity';
 import { db } from '../lib/firebase';
-import { AIModel, Prompt, UserProfile } from '../types';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-const formatDate = (date: any) => {
-  if (!date) return 'N/A';
-  try {
-    if (date instanceof Timestamp) return date.toDate().toLocaleDateString();
-    if (typeof date === 'object' && date.seconds) return new Date(date.seconds * 1000).toLocaleDateString();
-    const parsed = new Date(date);
-    return parsed.toString() !== 'Invalid Date' ? parsed.toLocaleDateString() : 'N/A';
-  } catch (err) {
-    return 'N/A';
-  }
-};
+import { cn, formatDate } from '../lib/utils';
+import { Prompt, UserProfile } from '../types';
 
 export default function PromptDetailPage() {
   const { slug } = useParams();
@@ -38,14 +22,16 @@ export default function PromptDetailPage() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [creator, setCreator] = useState<UserProfile | null>(null);
-  const [models, setModels] = useState<AIModel[]>([]);
+  const { config } = useConfig();
+  const models = config.models;
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [relatedPrompts, setRelatedPrompts] = useState<Prompt[]>([]);
-  const [versions, setVersions] = useState<any[]>([]);
   const [category, setCategory] = useState<any | null>(null);
-  const [config, setConfig] = useState<any | null>(null);
+
+  // Stable dependency for access check — avoids re-fetching on every profile update
+  const unlockedKey = JSON.stringify(profile?.unlockedPrompts || []);
 
   const isLiked = prompt?.id ? isFavorited(prompt.id) : false;
 
@@ -141,9 +127,6 @@ export default function PromptDetailPage() {
             localStorage.setItem('recentlyViewed', JSON.stringify(updated));
           } catch (e) {}
 
-          const vSnap = await getDocs(query(collection(db, 'prompts', pData.id!, 'versions'), orderBy('updatedAt', 'desc')));
-          setVersions(vSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
           if (pData.creatorId) {
             const creatorDoc = await getDoc(doc(db, 'users', pData.creatorId));
             if (creatorDoc.exists()) setCreator({ uid: creatorDoc.id, ...creatorDoc.data() } as UserProfile);
@@ -153,16 +136,10 @@ export default function PromptDetailPage() {
           const relatedSnap = await getDocs(relatedQ);
           setRelatedPrompts(relatedSnap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt)).filter(p => p.id !== pData.id));
 
-          const mSnap = await getDocs(collection(db, 'models'));
-          setModels(mSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIModel)));
-
           if (pData.categoryId) {
             const catSnap = await getDoc(doc(db, 'categories', pData.categoryId));
             if (catSnap.exists()) setCategory({ id: catSnap.id, ...catSnap.data() });
           }
-
-          const configSnap = await getDoc(doc(db, 'configs', 'global'));
-          if (configSnap.exists()) setConfig(configSnap.data());
         }
       } catch (err) {
         console.error(err);
@@ -171,15 +148,16 @@ export default function PromptDetailPage() {
       }
     }
     fetchPrompt();
-  }, [slug, profile]);
+  }, [slug, unlockedKey, isPro, isAdmin, authLoading, permsLoading]);
 
   useEffect(() => {
     if (!prompt) return;
+    // Track engagement every 60s instead of 10s to reduce API calls
     const interval = setInterval(() => {
       if (!document.hidden) recordPromptInteraction(prompt, 1, false);
-    }, 10000);
+    }, 60000);
     return () => clearInterval(interval);
-  }, [prompt]);
+  }, [prompt?.id]);
 
   const handleLikeClick = async () => {
     if (!user || !prompt?.id) { navigate('/login'); return; }
@@ -244,8 +222,20 @@ export default function PromptDetailPage() {
   const isUnlocked = !!(prompt && (!prompt.isPaid || isPro || isAdmin || (profile?.unlockedPrompts || []).includes(prompt.id!)));
   const isCategoryLocked = !!(category?.isPremium && !isPro && !isAdmin);
 
-  if (loading || authLoading || permsLoading) return <div className="container mx-auto px-4 py-32 text-center text-muted-foreground">Initializing formula...</div>;
-  if (!prompt) return <div className="container mx-auto px-4 py-32 text-center text-foreground font-black">Prompt not found.</div>;
+  if (loading && !prompt) return (
+    <div className="container mx-auto px-4 py-32">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="h-12 w-2/3 skeleton rounded-2xl" />
+        <div className="h-96 w-full skeleton rounded-[3rem]" />
+        <div className="space-y-4">
+          <div className="h-6 w-full skeleton rounded-xl" />
+          <div className="h-6 w-5/6 skeleton rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!prompt && !loading) return <div className="container mx-auto px-4 py-32 text-center text-muted-foreground uppercase tracking-widest font-black">Prompt not found</div>;
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-5xl min-h-screen">
@@ -293,6 +283,12 @@ export default function PromptDetailPage() {
             )}>
               {isUnlocked ? prompt.description : "🔒 UNLOCK PREMIUM BLUEPRINT: This expert-engineered AI formula and its optimized parameters are reserved for authorized users. Unlock this asset now, upgrade to Pro, or purchase credits to reveal the full blueprints and technical logic."}
             </p>
+
+            {prompt.imageUrl && (
+              <div className="mb-12 rounded-[2.5rem] overflow-hidden border border-border shadow-2xl aspect-[16/9] md:aspect-[21/9]">
+                <img src={prompt.imageUrl} className="w-full h-full object-cover" alt={prompt.title} />
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2 mb-12">
               {prompt.tags.map(tag => (
@@ -455,26 +451,6 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
             </div>
           </div>
 
-          {versions.length > 0 && (
-            <div className="bg-card rounded-[2.5rem] border border-border p-8 shadow-sm">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-primary" />
-                Evolution
-              </h4>
-              <div className="space-y-8 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-muted">
-                {versions.map((v, idx) => (
-                  <div key={v.id} className="relative pl-8">
-                    <div className={`absolute left-0 top-1 w-6 h-6 rounded-full border-4 border-card shadow-sm ${idx === 0 ? 'bg-primary' : 'bg-muted'}`} />
-                    <p className="text-[10px] font-black text-foreground uppercase tracking-widest mb-1">
-                      {idx === 0 ? 'Latest v2.0' : `v${versions.length - idx}.0`}
-                    </p>
-                    <p className="text-[10px] font-bold text-muted-foreground mb-3 opacity-60">{formatDate(v.updatedAt)}</p>
-                    <p className="text-[11px] text-muted-foreground font-medium italic leading-relaxed">"{v.changeLog}"</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

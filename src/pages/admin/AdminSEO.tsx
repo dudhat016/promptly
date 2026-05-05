@@ -72,8 +72,8 @@ export default function AdminSEO() {
   const getSEOIssues = (p: Prompt) => {
     const issues = [];
     if (!p.metaDescription) issues.push('Missing meta description');
-    if (p.title.length > 60) issues.push('Title too long (>60 chars)');
-    if (p.content.split(' ').length < 100) issues.push('Content too short (<100 words)');
+    if (p.title && p.title.length > 60) issues.push('Title too long (>60 chars)');
+    if (!p.content || p.content.split(' ').length < 100) issues.push('Content too short (<100 words)');
     if (!p.slug) issues.push('Missing SEO slug');
     return issues;
   };

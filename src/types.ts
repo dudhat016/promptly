@@ -184,6 +184,7 @@ export interface Prompt {
   metaDescription?: string;
   metaKeywords?: string;
   content: string;
+  imageUrl?: string;
   isPaid: boolean;
   categoryId: string;
   creatorId: string;

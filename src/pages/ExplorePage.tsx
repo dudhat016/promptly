@@ -1,14 +1,15 @@
-import { collection, getDocs, limit, query } from 'firebase/firestore';
-import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Search, SlidersHorizontal, Sliders, LayoutGrid, Sparkles } from 'lucide-react';
+import { limit } from 'firebase/firestore';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ExploreSidebar from '../components/ExploreSidebar';
 import PromptCard from '../components/PromptCard';
 import PromptCardSkeleton from '../components/PromptCardSkeleton';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
+import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
+import { toTitleCase } from '../lib/utils';
+import { firestoreService } from '../services/firestoreService';
 import { Prompt } from '../types';
-import { getAffinityProfile, calculatePromptScore } from '../lib/affinity';
 
 export default function ExplorePage() {
   const { isPro, isAdmin, profile } = useAuth();
@@ -23,7 +24,7 @@ export default function ExplorePage() {
 
   // DERIVE FILTERS DIRECTLY FROM URL (Single Source of Truth)
   const pathParts = location.pathname.split('/');
-  
+
   // Parse Model
   const modelIndex = pathParts.indexOf('model');
   const pathModel = modelIndex !== -1 ? pathParts[modelIndex + 1] : null;
@@ -44,7 +45,7 @@ export default function ExplorePage() {
   const affinityProfile = profile?.affinityProfile || getAffinityProfile();
 
   // DERIVE FILTERS DIRECTLY FROM URL (Single Source of Truth)
-  
+
   // Parse Categories
   const catIndex = pathParts.indexOf('categories');
   const pathCats = catIndex !== -1 ? pathParts[catIndex + 1].split('+') : [];
@@ -71,24 +72,21 @@ export default function ExplorePage() {
     async function fetchPrompts() {
       setLoading(true);
       try {
-        const promptsRef = collection(db, 'prompts');
-        const q = query(promptsRef, limit(100));
-        const querySnapshot = await getDocs(q);
-        const fetchedPrompts = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          const id = doc.id;
-          
-          // SECURITY: Proactively scrub content for paid prompts
-          const isUnlocked = (profile?.unlockedPrompts || []).includes(id);
-          const hasAccess = isPro || isAdmin || isUnlocked || !data.isPaid;
-          
+        const fetchedPrompts = await firestoreService.getCollection<Prompt>('prompts', [limit(100)]);
+
+        // SECURITY: Proactively scrub content for paid prompts
+        const promptsWithSecurity = fetchedPrompts.map(p => {
+          const isUnlocked = (profile?.unlockedPrompts || []).includes(p.id!);
+          const hasAccess = isPro || isAdmin || isUnlocked || !p.isPaid;
+
           if (!hasAccess) {
-            delete data.content; // Formula stays in DB, never reaches client state
+            const { content, ...safePrompt } = p;
+            return safePrompt as Prompt;
           }
-          
-          return { id, ...data } as Prompt;
+          return p;
         });
-        setPrompts(fetchedPrompts);
+
+        setPrompts(promptsWithSecurity);
       } catch (err: any) {
         setFetchError(err.message || "Failed to connect to database");
       } finally {
@@ -96,7 +94,7 @@ export default function ExplorePage() {
       }
     }
     fetchPrompts();
-  }, []);
+  }, [profile?.unlockedPrompts, isPro, isAdmin]);
 
   const filteredPrompts = prompts.filter(p => {
     // 1. Search Filter
@@ -105,7 +103,7 @@ export default function ExplorePage() {
       p.description.toLowerCase().includes(searchTerm.toLowerCase());
 
     // 2. Model Filter
-    const matchesModel = activeModel === 'All' || 
+    const matchesModel = activeModel === 'All' ||
       (p.model && p.model.toLowerCase() === activeModel.toLowerCase());
 
     // 3. Category Filter
@@ -155,7 +153,6 @@ export default function ExplorePage() {
     { id: 'copies', label: 'Most Copied' },
   ];
 
-  const toTitleCase = (str: string) => str.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
   let pageTitle = "Explore Prompts";
   let subtitle = "Discover the best AI prompts for your workflow.";
@@ -262,7 +259,7 @@ export default function ExplorePage() {
                   </div>
                   <h3 className="text-xl font-bold text-foreground mb-1">No prompts found</h3>
                   <p className="text-muted-foreground max-w-xs mx-auto">Try adjusting your search or filters to find what you're looking for.</p>
-                  <button 
+                  <button
                     onClick={() => {
                       setSearchTerm('');
                       navigate('/explore');

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from './useAuth';
+import { doc, getDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 import { db } from '../lib/firebase';
-import { doc, onSnapshot, collection } from 'firebase/firestore';
-import { AccessConfig, PermissionSet, PricingPlan, PermissionGroup } from '../types';
+import { AccessConfig, PermissionSet } from '../types';
+import { useAuth } from './useAuth';
+import { useConfig } from './useConfig';
 
 const DEFAULT_PERMISSIONS: PermissionSet = {
   canViewPremium: false,
@@ -21,37 +22,35 @@ const DEFAULT_PERMISSIONS: PermissionSet = {
 
 export function usePermissions() {
   const { profile } = useAuth();
+  const { config: globalConfig } = useConfig();
   const [config, setConfig] = useState<AccessConfig | null>(null);
-  const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listen to access levels
-    const unsubConfig = onSnapshot(doc(db, 'configs', 'access_levels'), (snap) => {
-      if (snap.exists()) {
-        setConfig(snap.data() as AccessConfig);
+    async function fetchPermissionsData() {
+      try {
+        // Fetch access levels
+        const configSnap = await getDoc(doc(db, 'configs', 'access_levels'));
+        if (configSnap.exists()) {
+          setConfig(configSnap.data() as AccessConfig);
+        }
+      } catch (err) {
+        console.error("Permissions fetch error:", err);
+      } finally {
+        setLoading(false);
       }
-    });
+    }
 
-    // Listen to plans
-    const unsubPlans = onSnapshot(collection(db, 'plans'), (snap) => {
-      const pData = snap.docs.map(d => ({ id: d.id, ...d.data() } as PricingPlan));
-      setPlans(pData);
-      setLoading(false);
-    });
-
-    return () => {
-      unsubConfig();
-      unsubPlans();
-    };
+    fetchPermissionsData();
   }, []);
 
   const getPermissions = (): PermissionSet => {
+    const plans = globalConfig.plans;
     if (loading || !config || plans.length === 0) return DEFAULT_PERMISSIONS;
 
     // 1. Identify active plan
     let activePlanId = profile?.activePlanId || 'starter';
-    
+
     // Check for trial expiration
     if (profile?.trialEndsAt) {
       const endsAt = profile.trialEndsAt.toDate ? profile.trialEndsAt.toDate() : new Date(profile.trialEndsAt);

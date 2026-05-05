@@ -6,13 +6,8 @@ import { BlogPost } from '../types';
 import { Calendar, ArrowRight, LayoutGrid, List as ListIcon, X, Eye } from 'lucide-react';
 import { motion } from 'motion/react';
 import BlogSidebar from '../components/BlogSidebar';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '../lib/utils';
 import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 export default function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);

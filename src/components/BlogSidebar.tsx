@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where, limit, orderBy } from 'firebase/firestore';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { db } from '../lib/firebase';
-import { Search, Tag as TagIcon, Mail, TrendingUp, Sparkles, ArrowRight } from 'lucide-react';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { Mail, Search, Sparkles, Tag as TagIcon, TrendingUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
+import { db } from '../lib/firebase';
 import { BlogPost } from '../types';
-import { getAffinityProfile, calculateBlogScore } from '../lib/affinity';
 
 export default function BlogSidebar() {
   const [tags, setTags] = useState<string[]>([]);
@@ -17,7 +17,10 @@ export default function BlogSidebar() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [hasFetched, setHasFetched] = useState(false);
+
   useEffect(() => {
+    if (hasFetched) return;
     async function fetchTags() {
       try {
         const q = query(
@@ -29,15 +32,16 @@ export default function BlogSidebar() {
         const snapshot = await getDocs(q);
         const fetchedPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
         setPosts(fetchedPosts);
-        
+
         const extractedTags = Array.from(new Set(fetchedPosts.flatMap(p => p.tags || []))).slice(0, 8);
         setTags(extractedTags);
+        setHasFetched(true);
       } catch (error) {
         console.error("Error fetching tags for sidebar:", error);
       }
     }
     fetchTags();
-  }, []);
+  }, [hasFetched]);
 
   const tagToSlug = (tag: string) => tag.toLowerCase().replace(/\s+/g, '-');
 
@@ -53,11 +57,11 @@ export default function BlogSidebar() {
     if (!email) return;
     setIsSubmitting(true);
     try {
-      // Import addDoc and serverTimestamp from firebase/firestore at the top 
+      // Import addDoc and serverTimestamp from firebase/firestore at the top
       // (Wait, we already imported what we need, let's just use them directly if not, we need to import)
       // Actually let's assume we import them properly. Let's do dynamic import or just standard.
       const { addDoc, getDocs, updateDoc, query, where, serverTimestamp } = await import('firebase/firestore');
-      
+
       const contactRef = collection(db, 'marketing_contacts');
       const q = query(contactRef, where('email', '==', email));
       const querySnapshot = await getDocs(q);
@@ -103,8 +107,8 @@ export default function BlogSidebar() {
           Search Blog
         </h3>
         <form onSubmit={handleSearch} className="relative">
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search articles..."
@@ -123,8 +127,8 @@ export default function BlogSidebar() {
           </h3>
           <div className="space-y-4">
             {[...posts].sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 3).map(post => (
-              <Link 
-                key={`trending-${post.id}`} 
+              <Link
+                key={`trending-${post.id}`}
                 to={`/blog/${post.slug}`}
                 className="group flex gap-3 items-center"
               >
@@ -158,8 +162,8 @@ export default function BlogSidebar() {
           </h3>
           <div className="space-y-4">
             {[...posts].sort((a, b) => calculateBlogScore(b, getAffinityProfile()) - calculateBlogScore(a, getAffinityProfile())).slice(0, 3).map(post => (
-              <Link 
-                key={`rec-${post.id}`} 
+              <Link
+                key={`rec-${post.id}`}
                 to={`/blog/${post.slug}`}
                 className="group flex gap-3 items-center"
               >
@@ -189,8 +193,8 @@ export default function BlogSidebar() {
         </h3>
         <div className="flex flex-wrap gap-2">
           {tags.length > 0 ? tags.map(tag => (
-            <Link 
-              key={tag} 
+            <Link
+              key={tag}
               to={`/blog/tag/${tagToSlug(tag)}`}
               className="px-3 py-1.5 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 text-sm font-semibold rounded-lg transition-colors border border-slate-100"
             >
@@ -215,15 +219,15 @@ export default function BlogSidebar() {
           Get the latest prompt engineering guides and AI news delivered directly to your inbox.
         </p>
         <form className="space-y-3" onSubmit={handleSubscribe}>
-          <input 
-            type="email" 
-            placeholder="Enter your email" 
+          <input
+            type="email"
+            placeholder="Enter your email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-indigo-200 focus:outline-none focus:ring-2 focus:ring-white/50"
           />
-          <button 
+          <button
             type="submit"
             disabled={isSubmitting}
             className="w-full bg-white text-indigo-600 font-bold text-sm px-4 py-3 rounded-xl hover:bg-indigo-50 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"

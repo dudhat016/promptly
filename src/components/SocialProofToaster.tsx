@@ -16,7 +16,11 @@ export default function SocialProofToaster() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
+  const [hasFetched, setHasFetched] = useState(false);
+
   useEffect(() => {
+    if (hasFetched) return;
+    
     async function fetchRecentActivity() {
       try {
         const q = query(collection(db, 'credits_history'), orderBy('createdAt', 'desc'), limit(10));
@@ -26,7 +30,7 @@ export default function SocialProofToaster() {
         
         const data = snap.docs.map((doc, i) => ({
           id: doc.id,
-          userName: names[i % names.length], // Privacy: use randomized names
+          userName: names[i % names.length],
           promptTitle: doc.data().promptTitle || 'a premium prompt',
           timeAgo: 'Just now'
         }));
@@ -34,12 +38,13 @@ export default function SocialProofToaster() {
         if (data.length > 0) {
           setActivities(data);
         }
+        setHasFetched(true);
       } catch (err) {
         console.error("Social proof error:", err);
       }
     }
     fetchRecentActivity();
-  }, []);
+  }, [hasFetched]);
 
   useEffect(() => {
     if (activities.length === 0) return;

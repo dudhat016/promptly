@@ -1,51 +1,29 @@
-import { useAuth } from '../hooks/useAuth';
-import { Check, Zap, ArrowRight, ShieldCheck, CreditCard, Sparkles, Calendar } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { useState, useEffect } from 'react';
+import { ArrowRight, Calendar, Check, CreditCard, ShieldCheck, Sparkles } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../lib/firebase';
-import { doc, updateDoc, setDoc, getDocs, getDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { PricingPlan, AppConfig } from '../types';
-import { toast } from 'react-hot-toast';
+import { useAuth } from '../hooks/useAuth';
+import { PricingPlan } from '../types';
+
+import { useConfig } from '../hooks/useConfig';
 
 export default function PricingPage() {
   const navigate = useNavigate();
   const { user, profile, isPro: userIsPro } = useAuth();
+  const { config, loading: configLoading } = useConfig();
+  const plans = config.plans;
   const [loading, setLoading] = useState(false);
-  const [plans, setPlans] = useState<PricingPlan[]>([]);
-  const [config, setConfig] = useState<AppConfig | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [fetching, setFetching] = useState(true);
 
-  useEffect(() => {
-    async function loadPricing() {
-      try {
-        const [pSnap, cSnap] = await Promise.all([
-          getDocs(collection(db, 'plans')),
-          getDoc(doc(db, 'configs', 'global'))
-        ]);
 
-        const pData = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as PricingPlan));
-        setPlans(pData.sort((a, b) => a.monthlyPrice - b.monthlyPrice));
-
-        if (cSnap.exists()) {
-          setConfig(cSnap.data() as AppConfig);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setFetching(false);
-      }
-    }
-    loadPricing();
-  }, []);
+  // Static data is now managed globally by useConfig, eliminating local fetch logic.
 
   const handleSubscribe = async (plan: PricingPlan) => {
     // Redirect to the dedicated checkout page (login is handled there or not required just to view)
     navigate(`/checkout?plan=${plan.id}&cycle=${billingCycle}`);
   };
 
-  if (fetching) return (
+  if (configLoading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
     </div>
@@ -56,7 +34,7 @@ export default function PricingPage() {
       {/* Conditional Banners */}
       <AnimatePresence mode="wait">
         {config?.activePromotion === 'trial' && !profile?.trialUsed && (
-          <motion.div 
+          <motion.div
             key="trial-banner"
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="max-w-4xl mx-auto mb-12"
@@ -82,7 +60,7 @@ export default function PricingPage() {
         )}
 
         {config?.activePromotion === 'yearly_bonus' && (
-          <motion.div 
+          <motion.div
             key="yearly-banner"
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="max-w-4xl mx-auto mb-12"
@@ -113,30 +91,30 @@ export default function PricingPage() {
 
       <div className="text-center max-w-2xl mx-auto mb-12">
         <h1 className="text-5xl font-black text-slate-900 mb-6 tracking-tight">Simple, Powerful <span className="text-indigo-600">Plans</span></h1>
-        
+
         {/* Toggle */}
         <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-2xl mb-8">
-          <button 
+          <button
             onClick={() => setBillingCycle('monthly')}
             className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${billingCycle === 'monthly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Monthly
           </button>
-          <button 
+          <button
             onClick={() => setBillingCycle('yearly')}
             className={`px-8 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Yearly
             {plans.length > 0 && (
               <span className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
-                config?.activePromotion === 'yearly_bonus' 
-                  ? 'bg-emerald-100 text-emerald-600 border-emerald-200 animate-pulse' 
+                config?.activePromotion === 'yearly_bonus'
+                  ? 'bg-emerald-100 text-emerald-600 border-emerald-200 animate-pulse'
                   : 'bg-indigo-100 text-indigo-600 border-indigo-200'
               }`}>
-                {config?.activePromotion === 'yearly_bonus' 
-                  ? (config.yearlyIncentiveType === 'months' 
-                      ? `${config.yearlyIncentiveValue} Months Free!` 
-                      : `Up to ${Math.max(...plans.map(p => p.monthlyPrice > 0 ? Math.round(((p.monthlyPrice * 12 - p.yearlyPrice) / (p.monthlyPrice * 12)) * 100) : 0))}% Off`) 
+                {config?.activePromotion === 'yearly_bonus'
+                  ? (config.yearlyIncentiveType === 'months'
+                      ? `${config.yearlyIncentiveValue} Months Free!`
+                      : `Up to ${Math.max(...plans.map(p => p.monthlyPrice > 0 ? Math.round(((p.monthlyPrice * 12 - p.yearlyPrice) / (p.monthlyPrice * 12)) * 100) : 0))}% Off`)
                   : 'Save 20%'}
               </span>
             )}
@@ -147,7 +125,7 @@ export default function PricingPage() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
         {plans.map((plan, i) => {
           const discount = plan.monthlyPrice > 0 ? Math.round(((plan.monthlyPrice * 12 - plan.yearlyPrice) / (plan.monthlyPrice * 12)) * 100) : 0;
-          
+
           return (
             <motion.div
               key={plan.id}
@@ -205,8 +183,8 @@ export default function PricingPage() {
               onClick={() => handleSubscribe(plan)}
               disabled={loading || (plan.id === profile?.activePlanId)}
               className={`w-full py-5 rounded-[1.5rem] font-black text-lg transition-all flex items-center justify-center gap-3 ${
-                plan.isPopular 
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 hover:-translate-y-1' 
+                plan.isPopular
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 hover:-translate-y-1'
                   : 'bg-slate-900 text-white hover:bg-black'
               } disabled:opacity-50 disabled:cursor-not-allowed active:scale-95`}
             >

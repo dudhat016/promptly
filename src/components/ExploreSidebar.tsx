@@ -1,16 +1,11 @@
-import { useState, useEffect } from 'react';
-import { collection, getDocs, query, limit } from 'firebase/firestore';
-import { Link, useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { db } from '../lib/firebase';
-import { LayoutGrid, Tag as TagIcon, Zap, ShieldCheck, CheckSquare, Square, Search, Cpu, Coins } from 'lucide-react';
-import { Category, Tag, AIModel } from '../types';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { CheckSquare, Coins, Cpu, LayoutGrid, Search, ShieldCheck, Square, Tag as TagIcon, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useConfig } from '../hooks/useConfig';
 import { recordPromptInteraction } from '../lib/affinity';
+import { cn } from '../lib/utils';
+import { Tag } from '../types';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 interface ExploreSidebarProps {
   searchTerm: string;
@@ -22,18 +17,19 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const [categories, setCategories] = useState<Category[]>([]);
+
+  const { config, loading: configLoading } = useConfig();
+  const categories = config.categories;
+  const models = config.models;
   const [tags, setTags] = useState<Tag[]>([]);
-  const [models, setModels] = useState<AIModel[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Parse path for multi-select
   const pathParts = location.pathname.split('/');
   const catIndex = pathParts.indexOf('categories');
   const pathCategories = catIndex !== -1 ? pathParts[catIndex + 1].split('+') : [];
-  
+
   const tagIndex = pathParts.indexOf('tags');
   const pathTags = tagIndex !== -1 ? pathParts[tagIndex + 1].split('+') : [];
 
@@ -55,7 +51,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
     const newCats = new Set(activeCategories);
     const newTags = new Set(activeTags);
     const newPricing = new Set(activePricing);
-    
+
     if (type === 'category') {
       if (newCats.has(value)) newCats.delete(value);
       else newCats.add(value);
@@ -73,7 +69,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
 
     let path = '/explore';
     const params = new URLSearchParams(searchParams);
-    
+
     params.delete('categories');
     params.delete('tags');
     params.delete('pricing');
@@ -91,13 +87,13 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
     const tagArray = Array.from(activeTags);
     const pricingArray = Array.from(activePricing);
     const newModelSlug = modelSlug === selectedModelId ? null : selectedModelId;
-    
+
     let path = '/explore';
     if (newModelSlug) path += `/model/${newModelSlug}`;
     if (catArray.length > 0) path += `/categories/${catArray.join('+')}`;
     if (tagArray.length > 0) path += `/tags/${tagArray.join('+')}`;
     if (pricingArray.length > 0) path += `/pricing/${pricingArray.join('+')}`;
-    
+
     const params = new URLSearchParams(searchParams);
     params.delete('categories');
     params.delete('tags');
@@ -114,24 +110,9 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
   };
 
   useEffect(() => {
-    async function fetchSidebarData() {
-      try {
-        const catSnap = await getDocs(collection(db, 'categories'));
-        setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
-
-        const promptSnap = await getDocs(query(collection(db, 'prompts'), limit(50)));
-        const extractedTags = Array.from(new Set(promptSnap.docs.flatMap(d => d.data().tags || []))).slice(0, 15);
-        setTags(extractedTags.map((name, i) => ({ id: `tag-${i}`, name, color: '#6366f1', createdAt: new Date() })));
-
-        const mSnap = await getDocs(collection(db, 'models'));
-        setModels(mSnap.docs.map(d => ({ id: d.id, ...d.data() } as AIModel)));
-      } catch (error) {
-        console.error("Error fetching explore sidebar data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchSidebarData();
+    // Instead of fetching 50 prompts just to get tags, we use a static trending list for speed
+    const trendingTags = ['SEO', 'Copywriting', 'Logo', 'Blog', 'Business', 'Art', 'Code', 'Marketing', 'Automation', 'Social Media'];
+    setTags(trendingTags.map((name, i) => ({ id: `tag-${i}`, name, color: '#6366f1', createdAt: new Date() })));
   }, []);
 
   useEffect(() => {
@@ -153,7 +134,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
 
   return (
     <aside className="lg:w-1/4 space-y-8 flex-shrink-0">
-      
+
       {/* Search */}
       <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
@@ -201,8 +182,8 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           <Cpu className="w-5 h-5 text-primary" />
           AI Models
         </h3>
-        
-        {loading ? (
+
+        {configLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-10 skeleton rounded-xl" />
@@ -282,8 +263,8 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           <LayoutGrid className="w-5 h-5 text-primary" />
           Categories
         </h3>
-        
-        {loading ? (
+
+        {configLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="h-10 skeleton rounded-xl" />
@@ -337,11 +318,11 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           <TagIcon className="w-5 h-5 text-primary" />
           Popular Tags
         </h3>
-        
-        {loading ? (
-          <div className="flex flex-wrap gap-2">
+
+        {configLoading ? (
+          <div className="space-y-3 flex flex-wrap gap-2">
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="h-8 w-16 skeleton" />
+              <div key={i} className="h-8 w-16 skeleton rounded-lg" />
             ))}
           </div>
         ) : tags.length > 0 ? (
@@ -355,8 +336,8 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
                   onClick={() => handleToggle('tag', tagId)}
                   className={cn(
                     "px-3 py-1.5 text-sm font-bold rounded-lg transition-colors border flex items-center gap-1",
-                    isActive 
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
                       : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary border-border"
                   )}
                 >
@@ -375,14 +356,14 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
       <div className="bg-foreground text-background rounded-3xl p-8 shadow-xl relative overflow-hidden group">
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
         <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
-        
+
         <div className="relative z-10">
           <ShieldCheck className="w-10 h-10 text-primary mb-6" />
           <h3 className="font-black text-2xl mb-3 tracking-tighter">Promptly Pro</h3>
           <p className="opacity-70 text-sm mb-8 leading-relaxed font-medium">
             Unlock elite formulas, advanced neural models, and unlimited assets to dominate the AI landscape.
           </p>
-          <Link 
+          <Link
             to="/pricing"
             className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground font-black px-6 py-4 rounded-2xl hover:opacity-90 transition-all shadow-lg group/btn"
           >

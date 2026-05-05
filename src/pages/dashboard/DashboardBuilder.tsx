@@ -1,38 +1,31 @@
-import { addDoc, collection, getDocs } from 'firebase/firestore';
+import { addDoc, collection } from 'firebase/firestore';
 import { Plus, Send, ShieldCheck, Sparkles, Terminal, Wand2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useConfig } from '../../hooks/useConfig';
 import { usePermissions } from '../../hooks/usePermissions';
 import { db } from '../../lib/firebase';
 import { generateAIPrompt } from '../../services/geminiService';
-import { AIModel } from '../../types';
 
 export default function DashboardBuilder() {
   const { user, isAdmin } = useAuth();
   const { permissions } = usePermissions();
   const navigate = useNavigate();
-  const [models, setModels] = useState<AIModel[]>([]);
+  const { config } = useConfig();
+  const models = config.models;
   const [targetModel, setTargetModel] = useState('');
   const [idea, setIdea] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPrompt, setGeneratedPrompt] = useState('');
 
   useEffect(() => {
-    async function fetchModels() {
-      try {
-        const mSnap = await getDocs(collection(db, 'models'));
-        const fetchedModels = mSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIModel));
-        setModels(fetchedModels);
-        if (fetchedModels.length > 0) setTargetModel(fetchedModels[0].id);
-      } catch (err) {
-        console.error("Error fetching models:", err);
-      }
+    if (models.length > 0 && !targetModel) {
+      setTargetModel(models[0].id);
     }
-    fetchModels();
-  }, []);
+  }, [models, targetModel]);
 
   const handleGenerate = async () => {
     if (!idea.trim()) return;
