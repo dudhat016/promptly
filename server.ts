@@ -71,8 +71,9 @@ const initFirebase = async () => {
     // Robust Private Key Reconstruction
     if (serviceAccount && serviceAccount.private_key) {
       const rawKey = serviceAccount.private_key
-        .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-        .replace(/-----END PRIVATE KEY-----/g, "")
+        .replace(/-----BEGIN[^-]*-----/g, "")
+        .replace(/-----END[^-]*-----/g, "")
+        .replace(/\\n/g, "")
         .replace(/\s/g, "");
       const wrappedKey = rawKey.match(/.{1,64}/g)?.join("\n");
       serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;

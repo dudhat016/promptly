@@ -74,12 +74,17 @@ async function initFirebase() {
     // CRITICAL: Robust Private Key Reconstruction
     // Vercel and other platforms often mangle the \n characters in private keys
     if (serviceAccount && serviceAccount.private_key) {
+      // 1. Strip everything that isn't the raw key data
       const rawKey = serviceAccount.private_key
-        .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-        .replace(/-----END PRIVATE KEY-----/g, "")
-        .replace(/\s/g, ""); // Remove ALL whitespace and newlines
+        .replace(/-----BEGIN[^-]*-----/g, "") // Remove any BEGIN header
+        .replace(/-----END[^-]*-----/g, "")   // Remove any END footer
+        .replace(/\\n/g, "")                  // Remove literal \n characters
+        .replace(/\s/g, "");                  // Remove all whitespace/newlines
       
+      // 2. Wrap the raw data at 64 characters (PEM standard)
       const wrappedKey = rawKey.match(/.{1,64}/g)?.join("\n");
+      
+      // 3. Reconstruct with perfect headers
       serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
     }
 
