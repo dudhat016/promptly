@@ -15,47 +15,48 @@ import multiparty from "multiparty";
 // Initialize Firebase Admin
 const initFirebase = async () => {
   try {
-    if (admin.apps.length > 0) return { db: getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)'), auth: admin.auth() };
+    if (admin.apps.length > 0) {
+      return {
+        db: getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)'),
+        auth: admin.auth()
+      };
+    }
 
-    const serviceAccountPath = path.join(process.cwd(), 'service-account.json');
+    const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!serviceAccountVar) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT is missing");
+    }
+
     let serviceAccount;
-
-    if (fs.existsSync(serviceAccountPath)) {
-      console.log("🔍 [Diagnostic] Using native file loader for service-account.json...");
-      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-
-      // Manual reconstruction with strict 64-char wrapping
-      if (serviceAccount.private_key) {
-        const raw = serviceAccount.private_key
-          .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-          .replace(/-----END PRIVATE KEY-----/g, "")
-          .replace(/\s/g, "");
-
-        // Wrap at 64 chars
-        const wrapped = raw.match(/.{1,64}/g)?.join("\n");
-        serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrapped}\n-----END PRIVATE KEY-----\n`;
-      }
-
-      if (!admin.apps.length) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-      }
-    } else {
-      console.log("🔍 [Diagnostic] Falling back to environment variables...");
-      const rawConfig = process.env.FIREBASE_SERVICE_ACCOUNT;
-      if (!rawConfig) throw new Error("FIREBASE_SERVICE_ACCOUNT is missing");
-      let sanitized = rawConfig.trim();
-      if (!sanitized.startsWith('{')) {
-        sanitized = Buffer.from(sanitized, 'base64').toString('utf8');
-      }
-      const serviceAccount = JSON.parse(sanitized);
-      if (!admin.apps.length) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
+    const cleanVar = serviceAccountVar.trim();
+    
+    try {
+      const sanitized = cleanVar.replace(/\\n/g, '\\n');
+      serviceAccount = JSON.parse(sanitized);
+    } catch (e) {
+      try {
+        const base64Clean = cleanVar.replace(/\s/g, '');
+        const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
+        serviceAccount = JSON.parse(decoded);
+      } catch (innerError: any) {
+        throw new Error(`Firebase Config Error: ${innerError.message}`);
       }
     }
+
+    // Robust Private Key Reconstruction
+    if (serviceAccount && serviceAccount.private_key) {
+      const rawKey = serviceAccount.private_key
+        .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+        .replace(/-----END PRIVATE KEY-----/g, "")
+        .replace(/\s/g, "");
+      const wrappedKey = rawKey.match(/.{1,64}/g)?.join("\n");
+      serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
+    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+
     return {
       db: getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)'),
       auth: admin.auth()

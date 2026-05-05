@@ -26,13 +26,25 @@ async function initFirebase() {
     }
 
     let serviceAccount;
+    // Pre-clean the string: remove any leading/trailing whitespace
+    const cleanVar = serviceAccountVar.trim();
+    
     try {
       // Try to parse it as JSON first
-      serviceAccount = JSON.parse(serviceAccountVar);
+      // Handle cases where \n might be mangled
+      const sanitized = cleanVar.replace(/\\n/g, '\\n');
+      serviceAccount = JSON.parse(sanitized);
     } catch (e) {
-      // If parsing fails, treat it as a base64 encoded string
-      const decoded = Buffer.from(serviceAccountVar, 'base64').toString('utf8');
-      serviceAccount = JSON.parse(decoded);
+      // If parsing fails, try to treat it as a base64 encoded string
+      try {
+        // Remove any spaces/newlines from the base64 string
+        const base64Clean = cleanVar.replace(/\s/g, '');
+        const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
+        serviceAccount = JSON.parse(decoded);
+      } catch (innerError) {
+        console.error("❌ Both JSON and Base64 parsing failed.");
+        throw new Error(`Firebase Config Error: ${innerError.message}`);
+      }
     }
 
     // CRITICAL: Robust Private Key Reconstruction
