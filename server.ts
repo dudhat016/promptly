@@ -70,14 +70,11 @@ const initFirebase = async () => {
 
     // Robust Private Key Reconstruction
     if (serviceAccount && serviceAccount.private_key) {
-      let rawKey = serviceAccount.private_key;
-      rawKey = rawKey
+      const rawKey = serviceAccount.private_key
         .replace(/-----BEGIN[^-]*-----/g, "")
         .replace(/-----END[^-]*-----/g, "")
-        .replace(/\\n/g, "")
-        .replace(/\\r/g, "")
-        .replace(/\n/g, "")
-        .replace(/\r/g, "")
+        .replace(/\\+n/g, "")
+        .replace(/\\+r/g, "")
         .replace(/\s/g, "");
       
       const lines = rawKey.match(/.{1,64}/g);

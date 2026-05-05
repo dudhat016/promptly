@@ -72,28 +72,20 @@ async function initFirebase() {
 
     // CRITICAL: Robust Private Key Reconstruction
     if (serviceAccount && serviceAccount.private_key) {
-      let rawKey = serviceAccount.private_key;
-      
-      // 1. Strip headers and all variations of newlines
-      rawKey = rawKey
+      // 1. Extract the raw Base64 data by stripping ALL headers, footers, and escaped characters
+      const rawKey = serviceAccount.private_key
         .replace(/-----BEGIN[^-]*-----/g, "")
         .replace(/-----END[^-]*-----/g, "")
-        .replace(/\\n/g, "")   // Literal \n
-        .replace(/\\r/g, "")   // Literal \r
-        .replace(/\n/g, "")    // Actual newline
-        .replace(/\r/g, "")    // Actual carriage return
-        .replace(/\s/g, "");   // All other whitespace
+        .replace(/\\+n/g, "") // Aggressively remove any number of backslashes + n
+        .replace(/\\+r/g, "") // Aggressively remove any number of backslashes + r
+        .replace(/\s/g, "");  // Remove all spaces and newlines
 
-      // 2. Wrap at 64 chars
+      // 2. Standard 64-char wrapping (The most universally accepted PEM format)
       const lines = rawKey.match(/.{1,64}/g);
-      if (!lines) {
-        throw new Error(`Private key data is empty or invalid. Length: ${rawKey.length}`);
-      }
+      if (!lines) throw new Error("Private key data is corrupted or empty.");
       
       const wrappedKey = lines.join("\n");
       serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
-      
-      console.log(`📡 [PEM Guard] Reconstructed key. Length: ${rawKey.length} chars.`);
     }
 
     if (!admin.apps.length) {
