@@ -12,6 +12,15 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Guard: Validate required keys
+const requiredKeys = ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_PROJECT_ID', 'VITE_FIREBASE_APP_ID'];
+const missingKeys = requiredKeys.filter(key => !import.meta.env[key]);
+
+if (missingKeys.length > 0) {
+  console.error(`❌ [Firebase] Missing required environment variables: ${missingKeys.join(', ')}`);
+  console.error(`💡 Tip: Add these to your Vercel Project Settings -> Environment Variables.`);
+}
+
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, import.meta.env.VITE_FIREBASE_DATABASE_ID);
 export const storage = getStorage(app);
