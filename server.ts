@@ -39,7 +39,26 @@ const initFirebase = async () => {
         const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
         serviceAccount = JSON.parse(decoded);
       } catch (innerError: any) {
-        throw new Error(`Firebase Config Error: ${innerError.message}`);
+        // ULTIMATE FALLBACK: Regex Extraction
+        try {
+          const extract = (key: string) => {
+            const match = cleanVar.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
+            return match ? match[1] : null;
+          };
+          
+          serviceAccount = {
+            project_id: extract('project_id'),
+            private_key: extract('private_key')?.replace(/\\n/g, '\n'),
+            client_email: extract('client_email'),
+            type: 'service_account'
+          };
+          
+          if (!serviceAccount.project_id || !serviceAccount.private_key) {
+            throw new Error("Regex extraction failed");
+          }
+        } catch (regexError) {
+          throw new Error(`Firebase Config Error: ${innerError.message}`);
+        }
       }
     }
 

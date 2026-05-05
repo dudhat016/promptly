@@ -26,24 +26,41 @@ async function initFirebase() {
     }
 
     let serviceAccount;
-    // Pre-clean the string: remove any leading/trailing whitespace
     const cleanVar = serviceAccountVar.trim();
     
     try {
-      // Try to parse it as JSON first
-      // Handle cases where \n might be mangled
+      // 1. Try standard JSON parse with basic cleanup
       const sanitized = cleanVar.replace(/\\n/g, '\\n');
       serviceAccount = JSON.parse(sanitized);
     } catch (e) {
-      // If parsing fails, try to treat it as a base64 encoded string
+      // 2. Try Base64 decode
       try {
-        // Remove any spaces/newlines from the base64 string
         const base64Clean = cleanVar.replace(/\s/g, '');
         const decoded = Buffer.from(base64Clean, 'base64').toString('utf8');
         serviceAccount = JSON.parse(decoded);
       } catch (innerError) {
-        console.error("❌ Both JSON and Base64 parsing failed.");
-        throw new Error(`Firebase Config Error: ${innerError.message}`);
+        // 3. ULTIMATE FALLBACK: Regex Extraction (For mangled JSON)
+        console.log("⚠️ JSON parse failed, attempting Regex extraction...");
+        try {
+          const extract = (key: string) => {
+            const match = cleanVar.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`));
+            return match ? match[1] : null;
+          };
+          
+          serviceAccount = {
+            project_id: extract('project_id'),
+            private_key: extract('private_key')?.replace(/\\n/g, '\n'),
+            client_email: extract('client_email'),
+            type: 'service_account'
+          };
+          
+          if (!serviceAccount.project_id || !serviceAccount.private_key) {
+            throw new Error("Regex extraction failed - keys missing");
+          }
+        } catch (regexError) {
+          console.error("❌ All parsing methods failed.");
+          throw new Error(`Firebase Config Error: Position ${cleanVar.length} chars. Start: ${cleanVar.substring(0, 10)}`);
+        }
       }
     }
 
