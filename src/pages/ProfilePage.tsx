@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useImageUpload } from '../hooks/useImageUpload';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 import { useSearchParams } from 'react-router-dom';
 import { User, Shield, CreditCard, Settings, Gift, 
   Check, Mail, Camera, Bell, Lock, LogOut,
@@ -19,47 +21,30 @@ export default function ProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ProfileTab>((searchParams.get('tab') as ProfileTab) || 'account');
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const { uploadImage, isUploading } = useImageUpload();
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
-    // Basic validation
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
-      return;
-    }
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/upload-ftp', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        // Update user profile in Firestore
+    const data = await uploadImage(file, 'users');
+    
+    if (data?.success) {
+      try {
         await updateDoc(doc(db, 'users', user.uid), {
           photoURL: data.url,
           updatedAt: serverTimestamp()
         });
-        
-        // Success feedback
+
+        // Sync with Auth profile for instant header update
+        await updateProfile(user, { photoURL: data.url });
+
         toast.success('Profile photo updated!');
-      } else {
-        throw new Error(data.error || 'Upload failed');
+      } catch (err) {
+        console.error('Firestore Update Error:', err);
+        toast.error('Failed to update profile record');
       }
-    } catch (err: any) {
-      console.error('Upload Error:', err);
-      toast.error(err.message || 'Failed to connect to storage');
-    } finally {
-      setIsUploading(false);
     }
   };
 

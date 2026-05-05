@@ -92,60 +92,69 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
           try {
             if (docSnap.exists()) {
-              let data = docSnap.data() as UserProfile;
+              const data = docSnap.data() as UserProfile;
+              
+              // Prevent recursive loops by batching updates
+              let needsUpdate = false;
+              const updates: any = {};
 
-              // Auto-update referral code structure
+              // 1. Referral Code Check
               const isOldFormat = data.referralCode && data.referralCode.length === 6 && !/[0-9]{3}$/.test(data.referralCode);
               if (!data.referralCode || isOldFormat) {
                 const baseName = (user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'USER')
                   .replace(/[^a-zA-Z0-9]/g, '')
                   .toUpperCase()
                   .slice(0, 10);
-                const newCode = `${baseName}${Math.floor(100 + Math.random() * 900)}`;
-                await updateDoc(docRef, { referralCode: newCode });
-                data.referralCode = newCode;
+                updates.referralCode = `${baseName}${Math.floor(100 + Math.random() * 900)}`;
+                needsUpdate = true;
               }
 
-              // Admin/Demotion Logic
+              // 2. Admin/Demotion Logic (Only if status actually changed)
               const isAdminEmail = user.email === 'calmingsound016@gmail.com' || user.email === 'admin@promptly.com';
               const isToDemote = user.email === 'learnwithdudhat016@gmail.com';
 
               if (isAdminEmail && data.role !== 'admin') {
-                const adminUpdates = { role: 'admin' as const, subscriptionStatus: 'pro' as const, credits: 10000 };
-                await updateDoc(docRef, adminUpdates);
-                data = { ...data, ...adminUpdates };
+                updates.role = 'admin';
+                updates.subscriptionStatus = 'pro';
+                updates.credits = 10000;
+                needsUpdate = true;
               } else if (isToDemote && data.role === 'admin') {
-                const userUpdates = { role: 'user' as const, subscriptionStatus: 'free' as const, credits: 5 };
-                await updateDoc(docRef, userUpdates);
-                data = { ...data, ...userUpdates };
+                updates.role = 'user';
+                updates.subscriptionStatus = 'free';
+                updates.credits = 5;
+                needsUpdate = true;
+              }
+
+              // 3. Daily Reward (Guarded by session flag)
+              const lastReward = data.lastCreditsRewardAt?.toDate ? data.lastCreditsRewardAt.toDate() : (data.lastCreditsRewardAt ? new Date(data.lastCreditsRewardAt) : null);
+              const today = new Date();
+              today.setHours(0,0,0,0);
+              const rewardKey = `reward_claimed_${today.getTime()}`;
+
+              if ((!lastReward || lastReward < today) && !sessionStorage.getItem(rewardKey)) {
+                updates.credits = increment(5);
+                updates.lastCreditsRewardAt = serverTimestamp();
+                updates.lastActiveAt = serverTimestamp();
+                sessionStorage.setItem(rewardKey, 'true');
+                needsUpdate = true;
+                toast.success("Daily Reward: +5 Credits added! 🎉", { icon: '🎁' });
+              }
+
+              // Apply all updates in one shot to avoid triggering multiple snapshots
+              if (needsUpdate) {
+                await updateDoc(docRef, updates);
+                return;
               }
 
               setProfile(data);
-
               if (data.role === 'admin' && !sessionStorage.getItem('DB_SEEDED')) {
                 seedDatabase();
                 sessionStorage.setItem('DB_SEEDED', 'true');
               }
 
-              // Affinity & CRM Sync
               if (data.affinityProfile) mergeCloudAffinity(data.affinityProfile);
               syncAffinityToCloud(user.uid);
 
-              // Daily Reward
-              const lastReward = data.lastCreditsRewardAt?.toDate ? data.lastCreditsRewardAt.toDate() : (data.lastCreditsRewardAt ? new Date(data.lastCreditsRewardAt) : null);
-              const today = new Date();
-              today.setHours(0,0,0,0);
-
-              if (!lastReward || lastReward < today) {
-                await updateDoc(docRef, {
-                  credits: increment(5),
-                  lastCreditsRewardAt: serverTimestamp(),
-                  lastActiveAt: serverTimestamp()
-                });
-                toast.success("Daily Reward: +5 Credits added! 🎉", { icon: '🎁' });
-              }
-
-              // Session Tracking
               const sessionKey = `login_email_${user.uid}`;
               if (!sessionStorage.getItem(sessionKey)) {
                 EmailService.sendLoginEmail(user.uid, user.email || '');

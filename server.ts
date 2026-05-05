@@ -1,83 +1,102 @@
-import express from "express";
-import { createServer as createViteServer } from "vite";
-import path from "path";
-import fs from "fs";
 import dotenv from "dotenv";
-import Stripe from "stripe";
+import express from "express";
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
+import fs from "fs";
 import nodemailer from "nodemailer";
+import path from "path";
+import Stripe from "stripe";
 
-// Load env vars
 dotenv.config();
 
-console.log("🔍 [Diagnostic] .env file exists:", fs.existsSync(path.join(process.cwd(), '.env')));
-console.log("🔍 [Diagnostic] FIREBASE_SERVICE_ACCOUNT defined:", !!process.env.FIREBASE_SERVICE_ACCOUNT);
+import * as ftp from "basic-ftp";
+import multiparty from "multiparty";
 
 // Initialize Firebase Admin
-const serviceAccountPath = path.join(process.cwd(), 'service-account.json');
-
-if (fs.existsSync(serviceAccountPath)) {
+const initFirebase = async () => {
   try {
-    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
+    if (admin.apps.length > 0) return { db: getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)'), auth: admin.auth() };
+
+    const serviceAccountPath = path.join(process.cwd(), 'service-account.json');
+    let serviceAccount;
+
+    if (fs.existsSync(serviceAccountPath)) {
+      console.log("🔍 [Diagnostic] Using native file loader for service-account.json...");
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+
+      // Manual reconstruction with strict 64-char wrapping
+      if (serviceAccount.private_key) {
+        const raw = serviceAccount.private_key
+          .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+          .replace(/-----END PRIVATE KEY-----/g, "")
+          .replace(/\s/g, "");
+
+        // Wrap at 64 chars
+        const wrapped = raw.match(/.{1,64}/g)?.join("\n");
+        serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrapped}\n-----END PRIVATE KEY-----\n`;
+      }
+
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount)
+        });
+      }
+    } else {
+      console.log("🔍 [Diagnostic] Falling back to environment variables...");
+      const rawConfig = process.env.FIREBASE_SERVICE_ACCOUNT;
+      if (!rawConfig) throw new Error("FIREBASE_SERVICE_ACCOUNT is missing");
+      let sanitized = rawConfig.trim();
+      if (!sanitized.startsWith('{')) {
+        sanitized = Buffer.from(sanitized, 'base64').toString('utf8');
+      }
+      const serviceAccount = JSON.parse(sanitized);
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount)
+        });
+      }
     }
-    console.log("✅ Firebase Admin initialized with service-account.json");
+    return {
+      db: getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)'),
+      auth: admin.auth()
+    };
   } catch (e: any) {
-    console.error("❌ Firebase Admin Init Error (File):", e.message);
+    console.error("❌ Firebase Admin Init Error:", e.message);
+    return null;
   }
-} else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    
-    // Fix potential private key formatting issues from ENV vars
-    if (serviceAccount.private_key) {
-      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-    }
+};
 
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-    }
-    console.log("✅ Firebase Admin initialized with Service Account ENV");
-  } catch (e: any) {
-    console.error("❌ Firebase Admin Init Error (ENV):", e.message);
-  }
-} else {
-  // Fallback for local development if possible
-  try {
-    const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      admin.initializeApp({
-        projectId: config.projectId
-      });
-      console.log("⚠️ Firebase Admin initialized in fallback mode (No Service Account)");
-    }
-  } catch (e) {
-    console.warn("Could not initialize Firebase Admin fallback:", e);
-  }
-}
-
-const app = express();
-const PORT = 3000;
+// Auto-run init
+initFirebase();
 
 // Initialize Stripe
 let stripeInstance: Stripe | null = null;
 function getStripe() {
   if (!stripeInstance && process.env.STRIPE_SECRET_KEY) {
     stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-01-27.acacia" as any,
+      apiVersion: "2024-12-18.acacia" as any,
     });
   }
   return stripeInstance;
 }
 
-// Special middleware for Stripe Webhooks (needs raw body)
+const app = express();
+const PORT = 3001; // Match the port in your Vite proxy
+
+// API Routes
+app.get("/ping", (req, res) => {
+  res.send("PONG - Server is Alive!");
+});
+
+app.get("/api/health", async (req, res) => {
+  const firebase = await initFirebase();
+  res.json({
+    status: "ok",
+    firebase: firebase ? "connected" : "failed"
+  });
+});
+
+// Stripe Webhook (needs raw body)
 app.post("/api/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const stripe = getStripe();
   const sig = req.headers["stripe-signature"];
@@ -88,76 +107,158 @@ app.post("/api/webhook", express.raw({ type: "application/json" }), async (req, 
   }
 
   let event;
-
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the event
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.data.object as any;
     const userId = session.metadata?.userId;
+    const firebase = await initFirebase();
 
-    if (userId && admin.apps.length > 0) {
-      const db = getFirestore("ai-studio-144262e8-b62f-4b6d-801f-f5b7a636cc0e");
-      await db.collection("users").doc(userId).update({
+    if (userId && firebase) {
+      await firebase.db.collection("users").doc(userId).update({
         subscriptionStatus: "pro",
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      console.log(`User ${userId} upgraded to PRO`);
+      console.log(`✅ User ${userId} upgraded to PRO`);
     }
   }
-
   res.json({ received: true });
 });
 
-// Increased limit for base64 image uploads
-app.use(express.json({ limit: '10mb' }));
-
-// API Routes
-app.get("/ping", (req, res) => {
-  res.send("PONG - Server is Alive!");
-});
-
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
-});
-
-// Temporary Avatar Upload Endpoint (saves to /public/avatars)
-app.post("/api/upload-avatar", async (req, res) => {
-  const { image, userId } = req.body;
-  if (!image || !userId) {
-    return res.status(400).json({ error: "Missing image or userId" });
-  }
+// Email Test Route
+app.post("/api/test-email", async (req, res) => {
+  const firebase = await initFirebase();
+  if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
 
   try {
-    // Extract base64 content
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-    const buffer = Buffer.from(base64Data, 'base64');
-    
-    const publicDir = path.join(process.cwd(), "public");
-    const avatarsDir = path.join(publicDir, "avatars");
-    
-    // Ensure directory exists
-    if (!fs.existsSync(avatarsDir)) {
-      fs.mkdirSync(avatarsDir, { recursive: true });
-    }
+    const configSnap = await firebase.db.collection("configs").doc("email").get();
+    const config = configSnap.exists ? configSnap.data() : null;
 
-    const fileName = `${userId}-${Date.now()}.png`;
-    const filePath = path.join(avatarsDir, fileName);
-    
-    // Save file locally
-    fs.writeFileSync(filePath, buffer);
-    
-    const imageUrl = `/avatars/${fileName}`;
-    res.json({ url: imageUrl });
+    const smtpHost = config?.smtpHost || process.env.SMTP_HOST;
+    const smtpPort = parseInt(config?.smtpPort || process.env.SMTP_PORT || "465");
+    const smtpSecure = config?.smtpSecure !== undefined ? config.smtpSecure : (process.env.SMTP_SECURE === 'true');
+    const smtpUser = config?.smtpUser || process.env.SMTP_USER;
+    const smtpPass = config?.smtpPass || process.env.SMTP_PASS;
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+
+    await transporter.sendMail({
+      from: `"${config?.fromName}" <${config?.fromEmail}>`,
+      to: config?.fromEmail,
+      subject: "🚀 SMTP Connection Test",
+      text: "Connection Success!"
+    });
+
+    res.json({ success: true });
   } catch (err: any) {
-    console.error("Upload error:", err);
     res.status(500).json({ error: err.message });
   }
+});
+
+app.post("/api/upload-ftp", async (req, res) => {
+  const form = new multiparty.Form();
+
+  form.parse(req, async (err, fields, files) => {
+    if (err) return res.status(500).json({ error: "Failed to parse upload" });
+
+    const { folder = "" } = fields;
+    const subfolder = folder?.[0] || "";
+    const file = files.file;
+
+    if (file && !file[0]) return res.status(400).json({ error: "No file uploaded" });
+    const uploadFile = file[0];
+
+    try {
+      await initFirebase();
+    } catch (dbErr: any) {
+      return res.status(500).json({ error: dbErr.message });
+    }
+
+    const db = getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)');
+    const configSnap = await db.collection('configs').doc('ftp').get();
+    const config = configSnap.exists ? configSnap.data() : null;
+
+    if (config && !config.enabled) {
+      return res.status(400).json({ error: "FTP Storage is disabled in settings." });
+    }
+
+    const ftpHost = config?.host || process.env.FTP_SERVER;
+    const ftpUser = config?.username || process.env.FTP_USERNAME;
+    const ftpPass = config?.password || process.env.FTP_PASSWORD;
+    let ftpPath = config?.path || process.env.FTP_FOLDER || "promptly/public/";
+    const ftpEndpoint = config?.endpoint || "https://techworldproduct.com/promptly/public/";
+
+    // Add subfolder to path and endpoint
+    if (subfolder) {
+      ftpPath = `${ftpPath.endsWith('/') ? ftpPath : ftpPath + '/'}${subfolder}/`;
+    }
+
+    // PATH SANITY CHECK: Prevent double public_html
+    if (ftpPath.startsWith('public_html/public_html/')) {
+      ftpPath = ftpPath.replace('public_html/public_html/', 'public_html/');
+    }
+    // If it starts with public_html/ and we are already in public_html, remove it
+    // But since we confirmed PWD is public_html, any path starting with public_html/ is redundant
+    if (ftpPath.startsWith('public_html/')) {
+      ftpPath = ftpPath.replace('public_html/', '');
+    }
+
+    const client = new ftp.Client();
+    client.ftp.verbose = false;
+
+    try {
+      await client.access({
+        host: ftpHost,
+        user: ftpUser,
+        password: ftpPass,
+        secure: false
+      });
+
+      await client.ensureDir(ftpPath);
+
+      // Atomic Sanitization: Whitelist ONLY alphanumeric, dots, and underscores
+      const originalName = path.basename(uploadFile.originalFilename).trim();
+      const safeName = originalName
+        .toLowerCase()
+        .replace(/[^a-z0-9.]/g, '_')// Replace EVERYTHING that isn't a letter, number, or dot with _
+        .replace(/_{2,}/g, '_')// Collapse multiple underscores
+        .replace(/^_+|_+$/g, '');// Trim underscores from ends
+
+      const fileName = safeName;
+
+      await client.uploadFrom(uploadFile.path, fileName);
+
+      // Construct final public URL with subfolder and encoding insurance
+      const baseUrl = ftpEndpoint.endsWith('/') ? ftpEndpoint : ftpEndpoint + '/';
+      const finalEndpoint = subfolder ? `${baseUrl}${subfolder}/` : baseUrl;
+      const publicUrl = encodeURI(`${finalEndpoint}${fileName}`);
+
+      res.json({ success: true, url: publicUrl });
+    } catch (ftpErr: any) {
+      console.error("FTP Upload Error:", ftpErr);
+      let errorMsg = ftpErr.message;
+
+      if (ftpErr.code === 'ETIMEDOUT') {
+        errorMsg = "Connection timed out. Please check if the FTP host is correct and not blocked by a firewall.";
+      } else if (errorMsg.includes("530")) {
+        errorMsg = "Login incorrect. Please verify your FTP username and password in the Hostinger panel.";
+      }
+
+      res.status(500).json({ error: `FTP Error: ${errorMsg}` });
+    } finally {
+      client.close();
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    }
+  });
 });
 
 app.post("/api/create-checkout-session", async (req, res) => {
@@ -197,7 +298,7 @@ app.post("/api/test-email", async (req, res) => {
     return res.status(500).json({ error: "Firebase Admin is not connected. Please set FIREBASE_SERVICE_ACCOUNT in your .env file." });
   }
 
-  const db = getFirestore("ai-studio-144262e8-b62f-4b6d-801f-f5b7a636cc0e");
+  const db = getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)');
   try {
     const configSnap = await db.collection("configs").doc("email").get();
     if (!configSnap.exists) {
@@ -249,11 +350,13 @@ app.post("/api/test-email", async (req, res) => {
 
 // For development, we'll setup Vite
 async function startServer() {
+/*
   if (process.env.NODE_ENV !== "production") {
-    const viteConfigModule = await import("./vite.config.ts");
+    const { pathToFileURL } = await import("url");
+    const configPath = path.resolve(process.cwd(), "vite.config.ts");
+    const viteConfigModule = await import(pathToFileURL(configPath).href);
     const viteConfigFn = viteConfigModule.default;
     const viteConfig = typeof viteConfigFn === "function" ? await viteConfigFn({ mode: "development", command: "serve" }) : viteConfigFn;
-
     const vite = await createViteServer({
       ...viteConfig,
       configFile: false,
@@ -262,15 +365,21 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
+*/
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
-  }
+//  }
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    // Warm up the Firebase connection
+    initFirebase().then(res => {
+      if (res) console.log("✅ Firebase Warm-up Successful");
+      else console.error("❌ Firebase Warm-up Failed");
+    });
   });
 }
 

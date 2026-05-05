@@ -5,9 +5,10 @@ import { db } from '../../lib/firebase';
 import { BlogPost } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
-import { Save, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Save, ArrowLeft, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import TagInput from '../../components/TagInput';
+import { useImageUpload } from '../../hooks/useImageUpload';
 
 export default function AdminBlogForm() {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +16,7 @@ export default function AdminBlogForm() {
   const { user } = useAuth();
   const isNew = !id || id === 'new';
 
+  const { uploadImage, isUploading } = useImageUpload();
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [post, setPost] = useState<Partial<BlogPost>>({
@@ -181,15 +183,37 @@ export default function AdminBlogForm() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image URL</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image</label>
               <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={post.coverImage || ''}
-                  onChange={e => setPost({ ...post, coverImage: e.target.value })}
-                  className="flex-grow bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  placeholder="https://example.com/image.jpg"
-                />
+                <div className="relative flex-grow">
+                  <input
+                    type="url"
+                    value={post.coverImage || ''}
+                    onChange={e => setPost({ ...post, coverImage: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <label className="cursor-pointer p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Upload to Hostinger">
+                      {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const data = await uploadImage(file, 'blog');
+                            if (data?.success) {
+                              setPost(prev => ({ ...prev, coverImage: data.url }));
+                            }
+                          }
+                        }}
+                        disabled={isUploading}
+                      />
+                    </label>
+                  </div>
+                </div>
                 {post.coverImage && (
                   <div className="w-11 h-11 rounded-lg border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center bg-slate-50">
                     <img src={post.coverImage} alt="Cover Preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />

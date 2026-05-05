@@ -19,6 +19,7 @@ import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
+import { useImageUpload } from '../../hooks/useImageUpload';
 
 interface Asset {
   id: string;
@@ -40,9 +41,10 @@ interface FTPConfig {
 export default function AdminAssetManager() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const { uploadImage, isUploading } = useImageUpload();
   const [showConfig, setShowConfig] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState('assets');
   const [savingConfig, setSavingConfig] = useState(false);
 
   const [config, setConfig] = useState<FTPConfig>({
@@ -51,7 +53,7 @@ export default function AdminAssetManager() {
     port: 21,
     username: '',
     password: '',
-    path: 'public_html/promptly/public/',
+    path: 'promptly/public/',
     endpoint: 'https://techworldproduct.com/promptly/public/'
   });
 
@@ -131,32 +133,20 @@ export default function AdminAssetManager() {
       return;
     }
 
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/upload-ftp', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (data.success) {
+    const data = await uploadImage(file, selectedFolder);
+    
+    if (data?.success) {
+      try {
         await addDoc(collection(db, 'assets'), {
           name: data.name,
           url: data.url,
           createdAt: serverTimestamp(),
         });
-        toast.success("Uploaded to Hostinger!");
         fetchAssets();
-      } else {
-        throw new Error(data.error);
+      } catch (err) {
+        console.error('Firestore Update Error:', err);
+        toast.error('Failed to save asset record');
       }
-    } catch (err: any) {
-      toast.error(err.message || "Upload failed");
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -250,27 +240,43 @@ export default function AdminAssetManager() {
         <div className="bg-white rounded-[3rem] border-4 border-dashed border-slate-100 p-12 text-center relative group overflow-hidden">
           <div className="relative z-10">
             <div className="bg-indigo-50 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-500">
-              {uploading ? (
+              {isUploading ? (
                 <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
               ) : (
                 <FilePlus className="w-10 h-10 text-indigo-600" />
               )}
             </div>
             <h3 className="text-2xl font-black text-slate-900 mb-2">
-              {uploading ? "Sailing to Hostinger..." : "Upload New Asset"}
+              {isUploading ? "Sailing to Hostinger..." : "Upload New Asset"}
             </h3>
             <p className="text-slate-500 font-medium mb-8 max-w-sm mx-auto">
               Your files will be securely stored in your 100GB Hostinger vault.
             </p>
 
+            <div className="flex flex-wrap justify-center gap-3 mb-8">
+              {['assets', 'blog', 'banners', 'icons'].map(folder => (
+                <button
+                  key={folder}
+                  onClick={() => setSelectedFolder(folder)}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold capitalize transition-all ${
+                    selectedFolder === folder 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {folder}
+                </button>
+              ))}
+            </div>
+
             <label className="inline-flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 cursor-pointer">
               <Upload className="w-5 h-5" />
               Select Image
-              <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
+              <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={isUploading} />
             </label>
           </div>
 
-          {uploading && (
+          {isUploading && (
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: '100%' }}
