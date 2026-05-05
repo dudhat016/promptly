@@ -35,6 +35,18 @@ async function initFirebase() {
       serviceAccount = JSON.parse(decoded);
     }
 
+    // CRITICAL: Robust Private Key Reconstruction
+    // Vercel and other platforms often mangle the \n characters in private keys
+    if (serviceAccount && serviceAccount.private_key) {
+      const rawKey = serviceAccount.private_key
+        .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+        .replace(/-----END PRIVATE KEY-----/g, "")
+        .replace(/\s/g, ""); // Remove ALL whitespace and newlines
+      
+      const wrappedKey = rawKey.match(/.{1,64}/g)?.join("\n");
+      serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
+    }
+
     if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
@@ -125,6 +137,22 @@ app.post("/api/upload-ftp", async (req, res) => {
     const ftpHost = config?.host || process.env.FTP_SERVER;
     const ftpUser = config?.username || process.env.FTP_USERNAME;
     const ftpPass = config?.password || process.env.FTP_PASSWORD;
+    
+    // Guard: Validate required FTP vars if not using DB config
+    if (!config) {
+      const missingFtpVars = [];
+      if (!ftpHost) missingFtpVars.push('FTP_SERVER');
+      if (!ftpUser) missingFtpVars.push('FTP_USERNAME');
+      if (!ftpPass) missingFtpVars.push('FTP_PASSWORD');
+      
+      if (missingFtpVars.length > 0) {
+        return res.status(500).json({ 
+          error: `Missing FTP environment variables: ${missingFtpVars.join(', ')}`,
+          tip: "Add these to Vercel Project Settings -> Environment Variables."
+        });
+      }
+    }
+
     let ftpPath = config?.path || process.env.FTP_FOLDER || "promptly/public/";
     const ftpEndpoint = config?.endpoint || "https://techworldproduct.com/promptly/public/";
 
