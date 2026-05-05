@@ -68,7 +68,7 @@ const initFirebase = async () => {
       }
     }
 
-    // Robust Private Key Reconstruction
+    // Robust Private Key Reconstruction (Brute-Force Style)
     if (serviceAccount && serviceAccount.private_key) {
       const rawKey = serviceAccount.private_key
         .replace(/-----BEGIN[^-]*-----/g, "")
@@ -80,13 +80,36 @@ const initFirebase = async () => {
       const lines = rawKey.match(/.{1,64}/g);
       if (lines) {
         const wrappedKey = lines.join("\n");
-        serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
+        const variations = [
+          `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`,
+          `-----BEGIN PRIVATE KEY-----\n${rawKey}\n-----END PRIVATE KEY-----\n`,
+          `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----`
+        ];
+
+        let lastError: any = null;
+        for (const pem of variations) {
+          try {
+            serviceAccount.private_key = pem;
+            if (!admin.apps.length) {
+              admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+              });
+            }
+            lastError = null;
+            break;
+          } catch (err: any) {
+            lastError = err;
+          }
+        }
+        if (lastError) throw lastError;
+      }
+    } else {
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount)
+        });
       }
     }
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
 
     return {
       db: getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)'),

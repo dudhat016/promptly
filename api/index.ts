@@ -70,29 +70,51 @@ async function initFirebase() {
       }
     }
 
-    // CRITICAL: Robust Private Key Reconstruction
+    // CRITICAL: Robust Private Key Reconstruction (Brute-Force Style)
     if (serviceAccount && serviceAccount.private_key) {
-      // 1. Extract the raw Base64 data by stripping ALL headers, footers, and escaped characters
       const rawKey = serviceAccount.private_key
         .replace(/-----BEGIN[^-]*-----/g, "")
         .replace(/-----END[^-]*-----/g, "")
-        .replace(/\\+n/g, "") // Aggressively remove any number of backslashes + n
-        .replace(/\\+r/g, "") // Aggressively remove any number of backslashes + r
-        .replace(/\s/g, "");  // Remove all spaces and newlines
+        .replace(/\\+n/g, "") 
+        .replace(/\\+r/g, "") 
+        .replace(/\s/g, "");
 
-      // 2. Standard 64-char wrapping (The most universally accepted PEM format)
       const lines = rawKey.match(/.{1,64}/g);
-      if (!lines) throw new Error("Private key data is corrupted or empty.");
+      if (!lines) throw new Error("Private key data is empty.");
       
       const wrappedKey = lines.join("\n");
-      serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
-    }
+      const variations = [
+        `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`,
+        `-----BEGIN PRIVATE KEY-----\n${rawKey}\n-----END PRIVATE KEY-----\n`,
+        `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----`
+      ];
 
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
+      let lastError: any = null;
+      for (const pem of variations) {
+        try {
+          serviceAccount.private_key = pem;
+          if (!admin.apps.length) {
+            admin.initializeApp({
+              credential: admin.credential.cert(serviceAccount)
+            });
+          }
+          lastError = null;
+          break; // Success!
+        } catch (err: any) {
+          lastError = err;
+          // Try next variation
+        }
+      }
+
+      if (lastError) throw lastError;
+    } else {
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount)
+        });
+      }
     }
+    
     isFirebaseInitialized = true;
     console.log("✅ Firebase Admin initialized successfully");
   } catch (error: any) {
