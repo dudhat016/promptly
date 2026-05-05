@@ -72,20 +72,29 @@ async function initFirebase() {
     }
 
     // CRITICAL: Robust Private Key Reconstruction
-    // Vercel and other platforms often mangle the \n characters in private keys
     if (serviceAccount && serviceAccount.private_key) {
-      // 1. Strip everything that isn't the raw key data
-      const rawKey = serviceAccount.private_key
-        .replace(/-----BEGIN[^-]*-----/g, "") // Remove any BEGIN header
-        .replace(/-----END[^-]*-----/g, "")   // Remove any END footer
-        .replace(/\\n/g, "")                  // Remove literal \n characters
-        .replace(/\s/g, "");                  // Remove all whitespace/newlines
+      let rawKey = serviceAccount.private_key;
       
-      // 2. Wrap the raw data at 64 characters (PEM standard)
-      const wrappedKey = rawKey.match(/.{1,64}/g)?.join("\n");
+      // 1. Strip headers and all variations of newlines
+      rawKey = rawKey
+        .replace(/-----BEGIN[^-]*-----/g, "")
+        .replace(/-----END[^-]*-----/g, "")
+        .replace(/\\n/g, "")   // Literal \n
+        .replace(/\\r/g, "")   // Literal \r
+        .replace(/\n/g, "")    // Actual newline
+        .replace(/\r/g, "")    // Actual carriage return
+        .replace(/\s/g, "");   // All other whitespace
+
+      // 2. Wrap at 64 chars
+      const lines = rawKey.match(/.{1,64}/g);
+      if (!lines) {
+        throw new Error(`Private key data is empty or invalid. Length: ${rawKey.length}`);
+      }
       
-      // 3. Reconstruct with perfect headers
+      const wrappedKey = lines.join("\n");
       serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
+      
+      console.log(`📡 [PEM Guard] Reconstructed key. Length: ${rawKey.length} chars.`);
     }
 
     if (!admin.apps.length) {

@@ -70,13 +70,21 @@ const initFirebase = async () => {
 
     // Robust Private Key Reconstruction
     if (serviceAccount && serviceAccount.private_key) {
-      const rawKey = serviceAccount.private_key
+      let rawKey = serviceAccount.private_key;
+      rawKey = rawKey
         .replace(/-----BEGIN[^-]*-----/g, "")
         .replace(/-----END[^-]*-----/g, "")
         .replace(/\\n/g, "")
+        .replace(/\\r/g, "")
+        .replace(/\n/g, "")
+        .replace(/\r/g, "")
         .replace(/\s/g, "");
-      const wrappedKey = rawKey.match(/.{1,64}/g)?.join("\n");
-      serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
+      
+      const lines = rawKey.match(/.{1,64}/g);
+      if (lines) {
+        const wrappedKey = lines.join("\n");
+        serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${wrappedKey}\n-----END PRIVATE KEY-----\n`;
+      }
     }
 
     admin.initializeApp({
