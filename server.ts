@@ -14,6 +14,7 @@ import multiparty from "multiparty";
 
 // Initialize Firebase Admin
 const initFirebase = async () => {
+  let serviceAccount: any = null;
   try {
     if (admin.apps.length > 0) {
       return {
@@ -27,7 +28,6 @@ const initFirebase = async () => {
       throw new Error("FIREBASE_SERVICE_ACCOUNT is missing");
     }
 
-    let serviceAccount;
     // Deep Clean: Remove surrounding quotes and all whitespace
     const cleanVar = serviceAccountVar.trim().replace(/^["']|["']$/g, '');
     

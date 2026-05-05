@@ -19,17 +19,16 @@ let isFirebaseInitialized = false;
 async function initFirebase() {
   if (isFirebaseInitialized) return;
 
+  let serviceAccount: any = null;
   try {
     const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (!serviceAccountVar) {
       throw new Error("FIREBASE_SERVICE_ACCOUNT is not set in environment variables");
     }
 
-    let serviceAccount;
-    // Deep Clean: Remove surrounding quotes and all whitespace
     const cleanVar = serviceAccountVar.trim().replace(/^["']|["']$/g, '');
-    
     try {
+      // Deep Clean: Remove surrounding quotes and all whitespace
       // 1. Try standard JSON parse
       const sanitized = cleanVar.replace(/\\n/g, '\\n');
       serviceAccount = JSON.parse(sanitized);
@@ -104,9 +103,11 @@ async function initFirebase() {
     }
     isFirebaseInitialized = true;
     console.log("✅ Firebase Admin initialized successfully");
-  } catch (error) {
-    console.error("❌ Firebase Admin initialization failed:", error);
-    throw error;
+  } catch (error: any) {
+    const debugInfo = serviceAccount?.private_key 
+      ? `(Len: ${serviceAccount.private_key.length}, Start: ${serviceAccount.private_key.substring(0, 30)})`
+      : "(Key Missing)";
+    throw new Error(`${error.message} ${debugInfo}`);
   }
 }
 
