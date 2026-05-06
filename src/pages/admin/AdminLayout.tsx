@@ -123,6 +123,7 @@ export default function AdminLayout() {
           <SidebarLink to="/admin/seo" icon={Search}>SEO Audit</SidebarLink>
           <SidebarLink to="/admin/categories" icon={TagIcon}>Categories</SidebarLink>
           <SidebarLink to="/admin/inquiries" icon={MessageSquare}>Inquiries</SidebarLink>
+          <SidebarLink to="/admin/tickets" icon={ShieldCheck}>Support Tickets</SidebarLink>
           <SidebarLink to="/admin/blog" icon={FileText}>Blog</SidebarLink>
           <SidebarLink to="/admin/users" icon={Users}>Users</SidebarLink>
           <SidebarLink to="/admin/models" icon={Cpu}>AI Models</SidebarLink>

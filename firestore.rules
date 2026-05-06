@@ -62,10 +62,19 @@ service cloud.firestore {
 
     function isValidPrompt(data) {
       return data.keys().hasAll(['title', 'description', 'isPaid', 'creatorId']) &&
+             data.keys().size() <= 20 &&
              data.title is string && data.title.size() <= 200 &&
              data.description is string && data.description.size() <= 2000 &&
              data.isPaid is bool &&
              (data.creatorId == request.auth.uid || isAdmin() || (data.creatorId == 'system' && isAdmin()));
+    }
+
+    // --- Configurations (Marketing & Monetization) ---
+    match /configs/{configId} {
+      // Allow everyone to read marketing config (for Pixel/GA/AdMob IDs)
+      allow read: if configId == 'marketing' || isAdmin();
+      // Only admins can modify configurations
+      allow write: if isAdmin();
     }
 
     // --- Collection Routes ---

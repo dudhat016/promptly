@@ -40,6 +40,7 @@ export default function UserLayout() {
     { label: 'AI Builder', icon: Wand2, path: '/builder' },
     { label: 'Partner Program', icon: Gift, path: '/affiliate/dashboard' },
     { label: 'Credit Ledger', icon: Coins, path: '/credits' },
+    { label: 'Neural Support', icon: HelpCircle, path: '/support' },
   ];
 
   if (isAdmin) {

@@ -13,7 +13,10 @@ export default function AdminMarketingSettings() {
     fbPixelId: '',
     admobSlotId: '',
     adsEnabled: false,
-    analyticsEnabled: false
+    analyticsEnabled: false,
+    minWithdrawalAmount: 50,
+    fraudScoreThreshold: 70,
+    referralCommission: 25
   });
 
   useEffect(() => {
@@ -140,6 +143,44 @@ export default function AdminMarketingSettings() {
               >
                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.adsEnabled ? 'left-7' : 'left-1'}`} />
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Governance & Ecosystem */}
+        <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-sm lg:col-span-2">
+          <h4 className="text-xl font-black text-slate-900 mb-8 flex items-center gap-3">
+            <ShieldCheck className="w-6 h-6 text-indigo-600" />
+            Governance & Ecosystem
+          </h4>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Min. Payout ($)</label>
+              <input 
+                type="number"
+                value={config.minWithdrawalAmount || 50}
+                onChange={e => setConfig({ ...config, minWithdrawalAmount: Number(e.target.value) })}
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Fraud Risk Threshold</label>
+              <input 
+                type="number"
+                value={config.fraudScoreThreshold || 70}
+                onChange={e => setConfig({ ...config, fraudScoreThreshold: Number(e.target.value) })}
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold"
+              />
+              <p className="text-[10px] text-slate-400 mt-2 font-medium italic">Higher = Less Sensitive</p>
+            </div>
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Referral Commission (%)</label>
+              <input 
+                type="number"
+                value={config.referralCommission || 25}
+                onChange={e => setConfig({ ...config, referralCommission: Number(e.target.value) })}
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold"
+              />
             </div>
           </div>
         </div>

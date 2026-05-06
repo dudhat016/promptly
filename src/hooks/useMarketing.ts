@@ -8,7 +8,10 @@ export function useMarketing() {
     fbPixelId: '',
     admobSlotId: '',
     adsEnabled: false,
-    analyticsEnabled: false
+    analyticsEnabled: false,
+    minWithdrawalAmount: 50,
+    fraudScoreThreshold: 70,
+    referralCommission: 25
   });
   const [loading, setLoading] = useState(true);
 

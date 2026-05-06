@@ -38,10 +38,12 @@ import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminTemplateForm from './pages/admin/AdminTemplateForm';
 import AdminTemplates from './pages/admin/AdminTemplates';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminTickets from './pages/admin/AdminTickets';
 import AdminWithdrawals from './pages/admin/AdminWithdrawals';
 import AdminSettings from './pages/admin/AdminSettings';
 import AffiliateInfoPage from './pages/AffiliateInfoPage';
 import AffiliatePage from './pages/AffiliatePage';
+import SupportPage from './pages/SupportPage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import DMCAPage from './pages/DMCAPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -140,6 +142,7 @@ function App() {
                   <Route path="credits" element={<CreditHistoryPage />} />
                   <Route path="builder" element={<DashboardBuilder />} />
                   <Route path="affiliate/dashboard" element={<AffiliatePage />} />
+                  <Route path="support" element={<SupportPage />} />
                   
                   <Route path="settings" element={<Outlet />}>
                     <Route index element={<Navigate to="profile" replace />} />
@@ -153,6 +156,7 @@ function App() {
                 <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
                   <Route index element={<AdminOverview />} />
                   <Route path="inquiries" element={<AdminInquiries />} />
+                  <Route path="tickets" element={<AdminTickets />} />
                   <Route path="prompts" element={<AdminPrompts />} />
                   <Route path="seo" element={<AdminSEO />} />
                   <Route path="site-pages" element={<AdminSitePages />} />

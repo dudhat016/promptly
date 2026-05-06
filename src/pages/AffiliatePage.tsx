@@ -14,6 +14,7 @@ import {
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useMarketing } from '../hooks/useMarketing';
 import { db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
 
@@ -30,7 +31,8 @@ const formatDate = (date: any) => {
 };
 
 export default function AffiliatePage() {
-  const { profile, user } = useAuth();
+  const { user, profile } = useAuth();
+  const { marketingConfig } = useMarketing();
   const [copied, setCopied] = useState(false);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -86,8 +88,8 @@ export default function AffiliatePage() {
       return;
     }
 
-    if (Number(profile?.affiliateEarnings || 0) < 50) {
-      toast.error("Minimum withdrawal amount is $50");
+    if (Number(profile?.affiliateEarnings || 0) < marketingConfig.minWithdrawalAmount) {
+      toast.error(`Minimum withdrawal amount is $${marketingConfig.minWithdrawalAmount}`);
       return;
     }
 
@@ -116,9 +118,9 @@ export default function AffiliatePage() {
         userEmail: user?.email,
         amount: profile.affiliateEarnings,
         currency: 'USD',
-        status: fraudScore >= 70 ? 'flagged' : 'pending',
+        status: fraudScore >= marketingConfig.fraudScoreThreshold ? 'flagged' : 'pending',
         riskScore: fraudScore,
-        riskLevel: fraudScore >= 70 ? 'high_risk' : (fraudScore >= 40 ? 'medium_risk' : 'low_risk'),
+        riskLevel: fraudScore >= marketingConfig.fraudScoreThreshold ? 'high_risk' : (fraudScore >= 40 ? 'medium_risk' : 'low_risk'),
         payoutMethod: profile.payoutMethods,
         requestedAt: Timestamp.now(),
         processedAt: null
@@ -248,7 +250,7 @@ export default function AffiliatePage() {
                             </td>
                             <td className="py-5 text-right">
                               <span className={`font-black ${ref.subscriptionStatus === 'pro' ? 'text-foreground' : 'text-muted-foreground/40'}`}>
-                                {ref.subscriptionStatus === 'pro' ? '$3.75' : '$0.00'}
+                                {ref.subscriptionStatus === 'pro' ? `$${(15 * (marketingConfig.referralCommission / 100)).toFixed(2)}` : '$0.00'}
                               </span>
                             </td>
                           </tr>
@@ -307,13 +309,13 @@ export default function AffiliatePage() {
                    <Clock className="w-5 h-5 opacity-60" />
                    <h3 className="text-xl font-black">Payout Hub</h3>
                  </div>
-                 <p className="text-primary-foreground/60 text-sm mb-10 leading-relaxed font-medium">Earnings are distributed automatically via PayPal once you reach the $50 threshold.</p>
+                 <p className="text-primary-foreground/60 text-sm mb-10 leading-relaxed font-medium">Earnings are distributed automatically via PayPal once you reach the ${marketingConfig.minWithdrawalAmount} threshold.</p>
                  <button
                    onClick={handleWithdraw}
-                   disabled={Number(profile?.affiliateEarnings || 0) < 50 || loading}
-                   className={`w-full font-black py-5 rounded-2xl transition-all shadow-lg text-sm uppercase tracking-widest ${Number(profile?.affiliateEarnings || 0) >= 50 ? 'bg-white text-primary hover:bg-white/90' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}
+                   disabled={Number(profile?.affiliateEarnings || 0) < marketingConfig.minWithdrawalAmount || loading}
+                   className={`w-full font-black py-5 rounded-2xl transition-all shadow-lg text-sm uppercase tracking-widest ${Number(profile?.affiliateEarnings || 0) >= marketingConfig.minWithdrawalAmount ? 'bg-white text-primary hover:bg-white/90' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}
                  >
-                   {loading ? 'Processing...' : (Number(profile?.affiliateEarnings || 0) >= 50 ? 'Withdraw Funds' : 'Min. $50 for Payout')}
+                   {loading ? 'Processing...' : (Number(profile?.affiliateEarnings || 0) >= marketingConfig.minWithdrawalAmount ? 'Withdraw Funds' : `Min. $${marketingConfig.minWithdrawalAmount} for Payout`)}
                  </button>
                </div>
             </div>

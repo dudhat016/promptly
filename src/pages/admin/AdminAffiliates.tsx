@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, query, getDocs, doc, updateDoc, serverTimestamp, Timestamp, addDoc } from 'firebase/firestore';
+import { collection, query, getDocs, doc, updateDoc, serverTimestamp, Timestamp, addDoc, setDoc } from 'firebase/firestore';
 import { UserProfile, Payout } from '../../types';
-import { Gift, Award, Check } from 'lucide-react';
+import { Gift, Award, Check, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useMarketing } from '../../hooks/useMarketing';
 
 const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -21,6 +22,27 @@ export default function AdminAffiliates() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [loading, setLoading] = useState(true);
+  const { marketingConfig } = useMarketing();
+  const [isEditingRate, setIsEditingRate] = useState(false);
+  const [newRate, setNewRate] = useState(marketingConfig.referralCommission);
+
+  useEffect(() => {
+    setNewRate(marketingConfig.referralCommission);
+  }, [marketingConfig.referralCommission]);
+
+  const handleUpdateRate = async () => {
+    try {
+      await setDoc(doc(db, 'configs', 'marketing'), {
+        referralCommission: Number(newRate),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      setIsEditingRate(false);
+      toast.success("Commission rate updated!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update rate");
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -75,6 +97,41 @@ export default function AdminAffiliates() {
         <div>
           <h2 className="text-3xl font-black text-slate-900">Affiliate Program</h2>
           <p className="text-slate-500 mt-2">Manage referral earnings and process affiliate payouts.</p>
+        </div>
+        
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[280px]">
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 shrink-0">
+            <Percent className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-grow">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Current Rate</p>
+            {isEditingRate ? (
+              <div className="flex items-center gap-2 mt-1">
+                <input 
+                  type="number"
+                  value={newRate}
+                  onChange={e => setNewRate(Number(e.target.value))}
+                  className="w-16 bg-white border border-indigo-200 rounded-lg px-2 py-1 text-sm font-black text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button 
+                  onClick={handleUpdateRate}
+                  className="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700 transition-all shadow-sm"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-xl font-black text-indigo-900">{marketingConfig.referralCommission}% Commission</p>
+                <button 
+                  onClick={() => setIsEditingRate(true)}
+                  className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 underline transition-colors"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
