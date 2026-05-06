@@ -1,4 +1,4 @@
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { ArrowUpRight, BarChart3, Eye, LayoutGrid, Star, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -34,60 +34,66 @@ export default function AdminOverview() {
   const [topPrompts, setTopPrompts] = useState<any[]>([]);
 
   useEffect(() => {
-    async function loadStats() {
-      try {
-        const uSnap = await getDocs(collection(db, 'users'));
-        const pSnap = await getDocs(collection(db, 'prompts'));
+    // Real-time Users Listener (Gap #3)
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      let proCount = 0;
+      let newThisWeek = 0;
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-        let proCount = 0;
-        let totalCopies = 0;
-        let totalViews = 0;
-        let newThisWeek = 0;
+      const users = snapshot.docs.map(d => {
+        const data = d.data();
+        if (data.subscriptionStatus === 'pro') proCount++;
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        if (createdAt > sevenDaysAgo) newThisWeek++;
+        return { id: d.id, ...data };
+      });
 
-        const now = new Date();
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      setStats(prev => ({
+        ...prev,
+        totalUsers: snapshot.size,
+        proUsers: proCount,
+        newUsersWeek: newThisWeek,
+        estimatedRevenue: proCount * 15
+      }));
 
-        const users = uSnap.docs.map(d => {
-          const data = d.data();
-          if (data.subscriptionStatus === 'pro') proCount++;
+      // Sort and set recent users
+      const sortedUsers = [...users].sort((a: any, b: any) => 
+        (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+      );
+      setRecentUsers(sortedUsers.slice(0, 5));
+      setLoading(false);
+    });
 
-          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-          if (createdAt > sevenDaysAgo) newThisWeek++;
+    // Real-time Prompts Listener (Gap #3)
+    const unsubscribePrompts = onSnapshot(collection(db, 'prompts'), (snapshot) => {
+      let totalCopies = 0;
+      let totalViews = 0;
 
-          return { id: d.id, ...data };
-        });
+      const prompts = snapshot.docs.map(d => {
+        const data = d.data();
+        totalCopies += data.copiesCount || 0;
+        totalViews += data.viewsCount || 0;
+        return { id: d.id, ...data };
+      });
 
-        const prompts = pSnap.docs.map(d => {
-          const data = d.data();
-          totalCopies += data.copiesCount || 0;
-          totalViews += data.viewsCount || 0;
-          return { id: d.id, ...data };
-        });
+      setStats(prev => ({
+        ...prev,
+        totalPrompts: snapshot.size,
+        totalCopies,
+        totalViews
+      }));
 
-        // Get top 5 recent users
-        users.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-        setRecentUsers(users.slice(0, 5));
+      const sortedPrompts = [...prompts].sort((a: any, b: any) => 
+        (b.viewsCount || 0) - (a.viewsCount || 0)
+      );
+      setTopPrompts(sortedPrompts.slice(0, 3));
+    });
 
-        // Get top 3 popular prompts
-        prompts.sort((a: any, b: any) => (b.viewsCount || 0) - (a.viewsCount || 0));
-        setTopPrompts(prompts.slice(0, 3));
-
-        setStats({
-          totalUsers: uSnap.size,
-          totalPrompts: pSnap.size,
-          proUsers: proCount,
-          totalCopies,
-          totalViews,
-          estimatedRevenue: proCount * 15,
-          newUsersWeek: newThisWeek
-        });
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadStats();
+    return () => {
+      unsubscribeUsers();
+      unsubscribePrompts();
+    };
   }, []);
 
   if (loading) {

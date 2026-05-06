@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { PricingPlan } from '../types';
-
 import { useConfig } from '../hooks/useConfig';
+import { useEffect } from 'react';
+import { useCurrency } from '../context/CurrencyContext';
 
 export default function PricingPage() {
   const navigate = useNavigate();
-  const { user, profile, isPro: userIsPro } = useAuth();
+  const { user, profile } = useAuth();
   const { config, loading: configLoading } = useConfig();
+  const { currency, symbol, exchangeRate } = useCurrency();
   const plans = config.plans;
   const [loading, setLoading] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
@@ -154,19 +156,22 @@ export default function PricingPage() {
                 <p className="text-slate-500 text-sm font-medium">{plan.description}</p>
               </div>
 
-              <div className="flex flex-col gap-1 mb-10">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-6xl font-black text-slate-900 leading-none">
-                    ${billingCycle === 'monthly' ? plan.monthlyPrice : Math.floor(plan.yearlyPrice / 12)}
-                  </span>
-                  <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">/mo</span>
+                <div className="flex flex-col gap-1 mb-10">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-6xl font-black text-slate-900 leading-none">
+                      {symbol}{billingCycle === 'monthly' 
+                        ? (currency === 'INR' ? Math.round(plan.monthlyPrice * exchangeRate) : plan.monthlyPrice)
+                        : (currency === 'INR' ? Math.round((plan.yearlyPrice / 12) * exchangeRate) : Math.floor(plan.yearlyPrice / 12))
+                      }
+                    </span>
+                    <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">/mo</span>
+                  </div>
+                  {billingCycle === 'yearly' && (
+                    <p className="text-indigo-600 font-black text-xs uppercase tracking-widest mt-2 animate-in fade-in slide-in-from-top-1">
+                      Billed as {symbol}{currency === 'INR' ? Math.round(plan.yearlyPrice * exchangeRate) : plan.yearlyPrice}/year
+                    </p>
+                  )}
                 </div>
-                {billingCycle === 'yearly' && (
-                  <p className="text-indigo-600 font-black text-xs uppercase tracking-widest mt-2 animate-in fade-in slide-in-from-top-1">
-                    Billed as ${plan.yearlyPrice}/year
-                  </p>
-                )}
-              </div>
 
             <ul className="space-y-5 mb-12 flex-1">
               {plan.features.map((feature, j) => (
@@ -206,7 +211,7 @@ export default function PricingPage() {
           </div>
           <div className="flex items-center gap-3 text-slate-400">
             <CreditCard className="w-6 h-6" />
-            <span className="text-xs font-black uppercase tracking-widest">Stripe & PayPal Support</span>
+            <span className="text-xs font-black uppercase tracking-widest">Cashfree & PayPal Support</span>
           </div>
         </div>
       </div>

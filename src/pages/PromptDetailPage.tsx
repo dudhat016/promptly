@@ -14,6 +14,7 @@ import { recordPromptInteraction } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
 import { Prompt, UserProfile } from '../types';
+import NeuralAdBanner from '../components/NeuralAdBanner';
 
 export default function PromptDetailPage() {
   const { slug } = useParams();
@@ -198,20 +199,28 @@ export default function PromptDetailPage() {
     if ((profile.credits || 0) <= 0) { toast.error("No credits left!"); return; }
 
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        credits: increment(-1),
-        totalUsedCredits: increment(1),
-        unlockedPrompts: arrayUnion(prompt.id!)
-      });
+      // Only subtract credits if user is NOT pro/admin (Gap #3)
+      if (!isPro && !isAdmin) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          credits: increment(-1),
+          totalUsedCredits: increment(1),
+          unlockedPrompts: arrayUnion(prompt.id!)
+        });
 
-      await addDoc(collection(db, 'credits_history'), {
-        userId: user.uid,
-        type: 'unlock',
-        promptId: prompt.id,
-        promptTitle: prompt.title,
-        amount: 1,
-        createdAt: new Date()
-      });
+        await addDoc(collection(db, 'credits_history'), {
+          userId: user.uid,
+          type: 'unlock',
+          promptId: prompt.id,
+          promptTitle: prompt.title,
+          amount: 1,
+          createdAt: new Date()
+        });
+      } else {
+        // Just add to unlockedPrompts for Pro/Admin tracking
+        await updateDoc(doc(db, 'users', user.uid), {
+          unlockedPrompts: arrayUnion(prompt.id!)
+        });
+      }
 
       const privateDoc = await getDoc(doc(db, 'prompts', prompt.id!, 'private', 'content'));
       if (privateDoc.exists()) setPrompt({ ...prompt, content: privateDoc.data().formula });
@@ -395,6 +404,8 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
                 Spread the Word
               </button>
             </div>
+
+            <NeuralAdBanner className="mt-8" />
           </motion.div>
         </div>
 
@@ -436,6 +447,8 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
               </div>
             </div>
           </div>
+
+          <NeuralAdBanner slot="sidebar-ad" format="rectangle" />
 
           <div className="bg-foreground text-background rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
             <Zap className="w-32 h-32 absolute -right-8 -bottom-8 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000" />

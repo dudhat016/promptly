@@ -15,6 +15,9 @@ export default function AccountSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const { uploadImage, isUploading } = useImageUpload();
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
+  const [upiId, setUpiId] = useState(profile?.payoutMethods?.upiId || '');
+  const [paypalEmail, setPaypalEmail] = useState(profile?.payoutMethods?.paypalEmail || '');
+  const [bankDetails, setBankDetails] = useState(profile?.payoutMethods?.bankDetails || '');
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +26,11 @@ export default function AccountSettings() {
     try {
       await updateDoc(doc(db, 'users', user.uid), {
         displayName,
+        payoutMethods: {
+          upiId,
+          paypalEmail,
+          bankDetails
+        },
         updatedAt: serverTimestamp()
       });
       toast.success('Settings updated successfully!');
@@ -163,6 +171,46 @@ export default function AccountSettings() {
               <div className="w-full bg-muted border-2 border-transparent rounded-2xl p-5 text-muted-foreground/60 font-bold flex items-center justify-between group cursor-not-allowed">
                 <span className="truncate">{profile?.email}</span>
                 <Lock className="w-4 h-4 opacity-40" />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-border mt-12">
+            <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-foreground">
+              <div className="w-10 h-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center">
+                <Coins className="w-5 h-5" />
+              </div>
+              Payout Methods
+            </h3>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">UPI ID (India)</label>
+                <input 
+                  type="text" 
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  className="w-full bg-muted border-2 border-transparent rounded-2xl p-5 focus:bg-card focus:border-primary focus:outline-none transition-all font-bold text-foreground"
+                  placeholder="e.g. username@okaxis"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">PayPal Email (Global)</label>
+                <input 
+                  type="email" 
+                  value={paypalEmail}
+                  onChange={(e) => setPaypalEmail(e.target.value)}
+                  className="w-full bg-muted border-2 border-transparent rounded-2xl p-5 focus:bg-card focus:border-primary focus:outline-none transition-all font-bold text-foreground"
+                  placeholder="e.g. user@example.com"
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Bank Account Details (Swift/IFSC, A/C No)</label>
+                <textarea 
+                  value={bankDetails}
+                  onChange={(e) => setBankDetails(e.target.value)}
+                  className="w-full bg-muted border-2 border-transparent rounded-2xl p-5 focus:bg-card focus:border-primary focus:outline-none transition-all font-bold text-foreground min-h-[120px]"
+                  placeholder="e.g. Account Number: 1234567890, IFSC: ABCD0123456, Bank Name: Example Bank"
+                />
               </div>
             </div>
           </div>

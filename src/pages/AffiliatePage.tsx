@@ -1,4 +1,4 @@
-import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import {
   Award,
   Check,
@@ -15,6 +15,7 @@ import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/firebase';
+import { toast } from 'react-hot-toast';
 
 const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -77,6 +78,66 @@ export default function AffiliatePage() {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWithdraw = async () => {
+    if (!profile?.payoutMethods?.upiId && !profile?.payoutMethods?.paypalEmail && !profile?.payoutMethods?.bankDetails) {
+      toast.error("Please save your payout methods in Account Settings first!");
+      return;
+    }
+
+    if (Number(profile?.affiliateEarnings || 0) < 50) {
+      toast.error("Minimum withdrawal amount is $50");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // --- NEURAL FRAUD GUARD (Gap #3) ---
+      let fraudScore = 0;
+      const createdAtMillis = (profile?.createdAt as any)?.toMillis 
+        ? (profile.createdAt as any).toMillis() 
+        : (profile?.createdAt ? new Date(profile.createdAt as any).getTime() : Date.now());
+      
+      const accountAgeDays = (Date.now() - createdAtMillis) / (1000 * 60 * 60 * 24);
+      
+      // Rule 1: New accounts are suspicious
+      if (accountAgeDays < 7) fraudScore += 40;
+      if (accountAgeDays < 2) fraudScore += 30;
+
+      // Rule 2: High referral velocity (e.g., more than 5 referrals in same session)
+      if (referrals.length > 20 && accountAgeDays < 5) fraudScore += 50;
+
+      // Rule 3: Missing profile data
+      if (!profile?.photoURL || !profile?.displayName) fraudScore += 10;
+
+      const payoutData = {
+        userId: user?.uid,
+        userEmail: user?.email,
+        amount: profile.affiliateEarnings,
+        currency: 'USD',
+        status: fraudScore >= 70 ? 'flagged' : 'pending',
+        riskScore: fraudScore,
+        riskLevel: fraudScore >= 70 ? 'high_risk' : (fraudScore >= 40 ? 'medium_risk' : 'low_risk'),
+        payoutMethod: profile.payoutMethods,
+        requestedAt: Timestamp.now(),
+        processedAt: null
+      };
+      
+      await addDoc(collection(db, 'payouts'), payoutData);
+      
+      if (fraudScore >= 70) {
+        toast.success("Request received! Due to security protocols, your request is undergoing a neural audit (approx. 48h).");
+      } else {
+        toast.success("Withdrawal request submitted! Our team will process it shortly.");
+      }
+      fetchPayouts();
+    } catch (err) {
+      console.error("Withdrawal Error:", err);
+      toast.error("Failed to submit request");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -248,10 +309,11 @@ export default function AffiliatePage() {
                  </div>
                  <p className="text-primary-foreground/60 text-sm mb-10 leading-relaxed font-medium">Earnings are distributed automatically via PayPal once you reach the $50 threshold.</p>
                  <button
-                   disabled={Number(profile?.affiliateEarnings || 0) < 50}
+                   onClick={handleWithdraw}
+                   disabled={Number(profile?.affiliateEarnings || 0) < 50 || loading}
                    className={`w-full font-black py-5 rounded-2xl transition-all shadow-lg text-sm uppercase tracking-widest ${Number(profile?.affiliateEarnings || 0) >= 50 ? 'bg-white text-primary hover:bg-white/90' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}
                  >
-                   {Number(profile?.affiliateEarnings || 0) >= 50 ? 'Withdraw Funds' : 'Min. $50 for Payout'}
+                   {loading ? 'Processing...' : (Number(profile?.affiliateEarnings || 0) >= 50 ? 'Withdraw Funds' : 'Min. $50 for Payout')}
                  </button>
                </div>
             </div>

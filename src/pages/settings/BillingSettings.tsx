@@ -1,10 +1,38 @@
+import { collection, getDocs, orderBy, query, where, updateDoc, doc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { CreditCard, Zap, Shield, ExternalLink, ChevronRight, Check } from 'lucide-react';
+import { CreditCard, Zap, Shield, ChevronRight, Check, Clock, FileText, DollarSign } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 export default function BillingSettings() {
-  const { isPro, profile } = useAuth();
+  const { isPro, profile, user } = useAuth();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.uid) {
+      fetchOrders();
+    }
+  }, [user]);
+
+  async function fetchOrders() {
+    try {
+      const q = query(
+        collection(db, 'orders'),
+        where('userId', '==', user?.uid),
+        orderBy('createdAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -34,7 +62,7 @@ export default function BillingSettings() {
                 <h3 className="text-4xl font-black mb-4 tracking-tighter">Go Pro. Be Expert.</h3>
                 <p className="opacity-60 text-sm mb-10 leading-relaxed font-medium">Unlock priority AI model access, unlimited library storage, and advanced prompt engineering tools.</p>
                 <Link to="/pricing" className="bg-primary text-primary-foreground font-black px-10 py-5 rounded-2xl hover:opacity-90 transition-all shadow-2xl shadow-primary/20 inline-block">
-                  Upgrade for $25/mo
+                  View Pricing Plans
                 </Link>
               </div>
           </div>
@@ -49,11 +77,28 @@ export default function BillingSettings() {
                 <p className="text-white/60 text-sm mb-10 leading-relaxed max-w-md font-medium">Your subscription is active. You have full access to all professional prompt engineering tools.</p>
                 
                 <div className="flex flex-wrap gap-4">
-                  <button className="bg-white/10 text-white font-black px-8 py-4 rounded-2xl hover:bg-white/20 transition-all flex items-center gap-3 border border-white/5 backdrop-blur-sm">
-                    <ExternalLink className="w-5 h-5" />
-                    Stripe Billing Portal
-                  </button>
-                  <button className="text-white/50 hover:text-white font-black px-8 py-4 rounded-2xl transition-all text-sm">
+                  <Link to="/pricing" className="bg-white/10 text-white font-black px-8 py-4 rounded-2xl hover:bg-white/20 transition-all flex items-center gap-3 border border-white/5 backdrop-blur-sm">
+                    Upgrade/Downgrade
+                  </Link>
+                  <button 
+                    onClick={async () => {
+                      if (window.confirm("Are you sure you want to cancel? You will lose Pro access immediately.")) {
+                        try {
+                          await updateDoc(doc(db, 'users', user!.uid), {
+                            subscriptionStatus: 'free',
+                            activePlanId: 'free',
+                            credits: 5,
+                            updatedAt: new Date()
+                          });
+                          toast.success("Subscription cancelled.");
+                          window.location.reload();
+                        } catch (e) {
+                          toast.error("Cancellation failed.");
+                        }
+                      }
+                    }}
+                    className="text-white/40 hover:text-white/80 transition-colors text-xs font-black uppercase tracking-widest px-4"
+                  >
                     Cancel Subscription
                   </button>
                 </div>
@@ -61,25 +106,59 @@ export default function BillingSettings() {
           </div>
         )}
 
-        <div className="pt-4">
+        <div className="pt-8 border-t border-border">
           <div className="flex items-center justify-between mb-8">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Default Payment Method</h4>
-              <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 px-4 py-2 rounded-xl transition-all">Update Card</button>
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Order History</h4>
           </div>
-          <div className="group flex flex-col md:flex-row md:items-center justify-between p-8 bg-muted rounded-[2.5rem] border-2 border-transparent hover:border-primary/20 hover:bg-card hover:shadow-xl transition-all duration-500 gap-6">
-            <div className="flex items-center gap-8">
-              <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group-hover:scale-110 transition-transform">
-                <CreditCard className="w-10 h-10 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+          
+          <div className="space-y-4">
+            {loading ? (
+              <div className="p-12 text-center">
+                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Syncing Records...</p>
               </div>
-              <div>
-                <p className="text-lg font-black text-foreground">Visa ending in 4242</p>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg uppercase tracking-wider">Primary</span>
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight opacity-60">Expires 12/2028</span>
-                </div>
+            ) : orders.length > 0 ? (
+              <div className="overflow-hidden rounded-[2rem] border border-border">
+                <table className="w-full text-left">
+                  <thead className="bg-muted/50">
+                    <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      <th className="px-6 py-4">Date</th>
+                      <th className="px-6 py-4">Plan</th>
+                      <th className="px-6 py-4">Amount</th>
+                      <th className="px-6 py-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {orders.map(order => (
+                      <tr key={order.id} className="group hover:bg-muted/30 transition-colors">
+                        <td className="px-6 py-5 text-sm font-bold text-muted-foreground">
+                          {order.createdAt?.toDate().toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-5">
+                          <p className="text-sm font-black text-foreground">{order.planName}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">{order.billingCycle}</p>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-1 text-sm font-black text-foreground">
+                            {order.currency === 'INR' ? '₹' : '$'}{order.amount}
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className="px-2 py-1 rounded-lg text-[8px] font-black uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                            {order.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-            <button className="p-4 bg-background text-muted-foreground hover:text-foreground rounded-2xl transition-all shadow-sm border border-border self-end md:self-center"><ChevronRight className="w-6 h-6" /></button>
+            ) : (
+              <div className="text-center py-12 bg-muted/30 rounded-[2rem] border border-dashed border-border">
+                <FileText className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                <p className="text-sm font-bold text-muted-foreground">No orders found yet</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

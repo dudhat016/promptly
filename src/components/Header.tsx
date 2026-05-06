@@ -7,6 +7,60 @@ import { useTheme } from '../hooks/useTheme';
 import { useConfig } from '../hooks/useConfig';
 import { auth, signInWithGoogle } from '../lib/firebase';
 
+import { useCurrency } from '../context/CurrencyContext';
+
+function CurrencyDropdown() {
+  const { currency, setCurrency, symbol } = useCurrency();
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-3 py-1.5 bg-muted border border-border rounded-xl hover:ring-2 hover:ring-primary transition-all text-xs font-black uppercase tracking-widest text-foreground"
+      >
+        <span className="text-primary">{symbol}</span>
+        {currency}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="absolute right-0 mt-2 w-32 bg-card border border-border rounded-2xl shadow-2xl p-2 z-50 overflow-hidden"
+            >
+              <button
+                onClick={() => {
+                  setCurrency('USD');
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${currency === 'USD' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              >
+                <span>USD</span>
+                <span className={currency === 'USD' ? 'text-primary-foreground/70' : 'text-muted-foreground/50'}>$</span>
+              </button>
+              <button
+                onClick={() => {
+                  setCurrency('INR');
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${currency === 'INR' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              >
+                <span>INR</span>
+                <span className={currency === 'INR' ? 'text-primary-foreground/70' : 'text-muted-foreground/50'}>₹</span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
@@ -52,6 +106,7 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-2 md:gap-4 relative">
+          <CurrencyDropdown />
           <ThemeToggle />
 
           {!loading && (

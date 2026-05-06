@@ -5,6 +5,7 @@ import { PricingPlan, AccessConfig, PermissionGroup } from '../../types';
 import { Save, ChevronRight, Zap } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { RefreshCw } from 'lucide-react';
 
 export default function AdminSubscriptionForm() {
   const { id } = useParams();
@@ -13,7 +14,15 @@ export default function AdminSubscriptionForm() {
   const [saving, setSaving] = useState(false);
   const [groups, setGroups] = useState<PermissionGroup[]>([]);
   const [plan, setPlan] = useState<Partial<PricingPlan>>({
-    name: '', description: '', monthlyPrice: 0, yearlyPrice: 0, features: [], isPopular: false, permissionGroupId: ''
+    name: '', 
+    description: '', 
+    monthlyPrice: 0, 
+    yearlyPrice: 0, 
+    inrMonthlyPrice: 0, 
+    inrYearlyPrice: 0, 
+    features: [], 
+    isPopular: false, 
+    permissionGroupId: ''
   });
 
   useEffect(() => {
@@ -38,6 +47,7 @@ export default function AdminSubscriptionForm() {
     }
     loadData();
   }, [id]);
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,23 +99,25 @@ export default function AdminSubscriptionForm() {
                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
               />
             </div>
-            <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Monthly Price ($)</label>
-              <input 
-                type="number" required min="0" step="0.01"
-                value={plan.monthlyPrice || 0}
-                onChange={e => setPlan({...plan, monthlyPrice: parseFloat(e.target.value)})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Annual Price ($)</label>
-              <input 
-                type="number" min="0" step="0.01"
-                value={plan.yearlyPrice || 0}
-                onChange={e => setPlan({...plan, yearlyPrice: parseFloat(e.target.value)})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
-              />
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Monthly Price ($)</label>
+                <input 
+                  type="number" required min="0" step="0.01"
+                  value={plan.monthlyPrice || 0}
+                  onChange={e => setPlan({...plan, monthlyPrice: parseFloat(e.target.value)})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Annual Price ($)</label>
+                <input 
+                  type="number" min="0" step="0.01"
+                  value={plan.yearlyPrice || 0}
+                  onChange={e => setPlan({...plan, yearlyPrice: parseFloat(e.target.value)})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
+                />
+              </div>
             </div>
           </div>
 

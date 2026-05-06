@@ -1,4 +1,4 @@
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc, increment } from 'firebase/firestore';
 import { Plus, Send, ShieldCheck, Sparkles, Terminal, Wand2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -11,7 +11,7 @@ import { db } from '../../lib/firebase';
 import { generateAIPrompt } from '../../services/geminiService';
 
 export default function DashboardBuilder() {
-  const { user, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const { permissions } = usePermissions();
   const navigate = useNavigate();
   const { config } = useConfig();
@@ -33,10 +33,37 @@ export default function DashboardBuilder() {
       toast.error("AI Builder is not available on your current plan. Please upgrade to PRO.");
       return;
     }
+
+    // Credit Check (Gap #3)
+    const isPro = profile?.subscriptionStatus !== 'free';
+    if (!isPro && (profile?.credits || 0) <= 0) {
+      toast.error("Out of credits! Upgrade to Pro for unlimited generation.");
+      return;
+    }
+
     setIsGenerating(true);
     setGeneratedPrompt('');
     try {
       const result = await generateAIPrompt(idea, targetModel);
+      
+      // Consume Credit (Gap #3)
+      if (!isPro && user) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          credits: increment(-1),
+          totalUsedCredits: increment(1)
+        });
+
+        // Log to Audit Ledger (Gap #2)
+        await addDoc(collection(db, 'credits_history'), {
+          userId: user.uid,
+          type: 'ai_builder',
+          promptIdea: idea.substring(0, 100),
+          targetModel: targetModel,
+          amount: 1,
+          createdAt: new Date()
+        });
+      }
+
       setGeneratedPrompt(result);
       toast.success("Prompt engineered successfully!");
     } catch (err) {

@@ -1,17 +1,22 @@
 import { addDoc, collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, CheckCircle2, CreditCard, Heart, Lock, ShieldCheck, Zap } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, CheckCircle2, CreditCard, Heart, Lock, ShieldCheck, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { trackEvent } from '../lib/analytics';
 import { db } from '../lib/firebase';
 import { AppConfig, PricingPlan } from '../types';
 import UnifiedAuth from '../components/auth/UnifiedAuth';
+import { PaymentService } from '../services/paymentService';
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { useCurrency } from '../context/CurrencyContext';
 
 export default function CheckoutPage() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, profile, loading: authLoading, syncMarketingTags } = useAuth();
+  const { currency, symbol, exchangeRate, isLoading: currencyLoading } = useCurrency();
+  const [searchParams] = useSearchParams();
 
   const planId = searchParams.get('plan');
   const cycle = searchParams.get('cycle') || 'monthly';
@@ -22,6 +27,8 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [affiliateName, setAffiliateName] = useState<string | null>(null);
   const [affiliatePhoto, setAffiliatePhoto] = useState<string | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState<any>(null);
+  
   // Form state
   const [name, setName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -34,7 +41,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (authLoading) return;
+    if (authLoading || currencyLoading) return;
 
     async function loadData() {
       try {
@@ -44,7 +51,16 @@ export default function CheckoutPage() {
         ]);
 
         if (pSnap.exists()) {
-          setPlan({ id: pSnap.id, ...pSnap.data() } as PricingPlan);
+          const planData = pSnap.data() as any;
+          setPlan({ id: pSnap.id, ...planData } as PricingPlan);
+
+          // Track start_checkout (Gap #1)
+          trackEvent('start_checkout', user?.uid, {
+            planId: planId,
+            planName: planData.name,
+            amount: planData.monthlyPrice,
+            currency: 'USD'
+          });
         } else {
           toast.error("Plan not found");
           navigate('/pricing');
@@ -53,6 +69,9 @@ export default function CheckoutPage() {
         if (cSnap.exists()) {
           setConfig(cSnap.data() as AppConfig);
         }
+
+        const pConfig = await PaymentService.getPaymentConfig();
+        setPaymentConfig(pConfig);
 
         // Fetch Affiliate Name if they came from a referral
         const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode');
@@ -83,8 +102,14 @@ export default function CheckoutPage() {
     loadData();
   }, [planId, navigate, profile, searchParams, authLoading]);
 
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreeToTerms) {
+      toast.error("Please agree to the Terms and Refund Policy to proceed.");
+      return;
+    }
     if (!plan) return;
 
     if (!user) {
@@ -92,18 +117,34 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!name || cardNumber.length < 15 || expiry.length < 5 || cvc.length < 3) {
-      toast.error("Please fill out all payment fields correctly.");
-      return;
-    }
-
     setProcessing(true);
 
     try {
+      // 1. If Cashfree is enabled, use it and STOP here (redirect handles the rest)
+      if (paymentConfig?.cashfree?.enabled && price > 0) {
+        await PaymentService.initiateCashfreePayment({
+          amount: price,
+          currency: currency,
+          customerId: user.uid,
+          customerEmail: user.email || '',
+          customerPhone: profile?.phoneNumber || '9999999999',
+          planId: planId,
+          billingCycle: cycle
+        });
+        return;
+      }
+
+      // 2. Manual/Free flow logic
+      if (price > 0 && !name) {
+        toast.error("Please enter your name for the purchase.");
+        setProcessing(false);
+        return;
+      }
+
       let finalUid = user?.uid;
 
-      // Simulate real payment gateway delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simulate delay for free plans or manual simulation
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       const isTrial = config?.activePromotion === 'trial' && !profile?.trialUsed && plan.monthlyPrice > 0;
 
@@ -119,99 +160,66 @@ export default function CheckoutPage() {
         ? new Date(Date.now() + (trialDays * 24 * 60 * 60 * 1000))
         : null;
 
-      // Upgrade user
-      if (finalUid) {
-        let credits = 50;
-        let limit = 50;
-        if (status === 'pro') {
-          credits = 500;
-          limit = 500;
-        } else if (status === 'enterprise') {
-          credits = 2500;
-          limit = 2500;
-        }
+      // Upgrade user in Firestore
+      const userRef = doc(db, 'users', finalUid);
+      await setDoc(userRef, {
+        subscriptionStatus: status,
+        activePlanId: plan.id,
+        credits: status === 'pro' ? 500 : (status === 'enterprise' ? 2500 : 50),
+        monthlyLimit: status === 'pro' ? 500 : (status === 'enterprise' ? 2500 : 50),
+        trialUsed: isTrial ? true : (profile?.trialUsed || false),
+        trialEndsAt: trialEndsAt,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
 
-        const userRef = doc(db, 'users', finalUid);
-        await setDoc(userRef, {
-          subscriptionStatus: status,
-          activePlanId: plan.id,
-          credits: credits,
-          monthlyLimit: limit,
-          trialUsed: isTrial ? true : (profile?.trialUsed || false),
-          trialEndsAt: trialEndsAt,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-
-        // Affiliate Payout Logic
-        // We only pay affiliates for actual purchases, not free trials
-        const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode');
-        if (refCode && !isTrial && price > 0) {
-          const commission = Math.floor(price * 0.25); // 25% commission
-          if (commission > 0) {
-            try {
-              const q = query(collection(db, 'users'), where('referralCode', '==', refCode));
-              const snap = await getDocs(q);
-              if (!snap.empty) {
-                const affiliateDoc = snap.docs[0];
-                await updateDoc(affiliateDoc.ref, {
-                  affiliateEarnings: increment(commission)
-                });
-
-                // Create a commission record for the ledger
-                await addDoc(collection(db, 'referrals'), {
-                  referrerId: affiliateDoc.id,
-                  buyerId: finalUid,
-                  buyerEmail: user?.email,
-                  amount: commission,
-                  purchaseAmount: price,
-                  planId: plan.id,
-                  status: 'completed',
-                  createdAt: serverTimestamp()
-                });
-              }
-            } catch (e) {
-              console.log("Simulated affiliate payout bypassed due to Firestore security rules.");
-            }
-          }
-        }
-
-        // Update Marketing Contact status
-        try {
-          const contactRef = collection(db, 'marketing_contacts');
-          const q = query(contactRef, where('email', '==', user?.email));
+      // Affiliate Payout Logic
+      const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode');
+      if (refCode && !isTrial && price > 0) {
+        const commission = Math.floor(price * 0.25);
+        if (commission > 0) {
+          const q = query(collection(db, 'users'), where('referralCode', '==', refCode));
           const snap = await getDocs(q);
-          
           if (!snap.empty) {
-            const contactDoc = snap.docs[0];
-            const existingTags = contactDoc.data().tags || [];
-            const newTags = Array.from(new Set([...existingTags, 'paying_customer', 'active_subscriber']));
-            
-            await updateDoc(contactDoc.ref, {
-              tags: newTags,
-              lastPurchaseAt: serverTimestamp(),
-              subscriptionStatus: status
+            const affiliateDoc = snap.docs[0];
+            await updateDoc(affiliateDoc.ref, { affiliateEarnings: increment(commission) });
+            await addDoc(collection(db, 'referrals'), {
+              referrerId: affiliateDoc.id,
+              buyerId: finalUid,
+              buyerEmail: user?.email,
+              amount: commission,
+              purchaseAmount: price,
+              planId: plan.id,
+              status: 'completed',
+              createdAt: serverTimestamp()
             });
-
-            // Sync the NEW tags to the marketing_tags collection
-            const freshTags = ['paying_customer', 'active_subscriber'].filter(t => !existingTags.includes(t));
-            if (freshTags.length > 0) {
-              await syncMarketingTags(freshTags);
-            }
           }
-        } catch (crmErr) {
-          // Ignore CRM errors to not block checkout
         }
       }
 
-      toast.success(
-        isTrial
-          ? `Trial Started! You have full access to ${plan.name} for ${trialDays} days.`
-          : `Payment successful! Your ${plan.name} subscription is now active.`
-      );
+      // CRM Sync
+      try {
+        const contactRef = collection(db, 'marketing_contacts');
+        const q = query(contactRef, where('email', '==', user?.email));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const contactDoc = snap.docs[0];
+          const existingTags = contactDoc.data().tags || [];
+          const newTags = Array.from(new Set([...existingTags, 'paying_customer', 'active_subscriber']));
+          await updateDoc(contactDoc.ref, {
+            tags: newTags,
+            lastPurchaseAt: serverTimestamp(),
+            subscriptionStatus: status
+          });
+          const freshTags = ['paying_customer', 'active_subscriber'].filter(t => !existingTags.includes(t));
+          if (freshTags.length > 0) await syncMarketingTags(freshTags);
+        }
+      } catch (crmErr) { /* non-blocking */ }
 
+      toast.success(isTrial ? `Trial Started!` : `Success! Your ${plan.name} plan is active.`);
       setTimeout(() => navigate('/dashboard'), 1500);
+
     } catch (err: any) {
-      toast.error(err.message || "Payment failed. Please try again.");
+      toast.error(err.message || "Checkout failed.");
       setProcessing(false);
     }
   };
@@ -248,7 +256,9 @@ export default function CheckoutPage() {
   }
 
   const isTrial = config?.activePromotion === 'trial' && !profile?.trialUsed && plan.monthlyPrice > 0;
-  const price = cycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+  const price = cycle === 'yearly' 
+    ? (currency === 'INR' ? Math.round(plan.yearlyPrice * exchangeRate) : plan.yearlyPrice) 
+    : (currency === 'INR' ? Math.round(plan.monthlyPrice * exchangeRate) : plan.monthlyPrice);
   const isFree = price === 0;
 
   return (
@@ -298,8 +308,7 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleCheckout} className="space-y-6">
-
+                <div className="space-y-8">
                   {isTrial && (
                     <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 mb-6">
                       <Zap className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -310,78 +319,175 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Cardholder Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Name on card"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
-                      autoComplete="name"
-                    />
+                  {/* Terms and Conditions Checkbox (Gap #2) */}
+                  <div className="bg-slate-50 border border-slate-100 p-6 rounded-[2rem] mb-8">
+                    <label className="flex items-start gap-4 cursor-pointer group">
+                      <div className="relative flex items-center mt-1">
+                        <input
+                          type="checkbox"
+                          checked={agreeToTerms}
+                          onChange={(e) => setAgreeToTerms(e.target.checked)}
+                          className="peer appearance-none w-6 h-6 border-2 border-slate-200 rounded-lg checked:bg-indigo-600 checked:border-indigo-600 transition-all cursor-pointer"
+                        />
+                        <CheckCircle2 className="absolute w-4 h-4 text-white opacity-0 peer-checked:opacity-100 left-1 transition-opacity pointer-events-none" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-500 leading-relaxed group-hover:text-slate-700 transition-colors">
+                        I have read and agree to the <Link to="/terms" className="text-indigo-600 font-bold hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-indigo-600 font-bold hover:underline">Refund Policy</Link>.
+                      </span>
+                    </label>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Card Information</label>
-                    <div className="relative">
-                      <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="0000 0000 0000 0000"
-                        value={cardNumber}
-                        onChange={handleCardNumber}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium font-mono"
-                        autoComplete="cc-number"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Expiry Date</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="MM/YY"
-                        value={expiry}
-                        onChange={handleExpiry}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium font-mono"
-                        autoComplete="cc-exp"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">CVC</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="123"
-                        value={cvc}
-                        onChange={handleCvc}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium font-mono"
-                        autoComplete="cc-csc"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={processing}
-                    className="w-full bg-indigo-600 text-white font-black text-lg py-4 rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-xl shadow-indigo-200 disabled:opacity-50 mt-8"
-                  >
-                    {processing ? (
-                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      isTrial ? 'Start Free Trial' : `Pay $${price}`
+                  {/* Dynamic Payment Gateways */}
+                  <div className="space-y-4">
+                    {paymentConfig?.cashfree?.enabled && (
+                      <button
+                        onClick={handleCheckout}
+                        disabled={processing}
+                        className="w-full bg-slate-900 text-white font-black py-4 rounded-xl hover:bg-black transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                      >
+                        {processing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-5 h-5 text-indigo-400" />}
+                        {isTrial ? 'Start Trial with Cashfree' : `Pay ${symbol}${price} with Cashfree`}
+                      </button>
                     )}
-                  </button>
+
+                    {paymentConfig?.paypal?.enabled && currency !== 'INR' && (
+                      <div className="relative z-0">
+                        <PayPalScriptProvider options={{ 
+                          "clientId": (import.meta as any).env.VITE_PAYPAL_CLIENT_ID || (process.env as any).PAYPAL_CLIENT_ID || "test",
+                          currency: "USD",
+                          intent: "capture"
+                        }}>
+                          <PayPalButtons
+                            style={{ layout: "vertical", shape: "rect", label: "pay", color: "blue" }}
+                            disabled={processing}
+                            onClick={(data, actions) => {
+                              if (!agreeToTerms) {
+                                toast.error("Please agree to the Terms and Refund Policy to proceed.");
+                                return actions.reject();
+                              }
+                              return actions.resolve();
+                            }}
+                            createOrder={(data, actions) => {
+                              return actions.order.create({
+                                intent: "CAPTURE",
+                                purchase_units: [
+                                  {
+                                    description: `${plan.name} Subscription`,
+                                    amount: {
+                                      currency_code: "USD",
+                                      value: price.toString(),
+                                    },
+                                  },
+                                ],
+                              });
+                            }}
+                            onApprove={async (data, actions) => {
+                              try {
+                                setProcessing(true);
+                                const response = await fetch('/api/payments/paypal/verify', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    orderID: data.orderID,
+                                    planId: planId,
+                                    billingCycle: cycle,
+                                    customerId: user?.uid,
+                                    customerEmail: user?.email
+                                  })
+                                });
+                                
+                                const result = await response.json();
+                                if (result.status === 'COMPLETED') {
+                                  toast.success("Payment Successful! Welcome to Pro.");
+                                  window.location.href = result.redirectUrl || '/checkout/success';
+                                } else {
+                                  throw new Error(result.message || "Payment verification failed");
+                                }
+                              } catch (err: any) {
+                                console.error("PayPal Error:", err);
+                                toast.error(err.message || "Payment failed");
+                              } finally {
+                                setProcessing(false);
+                              }
+                            }}
+                          />
+                        </PayPalScriptProvider>
+                      </div>
+                    )}
+
+                    {!paymentConfig?.cashfree?.enabled && !paymentConfig?.paypal?.enabled && (
+                      <form onSubmit={handleCheckout} className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Cardholder Name</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Name on card"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Card Information</label>
+                          <div className="relative">
+                            <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <input
+                              type="text"
+                              required
+                              placeholder="0000 0000 0000 0000"
+                              value={cardNumber}
+                              onChange={handleCardNumber}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Expiry Date</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="MM/YY"
+                              value={expiry}
+                              onChange={handleExpiry}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">CVC</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="123"
+                              value={cvc}
+                              onChange={handleCvc}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={processing}
+                          className="w-full bg-indigo-600 text-white font-black text-lg py-4 rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-xl shadow-indigo-200 disabled:opacity-50 mt-8"
+                        >
+                          {processing ? (
+                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            isTrial ? 'Start Free Trial' : `Pay $${price}`
+                          )}
+                        </button>
+                      </form>
+                    )}
+                  </div>
 
                   <p className="text-center text-xs text-slate-400 font-medium flex items-center justify-center gap-1 mt-4">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Payments are securely processed by Stripe
+                    <ShieldCheck className="w-3.5 h-3.5" /> Payments are securely processed by 256-bit encryption
                   </p>
-                </form>
+                </div>
               )}
             </div>
           </div>
@@ -437,14 +543,16 @@ export default function CheckoutPage() {
                   <p className="font-bold text-lg">{plan.name} Plan</p>
                   <p className="text-sm text-slate-400">Billed {cycle}</p>
                 </div>
-                <p className="font-black text-2xl">${price}</p>
+                <p className="font-black text-2xl">{symbol}{price}</p>
               </div>
 
               {cycle === 'yearly' && plan.monthlyPrice > 0 && (
                 <div className="flex items-center justify-between py-4 border-b border-slate-800 text-emerald-400">
                   <p className="font-bold text-sm">Yearly Discount applied</p>
                   <p className="font-bold text-sm">
-                    -${(plan.monthlyPrice * 12) - plan.yearlyPrice}
+                    -{symbol}{currency === 'INR' 
+                      ? Math.round(((plan.monthlyPrice * 12) - plan.yearlyPrice) * exchangeRate)
+                      : (plan.monthlyPrice * 12) - plan.yearlyPrice}
                   </p>
                 </div>
               )}
@@ -455,14 +563,14 @@ export default function CheckoutPage() {
                     <p className="font-bold text-sm text-amber-400">Free Trial ({config?.freeTrialDays} Days)</p>
                     <p className="text-xs text-slate-400 mt-1">Due today</p>
                   </div>
-                  <p className="font-black text-xl text-amber-400">$0.00</p>
+                  <p className="font-black text-xl text-amber-400">{symbol}0.00</p>
                 </div>
               )}
 
               <div className="flex items-center justify-between pt-6 mt-2">
                 <p className="font-black text-xl">Total due today</p>
                 <p className="font-black text-4xl text-indigo-400">
-                  ${isTrial ? '0.00' : price}
+                  {symbol}{isTrial ? '0.00' : price}
                 </p>
               </div>
 

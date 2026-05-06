@@ -3,14 +3,16 @@ import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Save, Mail, Shield, Zap, Globe, AlertCircle, Settings, 
-  Search, Lock, Info, Terminal, Layout, CreditCard, Image
+  Search, Lock, Info, Terminal, Layout, CreditCard, Image, Target
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import AdminEmailSettings from './AdminEmailSettings';
 import AdminAssetManager from './AdminAssetManager';
+import AdminPaymentSettings from './AdminPaymentSettings';
+import AdminMarketingSettings from './AdminMarketingSettings';
 
-type TabType = 'general' | 'email' | 'assets' | 'seo' | 'security' | 'advanced';
+type TabType = 'general' | 'email' | 'payment' | 'marketing' | 'assets' | 'seo' | 'security' | 'advanced';
 
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState<TabType>('general');
@@ -62,6 +64,8 @@ export default function AdminSettings() {
   const tabs = [
     { id: 'general', label: 'General', icon: Info },
     { id: 'email', label: 'Email & SMTP', icon: Mail },
+    { id: 'payment', label: 'Payments', icon: CreditCard },
+    { id: 'marketing', label: 'Marketing & Ads', icon: Target },
     { id: 'assets', label: 'Asset Vault', icon: Image },
     { id: 'seo', label: 'Default SEO', icon: Search },
     { id: 'security', label: 'Security', icon: Lock },
@@ -227,6 +231,28 @@ export default function AdminSettings() {
                 exit={{ opacity: 0, y: -10 }}
               >
                 <AdminEmailSettings />
+              </motion.div>
+            )}
+
+            {activeTab === 'payment' && (
+              <motion.div
+                key="payment"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AdminPaymentSettings />
+              </motion.div>
+            )}
+
+            {activeTab === 'marketing' && (
+              <motion.div
+                key="marketing"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AdminMarketingSettings />
               </motion.div>
             )}
 

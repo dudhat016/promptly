@@ -30,6 +30,12 @@ export interface UserProfile {
   lastCreditsRewardAt?: any;
   lastActiveAt?: any;
   affinityProfile?: Record<string, number>;
+  phoneNumber?: string;
+  payoutMethods?: {
+    upiId?: string;
+    paypalEmail?: string;
+    bankDetails?: string;
+  };
 }
 
 export interface Tag {
@@ -125,6 +131,8 @@ export interface PricingPlan {
   description: string;
   monthlyPrice: number;
   yearlyPrice: number;
+  inrMonthlyPrice: number;
+  inrYearlyPrice: number;
   features: string[];
   isPopular?: boolean;
   permissionGroupId: string; // Linked to PermissionGroup.id

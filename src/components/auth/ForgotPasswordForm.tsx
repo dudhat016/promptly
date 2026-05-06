@@ -15,7 +15,15 @@ export default function ForgotPasswordForm() {
     setIsLoading(true);
     setError('');
     try {
-      await sendPasswordReset(email);
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to send reset link');
+      
       setIsSent(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send reset link');

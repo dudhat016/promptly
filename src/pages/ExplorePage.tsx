@@ -10,6 +10,7 @@ import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
 import { toTitleCase } from '../lib/utils';
 import { firestoreService } from '../services/firestoreService';
 import { Prompt } from '../types';
+import NeuralAdBanner from '../components/NeuralAdBanner';
 
 export default function ExplorePage() {
   const { isPro, isAdmin, profile } = useAuth();
@@ -211,6 +212,7 @@ export default function ExplorePage() {
             </div>
           ) : (
             <>
+              <NeuralAdBanner className="mb-6" slot="explore-top-ad" />
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-foreground">
                   {filteredPrompts.length} {filteredPrompts.length === 1 ? 'Prompt' : 'Prompts'}

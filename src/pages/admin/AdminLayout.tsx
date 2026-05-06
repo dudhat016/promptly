@@ -127,6 +127,7 @@ export default function AdminLayout() {
           <SidebarLink to="/admin/users" icon={Users}>Users</SidebarLink>
           <SidebarLink to="/admin/models" icon={Cpu}>AI Models</SidebarLink>
           <SidebarLink to="/admin/referrals" icon={CreditCard}>Affiliates</SidebarLink>
+          <SidebarLink to="/admin/withdrawals" icon={Send}>Withdrawals</SidebarLink>
           <SidebarLink to="/admin/revenue" icon={CreditCard}>Financials</SidebarLink>
           <SidebarLink to="/admin/emails" icon={Mail}>Email Logs</SidebarLink>
           <SidebarLink to="/admin/templates" icon={Edit2}>Templates</SidebarLink>
