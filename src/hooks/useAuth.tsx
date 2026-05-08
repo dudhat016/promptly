@@ -71,6 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         uid: 'guest-123',
         email: 'guest@testing.com',
         displayName: 'Guest Tester',
+        photoURL: null,
         role: 'admin',
         subscriptionStatus: 'pro',
         createdAt: new Date().toISOString()
