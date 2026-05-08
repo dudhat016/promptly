@@ -8,6 +8,11 @@ import multiparty from "multiparty";
 import nodemailer from "nodemailer";
 import path from "path";
 import Stripe from "stripe";
+import paymentsRouter from "./routes/payments";
+import authRouter from "./routes/auth";
+import marketingRouter from "./routes/marketing";
+import supportRouter from "./routes/support";
+import locationRouter from "./routes/location";
 
 dotenv.config();
 
@@ -65,6 +70,13 @@ const getStripe = () => {
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
+
+// --- Modular Route Modules ---
+app.use("/api/location", locationRouter);
+app.use("/api/payments", paymentsRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/support", supportRouter);
+app.use("/", marketingRouter);
 
 // --- API Routes ---
 

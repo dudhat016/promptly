@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { 
-  Save, Mail, Shield, Zap, Globe, AlertCircle, Settings, 
+import {
+  Save, Mail, Shield, Zap, Globe, AlertCircle, Settings,
   Search, Lock, Info, Terminal, Layout, CreditCard, Image, Target
 } from 'lucide-react';
+import { AdminPageHeader } from '../../components/admin';
+import { logAuditEvent } from '../../lib/auditLog';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import AdminEmailSettings from './AdminEmailSettings';
@@ -52,6 +54,7 @@ export default function AdminSettings() {
         ...generalConfig,
         updatedAt: serverTimestamp()
       });
+      logAuditEvent({ action: 'settings.updated', entityType: 'config', entityId: 'global' });
       toast.success('General settings updated!');
     } catch (err) {
       console.error(err);
@@ -74,50 +77,41 @@ export default function AdminSettings() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
-      <div className="text-slate-500 font-black uppercase tracking-[0.3em] animate-pulse">Loading Platform Engine...</div>
+      <div className="text-muted-foreground font-bold uppercase tracking-[0.3em] animate-pulse">Loading Platform Engine...</div>
     </div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-        <div>
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-4">
-            <div className="bg-indigo-600 p-2.5 rounded-2xl shadow-xl shadow-indigo-200">
-              <Settings className="w-8 h-8 text-white" />
-            </div>
-            Global Settings
-          </h2>
-          <p className="text-slate-500 mt-2 font-medium text-lg">Configure your platform's core engine and delivery systems.</p>
-        </div>
-        
-        {activeTab === 'general' && (
-          <button 
-            onClick={handleSaveGeneral}
-            disabled={saving}
-            className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <Save className="w-5 h-5" />
-            {saving ? 'Saving Changes...' : 'Save All Changes'}
-          </button>
-        )}
-      </div>
+    <div>
+      <AdminPageHeader
+        label="System"
+        labelIcon={Settings}
+        title="Global Settings"
+        subtitle="Configure your platform's core engine and delivery systems."
+        actions={
+          activeTab === 'general' ? (
+            <button onClick={handleSaveGeneral} disabled={saving} className="btn-primary">
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-col lg:flex-row gap-10">
         {/* Tab Navigation */}
         <div className="lg:w-64 shrink-0">
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-4 shadow-sm space-y-2 sticky top-10">
+          <div className="bg-card rounded-lg border border-border p-4 shadow-sm space-y-2 sticky top-10">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all ${
-                    activeTab === tab.id 
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
-                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -139,76 +133,76 @@ export default function AdminSettings() {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-8"
               >
-                <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-sm">
-                  <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
-                    <Layout className="w-6 h-6 text-indigo-600" />
+                <div className="card p-6">
+                  <h3 className="section-title mb-5">
+                    <Layout className="w-4 h-4 text-primary" />
                     Identity & Branding
                   </h3>
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-5">
                       <div>
-                        <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Platform Name</label>
+                        <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Platform Name</label>
                         <input 
                           type="text"
                           value={generalConfig.siteName}
                           onChange={e => setGeneralConfig({ ...generalConfig, siteName: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold"
+                          className="select"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Support Email</label>
+                        <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Support Email</label>
                         <input 
                           type="email"
                           value={generalConfig.supportEmail}
                           onChange={e => setGeneralConfig({ ...generalConfig, supportEmail: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold"
+                          className="select"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Platform Tagline</label>
+                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Platform Tagline</label>
                       <textarea 
                         value={generalConfig.siteTagline}
                         onChange={e => setGeneralConfig({ ...generalConfig, siteTagline: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold h-[148px] resize-none"
+                        className="w-full bg-muted/50 border border-border rounded-md px-3 py-2.5 focus:bg-card focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all text-sm h-[148px] resize-none"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-sm">
-                  <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
-                    <CreditCard className="w-6 h-6 text-indigo-600" />
+                <div className="card p-6">
+                  <h3 className="section-title mb-5">
+                    <CreditCard className="w-4 h-4 text-primary" />
                     Commerce & Billing
                   </h3>
-                  <div className="grid md:grid-cols-3 gap-8">
+                  <div className="grid md:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Default Currency</label>
+                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Default Currency</label>
                       <select 
                         value={generalConfig.currency}
                         onChange={e => setGeneralConfig({ ...generalConfig, currency: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold"
+                        className="select"
                       >
                         <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (€)</option>
-                        <option value="GBP">GBP (£)</option>
-                        <option value="INR">INR (₹)</option>
+                        <option value="EUR">EUR (â‚¬)</option>
+                        <option value="GBP">GBP (Â£)</option>
+                        <option value="INR">INR (â‚¹)</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Base Tax Rate (%)</label>
+                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Base Tax Rate (%)</label>
                       <input 
                         type="number"
                         value={generalConfig.taxRate}
                         onChange={e => setGeneralConfig({ ...generalConfig, taxRate: Number(e.target.value) })}
-                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold"
+                        className="select"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-400 mb-2 ml-1">Maintenance Mode</label>
+                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Maintenance Mode</label>
                       <button
                         onClick={() => setGeneralConfig({ ...generalConfig, maintenanceMode: !generalConfig.maintenanceMode })}
-                        className={`w-full p-4 rounded-2xl border transition-all font-bold flex items-center justify-center gap-2 ${
+                        className={`w-full p-4 rounded-md border transition-all font-bold flex items-center justify-center gap-2 ${
                           generalConfig.maintenanceMode 
                             ? 'bg-amber-50 border-amber-200 text-amber-700' 
                             : 'bg-emerald-50 border-emerald-200 text-emerald-700'
@@ -273,11 +267,11 @@ export default function AdminSettings() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-sm text-center py-24"
+                className="bg-card rounded-lg border border-border p-6 shadow-sm text-center py-24"
               >
-                <Search className="w-16 h-16 text-slate-200 mx-auto mb-6" />
-                <h3 className="text-xl font-black text-slate-900 mb-2">SEO Module Integration</h3>
-                <p className="text-slate-500 max-w-sm mx-auto">Default metadata and OG image generation settings are being migrated to this central hub.</p>
+                <Search className="w-16 h-16 text-muted-foreground/20 mx-auto mb-6" />
+                <h3 className="text-base font-semibold text-foreground mb-2">SEO Module Integration</h3>
+                <p className="text-muted-foreground max-w-sm mx-auto">Default metadata and OG image generation settings are being migrated to this central hub.</p>
               </motion.div>
             )}
 
@@ -287,11 +281,11 @@ export default function AdminSettings() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-sm text-center py-24"
+                className="bg-card rounded-lg border border-border p-6 shadow-sm text-center py-24"
               >
-                <Lock className="w-16 h-16 text-slate-200 mx-auto mb-6" />
-                <h3 className="text-xl font-black text-slate-900 mb-2">Security & Access</h3>
-                <p className="text-slate-500 max-w-sm mx-auto">Configure IP whitelisting, session timeouts, and two-factor authentication requirements.</p>
+                <Lock className="w-16 h-16 text-muted-foreground/20 mx-auto mb-6" />
+                <h3 className="text-base font-semibold text-foreground mb-2">Security & Access</h3>
+                <p className="text-muted-foreground max-w-sm mx-auto">Configure IP whitelisting, session timeouts, and two-factor authentication requirements.</p>
               </motion.div>
             )}
 
@@ -301,30 +295,30 @@ export default function AdminSettings() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-sm"
+                className="card p-6"
               >
-                <div className="flex items-center gap-4 p-6 bg-rose-50 border border-rose-100 rounded-3xl mb-8">
+                <div className="flex items-center gap-4 p-6 bg-rose-500/10 border border-rose-500/20 rounded-lg mb-8">
                   <AlertCircle className="w-10 h-10 text-rose-600 shrink-0" />
                   <div>
-                    <h4 className="font-black text-rose-900">Danger Zone</h4>
-                    <p className="text-rose-700 text-sm font-medium">These settings can break your platform if configured incorrectly. Proceed with caution.</p>
+                    <h4 className="font-bold text-rose-600">Danger Zone</h4>
+                    <p className="text-rose-500 text-sm font-medium">These settings can break your platform if configured incorrectly. Proceed with caution.</p>
                   </div>
                 </div>
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-md border border-border">
                     <div>
-                      <p className="font-black text-slate-900">Clear System Cache</p>
-                      <p className="text-xs text-slate-500 font-medium">Force clear all CDN and local interest profiles.</p>
+                      <p className="font-bold text-foreground">Clear System Cache</p>
+                      <p className="text-xs text-muted-foreground font-medium">Force clear all CDN and local interest profiles.</p>
                     </div>
-                    <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black hover:bg-slate-100 transition-all">Execute</button>
+                    <button className="px-4 py-2 bg-card border border-border rounded-md text-xs font-bold hover:bg-muted transition-all">Execute</button>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 opacity-50">
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-md border border-border opacity-50">
                     <div>
-                      <p className="font-black text-slate-900">Developer Mode</p>
-                      <p className="text-xs text-slate-500 font-medium">Enable verbose logging and React DevTools in production.</p>
+                      <p className="font-bold text-foreground">Developer Mode</p>
+                      <p className="text-xs text-muted-foreground font-medium">Enable verbose logging and React DevTools in production.</p>
                     </div>
-                    <div className="w-12 h-6 bg-slate-300 rounded-full relative cursor-not-allowed">
-                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full" />
+                    <div className="w-12 h-6 bg-muted-foreground/30 rounded-full relative cursor-not-allowed">
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-card rounded-full" />
                     </div>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import { collection, getDocs, orderBy, query, where, updateDoc, doc } from 'firebase/firestore';
+﻿import { collection, getDocs, orderBy, query, where, updateDoc, doc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -36,48 +36,48 @@ export default function BillingSettings() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-      <div className="bg-card rounded-[3rem] p-8 md:p-12 border border-border shadow-sm space-y-10 relative overflow-hidden">
+      <div className="bg-card rounded-lg p-6 border border-border shadow-sm space-y-10 relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-2xl font-black flex items-center gap-3 text-foreground">
-              <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center">
+            <h2 className="text-2xl font-bold flex items-center gap-3 text-foreground">
+              <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-md flex items-center justify-center">
                 <CreditCard className="w-5 h-5" />
               </div>
               Plan & Billing
             </h2>
             <div className="flex items-center gap-2">
-              <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] ${isPro ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-muted text-muted-foreground'}`}>
+              <span className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-[0.2em] ${isPro ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-muted text-muted-foreground'}`}>
                 {profile?.subscriptionStatus?.toUpperCase() || 'FREE'} STATUS
               </span>
             </div>
         </div>
 
         {!isPro ? (
-          <div className="bg-foreground text-background rounded-[3rem] p-10 relative overflow-hidden group shadow-2xl">
+          <div className="bg-foreground text-background rounded-lg p-6 relative overflow-hidden group shadow-2xl">
               <Zap className="w-48 h-48 absolute -right-12 -bottom-12 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000" />
               <div className="relative z-10 max-w-md">
-                <div className="bg-background/10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 backdrop-blur-md border border-background/20">
+                <div className="bg-background/10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-6 backdrop-blur-md border border-background/20">
                   <Sparkles className="w-3 h-3 text-amber-400" />
                   Most Popular Upgrade
                 </div>
-                <h3 className="text-4xl font-black mb-4 tracking-tighter">Go Pro. Be Expert.</h3>
+                <h3 className="text-4xl font-bold mb-4 tracking-tighter">Go Pro. Be Expert.</h3>
                 <p className="opacity-60 text-sm mb-10 leading-relaxed font-medium">Unlock priority AI model access, unlimited library storage, and advanced prompt engineering tools.</p>
-                <Link to="/pricing" className="bg-primary text-primary-foreground font-black px-10 py-5 rounded-2xl hover:opacity-90 transition-all shadow-2xl shadow-primary/20 inline-block">
+                <Link to="/pricing" className="btn-primary inline-block">
                   View Pricing Plans
                 </Link>
               </div>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-primary to-primary-foreground/10 rounded-[3rem] p-10 text-primary-foreground relative overflow-hidden shadow-2xl shadow-primary/20">
+          <div className="bg-gradient-to-br from-primary to-primary-foreground/10 rounded-lg p-6 text-primary-foreground relative overflow-hidden shadow-md shadow-primary/20">
               <Shield className="w-48 h-48 absolute -right-12 -bottom-12 opacity-5 -rotate-12" />
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4">
-                  <Check className="w-6 h-6 p-1 bg-white text-primary rounded-full" />
-                  <h3 className="text-3xl font-black text-white">PRO Member</h3>
+                  <Check className="w-6 h-6 p-1 bg-card text-primary rounded-full" />
+                  <h3 className="text-3xl font-bold text-white">PRO Member</h3>
                 </div>
                 <p className="text-white/60 text-sm mb-10 leading-relaxed max-w-md font-medium">Your subscription is active. You have full access to all professional prompt engineering tools.</p>
                 
                 <div className="flex flex-wrap gap-4">
-                  <Link to="/pricing" className="bg-white/10 text-white font-black px-8 py-4 rounded-2xl hover:bg-white/20 transition-all flex items-center gap-3 border border-white/5 backdrop-blur-sm">
+                  <Link to="/pricing" className="bg-card/10 text-white font-bold px-8 py-4 rounded-md hover:bg-card/20 transition-all flex items-center gap-3 border border-white/5 backdrop-blur-sm">
                     Upgrade/Downgrade
                   </Link>
                   <button 
@@ -97,7 +97,7 @@ export default function BillingSettings() {
                         }
                       }
                     }}
-                    className="text-white/40 hover:text-white/80 transition-colors text-xs font-black uppercase tracking-widest px-4"
+                    className="text-white/40 hover:text-white/80 transition-colors text-xs font-bold uppercase tracking-widest px-4"
                   >
                     Cancel Subscription
                   </button>
@@ -108,20 +108,20 @@ export default function BillingSettings() {
 
         <div className="pt-8 border-t border-border">
           <div className="flex items-center justify-between mb-8">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Order History</h4>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Order History</h4>
           </div>
           
           <div className="space-y-4">
             {loading ? (
               <div className="p-12 text-center">
                 <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Syncing Records...</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Syncing Records...</p>
               </div>
             ) : orders.length > 0 ? (
-              <div className="overflow-hidden rounded-[2rem] border border-border">
+              <div className="overflow-hidden rounded-md border border-border">
                 <table className="w-full text-left">
                   <thead className="bg-muted/50">
-                    <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       <th className="px-6 py-4">Date</th>
                       <th className="px-6 py-4">Plan</th>
                       <th className="px-6 py-4">Amount</th>
@@ -135,16 +135,16 @@ export default function BillingSettings() {
                           {order.createdAt?.toDate().toLocaleDateString()}
                         </td>
                         <td className="px-6 py-5">
-                          <p className="text-sm font-black text-foreground">{order.planName}</p>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase">{order.billingCycle}</p>
+                          <p className="text-sm font-bold text-foreground">{order.planName}</p>
+                          <p className="text-xs font-bold text-muted-foreground uppercase">{order.billingCycle}</p>
                         </td>
                         <td className="px-6 py-5">
-                          <div className="flex items-center gap-1 text-sm font-black text-foreground">
-                            {order.currency === 'INR' ? '₹' : '$'}{order.amount}
+                          <div className="flex items-center gap-1 text-sm font-bold text-foreground">
+                            {order.currency === 'INR' ? 'â‚¹' : '$'}{order.amount}
                           </div>
                         </td>
                         <td className="px-6 py-5">
-                          <span className="px-2 py-1 rounded-lg text-[8px] font-black uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                          <span className="px-2 py-1 rounded-lg text-[8px] font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                             {order.status}
                           </span>
                         </td>
@@ -154,7 +154,7 @@ export default function BillingSettings() {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-12 bg-muted/30 rounded-[2rem] border border-dashed border-border">
+              <div className="text-center py-12 bg-muted/30 rounded-md border border-dashed border-border">
                 <FileText className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
                 <p className="text-sm font-bold text-muted-foreground">No orders found yet</p>
               </div>

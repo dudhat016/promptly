@@ -29,6 +29,7 @@ export interface UserProfile {
   unlockedPrompts?: string[];
   lastCreditsRewardAt?: any;
   lastActiveAt?: any;
+  suspended?: boolean;
   affinityProfile?: Record<string, number>;
   phoneNumber?: string;
   payoutMethods?: {
@@ -46,6 +47,15 @@ export interface Tag {
   createdAt: any;
 }
 
+export interface ActivityItem {
+  id: string;
+  contactId: string;
+  type: 'email_sent' | 'email_opened' | 'link_clicked' | 'tag_added' | 'tag_removed' | 'form_submitted' | 'subscription_changed' | 'login';
+  description: string;
+  metadata?: Record<string, any>;
+  timestamp: any;
+}
+
 export interface Contact {
   id: string;
   email: string;
@@ -55,6 +65,13 @@ export interface Contact {
   lastActivity: any;
   createdAt: any;
   customFields: Record<string, string>;
+  leadScore?: number;
+  lastEngagementAt?: any;
+  prediction?: {
+    churnRisk: 'low' | 'medium' | 'high';
+    probability: number;
+    updatedAt: any;
+  };
 }
 
 export interface Segment {
@@ -203,6 +220,9 @@ export interface Prompt {
   copiesCount?: number;
   createdAt: string;
   updatedAt: string;
+  sampleOutput?: string;
+  usageGuide?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
 }
 
 export interface Category {

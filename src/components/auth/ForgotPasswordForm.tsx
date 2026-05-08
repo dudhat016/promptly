@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Mail, ArrowLeft, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AuthInput from './AuthInput';
@@ -39,14 +39,14 @@ export default function ForgotPasswordForm() {
           <Send className="w-10 h-10" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-black text-slate-900">Check your email</h3>
-          <p className="text-sm font-bold text-slate-500 leading-relaxed">
-            We've sent a password reset link to <span className="text-indigo-600 underline decoration-indigo-200">{email}</span>
+          <h3 className="text-xl font-bold text-foreground">Check your email</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            We've sent a password reset link to <span className="text-primary underline decoration-indigo-200">{email}</span>
           </p>
         </div>
         <Link 
           to="/login" 
-          className="inline-flex items-center gap-2 text-indigo-600 font-black text-sm hover:gap-3 transition-all"
+          className="inline-flex items-center gap-2 text-primary font-bold text-sm hover:gap-3 transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Sign In
@@ -69,15 +69,15 @@ export default function ForgotPasswordForm() {
         />
 
         {error && (
-          <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
-            <p className="text-xs font-bold text-red-600">{error}</p>
+          <div className="bg-red-50 border border-red-100 p-4 rounded-md">
+            <p className="text-xs font-medium text-destructive">{error}</p>
           </div>
         )}
 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm hover:bg-black transition-all shadow-xl shadow-slate-200 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full bg-foreground text-white py-3 rounded-md font-semibold text-sm hover:bg-foreground/90 transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -93,7 +93,7 @@ export default function ForgotPasswordForm() {
       <p className="text-center">
         <Link 
           to="/login" 
-          className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-all"
+          className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground hover:text-primary transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
           Cancel and return

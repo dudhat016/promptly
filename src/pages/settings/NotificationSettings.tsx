@@ -1,21 +1,21 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Bell, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function NotificationSettings() {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-        <div className="bg-card rounded-[3rem] p-8 md:p-12 border border-border shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-            <h2 className="text-2xl font-black flex items-center gap-3 text-foreground">
-              <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+        <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <h2 className="text-2xl font-bold flex items-center gap-3 text-foreground">
+              <div className="w-10 h-10 bg-primary/10 text-primary rounded-md flex items-center justify-center">
                 <Bell className="w-5 h-5" />
               </div>
               Email Preferences
             </h2>
-            <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-2xl border border-border">
+            <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-md border border-border">
               <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Smart Filtering Active</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Smart Filtering Active</span>
             </div>
           </div>
           
@@ -39,11 +39,11 @@ export default function NotificationSettings() {
             />
           </div>
 
-          <div className="mt-16 p-8 bg-muted rounded-[2rem] border border-border flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="mt-16 p-8 bg-muted rounded-md border border-border flex flex-col md:flex-row items-center justify-between gap-6">
             <p className="text-sm font-medium text-muted-foreground text-center md:text-left max-w-sm">
               We respect your inbox. You can unsubscribe from non-essential emails at any time.
             </p>
-            <button className="text-[10px] font-black uppercase tracking-[0.2em] text-primary hover:bg-primary/10 px-6 py-3 rounded-xl border border-primary/20 transition-all">
+            <button className="text-xs font-bold uppercase tracking-[0.2em] text-primary hover:bg-primary/10 px-6 py-3 rounded-md border border-primary/20 transition-all">
               Mute All Notifications
             </button>
           </div>
@@ -57,7 +57,7 @@ function NotificationToggle({ title, desc, defaultEnabled = false }: any) {
   return (
     <div className="flex items-center justify-between group gap-8">
       <div className="max-w-md">
-        <p className="font-black text-foreground mb-1 text-lg leading-tight">{title}</p>
+        <p className="font-bold text-foreground mb-1 text-lg leading-tight">{title}</p>
         <p className="text-sm font-medium text-muted-foreground leading-relaxed">{desc}</p>
       </div>
       <button 
@@ -67,7 +67,7 @@ function NotificationToggle({ title, desc, defaultEnabled = false }: any) {
         <motion.div 
           animate={{ x: enabled ? 26 : 2 }}
           transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md" 
+          className="absolute top-1 w-6 h-6 bg-card rounded-full shadow-md" 
         />
       </button>
     </div>

@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'motion/react';
+﻿import { motion, AnimatePresence } from 'motion/react';
 import { X, Twitter, Linkedin, Facebook, Link as LinkIcon, Check, Mail, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -39,7 +39,7 @@ export default function ShareModal({ isOpen, onClose, title, url, referralCode }
     {
       name: 'Email',
       icon: Mail,
-      color: 'bg-slate-600',
+      color: 'bg-muted-foreground/70',
       link: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent("Check this out: " + finalUrl)}`
     }
   ];
@@ -60,28 +60,28 @@ export default function ShareModal({ isOpen, onClose, title, url, referralCode }
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-foreground/60 backdrop-blur-sm"
           />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative z-10"
+            className="bg-card w-full max-w-md rounded-lg p-8 shadow-2xl relative z-10"
           >
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-                <Share2 className="w-6 h-6 text-indigo-600" />
+              <h3 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <Share2 className="w-6 h-6 text-primary" />
                 Share
               </h3>
-              <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={onClose} className="p-2 text-muted-foreground hover:text-muted-foreground transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <p className="text-slate-500 font-medium mb-8">
+            <p className="text-muted-foreground font-medium mb-8">
               Share this {title.toLowerCase().includes('post') ? 'article' : 'prompt'} with your community.
-              {referralCode && <span className="block mt-2 text-indigo-600 font-bold text-xs uppercase tracking-widest">Your referral link is active! 🚀</span>}
+              {referralCode && <span className="block mt-2 text-primary font-bold text-xs uppercase tracking-widest">Your referral link is active! ðŸš€</span>}
             </p>
 
             <div className="grid grid-cols-4 gap-4 mb-10">
@@ -93,21 +93,21 @@ export default function ShareModal({ isOpen, onClose, title, url, referralCode }
                   rel="noopener noreferrer"
                   className="flex flex-col items-center gap-2 group"
                 >
-                  <div className={`w-14 h-14 ${platform.color} text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                  <div className={`w-14 h-14 ${platform.color} text-white rounded-md flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
                     <platform.icon className="w-6 h-6" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{platform.name}</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{platform.name}</span>
                 </a>
               ))}
             </div>
 
-            <div className="bg-slate-50 p-2 rounded-2xl border border-slate-100 flex items-center gap-2">
-              <div className="flex-grow px-3 text-xs font-mono text-slate-400 truncate">
+            <div className="bg-muted/50 p-2 rounded-md border border-border flex items-center gap-2">
+              <div className="flex-grow px-3 text-xs font-mono text-muted-foreground truncate">
                 {finalUrl}
               </div>
               <button
                 onClick={handleCopy}
-                className={`px-4 py-3 rounded-xl font-bold text-xs transition-all flex items-center gap-2 whitespace-nowrap ${copied ? 'bg-green-500 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                className={`px-4 py-3 rounded-md font-bold text-xs transition-all flex items-center gap-2 whitespace-nowrap ${copied ? 'bg-green-500 text-white' : 'bg-foreground text-background hover:bg-foreground/80'}`}
               >
                 {copied ? <Check className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
                 {copied ? 'Copied' : 'Copy Link'}

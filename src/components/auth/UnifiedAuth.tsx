@@ -1,4 +1,4 @@
-import { Lock, LogIn, Mail, UserPlus } from 'lucide-react';
+﻿import { Lock, LogIn, Mail, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -54,13 +54,13 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="font-black text-slate-900 uppercase tracking-widest text-[10px]">
+        <h3 className="font-medium text-foreground uppercase tracking-widest text-xs">
           {isLogin ? 'Login to your account' : 'Join the elite'}
         </h3>
         <button
           type="button"
           onClick={() => setIsLogin(!isLogin)}
-          className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700 underline underline-offset-4"
+          className="text-xs font-medium text-primary uppercase tracking-widest hover:text-primary underline underline-offset-4"
         >
           {isLogin ? 'New user? Sign up' : 'Already have an account? Log in'}
         </button>
@@ -82,7 +82,7 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
             label={isLogin ? "Password" : "Choose Password"}
             icon={Lock}
             type="password"
-            placeholder="••••••••"
+            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -90,7 +90,7 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
           />
           {isLogin && (
             <div className="text-right">
-              <Link to="/forgot-password" title="Reset your password" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors">
+              <Link to="/forgot-password" title="Reset your password" className="text-xs font-medium uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
                 Forgot Password?
               </Link>
             </div>
@@ -100,7 +100,7 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
         <button
           type="submit"
           disabled={loading}
-          className={`w-full text-white py-4 rounded-2xl font-black text-sm transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-2 ${isLogin ? 'bg-slate-900 hover:bg-black shadow-slate-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'}`}
+          className={`w-full text-white py-3 rounded-md font-semibold text-sm transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2 ${isLogin ? 'bg-foreground hover:bg-foreground/90 shadow-black/5' : 'bg-primary hover:bg-primary/90 shadow-primary/10'}`}
         >
           {loading ? (
             <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -114,16 +114,16 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
       </form>
 
       <div className="relative flex items-center py-2">
-        <div className="flex-grow border-t border-slate-100"></div>
-        <span className="flex-shrink mx-4 text-[10px] font-black uppercase tracking-widest text-slate-300">or use email</span>
-        <div className="flex-grow border-t border-slate-100"></div>
+        <div className="flex-grow border-t border-border"></div>
+        <span className="flex-shrink mx-4 text-xs font-medium uppercase tracking-widest text-muted-foreground/60">or use email</span>
+        <div className="flex-grow border-t border-border"></div>
       </div>
 
       <button
         type="button"
         onClick={handleGoogleAuth}
         disabled={loading}
-        className="w-full bg-white border-2 border-slate-100 py-3 rounded-2xl font-black text-sm text-slate-700 flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm active:scale-[0.98] disabled:opacity-50"
+        className="w-full bg-card border border-border py-2.5 rounded-md font-semibold text-sm text-foreground flex items-center justify-center gap-3 hover:bg-muted/50 transition-all shadow-sm active:scale-[0.98] disabled:opacity-50"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -135,12 +135,12 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
       </button>
 
       {!hideFooter && (
-        <p className="text-center text-sm font-bold text-slate-500">
+        <p className="text-center text-sm font-medium text-muted-foreground">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <button
             type="button"
             onClick={() => setIsLogin(!isLogin)}
-            className="text-indigo-600 hover:underline"
+            className="text-primary hover:underline"
           >
             {isLogin ? 'Create one for free' : 'Sign in here'}
           </button>

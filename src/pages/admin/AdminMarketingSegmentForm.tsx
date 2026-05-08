@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Contact, Segment } from '../../types';
-import { Filter, ChevronRight } from 'lucide-react';
+import { Filter } from 'lucide-react';
+import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import SegmentBuilder from '../../components/marketing/SegmentBuilder';
 import { toast } from 'react-hot-toast';
@@ -57,18 +58,16 @@ export default function AdminMarketingSegmentForm() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Breadcrumbs */}
-      <div className="flex items-center gap-2 text-sm text-slate-500 mb-8 font-medium">
-        <Link to="/admin" className="hover:text-indigo-600 flex items-center gap-2"><Filter className="w-4 h-4" /> Admin</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link to="/admin/marketing?tab=segment" className="hover:text-indigo-600">Marketing & CRM</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-slate-900">{id === 'new' ? 'Create Segment' : 'Edit Segment'}</span>
-      </div>
+    <div className="max-w-4xl">
+      <AdminPageHeader
+        label="Marketing CRM"
+        labelIcon={Filter}
+        title={id === 'new' ? 'Create Segment' : 'Edit Segment'}
+        subtitle="Build contact segments using rules and filters."
+      />
 
       {loading ? (
-        <div className="p-12 text-center text-slate-500 font-bold">Loading Builder...</div>
+        <div className="p-12 text-center text-muted-foreground font-bold">Loading Builder...</div>
       ) : (
         <SegmentBuilder 
           segment={segment} 

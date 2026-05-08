@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+﻿import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-hot-toast';
@@ -53,14 +53,14 @@ export default function LoginForm() {
             label="Password"
             icon={Lock}
             type="password"
-            placeholder="••••••••"
+            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
             {...register('password')}
             error={errors.password?.message}
           />
           <div className="text-right">
-            <Link 
-              to="/forgot-password" 
-              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
+            <Link
+              to="/forgot-password"
+              className="text-xs font-medium uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
             >
               Forgot Password?
             </Link>
@@ -70,7 +70,7 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm hover:bg-black transition-all shadow-xl shadow-slate-200 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full bg-foreground text-background py-3 rounded-md font-semibold text-sm hover:bg-foreground/90 transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -84,23 +84,23 @@ export default function LoginForm() {
       </form>
 
       <div className="relative flex items-center py-2">
-        <div className="flex-grow border-t border-slate-100"></div>
-        <span className="flex-shrink mx-4 text-[10px] font-black uppercase tracking-widest text-slate-300">or continue with</span>
-        <div className="flex-grow border-t border-slate-100"></div>
+        <div className="flex-grow border-t border-border"></div>
+        <span className="flex-shrink mx-4 text-xs font-medium uppercase tracking-widest text-muted-foreground/60">or continue with</span>
+        <div className="flex-grow border-t border-border"></div>
       </div>
 
       <button
         onClick={handleGoogleLogin}
         disabled={isSubmitting}
-        className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 py-4 px-6 rounded-2xl font-black text-slate-700 hover:border-indigo-200 hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-3 bg-card border border-border py-3 px-6 rounded-md font-semibold text-sm text-foreground hover:border-primary/30 hover:bg-muted/50 transition-all shadow-sm disabled:opacity-50"
       >
         <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
         Google Account
       </button>
 
-      <p className="text-center text-sm font-bold text-slate-500">
+      <p className="text-center text-sm font-medium text-muted-foreground">
         Don't have an account?{' '}
-        <Link to="/register" className="text-indigo-600 hover:underline">
+        <Link to="/register" className="text-primary hover:underline">
           Create one for free
         </Link>
       </p>

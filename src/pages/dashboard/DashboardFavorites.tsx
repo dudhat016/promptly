@@ -1,5 +1,5 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { Heart, Sparkles } from 'lucide-react';
+import { Heart, Search, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -13,6 +13,7 @@ export default function DashboardFavorites() {
   const { user, profile, isPro, isAdmin } = useAuth();
   const [favorites, setFavorites] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -24,27 +25,22 @@ export default function DashboardFavorites() {
 
         if (favPromptIds.length > 0) {
           const pRef = collection(db, 'prompts');
-          // Firestore 'in' query limit is 30, taking first 30 for MVP
           const pQuery = query(pRef, where('__name__', 'in', favPromptIds.slice(0, 30)));
           const pSnap = await getDocs(pQuery);
-          
+
           const sanitized = pSnap.docs.map(d => {
             const data = d.data();
             const id = d.id;
             const isUnlocked = (profile?.unlockedPrompts || []).includes(id);
             const hasAccess = isPro || isAdmin || isUnlocked || !data.isPaid;
-            
-            if (!hasAccess) {
-              delete data.content; // SECURITY: Content never leaves the database if locked
-            }
-            
+            if (!hasAccess) delete data.content;
             return { id, ...data } as Prompt;
           });
 
           setFavorites(sanitized);
         }
       } catch (err) {
-        console.error("Error fetching favorites:", err);
+        console.error('Error fetching favorites:', err);
       } finally {
         setLoading(false);
       }
@@ -52,53 +48,78 @@ export default function DashboardFavorites() {
     fetchData();
   }, [user]);
 
+  const filtered = favorites.filter(p =>
+    p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div>
-      <div className="mb-12">
-        <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs mb-2">
-          <Heart className="w-4 h-4 fill-current" />
-          Saved Selection
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+        <div>
+          <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[0.2em] text-xs mb-2">
+            <Heart className="w-4 h-4 fill-current" />
+            Saved Selection
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Favorites</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Quick access to the high-performance prompts you've saved.
+            {favorites.length > 0 && <span className="ml-1 text-primary font-semibold">{favorites.length} saved</span>}
+          </p>
         </div>
-        <h1 className="text-4xl font-black tracking-tight text-foreground">My Favorites</h1>
-        <p className="text-muted-foreground text-lg">Quick access to the high-performance prompts you've saved.</p>
+
+        {favorites.length > 0 && (
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search favorites..."
+              className="w-full bg-card border border-border rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-primary/50 transition-all"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => <PromptCardSkeleton key={i} />)}
         </div>
       ) : favorites.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-32 bg-muted/30 rounded-[3rem] border border-border border-dashed"
+          className="text-center py-32 bg-muted/30 rounded-2xl border border-border border-dashed"
         >
-          <div className="w-20 h-20 bg-background rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/5">
-            <Heart className="w-10 h-10 text-muted-foreground" />
+          <div className="w-20 h-20 bg-background rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/5">
+            <Heart className="w-10 h-10 text-muted-foreground/30" />
           </div>
-          <h2 className="text-2xl font-black text-foreground mb-2">No favorites yet</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">No favorites yet</h2>
           <p className="text-muted-foreground max-w-sm mx-auto mb-8">
             Browse the marketplace and heart the prompts you love to see them here.
           </p>
-          <Link
-            to="/explore"
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-black hover:opacity-90 transition-all shadow-lg shadow-primary/20"
-          >
+          <Link to="/explore" className="btn-primary btn-lg">
             <Sparkles className="w-5 h-5" />
             Explore Marketplace
           </Link>
         </motion.div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <p className="font-semibold">No results for "<span className="text-foreground">{searchTerm}</span>"</p>
+          <button onClick={() => setSearchTerm('')} className="mt-3 text-sm text-primary hover:underline">Clear search</button>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
-            {favorites.map((prompt) => (
+            {filtered.map(prompt => (
               <motion.div
                 key={prompt.id}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.18 }}
               >
                 <PromptCard prompt={prompt} />
               </motion.div>

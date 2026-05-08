@@ -1,14 +1,20 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Prompt } from '../types';
-import { Heart, Zap, Copy, ExternalLink, Tag, Eye, ChevronRight, Lock, Unlock } from 'lucide-react';
+import { ArrowRight, Copy, Eye, Heart, Lock, Unlock, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
+import { useConfig } from '../hooks/useConfig';
 import { cn } from '../lib/utils';
 import { doc, updateDoc, increment, collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
 import { useState } from 'react';
 
+const DIFFICULTY_DOT: Record<string, string> = {
+  beginner:     'bg-emerald-500',
+  intermediate: 'bg-amber-500',
+  advanced:     'bg-rose-500',
+};
 
 interface PromptCardProps {
   prompt: Prompt;
@@ -17,182 +23,198 @@ interface PromptCardProps {
 
 export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false }: PromptCardProps) {
   const { isFavorited, toggleFavorite, user, profile, isPro, isAdmin } = useAuth();
+  const { config } = useConfig();
   const navigate = useNavigate();
   const [isUnlocking, setIsUnlocking] = useState(false);
-  
-  const favorited = prompt.id ? isFavorited(prompt.id) : false;
-  
-  const isActuallyUnlocked = initialUnlocked || 
-                            !prompt.isPaid || 
-                            isPro || 
-                            isAdmin || 
-                            (profile?.unlockedPrompts || []).includes(prompt.id!);
 
+  const favorited = prompt.id ? isFavorited(prompt.id) : false;
+  const isActuallyUnlocked =
+    initialUnlocked ||
+    !prompt.isPaid ||
+    isPro ||
+    isAdmin ||
+    (profile?.unlockedPrompts || []).includes(prompt.id!);
   const isLocked = prompt.isPaid && !isActuallyUnlocked;
+
+  const category = config.categories.find(c => c.id === prompt.categoryId);
+  const isCategoryLocked = !!(category?.isPremium && !isPro && !isAdmin);
 
   const handleQuickUnlock = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (!user || !profile) {
-      toast.error("Please login to unlock prompts.");
+      toast.error('Sign in to unlock prompts');
       navigate('/login');
       return;
     }
-
     if ((profile.credits || 0) < 1) {
-      toast.error("Not enough credits! Upgrade to Pro for unlimited access.", {
-        icon: '💳'
-      });
+      toast.error('Out of credits — upgrade to Pro');
       navigate('/pricing');
       return;
     }
 
     setIsUnlocking(true);
     try {
-      const userRef = doc(db, 'users', user.uid);
-      
-      await updateDoc(userRef, {
+      await updateDoc(doc(db, 'users', user.uid), {
         credits: increment(-1),
         unlockedPrompts: Array.from(new Set([...(profile.unlockedPrompts || []), prompt.id!])),
-        totalUsedCredits: increment(1)
+        totalUsedCredits: increment(1),
       });
-
-      // Log Transaction
       await addDoc(collection(db, 'credits_history'), {
         userId: user.uid,
         type: 'unlock',
         promptId: prompt.id,
         promptTitle: prompt.title,
         amount: 1,
-        createdAt: new Date()
+        createdAt: new Date(),
       });
-
-      toast.success("Prompt Unlocked! Ready to use.", {
-        icon: '🔓',
-        style: { borderRadius: '1rem', background: 'var(--card)', color: 'var(--foreground)', fontWeight: 'bold', border: '1px solid var(--border)' }
-      });
-      
-    } catch (err) {
-      console.error("Quick unlock error:", err);
-      toast.error("Failed to unlock. Please try again.");
+      toast.success('Prompt unlocked!');
+    } catch {
+      toast.error('Failed to unlock — try again');
     } finally {
       setIsUnlocking(false);
     }
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="group relative bg-card rounded-[2rem] border border-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 flex flex-col overflow-hidden"
+      transition={{ duration: 0.3 }}
+      className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 flex flex-col"
     >
-      <Link to={`/prompt/${prompt.slug || prompt.id}`} className="block relative aspect-[16/10] overflow-hidden">
+      {/* Thumbnail */}
+      <Link
+        to={`/prompt/${prompt.slug || prompt.id}`}
+        className="block relative aspect-[16/9] overflow-hidden bg-muted shrink-0"
+      >
         {prompt.imageUrl ? (
-          <img 
-            src={prompt.imageUrl} 
-            alt={prompt.title} 
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+          <img
+            src={prompt.imageUrl}
+            alt={prompt.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-pink-500/5 flex items-center justify-center">
-            <Zap className="w-10 h-10 text-indigo-600/20" />
+          <div className="w-full h-full bg-gradient-to-br from-primary/8 via-primary/4 to-transparent flex items-center justify-center">
+            <Zap className="w-8 h-8 text-primary/20" />
           </div>
         )}
-        
-        {/* Badges on image */}
-        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-          <span className="px-2.5 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase bg-black/40 backdrop-blur-md text-white border border-white/10 group-hover:bg-primary transition-colors">
-            {prompt.model}
-          </span>
+
+        {/* Top badges */}
+        <div className="absolute top-3 left-3 flex gap-1.5">
+          {prompt.model && (
+            <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-black/50 backdrop-blur-sm text-white/90 border border-white/10">
+              {prompt.model}
+            </span>
+          )}
           {prompt.isPaid && (
             <span className={cn(
-              "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase ring-1 backdrop-blur-md",
-              isActuallyUnlocked ? "bg-green-500/20 text-green-400 ring-green-500/30" : "bg-amber-500/20 text-amber-400 ring-amber-500/30"
+              'flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold backdrop-blur-sm border',
+              isActuallyUnlocked
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/20'
+                : 'bg-amber-500/20 text-amber-300 border-amber-500/20'
             )}>
               {isActuallyUnlocked ? <Unlock className="w-2.5 h-2.5" /> : <Zap className="w-2.5 h-2.5" />}
-              {isActuallyUnlocked ? 'Unlocked' : 'Premium'}
+              {isActuallyUnlocked ? 'Unlocked' : 'Pro'}
             </span>
           )}
         </div>
 
-        {/* Favorite button on image */}
-        <button 
+        {/* Favorite */}
+        <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); prompt.id && toggleFavorite(prompt.id); }}
           className={cn(
-            "absolute top-4 right-4 p-2.5 rounded-xl backdrop-blur-md transition-all z-10",
-            favorited ? "bg-destructive text-white shadow-lg shadow-destructive/20" : "bg-black/40 text-white/60 hover:bg-white hover:text-destructive"
+            'absolute top-3 right-3 w-7 h-7 rounded-md flex items-center justify-center backdrop-blur-sm border transition-all',
+            favorited
+              ? 'bg-rose-500 border-rose-500 text-white shadow-sm shadow-rose-500/30'
+              : 'bg-black/40 border-white/10 text-white/60 hover:bg-black/60'
           )}
         >
-          <Heart className={cn("w-4 h-4", favorited && "fill-current")} />
+          <Heart className={cn('w-3.5 h-3.5', favorited && 'fill-current')} />
         </button>
       </Link>
 
-      <div className="p-6 flex flex-col h-full flex-grow">
-        <Link to={`/prompt/${prompt.slug || prompt.id}`} className="block mb-4">
-          <h3 className="font-black text-xl leading-tight mb-3 text-foreground group-hover:text-primary transition-colors line-clamp-1">
+      {/* Body */}
+      <div className="flex flex-col flex-1 p-5">
+        <Link to={`/prompt/${prompt.slug || prompt.id}`} className="flex-1 mb-4">
+          <div className="flex items-center gap-2 mb-1.5">
+            {prompt.difficulty && DIFFICULTY_DOT[prompt.difficulty] && (
+              <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                <span className={`w-1.5 h-1.5 rounded-full ${DIFFICULTY_DOT[prompt.difficulty]}`} />
+                {prompt.difficulty}
+              </span>
+            )}
+          </div>
+          <h3 className="font-semibold text-base leading-snug mb-1.5 text-foreground group-hover:text-primary transition-colors line-clamp-1 font-display">
             {prompt.title}
           </h3>
           <p className={cn(
-            "text-muted-foreground text-sm leading-relaxed line-clamp-2 transition-all font-medium",
-            isLocked && "blur-[4px] select-none opacity-40"
+            'text-sm text-muted-foreground leading-relaxed line-clamp-2',
+            isLocked && 'blur-sm select-none opacity-40'
           )}>
-            {isLocked ? "This is a premium formula and expert engineered AI prompt that contains secret parameters and optimized blueprints for high performance generation." : prompt.description}
+            {isLocked
+              ? 'This premium prompt contains expert-engineered parameters and optimized blueprints.'
+              : prompt.description}
           </p>
         </Link>
 
-        <div className="mt-auto pt-6 border-t border-border flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 text-muted-foreground/60">
-              <Heart className={cn("w-3.5 h-3.5", favorited && "text-destructive fill-current")} />
-              <span className="text-xs font-black">{prompt.likesCount || 0}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground/60">
+        {/* Footer row */}
+        <div className="flex items-center justify-between pt-3.5 border-t border-border">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <span className="flex items-center gap-1 text-xs font-medium">
+              <Heart className={cn('w-3.5 h-3.5', favorited && 'text-rose-500 fill-rose-500')} />
+              {prompt.likesCount || 0}
+            </span>
+            <span className="flex items-center gap-1 text-xs font-medium">
               <Eye className="w-3.5 h-3.5" />
-              <span className="text-xs font-black">{prompt.viewsCount || 0}</span>
-            </div>
+              {prompt.viewsCount || 0}
+            </span>
+            {(prompt.copiesCount || 0) > 0 && (
+              <span className="flex items-center gap-1 text-xs font-medium">
+                <Copy className="w-3.5 h-3.5" />
+                {prompt.copiesCount}
+              </span>
+            )}
           </div>
-          
+
           <div className="flex items-center gap-2">
-            {isLocked && (
-              <button 
+            {isLocked && !isCategoryLocked && (
+              <button
                 onClick={handleQuickUnlock}
                 disabled={isUnlocking}
-                className="bg-primary text-primary-foreground px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight hover:opacity-90 transition-all flex items-center gap-1.5 shadow-lg shadow-primary/20 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all shadow-sm shadow-primary/25 disabled:opacity-50"
               >
-                {isUnlocking ? '...' : (
-                  <>
-                    <Zap className="w-3 h-3 fill-current" />
-                    Unlock
-                  </>
-                )}
+                <Zap className="w-3 h-3 fill-current" />
+                {isUnlocking ? '…' : 'Unlock'}
               </button>
             )}
-            <Link 
+            <Link
               to={`/prompt/${prompt.slug || prompt.id}`}
-              className="p-2.5 rounded-xl bg-muted border border-border text-muted-foreground hover:bg-foreground hover:text-background transition-all"
+              className="w-7 h-7 flex items-center justify-center rounded-md bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
       </div>
 
-
-      {/* Locked Overlay */}
-      {isLocked && (prompt.categoryId?.includes('wedding') || prompt.categoryId?.includes('baby')) && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 bg-background/60 backdrop-blur-[4px]">
-          <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground shadow-xl shadow-primary/20 mb-4 transform group-hover:scale-110 transition-transform">
+      {/* Category-locked overlay */}
+      {isCategoryLocked && isLocked && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 bg-background/80 backdrop-blur-[3px]">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg mb-3"
+            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
             <Lock className="w-4 h-4" />
           </div>
-          <h4 className="font-black text-foreground text-center leading-tight mb-1 text-sm uppercase tracking-tighter">Exclusive Niche</h4>
-          <p className="text-[10px] text-muted-foreground text-center font-medium mb-4">Pro Plan Required</p>
-          <button 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate('/pricing'); }}
-            className="bg-foreground text-background px-6 py-2 rounded-xl text-[10px] font-bold shadow-lg hover:bg-primary hover:text-primary-foreground transition-all w-full text-center uppercase"
+          <p className="text-sm font-bold text-foreground mb-0.5">Pro Members Only</p>
+          <p className="text-xs text-muted-foreground mb-4 text-center">This collection is reserved for Pro subscribers.</p>
+          <button
+            onClick={(e) => { e.preventDefault(); navigate('/pricing'); }}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all w-full text-center"
+            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
           >
-            Upgrade Plan
+            Upgrade to Pro
           </button>
         </div>
       )}

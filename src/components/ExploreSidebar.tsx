@@ -1,4 +1,4 @@
-import { CheckSquare, Coins, Cpu, LayoutGrid, Search, ShieldCheck, Square, Tag as TagIcon, Zap } from 'lucide-react';
+﻿import { CheckSquare, Coins, Cpu, LayoutGrid, Search, ShieldCheck, Square, Tag as TagIcon, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useConfig } from '../hooks/useConfig';
@@ -136,7 +136,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
     <aside className="lg:w-1/4 space-y-8 flex-shrink-0">
 
       {/* Search */}
-      <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
+      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
           <Search className="w-5 h-5 text-primary" />
           Search
@@ -146,7 +146,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           <input
             type="text"
             placeholder="Keywords, tasks..."
-            className="w-full bg-muted border border-border rounded-xl py-2.5 pl-10 pr-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            className="w-full bg-muted border border-border rounded-md py-2.5 pl-10 pr-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             value={searchTerm}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
@@ -154,7 +154,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           />
 
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full mt-2 w-full bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden">
+            <div className="absolute top-full mt-2 w-full bg-card border border-border rounded-md shadow-xl z-50 overflow-hidden">
               {suggestions.map((s, i) => (
                 <button
                   key={i}
@@ -166,7 +166,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
                   className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors flex items-center justify-between group"
                 >
                   <span className="text-foreground font-medium">{s.name}</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-2 py-1 rounded-md group-hover:bg-background">
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted px-2 py-1 rounded-md group-hover:bg-background">
                     {s.type}
                   </span>
                 </button>
@@ -177,7 +177,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
       </div>
 
       {/* AI Models */}
-      <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
+      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
           <Cpu className="w-5 h-5 text-primary" />
           AI Models
@@ -186,7 +186,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
         {configLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-10 skeleton rounded-xl" />
+              <div key={i} className="h-10 skeleton rounded-md" />
             ))}
           </div>
         ) : (
@@ -194,7 +194,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
             <button
               onClick={() => handleModelToggle(modelSlug || '')}
               className={cn(
-                "px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between",
+                "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center justify-between",
                 !modelSlug ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
               )}
             >
@@ -207,7 +207,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
                   key={model.id}
                   onClick={() => handleModelToggle(model.id)}
                   className={cn(
-                    "px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between group",
+                    "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center justify-between group",
                     isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
                   )}
                 >
@@ -220,7 +220,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
       </div>
 
       {/* Pricing */}
-      <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
+      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
           <Coins className="w-5 h-5 text-primary" />
           Pricing
@@ -229,7 +229,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           <button
             onClick={() => handleToggle('pricing', 'free')}
             className={cn(
-              "px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
+              "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
               activePricing.has('free') ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
             )}
           >
@@ -243,7 +243,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           <button
             onClick={() => handleToggle('pricing', 'paid')}
             className={cn(
-              "px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
+              "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
               activePricing.has('paid') ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
             )}
           >
@@ -258,7 +258,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
       </div>
 
       {/* Categories */}
-      <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
+      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
           <LayoutGrid className="w-5 h-5 text-primary" />
           Categories
@@ -267,7 +267,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
         {configLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="h-10 skeleton rounded-xl" />
+              <div key={i} className="h-10 skeleton rounded-md" />
             ))}
           </div>
         ) : (
@@ -275,7 +275,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
             {(activeCategories.size > 0 || activeTags.size > 0) && (
               <button
                 onClick={handleClear}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between text-muted-foreground hover:text-destructive hover:bg-destructive/10 mb-2"
+                className="px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center justify-between text-muted-foreground hover:text-destructive hover:bg-destructive/10 mb-2"
               >
                 Clear all filters
               </button>
@@ -288,7 +288,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
                   key={category.id}
                   onClick={() => handleToggle('category', catId)}
                   className={cn(
-                    "px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
+                    "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
                     isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
                   )}
                 >
@@ -313,7 +313,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
       </div>
 
       {/* Popular Tags */}
-      <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
+      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
           <TagIcon className="w-5 h-5 text-primary" />
           Popular Tags
@@ -353,19 +353,19 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
       </div>
 
       {/* Premium Features Promo */}
-      <div className="bg-foreground text-background rounded-3xl p-8 shadow-xl relative overflow-hidden group">
+      <div className="bg-foreground text-background rounded-lg p-8 shadow-xl relative overflow-hidden group">
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
         <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
 
         <div className="relative z-10">
           <ShieldCheck className="w-10 h-10 text-primary mb-6" />
-          <h3 className="font-black text-2xl mb-3 tracking-tighter">Promptly Pro</h3>
+          <h3 className="font-bold text-2xl mb-3 tracking-tighter">Promptly Pro</h3>
           <p className="opacity-70 text-sm mb-8 leading-relaxed font-medium">
             Unlock elite formulas, advanced neural models, and unlimited assets to dominate the AI landscape.
           </p>
           <Link
             to="/pricing"
-            className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground font-black px-6 py-4 rounded-2xl hover:opacity-90 transition-all shadow-lg group/btn"
+            className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground font-bold px-6 py-4 rounded-md hover:opacity-90 transition-all shadow-lg group/btn"
           >
             <Zap className="w-4 h-4 fill-current group-hover/btn:scale-110 transition-transform" />
             Upgrade Now

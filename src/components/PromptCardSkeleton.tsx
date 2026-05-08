@@ -1,6 +1,6 @@
-export default function PromptCardSkeleton() {
+﻿export default function PromptCardSkeleton() {
   return (
-    <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+    <div className="bg-card rounded-md border border-border overflow-hidden shadow-sm">
       <div className="aspect-[16/10] skeleton rounded-none" />
       <div className="p-5 space-y-4">
         <div className="flex justify-between items-start">

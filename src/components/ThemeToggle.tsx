@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useTheme } from '../hooks/useTheme';
 
 export function ThemeToggle() {
@@ -8,29 +8,31 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-      className="relative p-2.5 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-primary rounded-2xl transition-all border border-transparent hover:border-border overflow-hidden active:scale-95"
+      className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors relative w-8 h-8 flex items-center justify-center"
       aria-label="Toggle theme"
     >
       <AnimatePresence mode="wait" initial={false}>
         {theme === 'light' ? (
           <motion.div
             key="sun"
-            initial={{ y: 20, opacity: 0, rotate: 45 }}
-            animate={{ y: 0, opacity: 1, rotate: 0 }}
-            exit={{ y: -20, opacity: 0, rotate: -45 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute"
           >
-            <Sun className="w-5 h-5" />
+            <Sun className="w-4 h-4" />
           </motion.div>
         ) : (
           <motion.div
             key="moon"
-            initial={{ y: 20, opacity: 0, rotate: -45 }}
-            animate={{ y: 0, opacity: 1, rotate: 0 }}
-            exit={{ y: -20, opacity: 0, rotate: 45 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute"
           >
-            <Moon className="w-5 h-5" />
+            <Moon className="w-4 h-4" />
           </motion.div>
         )}
       </AnimatePresence>

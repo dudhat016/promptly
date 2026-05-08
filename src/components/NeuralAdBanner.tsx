@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useMarketing } from '../hooks/useMarketing';
 import { ShieldCheck, Info } from 'lucide-react';
@@ -33,7 +33,7 @@ export default function NeuralAdBanner({ slot, format = 'auto', className = "" }
       const adsbygoogle = (window as any).adsbygoogle || [];
       adsbygoogle.push({});
     } catch (e) {
-      console.error("❌ [Neural Ads] Ad injection failed:", e);
+      console.error("âŒ [Neural Ads] Ad injection failed:", e);
     }
   }, [activeSlot]);
 
@@ -43,12 +43,12 @@ export default function NeuralAdBanner({ slot, format = 'auto', className = "" }
     <div className={`my-8 ${className}`}>
       {/* Ad Label */}
       <div className="flex items-center gap-2 mb-3 px-4">
-        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 bg-slate-100 px-2 py-1 rounded">Sponsored Content</div>
-        <div className="h-px flex-grow bg-slate-100" />
+        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground bg-muted px-2 py-1 rounded">Sponsored Content</div>
+        <div className="h-px flex-grow bg-muted" />
       </div>
 
       {/* Ad Container */}
-      <div className="bg-slate-50 border border-dashed border-slate-200 rounded-[2rem] overflow-hidden min-h-[100px] flex items-center justify-center relative group">
+      <div className="bg-muted/50 border border-dashed border-border rounded-md overflow-hidden min-h-[100px] flex items-center justify-center relative group">
         <ins
           ref={adRef}
           className="adsbygoogle"
@@ -60,10 +60,10 @@ export default function NeuralAdBanner({ slot, format = 'auto', className = "" }
         />
 
         {/* Neural Overlay (Visible if ad fails to load or during dev) */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-slate-50/90 backdrop-blur-sm">
-           <ShieldCheck className="w-8 h-8 text-indigo-400 mb-2" />
-           <p className="text-[10px] font-black uppercase tracking-widest text-slate-900">Neural Protection Active</p>
-           <p className="text-[9px] text-slate-500 font-medium max-w-[150px] mt-1">Upgrade to PRO to instantly remove all advertisements.</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-card/90 backdrop-blur-sm">
+           <ShieldCheck className="w-8 h-8 text-primary mb-2" />
+           <p className="text-xs font-bold uppercase tracking-widest text-foreground">Neural Protection Active</p>
+           <p className="text-[9px] text-muted-foreground font-medium max-w-[150px] mt-1">Upgrade to PRO to instantly remove all advertisements.</p>
         </div>
       </div>
     </div>

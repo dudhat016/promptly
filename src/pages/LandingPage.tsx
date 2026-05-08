@@ -1,206 +1,813 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Sparkles, Search, Library, Zap, ArrowRight, ShieldCheck, TrendingUp, Cpu, Globe, Rocket } from 'lucide-react';
+import {
+  Sparkles, Search, ArrowRight, TrendingUp,
+  Megaphone, Code2, PenLine, Palette, Briefcase, GraduationCap, Bot, BarChart3,
+  Star, Check, X, Wand2, Library, Crown, Copy, ChevronRight, Layers,
+  Clock, AlertTriangle, Repeat, RefreshCw, Zap, Lock, Unlock,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useSEO } from '../hooks/useSEO';
 import { useConfig } from '../hooks/useConfig';
+import { Prompt } from '../types';
 
-const FEATURES = [
-  {
-    title: 'Expert Marketplace',
-    desc: 'Browse thousands of high-quality, verified blueprints for any LLM.',
-    icon: Search
-  },
-  {
-    title: 'Secure Vault',
-    desc: 'Organize, save, and access your private prompt collection anywhere.',
-    icon: Library
-  },
-  {
-    title: 'Universal Access',
-    desc: 'One membership gives you full access to all premium expert formulas.',
-    icon: Zap
-  }
+// ─── Static data ──────────────────────────────────────────────────────────────
+
+const CATEGORY_ICON_MAP: Record<string, { icon: LucideIcon; color: string }> = {
+  marketing:    { icon: Megaphone,     color: 'text-rose-400'    },
+  coding:       { icon: Code2,         color: 'text-violet-400'  },
+  writing:      { icon: PenLine,       color: 'text-sky-400'     },
+  content:      { icon: PenLine,       color: 'text-sky-400'     },
+  design:       { icon: Palette,       color: 'text-amber-400'   },
+  business:     { icon: Briefcase,     color: 'text-emerald-400' },
+  seo:          { icon: BarChart3,     color: 'text-blue-400'    },
+  growth:       { icon: BarChart3,     color: 'text-blue-400'    },
+  education:    { icon: GraduationCap, color: 'text-orange-400'  },
+  agents:       { icon: Bot,           color: 'text-teal-400'    },
+  'ai-agents':  { icon: Bot,           color: 'text-teal-400'    },
+  productivity: { icon: Layers,        color: 'text-indigo-400'  },
+};
+const DEFAULT_CAT = { icon: Sparkles, color: 'text-primary' };
+
+const PAIN_POINTS = [
+  { icon: Clock,         title: 'Hours wasted every week',          desc: 'You spend more time writing and rewriting prompts than actually using the output. Trial and error with no end in sight.' },
+  { icon: AlertTriangle, title: 'Mediocre results, every time',      desc: 'Generic prompts produce generic output. You know AI can do better — you just don\'t know how to get it there.' },
+  { icon: Repeat,        title: 'Starting from scratch each session', desc: 'No system. No library. Every new task means reinventing the wheel. Your best prompts live in a forgotten chat history.' },
 ];
+
+const BENEFITS = [
+  { icon: Zap,     title: 'Expert results in 30 seconds',       desc: 'Grab a tested, expert-crafted prompt and paste it straight into ChatGPT, Claude, or Gemini. Zero tweaking required.' },
+  { icon: Library, title: 'Your personal prompt vault',         desc: 'Save and organize your best prompts in one place. Access them from any device, any time. Never lose a great prompt again.' },
+  { icon: Wand2,   title: 'Build custom prompts with AI',       desc: 'Can\'t find what you need? Our built-in AI builder creates prompts tailored to your exact use case in seconds.' },
+];
+
+const STEPS = [
+  { step: '01', title: 'Find the right prompt',    desc: 'Search by category, use case, or keyword. Every prompt is tested and rated by real users.' },
+  { step: '02', title: 'Unlock it to your vault',  desc: 'One click saves it permanently to your personal library — organized, searchable, yours forever.' },
+  { step: '03', title: 'Paste it. Get results.',   desc: 'Drop it into any AI tool and get professional output immediately. No editing, no guessing.' },
+];
+
+const TRENDING = [
+  { tag: 'Marketing', title: 'Viral LinkedIn Post Generator',  desc: 'High-engagement posts that build authority and drive real followers in your niche.' },
+  { tag: 'Coding',    title: 'React Code Reviewer',            desc: 'Expert-level feedback on your components — performance, accessibility, best practices.' },
+  { tag: 'Writing',   title: 'Cold Email That Converts',       desc: 'A proven framework that gets replies from busy decision-makers without feeling salesy.' },
+];
+
+const TESTIMONIALS = [
+  { name: 'Sarah K.',  role: 'Content Marketer', quote: 'I cut my content creation time by 60%. The marketing prompts alone are worth 10x the price.',                              rating: 5 },
+  { name: 'James R.',  role: 'Freelance Dev',    quote: 'The coding prompts are insanely good. I use them every single day for code reviews and refactoring.',                    rating: 5 },
+  { name: 'Priya M.',  role: 'Agency Founder',   quote: 'My entire team uses this. The vault keeps us consistent across every client deliverable, every time.',                   rating: 5 },
+];
+
+const MOCK_CARDS = [
+  { tag: 'Marketing', title: 'Viral LinkedIn Post Generator', pro: false },
+  { tag: 'Coding',    title: 'React Performance Optimizer',   pro: true  },
+  { tag: 'SEO',       title: 'Keyword Cluster Builder',        pro: false },
+  { tag: 'Writing',   title: 'Cold Email That Converts',       pro: true  },
+];
+
+// ─── Theme-aware shared styles ────────────────────────────────────────────────
+const S = {
+  card:        'bg-card border border-border rounded-xl',
+  cardHover:   'bg-card border border-border rounded-xl hover:bg-muted/50 hover:border-border/80 transition-all',
+  tag:         'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20',
+  muted:       'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-muted text-muted-foreground border border-border',
+  badge:       'inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-600 border border-amber-500/20 dark:text-amber-400',
+  heading:     'font-display font-bold tracking-tight text-foreground',
+  sub:         'text-muted-foreground leading-relaxed',
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
   const { config } = useConfig();
   useSEO('home');
 
-  return (
-    <div className="flex flex-col gap-32 pb-32 overflow-hidden">
-      {/* Hero Section */}
-      <section className="relative pt-24 pb-20">
-        {/* Futuristic Background Element */}
-        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[140%] h-[600px] bg-primary/5 -z-10 rounded-[100%] blur-[120px]" />
-        
-        <div className="container mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 bg-muted px-5 py-2.5 rounded-full border border-border text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-10 shadow-sm"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Redefining {config.siteName} Collaboration</span>
-          </motion.div>
-          
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="text-6xl md:text-8xl font-black tracking-tight text-foreground mb-8 leading-[0.9]"
-          >
-            The Operating System for <span className="text-primary">AI Prompts.</span>
-          </motion.h1>
-          
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
-            className="max-w-3xl mx-auto text-lg md:text-2xl text-muted-foreground mb-12 leading-relaxed font-medium"
-          >
-            {config.siteTagline} Join the global marketplace for elite AI blueprints powered by {config.siteName}.
-          </motion.p>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-6"
-          >
-            <Link 
-              to="/explore" 
-              className="w-full sm:w-auto bg-primary text-primary-foreground px-10 py-5 rounded-2xl font-black text-xl hover:opacity-90 shadow-2xl shadow-primary/20 transition-all flex items-center justify-center gap-3"
-            >
-              Enter Marketplace
-              <ArrowRight className="w-6 h-6" />
-            </Link>
-            <Link 
-              to="/pricing" 
-              className="w-full sm:w-auto bg-card text-foreground border border-border px-10 py-5 rounded-2xl font-black text-xl hover:bg-muted transition-all shadow-sm"
-            >
-              View Membership
-            </Link>
-          </motion.div>
+  const displayCategories = config.categories.slice(0, 8);
+  const freePlan = config.plans.find(p => p.monthlyPrice === 0);
+  const proPlan  = config.plans.find(p => p.monthlyPrice > 0);
 
-          {/* Abstract Hero Image / Component placeholder */}
-          <motion.div 
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 1 }}
-            className="mt-24 relative max-w-5xl mx-auto"
+  const [livePrompts, setLivePrompts] = useState<Prompt[]>([]);
+  useEffect(() => {
+    getDocs(query(collection(db, 'prompts'), orderBy('viewsCount', 'desc'), limit(4)))
+      .then(snap => setLivePrompts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt))))
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-background">
+
+      {/* ════════════════════════════════════════════════════════════════════
+          1. HERO — HOOK (Attention + Problem-aware)
+      ════════════════════════════════════════════════════════════════════ */}
+      <section
+        className="relative pt-20 pb-32 overflow-hidden bg-background"
+      >
+        {/* Grid pattern */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+            backgroundSize: '36px 36px',
+          }}
+        />
+        {/* Purple glow blob */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.18) 0%, transparent 70%)' }}
+        />
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center max-w-4xl mx-auto">
+
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`${S.tag} mx-auto mb-8`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Expert Prompts for Serious AI Users
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.7 }}
+              className={`${S.heading} text-5xl md:text-[5.5rem] leading-[1.0] mb-6`}
+            >
+              Your AI isn't<br />
+              the problem.
+              <br />
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, hsl(258,90%,70%) 0%, hsl(280,100%,75%) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                Your prompts are.
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.7 }}
+              className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
+            >
+              Most people waste 80% of their AI time on prompts that don't work.
+              {config.siteName} gives you a library of expert-crafted, tested prompts
+              that deliver professional results — every single time.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20"
+            >
+              <Link
+                to="/register"
+                className="group relative inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-base text-foreground w-full sm:w-auto justify-center overflow-hidden"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))',
+                  boxShadow: '0 0 40px rgba(139,92,246,0.4)',
+                }}
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  Start for Free — No Card Needed
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Link>
+              <Link
+                to="/explore"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-base text-foreground/70 border border-border hover:border-border hover:text-foreground transition-all w-full sm:w-auto justify-center"
+                
+              >
+                Browse Free Prompts
+              </Link>
+            </motion.div>
+
+            {/* Mock Product UI */}
+            <motion.div
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.9 }}
+              className="relative max-w-3xl mx-auto"
+            >
+              <div
+                className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none z-10"
+                style={{ background: 'linear-gradient(to top, hsl(var(--background)), transparent)' }}
+              />
+              <div
+                className="rounded-2xl overflow-hidden border border-border"
+                style={{ background: '#111', boxShadow: '0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)' }}
+              >
+                {/* Browser chrome */}
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-border/60" style={{ background: '#161616' }}>
+                  <div className="w-3 h-3 rounded-full bg-white/10" />
+                  <div className="w-3 h-3 rounded-full bg-white/10" />
+                  <div className="w-3 h-3 rounded-full bg-white/10" />
+                  <div className="mx-3 flex-1 rounded-md text-xs text-muted-foreground/50 px-3 py-1.5 flex items-center gap-2" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <Search className="w-3 h-3" />
+                    Search 12,000+ expert prompts...
+                  </div>
+                </div>
+                {/* Prompt cards — live from Firestore, falls back to statics */}
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(livePrompts.length > 0 ? livePrompts : MOCK_CARDS.map(m => ({ title: m.title, tags: [m.tag], isPaid: m.pro, categoryId: m.tag.toLowerCase() } as Partial<Prompt>))).map((p, i) => (
+                    <Link
+                      key={i}
+                      to={livePrompts.length > 0 ? `/prompt/${(p as Prompt).slug || (p as Prompt).id}` : '/explore'}
+                      className="rounded-xl p-4 flex items-start gap-3 border border-white/8 hover:border-white/15 transition-all cursor-pointer"
+                      style={{ background: 'rgba(255,255,255,0.04)' }}
+                    >
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                        <Sparkles className="w-4 h-4 text-violet-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                            style={{ background: 'rgba(139,92,246,0.2)', color: 'rgb(196,181,253)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                            {p.tags?.[0] || p.categoryId || 'AI'}
+                          </span>
+                          {p.isPaid && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider"
+                              style={{ background: 'rgba(245,158,11,0.2)', color: 'rgb(252,211,77)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                              Pro
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-white/75 truncate">{p.title}</p>
+                        {livePrompts.length > 0 && (p as Prompt).copiesCount ? (
+                          <p className="text-[10px] text-white/30 mt-0.5">{(p as Prompt).copiesCount} copies</p>
+                        ) : null}
+                      </div>
+                      <Copy className="w-4 h-4 text-white/20 shrink-0 mt-0.5" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          2. SOCIAL PROOF BAR — Trust signals
+      ════════════════════════════════════════════════════════════════════ */}
+      <div className="border-y border-border bg-muted/20">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {[
+              { value: '12,000+', label: 'Expert Prompts'    },
+              { value: '5,000+',  label: 'Active Users'      },
+              { value: '20+',     label: 'Categories'        },
+              { value: '4.9★',    label: 'Average Rating'    },
+            ].map((s, i) => (
+              <div key={i}>
+                <div className="text-2xl md:text-3xl font-bold text-foreground mb-1">{s.value}</div>
+                <div className="text-xs text-muted-foreground/70 uppercase tracking-widest font-medium">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          3. PROBLEM — Agitation (make the pain real)
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-28 bg-background">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <div className="text-center mb-16">
+            <div className={`${S.tag} mx-auto mb-6 border-rose-500/30 bg-rose-500/10 text-rose-400`}>
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Sound Familiar?
+            </div>
+            <h2 className={`${S.heading} text-4xl md:text-5xl mb-4`}>
+              What bad prompts are costing you
+              <br />
+              <span className="text-muted-foreground/60">every single day</span>
+            </h2>
+            <p className={`${S.sub} max-w-xl mx-auto`}>
+              If you're using AI without a prompt system, you're leaving 90% of its power on the table.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {PAIN_POINTS.map((p, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className={`${S.card} p-7`}
+              >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-5"
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <p.icon className="w-5 h-5 text-rose-400" />
+                </div>
+                <h3 className="font-bold text-foreground mb-2">{p.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{p.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Before / After comparison */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-12 grid md:grid-cols-2 gap-5"
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10 h-64 top-auto bottom-0" />
-            <div className="bg-card rounded-[3rem] border border-border p-4 shadow-2xl overflow-hidden aspect-[16/9] md:aspect-[21/9] flex items-center justify-center">
-               <div className="flex flex-col items-center gap-4 text-muted-foreground/20">
-                  <Cpu className="w-20 h-20 animate-pulse" />
-                  <span className="font-black uppercase tracking-[0.5em] text-xs">Neural Interface v2.5</span>
-               </div>
+            {/* Before */}
+            <div className="rounded-2xl p-7 border border-rose-500/20" style={{ background: 'rgba(239,68,68,0.04)' }}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.15)' }}>
+                  <X className="w-4 h-4 text-rose-400" />
+                </div>
+                <span className="font-bold text-muted-foreground text-sm uppercase tracking-wider">Without {config.siteName}</span>
+              </div>
+              {[
+                'Generic prompts → generic results',
+                'Hours debugging why AI doesn\'t understand',
+                'Starting from scratch every session',
+                'Inconsistent output you can\'t rely on',
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3 mb-3 last:mb-0">
+                  <X className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <span className="text-sm text-muted-foreground">{item}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* After */}
+            <div className="rounded-2xl p-7 border border-emerald-500/20" style={{ background: 'rgba(16,185,129,0.04)' }}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.15)' }}>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                </div>
+                <span className="font-bold text-muted-foreground text-sm uppercase tracking-wider">With {config.siteName}</span>
+              </div>
+              {[
+                'Expert prompts → expert results, instantly',
+                'Professional output in under 30 seconds',
+                'A personal vault of your best prompts',
+                'Consistent, repeatable results every time',
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3 mb-3 last:mb-0">
+                  <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground/70">{item}</span>
+                </div>
+              ))}
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="container mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-           <StatItem label="Active Nodes" value="50K+" />
-           <StatItem label="Verified Formulas" value="12K+" />
-           <StatItem label="Market Cap" value="$2M+" />
-           <StatItem label="Efficiency" value="99.9%" />
+      {/* ════════════════════════════════════════════════════════════════════
+          4. SOLUTION — The shift (bridge problem → product)
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-28 border-y border-border bg-muted/30">
+        <div className="container mx-auto px-4 max-w-4xl text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <div className={`${S.tag} mx-auto mb-8`}>
+              <Unlock className="w-3.5 h-3.5" />
+              The Insight
+            </div>
+            <h2 className={`${S.heading} text-4xl md:text-6xl mb-6 leading-[1.1]`}>
+              The world's best AI users
+              <br />
+              don't type better —
+              <br />
+              <span style={{
+                background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+                they prompt smarter.
+              </span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Top marketers, developers, and creators aren't spending more time on AI.
+              They're using proven prompt frameworks that were refined over thousands of real-world uses.
+              Now you can use the same ones — without spending years figuring them out.
+            </p>
+          </motion.div>
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="container mx-auto px-4">
-        <div className="text-center mb-20">
-           <h2 className="text-4xl md:text-5xl font-black text-foreground mb-4 tracking-tighter">Engineered for Results.</h2>
-           <p className="text-muted-foreground max-w-xl mx-auto font-medium">Professional grade tools for serious prompt engineers.</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-8">
-          {FEATURES.map((feature, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              viewport={{ once: true }}
-              className="bg-card p-10 rounded-[3rem] border border-border shadow-sm hover:shadow-2xl transition-all group relative overflow-hidden"
+      {/* ════════════════════════════════════════════════════════════════════
+          5. TOOL INTRODUCTION — Product reveal
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-28 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <div className={`${S.tag} mx-auto mb-6`}>
+              <Sparkles className="w-3.5 h-3.5" />
+              Introducing {config.siteName}
+            </div>
+            <h2 className={`${S.heading} text-4xl md:text-5xl mb-4`}>
+              The prompt library built for
+              <br />serious AI users
+            </h2>
+            <p className={`${S.sub} max-w-xl mx-auto`}>
+              A curated marketplace of 12,000+ expert-crafted, tested prompts —
+              organized by category, searchable by use case, ready to use.
+            </p>
+          </div>
+
+          {/* Category grid */}
+          {displayCategories.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-4xl mx-auto">
+              {displayCategories.map((cat, i) => {
+                const key = cat.slug?.toLowerCase() || cat.name.toLowerCase().split(' ')[0];
+                const style = CATEGORY_ICON_MAP[key] ?? DEFAULT_CAT;
+                const Icon = style.icon;
+                return (
+                  <motion.div
+                    key={cat.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    viewport={{ once: true }}
+                  >
+                    <Link
+                      to={`/explore?category=${encodeURIComponent(cat.name)}`}
+                      className="group flex items-center gap-3 rounded-xl p-4 border border-border hover:border-border hover:bg-muted/50 transition-all"
+                      
+                    >
+                      <Icon className={`w-5 h-5 ${style.color} shrink-0`} />
+                      <span className="text-sm font-semibold text-foreground/70 group-hover:text-foreground transition-colors truncate">{cat.name}</span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors ml-auto shrink-0" />
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-4xl mx-auto">
+              {(['Marketing','Coding','Writing','Design','Business','SEO','Education','AI Agents'] as const).map((name, i) => {
+                const key = name.toLowerCase().replace(' ', '-');
+                const style = CATEGORY_ICON_MAP[key] ?? CATEGORY_ICON_MAP[name.toLowerCase()] ?? DEFAULT_CAT;
+                const Icon = style.icon;
+                return (
+                  <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} viewport={{ once: true }}>
+                    <Link
+                      to={`/explore?category=${encodeURIComponent(name)}`}
+                      className="group flex items-center gap-3 rounded-xl p-4 border border-border hover:border-border transition-all"
+                      
+                    >
+                      <Icon className={`w-5 h-5 ${style.color} shrink-0`} />
+                      <span className="text-sm font-semibold text-foreground/70 group-hover:text-foreground transition-colors truncate">{name}</span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors ml-auto shrink-0" />
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="text-center mt-8">
+            <Link
+              to="/explore"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold text-muted-foreground border border-border hover:border-border hover:text-foreground transition-all"
+              
             >
-              <div className="absolute top-0 left-0 w-full h-1 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-              <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-8 text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                <feature.icon className="w-8 h-8" />
-              </div>
-              <h3 className="text-2xl font-black mb-4 text-foreground leading-tight">{feature.title}</h3>
-              <p className="text-muted-foreground leading-relaxed font-medium">{feature.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* Dark Banner / Trust Section */}
-      <section className="bg-foreground text-background py-32 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
-           <Globe className="w-[800px] h-[800px] absolute -right-64 -top-64" />
-        </div>
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-12">
-             <div className="inline-flex items-center gap-2 bg-background/10 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-background/20 backdrop-blur-md">
-                Institutional Security
-             </div>
-             <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">Secured by the world's most advanced prompt encryption.</h2>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12">
-                <TrustIcon icon={ShieldCheck} label="Military Grade" />
-                <TrustIcon icon={Rocket} label="Global Delivery" />
-                <TrustIcon icon={Zap} label="Zero Latency" />
-             </div>
+              View All Categories <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="container mx-auto px-4">
-        <div className="bg-primary text-primary-foreground rounded-[4rem] p-12 md:p-24 text-center relative overflow-hidden shadow-2xl shadow-primary/20">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 1 }}
-            viewport={{ once: true }}
-            className="relative z-10"
-          >
-            <h2 className="text-4xl md:text-6xl font-black mb-8 leading-tight tracking-tighter">Ready to join the elite?</h2>
-            <p className="opacity-80 text-lg md:text-xl mb-12 max-w-xl mx-auto font-medium">
-              Join 50,000+ creators who are engineering the future of AI communication.
+      {/* ════════════════════════════════════════════════════════════════════
+          6. BENEFITS — Outcome-focused (not features)
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-28 border-y border-border bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className={`${S.heading} text-4xl md:text-5xl mb-4`}>
+              What you get
+            </h2>
+            <p className={`${S.sub} max-w-xl mx-auto`}>
+              Not features. Real outcomes that change how you work with AI.
             </p>
-            <Link 
-              to="/register"
-              className="inline-flex items-center gap-3 bg-white text-primary px-12 py-6 rounded-[2rem] font-black text-2xl hover:scale-105 transition-all shadow-2xl shadow-black/20"
-            >
-              Get Access Now
-              <ArrowRight className="w-7 h-7" />
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {BENEFITS.map((b, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className="rounded-2xl p-8 border border-border group hover:border-violet-500/30 transition-all relative overflow-hidden"
+                
+              >
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse at top left, rgba(139,92,246,0.08), transparent 60%)' }}
+                />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 relative"
+                  style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                  <b.icon className="w-6 h-6 text-violet-400" />
+                </div>
+                <h3 className="font-bold text-foreground text-xl mb-3 relative">{b.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed relative">{b.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          7. HOW IT WORKS — Process (reduce friction)
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-28 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className={`${S.heading} text-4xl md:text-5xl mb-4`}>
+              Up and running in 60 seconds
+            </h2>
+            <p className={`${S.sub} max-w-xl mx-auto`}>No learning curve. No setup. Just results.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-10 max-w-4xl mx-auto relative">
+            {STEPS.map((step, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.12 }}
+                viewport={{ once: true }}
+                className="relative text-center"
+              >
+                {i < STEPS.length - 1 && (
+                  <div className="hidden md:block absolute top-7 left-[55%] w-[90%] h-px"
+                    style={{ background: 'linear-gradient(to right, rgba(139,92,246,0.4), transparent)' }} />
+                )}
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5 text-lg font-bold text-violet-400 border"
+                  style={{ background: 'rgba(139,92,246,0.1)', borderColor: 'rgba(139,92,246,0.3)' }}
+                >
+                  {step.step}
+                </div>
+                <h3 className="font-bold text-foreground mb-2">{step.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          8. TRENDING — Product proof (show don't tell)
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-28 border-y border-border bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
+            <div>
+              <h2 className={`${S.heading} text-3xl md:text-4xl mb-2`}>Trending This Week</h2>
+              <p className="text-muted-foreground">The most-used prompts across our community.</p>
+            </div>
+            <Link to="/explore"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors shrink-0">
+              View All <ArrowRight className="w-4 h-4" />
             </Link>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5">
+            {TRENDING.map((p, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className={`${S.cardHover} p-7 group cursor-pointer`}
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <span className={S.tag}>{p.tag}</span>
+                  <TrendingUp className="w-4 h-4 text-muted-foreground/40 group-hover:text-violet-400 transition-colors" />
+                </div>
+                <h3 className="font-bold text-foreground mb-2 group-hover:text-violet-300 transition-colors">{p.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-5">{p.desc}</p>
+                <Link to="/explore"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-400 group-hover:gap-2.5 transition-all">
+                  View Prompt <ArrowRight className="w-3 h-3" />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          9. TESTIMONIALS — Social proof (remove doubt)
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-28 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-14">
+            <div className="flex items-center justify-center gap-0.5 mb-5">
+              {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />)}
+              <span className="text-muted-foreground text-sm ml-2">Rated 4.9/5 by our users</span>
+            </div>
+            <h2 className={`${S.heading} text-3xl md:text-4xl mb-3`}>
+              Real people. Real results.
+            </h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Thousands of creators, developers, and marketers use {config.siteName} every day.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {TESTIMONIALS.map((t, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className={`${S.card} p-7 flex flex-col`}
+              >
+                <div className="flex items-center gap-0.5 mb-5">
+                  {[...Array(t.rating)].map((_, j) => <Star key={j} className="w-4 h-4 text-amber-400 fill-amber-400" />)}
+                </div>
+                <p className="text-foreground/70 text-sm leading-relaxed mb-6 flex-1 italic">"{t.quote}"</p>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-violet-300 shrink-0"
+                    style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.2)' }}
+                  >
+                    {t.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">{t.name}</div>
+                    <div className="text-xs text-muted-foreground/70">{t.role}</div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          10. PRICING — Make saying yes easy
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-28 border-y border-border bg-muted/30">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="text-center mb-14">
+            <h2 className={`${S.heading} text-3xl md:text-5xl mb-3`}>
+              Start free. Upgrade when you're ready.
+            </h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              No credit card required. No hidden fees. Cancel anytime.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5">
+            {/* Free */}
+            <div className="rounded-2xl p-8 border border-border" >
+              <div className="mb-6">
+                <div className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest mb-3">Free Forever</div>
+                <div className="text-5xl font-bold text-foreground">
+                  {freePlan ? `$${freePlan.monthlyPrice}` : '$0'}
+                </div>
+                <div className="text-sm text-muted-foreground/70 mt-1">No credit card needed</div>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {(freePlan?.features ?? [
+                  'Browse full prompt library',
+                  'Save up to 5 prompts to vault',
+                  'AI Builder — 3 uses per day',
+                  'Access to free categories',
+                ]).map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
+                    <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/register"
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm text-foreground/70 border border-border hover:border-border hover:text-foreground transition-all"
+                
+              >
+                Get Started Free
+              </Link>
+            </div>
+
+            {/* Pro */}
+            <div className="rounded-2xl p-8 border relative overflow-hidden" style={{ background: 'rgba(139,92,246,0.08)', borderColor: 'rgba(139,92,246,0.3)' }}>
+              <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: 'linear-gradient(90deg, hsl(258,90%,60%), hsl(280,90%,65%))' }} />
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse at top right, rgba(139,92,246,0.12), transparent 60%)' }}
+              />
+              <div className="mb-6 relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Pro</div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                    Most Popular
+                  </span>
+                </div>
+                <div className="text-5xl font-bold text-foreground">
+                  {proPlan ? `$${proPlan.monthlyPrice}` : '$9'}
+                  <span className="text-xl text-muted-foreground/70 font-medium">/mo</span>
+                </div>
+                <div className="text-sm text-muted-foreground/70 mt-1">Cancel anytime</div>
+              </div>
+              <ul className="space-y-3 mb-8 relative">
+                {(proPlan?.features ?? [
+                  'Everything in Free',
+                  'Unlimited vault storage',
+                  'All premium prompt categories',
+                  'Unlimited AI Builder usage',
+                  'Priority access to new releases',
+                ]).map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm text-foreground/70">
+                    <Check className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/pricing"
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm text-foreground relative"
+                style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 24px rgba(139,92,246,0.3)' }}
+              >
+                See Full Pricing <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          11. FINAL CTA — Close strong
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="py-32 bg-background">
+        <div className="container mx-auto px-4 max-w-3xl text-center relative">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.15) 0%, transparent 70%)' }}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative"
+          >
+            <div className="flex items-center justify-center gap-0.5 mb-7">
+              {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />)}
+            </div>
+            <h2 className={`${S.heading} text-4xl md:text-6xl mb-5 leading-[1.1]`}>
+              Stop leaving AI potential
+              <br />
+              <span style={{
+                background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+                on the table.
+              </span>
+            </h2>
+            <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed">
+              Join 5,000+ creators, developers, and marketers who get professional AI results
+              in seconds — not hours.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                to="/register"
+                className="group inline-flex items-center justify-center gap-2 px-9 py-4 rounded-xl font-semibold text-base text-foreground w-full sm:w-auto"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))',
+                  boxShadow: '0 0 50px rgba(139,92,246,0.4)',
+                }}
+              >
+                Start for Free
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                to="/explore"
+                className="inline-flex items-center justify-center gap-2 px-9 py-4 rounded-xl font-semibold text-base text-muted-foreground border border-border hover:border-border hover:text-foreground transition-all w-full sm:w-auto"
+                
+              >
+                Browse Prompts First
+              </Link>
+            </div>
+            <p className="text-xs text-muted-foreground/50 mt-6">No credit card required · Free forever plan available · Cancel anytime</p>
           </motion.div>
         </div>
       </section>
-    </div>
-  );
-}
 
-function StatItem({ label, value }: { label: string, value: string }) {
-  return (
-    <div className="text-center group">
-      <div className="text-4xl md:text-6xl font-black text-foreground mb-2 group-hover:text-primary transition-colors">{value}</div>
-      <div className="text-muted-foreground font-black tracking-[0.2em] uppercase text-[10px] opacity-50">{label}</div>
-    </div>
-  );
-}
-
-function TrustIcon({ icon: Icon, label }: { icon: any, label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-4">
-       <div className="w-16 h-16 bg-background/5 rounded-3xl flex items-center justify-center border border-background/10">
-          <Icon className="w-8 h-8 opacity-60" />
-       </div>
-       <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{label}</span>
     </div>
   );
 }

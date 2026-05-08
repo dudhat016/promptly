@@ -1,16 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { BlogPost, UserProfile } from '../types';
 import ReactMarkdown from 'react-markdown';
-import { Calendar, ArrowLeft, Share2, Eye } from 'lucide-react';
+import { Calendar, ArrowLeft, Share2, Eye, Sparkles, ArrowRight, Clock } from 'lucide-react';
 import BlogSidebar from '../components/BlogSidebar';
 import ShareModal from '../components/ShareModal';
 import { useAuth } from '../hooks/useAuth';
-
 import { useSEO } from '../hooks/useSEO';
-import { useMemo } from 'react';
 import { recordBlogInteraction } from '../lib/affinity';
 
 export default function BlogDetailPage() {
@@ -21,7 +19,6 @@ export default function BlogDetailPage() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { profile } = useAuth();
 
-  // SEO Optimization
   const seoMeta = useMemo(() => {
     if (!post) return null;
     return {
@@ -38,30 +35,20 @@ export default function BlogDetailPage() {
 
   useEffect(() => {
     if (post) {
-      // JSON-LD Schema Markup
       const schema = {
         "@context": "https://schema.org",
         "@type": "BlogPosting",
         "headline": post.title,
         "image": post.coverImage || "",
         "datePublished": post.publishedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        "author": {
-          "@type": "Person",
-          "name": author?.displayName || "Promptly Team"
-        },
+        "author": { "@type": "Person", "name": author?.displayName || "Promptly Team" },
         "description": post.excerpt
       };
-
       const script = document.createElement('script');
       script.type = "application/ld+json";
       script.text = JSON.stringify(schema);
       document.head.appendChild(script);
-
-      return () => {
-        if (document.head.contains(script)) {
-          document.head.removeChild(script);
-        }
-      };
+      return () => { if (document.head.contains(script)) document.head.removeChild(script); };
     }
   }, [post, author]);
 
@@ -71,28 +58,17 @@ export default function BlogDetailPage() {
       try {
         const q = query(collection(db, 'blog_posts'), where('slug', '==', slug), limit(1));
         const querySnapshot = await getDocs(q);
-        
         if (!querySnapshot.empty) {
           const docSnap = querySnapshot.docs[0];
           const postData = { id: docSnap.id, ...docSnap.data() } as BlogPost;
           setPost(postData);
-
-          // Increment views count
           import('firebase/firestore').then(({ updateDoc, increment }) => {
-            updateDoc(docSnap.ref, {
-              viewsCount: increment(1)
-            }).catch(() => { /* ignore */ });
+            updateDoc(docSnap.ref, { viewsCount: increment(1) }).catch(() => {});
           });
-
-          // Record interaction for affinity engine
           recordBlogInteraction(postData, 1);
-
-          // Fetch author
           if (postData.authorId) {
             const authorDoc = await getDoc(doc(db, 'users', postData.authorId)).catch(() => null);
-            if (authorDoc?.exists()) {
-              setAuthor({ uid: authorDoc.id, ...authorDoc.data() } as UserProfile);
-            }
+            if (authorDoc?.exists()) setAuthor({ uid: authorDoc.id, ...authorDoc.data() } as UserProfile);
           }
         } else {
           setPost(null);
@@ -106,33 +82,29 @@ export default function BlogDetailPage() {
     fetchPost();
   }, [slug]);
 
-  // Track Dwell Time (Add affinity without decaying other interests)
   useEffect(() => {
     if (!post) return;
     const interval = setInterval(() => {
-      if (!document.hidden) {
-        // Add 1 point every 10 seconds of active reading, without applying time decay
-        recordBlogInteraction(post, 1, false);
-      }
+      if (!document.hidden) recordBlogInteraction(post, 1, false);
     }, 10000);
     return () => clearInterval(interval);
   }, [post]);
 
+  const tagToSlug = (tag: string) => tag.toLowerCase().replace(/\s+/g, '-');
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 pt-24 pb-16">
+      <div className="min-h-screen pt-24 pb-16 bg-background">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="flex flex-col lg:flex-row gap-10">
             <div className="flex-grow lg:w-2/3 max-w-3xl animate-pulse">
-              <div className="h-8 w-32 bg-slate-200 rounded mb-8" />
-              <div className="h-16 w-3/4 bg-slate-200 rounded-xl mb-6" />
-              <div className="h-4 w-1/4 bg-slate-200 rounded mb-12" />
-              <div className="aspect-video bg-slate-200 rounded-3xl mb-12" />
-              <div className="space-y-4">
-                <div className="h-4 bg-slate-200 rounded w-full" />
-                <div className="h-4 bg-slate-200 rounded w-full" />
-                <div className="h-4 bg-slate-200 rounded w-5/6" />
-              </div>
+              <div className="h-6 w-24 rounded-full mb-8 bg-muted" />
+              <div className="h-12 w-3/4 rounded-xl mb-4 bg-muted" />
+              <div className="h-4 w-1/3 rounded mb-10 bg-muted" />
+              <div className="aspect-video rounded-2xl mb-10 bg-muted" />
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-4 rounded mb-3 bg-muted" style={{ width: `${85 + (i % 3) * 5}%` }} />
+              ))}
             </div>
           </div>
         </div>
@@ -142,107 +114,169 @@ export default function BlogDetailPage() {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-slate-50 pt-32 pb-16 flex items-center justify-center">
+      <div className="min-h-screen pt-32 pb-16 flex items-center justify-center bg-background">
         <div className="text-center">
-          <h1 className="text-4xl font-black text-slate-900 mb-4">Post not found</h1>
-          <p className="text-slate-500 mb-8">The article you're looking for doesn't exist or has been removed.</p>
-          <Link to="/blog" className="text-indigo-600 font-bold hover:text-indigo-700 flex items-center justify-center gap-2">
-            <ArrowLeft className="w-5 h-5" /> Back to Blog
+          <h1 className="text-4xl font-bold text-foreground mb-4">Post not found</h1>
+          <p className="mb-8 text-muted-foreground">The article you're looking for doesn't exist or has been removed.</p>
+          <Link to="/blog" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-semibold transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Blog
           </Link>
         </div>
       </div>
     );
   }
 
-  const tagToSlug = (tag: string) => tag.toLowerCase().replace(/\s+/g, '-');
-
   return (
-    <div className="bg-slate-50 min-h-screen pt-24 pb-16">
+    <div className="min-h-screen pt-24 pb-16 bg-background">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex flex-col lg:flex-row gap-10">
+
+          {/* ── Article ── */}
           <div className="flex-grow lg:w-2/3 max-w-3xl">
-            <Link to="/blog" className="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-semibold mb-8 transition-colors">
+            <Link to="/blog"
+              className="inline-flex items-center gap-2 text-sm font-semibold mb-8 transition-colors text-muted-foreground hover:text-primary"
+            >
               <ArrowLeft className="w-4 h-4" /> Back to all posts
             </Link>
-            
+
             <div className="mb-10">
               {post.tags && post.tags.length > 0 && (
                 <div className="flex gap-2 flex-wrap mb-6">
                   {post.tags.map(tag => (
-                    <Link 
-                      key={tag} 
+                    <Link
+                      key={tag}
                       to={`/blog/tag/${tagToSlug(tag)}`}
-                      className="px-3 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold rounded-full transition-colors"
+                      className="px-3 py-1 text-xs font-bold rounded-full transition-colors bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
                     >
                       {tag}
                     </Link>
                   ))}
                 </div>
               )}
-              
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
-                <h1 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight">
+
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
+                <h1 className="text-4xl md:text-5xl font-bold text-foreground leading-tight tracking-tight">
                   {post.title}
                 </h1>
-                <button 
+                <button
                   onClick={() => setIsShareModalOpen(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-bold hover:bg-slate-50 transition-all shrink-0 shadow-sm"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shrink-0 bg-muted border border-border text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                 >
-                  <Share2 className="w-5 h-5 text-indigo-600" />
-                  Share
+                  <Share2 className="w-4 h-4" /> Share
                 </button>
               </div>
-              
-              <div className="flex flex-wrap items-center gap-6 text-sm font-semibold text-slate-500 border-b border-slate-200 pb-8">
-                <div className="flex items-center gap-2">
+
+              <div className="flex flex-wrap items-center gap-5 pb-8 border-b border-border">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                   <Calendar className="w-4 h-4" />
-                  {post.publishedAt ? new Date(post.publishedAt.toMillis?.() || Date.now()).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : 'Draft'}
+                  {post.publishedAt ? new Date(post.publishedAt.toMillis?.() || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Draft'}
                 </div>
-                
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  {Math.max(1, Math.ceil((post.content || '').split(/\s+/).length / 200))} min read
+                </div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                   <Eye className="w-4 h-4" />
                   {post.viewsCount || 0} views
                 </div>
-                
                 {author && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full overflow-hidden">
                       {author.photoURL ? (
                         <img src={author.photoURL} alt={author.displayName || 'Author'} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary bg-primary/20">
                           {author.displayName?.charAt(0) || 'A'}
                         </div>
                       )}
                     </div>
-                    <span className="text-slate-700">{author.displayName || 'Anonymous'}</span>
+                    <span className="text-sm font-semibold text-muted-foreground">{author.displayName || 'Anonymous'}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {post.coverImage && (
-              <div className="mb-12 rounded-3xl overflow-hidden shadow-lg border border-slate-200 aspect-video bg-slate-100">
+              <div className="mb-12 rounded-2xl overflow-hidden aspect-video border border-border">
                 <img src={post.coverImage} alt={post.title} className="w-full h-full object-cover" />
               </div>
             )}
 
-            <div className="prose prose-lg prose-slate prose-indigo max-w-none">
+            {/* Markdown content */}
+            <div className="prose prose-neutral dark:prose-invert prose-lg max-w-none
+              prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight
+              prose-p:text-muted-foreground prose-p:leading-relaxed
+              prose-a:text-primary prose-a:no-underline hover:prose-a:opacity-80
+              prose-strong:text-foreground
+              prose-code:text-primary prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:border prose-code:border-border
+              prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-xl
+              prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
+              prose-hr:border-border
+              prose-li:text-muted-foreground
+              prose-img:rounded-xl
+            ">
               <ReactMarkdown>{post.content}</ReactMarkdown>
             </div>
+
+            {/* ── Post-article CTA ── */}
+            <div className="mt-16 rounded-2xl p-8 text-center relative overflow-hidden"
+              style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)' }}>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[150px] pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.2) 0%, transparent 70%)' }} />
+              <div className="relative z-10">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mx-auto mb-4"
+                  style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.3)' }}>
+                  <Sparkles className="w-5 h-5 text-violet-400" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">Ready to put this into practice?</h3>
+                <p className="text-sm mb-6 max-w-sm mx-auto text-muted-foreground">
+                  Browse 5,000+ expert-engineered AI prompts on Promptly and start getting better results today.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link to="/explore"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all"
+                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+                    Explore Prompts <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link to="/pricing"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/70">
+                    View Pricing
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Author bio ── */}
+            {author && (
+              <div className="mt-10 rounded-2xl p-7 flex items-start gap-5 bg-card border border-border">
+                <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
+                  {author.photoURL ? (
+                    <img src={author.photoURL} alt={author.displayName || 'Author'} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-bold text-xl text-primary bg-primary/20">
+                      {author.displayName?.charAt(0) || 'A'}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground">Written by</p>
+                  <h4 className="font-bold text-foreground mb-1">{author.displayName || 'Promptly Team'}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Expert in AI prompting and productivity. Writing guides to help you get the most from modern AI tools.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          
+
+          {/* ── Sidebar ── */}
           <BlogSidebar />
         </div>
       </div>
 
       {post && (
-        <ShareModal 
-          isOpen={isShareModalOpen} 
+        <ShareModal
+          isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
           title={post.title}
           url={window.location.href}

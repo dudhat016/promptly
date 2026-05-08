@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, query, getDocs, getDoc, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, query, getDocs, getDoc, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PricingPlan, AppConfig } from '../../types';
-import { Settings, Plus, Edit2, Trash2, Check, X, Shield, Zap } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Check, X, Shield, Zap } from 'lucide-react';
+import { AdminPageHeader, DataTable } from '../../components/admin';
+import type { DataTableColumn, DataTableActions } from '../../components/admin';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export default function AdminSubscriptions() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
   useEffect(() => {
     async function fetchData() {
       try {
@@ -32,15 +32,21 @@ export default function AdminSubscriptions() {
     fetchData();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this plan?')) return;
+  const handleDelete = async (plan: PricingPlan) => {
+    if (!confirm('Delete this pricing plan?')) return;
     try {
-      await deleteDoc(doc(db, 'plans', id));
-      setPlans(prev => prev.filter(p => p.id !== id));
-      toast.success("Plan deleted successfully");
-    } catch (err) {
-      toast.error("Failed to delete plan");
+      await deleteDoc(doc(db, 'plans', plan.id));
+      setPlans(prev => prev.filter(p => p.id !== plan.id));
+      toast.success('Plan deleted');
+    } catch {
+      toast.error('Failed to delete plan');
     }
+  };
+
+  const handleBulkDelete = async (rows: PricingPlan[]) => {
+    await Promise.all(rows.map(p => deleteDoc(doc(db, 'plans', p.id))));
+    setPlans(prev => prev.filter(p => !rows.some(r => r.id === p.id)));
+    toast.success(`${rows.length} plans deleted`);
   };
 
   const setActivePromotion = async (type: 'trial' | 'yearly_bonus' | 'none') => {
@@ -63,51 +69,49 @@ export default function AdminSubscriptions() {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
-        <div>
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Offer Strategy</h2>
-          <p className="text-slate-500 mt-2 font-medium">Select one active promotion strategy for your platform.</p>
-        </div>
-        
-        <Link 
-          to="/admin/subscriptions/new"
-          className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
-        >
-          <Plus className="w-5 h-5" />
-          Add Pricing Plan
-        </Link>
-      </div>
+      <AdminPageHeader
+        label="Revenue"
+        labelIcon={Zap}
+        title="Plans & Offers"
+        subtitle="Select one active promotion strategy for your platform."
+        actions={
+          <Link to="/admin/subscriptions/new" className="btn-primary">
+            <Plus className="w-5 h-5" />
+            Add Pricing Plan
+          </Link>
+        }
+      />
 
       <div className="grid lg:grid-cols-3 gap-8 mb-12">
         {/* Trial Config */}
         <div 
           onClick={() => setActivePromotion('trial')}
-          className={`cursor-pointer group relative bg-white rounded-[3rem] p-10 border-4 transition-all duration-500 ${
-            config?.activePromotion === 'trial' ? 'border-indigo-600 ring-8 ring-indigo-50 shadow-2xl' : 'border-slate-100 hover:border-slate-200'
+          className={`cursor-pointer group relative bg-card rounded-lg p-6 border-4 transition-all duration-500 ${
+            config?.activePromotion === 'trial' ? 'border-primary/600 ring-8 ring-primary/50 shadow-2xl' : 'border-border hover:border-border'
           }`}
         >
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-8">
-              <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center transition-all duration-500 ${
-                config?.activePromotion === 'trial' ? 'bg-indigo-600 text-white rotate-12' : 'bg-slate-100 text-slate-400'
+              <div className={`w-16 h-16 rounded-md flex items-center justify-center transition-all duration-500 ${
+                config?.activePromotion === 'trial' ? 'bg-primary text-white rotate-12' : 'bg-muted text-muted-foreground'
               }`}>
                 <Zap className="w-8 h-8 fill-current" />
               </div>
               <div className={`w-8 h-8 rounded-full border-4 flex items-center justify-center transition-all ${
-                config?.activePromotion === 'trial' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-200'
+                config?.activePromotion === 'trial' ? 'border-primary/600 bg-primary' : 'border-border'
               }`}>
-                {config?.activePromotion === 'trial' && <Check className="w-4 h-4 text-white font-black" />}
+                {config?.activePromotion === 'trial' && <Check className="w-4 h-4 text-white font-bold" />}
               </div>
             </div>
             
-            <h3 className="text-2xl font-black text-slate-900 mb-2">Free Trial</h3>
-            <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8 flex-grow">
+            <h3 className="text-base font-semibold text-foreground mb-2">Free Trial</h3>
+            <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-8 flex-grow">
               Give users full access for a limited time to boost conversion.
             </p>
 
-            <div className={`space-y-4 pt-6 border-t transition-all ${config?.activePromotion === 'trial' ? 'border-indigo-100 opacity-100' : 'border-slate-50 opacity-50 grayscale pointer-events-none'}`}>
+            <div className={`space-y-4 pt-6 border-t transition-all ${config?.activePromotion === 'trial' ? 'border-primary/100 opacity-100' : 'border-border opacity-50 grayscale pointer-events-none'}`}>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Duration (Days)</span>
+                <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Duration (Days)</span>
                 <input 
                   type="number"
                   value={config?.freeTrialDays ?? 7}
@@ -117,7 +121,7 @@ export default function AdminSubscriptions() {
                     await setDoc(doc(db, 'configs', 'global'), { freeTrialDays: val }, { merge: true });
                     setConfig(prev => prev ? { ...prev, freeTrialDays: val } : null);
                   }}
-                  className="w-20 text-center bg-slate-50 border border-slate-200 rounded-xl p-3 font-black text-slate-900 focus:bg-white focus:border-indigo-600 transition-all"
+                  className="w-20 text-center bg-muted/50 border border-border rounded-md p-3 font-bold text-foreground focus:bg-card focus:border-primary/40 transition-all"
                 />
               </div>
             </div>
@@ -127,44 +131,44 @@ export default function AdminSubscriptions() {
         {/* Yearly Bonus Config */}
         <div 
           onClick={() => setActivePromotion('yearly_bonus')}
-          className={`cursor-pointer group relative bg-white rounded-[3rem] p-10 border-4 transition-all duration-500 ${
-            config?.activePromotion === 'yearly_bonus' ? 'border-emerald-500 ring-8 ring-emerald-50 shadow-2xl' : 'border-slate-100 hover:border-slate-200'
+          className={`cursor-pointer group relative bg-card rounded-lg p-6 border-4 transition-all duration-500 ${
+            config?.activePromotion === 'yearly_bonus' ? 'border-emerald-500 ring-8 ring-emerald-50 shadow-2xl' : 'border-border hover:border-border'
           }`}
         >
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-8">
-              <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center transition-all duration-500 ${
-                config?.activePromotion === 'yearly_bonus' ? 'bg-emerald-500 text-white rotate-12' : 'bg-slate-100 text-slate-400'
+              <div className={`w-16 h-16 rounded-md flex items-center justify-center transition-all duration-500 ${
+                config?.activePromotion === 'yearly_bonus' ? 'bg-emerald-500 text-white rotate-12' : 'bg-muted text-muted-foreground'
               }`}>
                 <Shield className="w-8 h-8 fill-current" />
               </div>
               <div className={`w-8 h-8 rounded-full border-4 flex items-center justify-center transition-all ${
-                config?.activePromotion === 'yearly_bonus' ? 'border-emerald-500 bg-emerald-500' : 'border-slate-200'
+                config?.activePromotion === 'yearly_bonus' ? 'border-emerald-500 bg-emerald-500' : 'border-border'
               }`}>
-                {config?.activePromotion === 'yearly_bonus' && <Check className="w-4 h-4 text-white font-black" />}
+                {config?.activePromotion === 'yearly_bonus' && <Check className="w-4 h-4 text-white font-bold" />}
               </div>
             </div>
             
-            <h3 className="text-2xl font-black text-slate-900 mb-2">Annual Bonus</h3>
-            <p className="text-sm text-slate-500 font-medium leading-relaxed mb-6 flex-grow">
+            <h3 className="text-base font-semibold text-foreground mb-2">Annual Bonus</h3>
+            <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-6 flex-grow">
               Incentivize long-term commitment with special rewards.
             </p>
 
-            <div className={`space-y-6 pt-6 border-t transition-all ${config?.activePromotion === 'yearly_bonus' ? 'border-emerald-100 opacity-100' : 'border-slate-50 opacity-50 grayscale pointer-events-none'}`}>
+            <div className={`space-y-6 pt-6 border-t transition-all ${config?.activePromotion === 'yearly_bonus' ? 'border-emerald-100 opacity-100' : 'border-border opacity-50 grayscale pointer-events-none'}`}>
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between bg-slate-50 p-2 rounded-2xl">
+                <div className="flex items-center justify-between bg-muted/50 p-2 rounded-md">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setDoc(doc(db, 'configs', 'global'), { yearlyIncentiveType: 'months' }, { merge: true }); setConfig(prev => prev ? {...prev, yearlyIncentiveType: 'months'} : null); }}
-                    className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${config?.yearlyIncentiveType === 'months' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}
+                    className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${config?.yearlyIncentiveType === 'months' ? 'bg-card text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
                   >Months</button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); setDoc(doc(db, 'configs', 'global'), { yearlyIncentiveType: 'percent' }, { merge: true }); setConfig(prev => prev ? {...prev, yearlyIncentiveType: 'percent'} : null); }}
-                    className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${config?.yearlyIncentiveType === 'percent' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}
+                    className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${config?.yearlyIncentiveType === 'percent' ? 'bg-card text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
                   >Percentage</button>
                 </div>
 
                 <div className="flex items-center justify-between px-2">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                  <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">
                     {config?.yearlyIncentiveType === 'months' ? 'Months Free' : 'Auto-Calculated'}
                   </span>
                   {config?.yearlyIncentiveType === 'months' ? (
@@ -178,11 +182,11 @@ export default function AdminSubscriptions() {
                           await setDoc(doc(db, 'configs', 'global'), { yearlyIncentiveValue: val }, { merge: true });
                           setConfig(prev => prev ? { ...prev, yearlyIncentiveValue: val } : null);
                         }}
-                        className="w-20 text-center bg-emerald-50 border border-emerald-200 rounded-xl p-3 font-black text-emerald-900 focus:bg-white focus:border-emerald-500 transition-all"
+                        className="w-20 text-center bg-emerald-500/10 border border-emerald-500/30 rounded-md p-3 font-bold text-emerald-600 focus:bg-card focus:border-emerald-500 transition-all"
                       />
                     </div>
                   ) : (
-                    <div className="bg-emerald-100 text-emerald-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                    <div className="bg-emerald-500/10 text-emerald-600 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest">
                       Live Logic Active
                     </div>
                   )}
@@ -195,67 +199,69 @@ export default function AdminSubscriptions() {
         {/* None Config */}
         <div 
           onClick={() => setActivePromotion('none')}
-          className={`cursor-pointer group relative bg-white rounded-[3rem] p-10 border-4 transition-all duration-500 ${
-            config?.activePromotion === 'none' ? 'border-slate-900 ring-8 ring-slate-50 shadow-2xl' : 'border-slate-100 hover:border-slate-200'
+          className={`cursor-pointer group relative bg-card rounded-lg p-6 border-4 transition-all duration-500 ${
+            config?.activePromotion === 'none' ? 'border-border ring-8 ring-muted shadow-2xl' : 'border-border hover:border-border'
           }`}
         >
           <div className="flex flex-col h-full items-center justify-center text-center">
             <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-all ${
-              config?.activePromotion === 'none' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-300'
+              config?.activePromotion === 'none' ? 'bg-muted text-foreground' : 'bg-muted/50 text-muted-foreground/40'
             }`}>
               <X className="w-10 h-10" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">No Promotion</h3>
-            <p className="text-sm text-slate-500 font-medium">Standard pricing without special offers.</p>
+            <h3 className="text-base font-semibold text-foreground mb-2">No Promotion</h3>
+            <p className="text-sm text-muted-foreground font-medium">Standard pricing without special offers.</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400">Plan Name</th>
-                <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400">Price</th>
-                <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400">Limits</th>
-                <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr><td colSpan={4} className="p-8 text-center text-slate-500">Loading plans...</td></tr>
-              ) : plans.map(plan => (
-                <tr key={plan.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-8 py-5">
-                    <p className="font-black text-lg text-slate-900">{plan.name}</p>
-                  </td>
-                  <td className="px-8 py-5">
-                    <p className="font-bold text-slate-900">${plan.monthlyPrice}/mo</p>
-                    {plan.yearlyPrice && <p className="text-xs text-slate-500">${plan.yearlyPrice}/yr</p>}
-                  </td>
-                  <td className="px-8 py-5 text-xs font-medium text-slate-600">
-                    <p>Features: {plan.features?.length || 0}</p>
-                  </td>
-                  <td className="px-8 py-5 text-right space-x-2">
-                    <button onClick={() => navigate(`/admin/subscriptions/edit/${plan.id}`)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDelete(plan.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {!loading && plans.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-500 font-bold">No plans found.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={[
+          {
+            key: 'name',
+            header: 'Plan Name',
+            searchValue: p => p.name,
+            sortable: true,
+            sortValue: p => p.name,
+            render: p => <p className="font-bold text-foreground">{p.name}</p>,
+            csvValue: p => p.name,
+          },
+          {
+            key: 'price',
+            header: 'Price',
+            sortable: true,
+            sortValue: p => p.monthlyPrice ?? 0,
+            render: p => (
+              <div>
+                <p className="font-bold text-foreground">${p.monthlyPrice}/mo</p>
+                {p.yearlyPrice && <p className="text-xs text-muted-foreground">${p.yearlyPrice}/yr</p>}
+              </div>
+            ),
+            csvValue: p => `$${p.monthlyPrice}/mo`,
+          },
+          {
+            key: 'features',
+            header: 'Features',
+            sortable: true,
+            sortValue: p => p.features?.length ?? 0,
+            render: p => (
+              <span className="text-sm font-medium text-muted-foreground">{p.features?.length || 0} features</span>
+            ),
+            csvValue: p => p.features?.length ?? 0,
+          },
+        ] satisfies DataTableColumn<PricingPlan>[]}
+        data={plans}
+        rowKey={p => p.id}
+        loading={loading}
+        actions={{ edit: (p: PricingPlan) => `/admin/subscriptions/edit/${p.id}`, onDelete: handleDelete } satisfies DataTableActions<PricingPlan>}
+        searchPlaceholder="Search plans..."
+        selectable
+        onBulkDelete={handleBulkDelete}
+        exportFilename="pricing-plans"
+        emptyIcon={Zap}
+        emptyTitle="No plans found"
+        emptyMessage="Start by adding your first pricing plan."
+      />
     </div>
   );
 }

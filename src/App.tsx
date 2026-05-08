@@ -6,6 +6,7 @@ import Header from './components/Header';
 import SocialProofToaster from './components/SocialProofToaster';
 import NeuralMarketingScripts from './components/NeuralMarketingScripts';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { ConfirmProvider } from './components/admin';
 import { ThemeProvider } from './hooks/useTheme';
 import { ConfigProvider } from './hooks/useConfig';
 import { CurrencyProvider } from './context/CurrencyContext';
@@ -21,10 +22,12 @@ import AdminFinancials from './pages/admin/AdminFinancials';
 import AdminInquiries from './pages/admin/AdminInquiries';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminMarketing from './pages/admin/AdminMarketing';
-import AdminMarketingAutomationForm from './pages/admin/AdminMarketingAutomationForm';
+import AdminMarketingContactDetails from './pages/admin/AdminMarketingContactDetails';
 import AdminMarketingContactForm from './pages/admin/AdminMarketingContactForm';
-import AdminMarketingSegmentForm from './pages/admin/AdminMarketingSegmentForm';
 import AdminMarketingTagForm from './pages/admin/AdminMarketingTagForm';
+import AdminMarketingTagFormEdit from './pages/admin/AdminMarketingTagForm'; // Assuming this is correct based on surrounding context
+import AdminMarketingAutomationForm from './pages/admin/AdminMarketingAutomationForm';
+import AdminMarketingSegmentForm from './pages/admin/AdminMarketingSegmentForm';
 import AdminModelForm from './pages/admin/AdminModelForm';
 import AdminModels from './pages/admin/AdminModels';
 import AdminOverview from './pages/admin/AdminOverview';
@@ -38,9 +41,11 @@ import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminTemplateForm from './pages/admin/AdminTemplateForm';
 import AdminTemplates from './pages/admin/AdminTemplates';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminUserDetails from './pages/admin/AdminUserDetails';
 import AdminTickets from './pages/admin/AdminTickets';
 import AdminWithdrawals from './pages/admin/AdminWithdrawals';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminActivityLog from './pages/admin/AdminActivityLog';
 import AffiliateInfoPage from './pages/AffiliateInfoPage';
 import AffiliatePage from './pages/AffiliatePage';
 import SupportPage from './pages/SupportPage';
@@ -100,6 +105,7 @@ function App() {
       <ConfigProvider>
         <CurrencyProvider>
           <AuthProvider>
+            <ConfirmProvider>
             <NeuralMarketingScripts />
             <Router>
               <ScrollToTop />
@@ -114,6 +120,7 @@ function App() {
                   <Route path="prompt/:slug" element={<PromptDetailPage />} />
                   <Route path="pricing" element={<PricingPage />} />
                   <Route path="blog" element={<BlogPage />} />
+                  <Route path="blog/tag/:tagSlug" element={<BlogPage />} />
                   <Route path="blog/:slug" element={<BlogDetailPage />} />
                   <Route path="affiliate" element={<AffiliateInfoPage />} />
                   <Route path="contact" element={<ContactPage />} />
@@ -130,6 +137,7 @@ function App() {
                   <Route path="checkout/success" element={<CheckoutSuccessPage />} />
   
                   <Route path="profile" element={<Navigate to="/settings/profile" replace />} />
+                  <Route path="user/:id" element={<Navigate to="/admin/users/:id" replace />} />
                   <Route path="billing" element={<Navigate to="/settings/billing" replace />} />
                 </Route>
   
@@ -166,11 +174,13 @@ function App() {
                   <Route path="categories/new" element={<AdminCategoryForm />} />
                   <Route path="categories/edit/:id" element={<AdminCategoryForm />} />
                   <Route path="users" element={<AdminUsers />} />
+                  <Route path="users/:id" element={<AdminUserDetails />} />
                   <Route path="models" element={<AdminModels />} />
                   <Route path="models/new" element={<AdminModelForm />} />
                   <Route path="models/edit/:id" element={<AdminModelForm />} />
                   <Route path="marketing" element={<AdminMarketing />} />
                   <Route path="marketing/contacts" element={<AdminMarketing />} />
+                  <Route path="marketing/contacts/:id" element={<AdminMarketingContactDetails />} />
                   <Route path="marketing/tags" element={<AdminMarketing />} />
                   <Route path="marketing/segments" element={<AdminMarketing />} />
                   <Route path="marketing/automations" element={<AdminMarketing />} />
@@ -198,11 +208,13 @@ function App() {
                   <Route path="emails/settings" element={<AdminEmailSettings />} />
                   <Route path="settings" element={<AdminSettings />} />
                   <Route path="permissions" element={<AdminPermissions />} />
+                  <Route path="activity" element={<AdminActivityLog />} />
                 </Route>
   
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Router>
+            </ConfirmProvider>
           </AuthProvider>
         </CurrencyProvider>
       </ConfigProvider>

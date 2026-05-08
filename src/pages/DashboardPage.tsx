@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
+﻿import { addDoc, collection, getDocs, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
 import { Clock, Database, Heart, LayoutGrid, Plus, Send, ShieldCheck, Sparkles, Wand2, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -168,23 +168,23 @@ export default function DashboardPage() {
   const usagePercent = Math.min(100, (todayCount / (permissions.maxDailyPrompts || 1)) * 100);
 
   return (
-    <div className="container mx-auto px-4 py-16">
-      {/* Dynamic Header */}
-      <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm mb-12 relative overflow-hidden">
+    <div className="space-y-8">
+      {/* Welcome Banner */}
+      <div className="bg-card rounded-lg p-8 border border-border shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-          <Sparkles className="w-64 h-64 text-indigo-600 rotate-12" />
+          <Sparkles className="w-64 h-64 text-primary rotate-12" />
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
-          <div className="flex items-center gap-6">
-            <img src={profile?.photoURL || undefined} className="w-20 h-20 rounded-3xl bg-slate-100 object-cover shadow-lg border-4 border-white" alt="" />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-4">
+            <img src={profile?.photoURL || undefined} className="w-14 h-14 rounded-lg bg-muted object-cover border border-border" alt="" />
             <div>
-              <h1 className="text-4xl font-black text-slate-900 mb-1">Hello, {profile?.displayName?.split(' ')[0] || 'Creator'}!</h1>
-              <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${isPro ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+              <h1 className="text-xl font-bold text-foreground">Hello, {profile?.displayName?.split(' ')[0] || 'Creator'}!</h1>
+              <div className="flex items-center gap-3 mt-1">
+                <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold uppercase tracking-wider ${isPro ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground'}`}>
                   {profile?.subscriptionStatus} Plan
                 </span>
-                <span className="text-slate-400 text-xs font-bold flex items-center gap-1">
+                <span className="text-muted-foreground text-xs flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   Joined {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'recently'}
                 </span>
@@ -192,100 +192,69 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full lg:w-auto">
-            {/* Library Unlocks */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-               <div className="flex justify-between items-start mb-6">
-                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
-                   <Zap className="w-6 h-6 fill-current" />
+          <div className="grid grid-cols-3 gap-3 w-full lg:w-auto lg:min-w-[420px]">
+            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+               <div className="flex justify-between items-start mb-3">
+                 <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center text-primary">
+                   <Zap className="w-4 h-4" />
                  </div>
-                 <div className="text-right">
-                   <span className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Unlocks</span>
-                   <span className="text-2xl font-black text-slate-900 leading-none">{profile?.credits || 0}</span>
-                 </div>
+                 <span className="text-xl font-bold text-foreground">{profile?.credits || 0}</span>
                </div>
-               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
-                 <motion.div
-                   initial={{ width: 0 }}
-                   animate={{ width: `${Math.min(100, ((profile?.credits || 0) / (profile?.monthlyLimit || 50)) * 100)}%` }}
-                   className="h-full rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"
-                 />
+               <div className="w-full h-1.5 bg-border rounded-full overflow-hidden mb-2">
+                 <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, ((profile?.credits || 0) / (profile?.monthlyLimit || 50)) * 100)}%` }} className="h-full rounded-full bg-primary" />
                </div>
-               <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                 <span>Allowance</span>
-                 <span>{profile?.monthlyLimit || 50} Max</span>
+               <div className="flex justify-between text-xs text-muted-foreground">
+                 <span>Unlocks</span><span>{profile?.monthlyLimit || 50} max</span>
                </div>
             </div>
-
-            {/* Vault Capacity */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-               <div className="flex justify-between items-start mb-6">
-                 <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-                   <Database className="w-6 h-6 fill-current" />
+            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+               <div className="flex justify-between items-start mb-3">
+                 <div className="w-8 h-8 bg-amber-500/10 rounded-md flex items-center justify-center text-amber-500">
+                   <Database className="w-4 h-4" />
                  </div>
-                 <div className="text-right">
-                   <span className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Vault</span>
-                   <span className="text-2xl font-black text-slate-900 leading-none">
-                     {isPro ? '∞' : (profile?.unlockedPrompts || []).length}
-                   </span>
-                 </div>
+                 <span className="text-xl font-bold text-foreground">{isPro ? '∞' : (profile?.unlockedPrompts || []).length}</span>
                </div>
-               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
-                 <motion.div
-                   initial={{ width: 0 }}
-                   animate={{ width: isPro ? '100%' : `${((profile?.unlockedPrompts || []).length / (config?.vaultLimit || 10)) * 100}%` }}
-                   className={`h-full rounded-full transition-colors ${(!isPro && (profile?.unlockedPrompts || []).length >= (config?.vaultLimit || 10) - 1) ? 'bg-rose-500' : 'bg-amber-500'} shadow-[0_0_10px_rgba(245,158,11,0.3)]`}
-                 />
+               <div className="w-full h-1.5 bg-border rounded-full overflow-hidden mb-2">
+                 <motion.div initial={{ width: 0 }} animate={{ width: isPro ? '100%' : `${((profile?.unlockedPrompts || []).length / (config?.vaultLimit || 10)) * 100}%` }} className={`h-full rounded-full ${(!isPro && (profile?.unlockedPrompts || []).length >= (config?.vaultLimit || 10) - 1) ? 'bg-rose-500' : 'bg-amber-500'}`} />
                </div>
-               <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                 <span>Storage</span>
-                 <span>{isPro ? 'Infinite' : `${config?.vaultLimit || 10} Slots`}</span>
+               <div className="flex justify-between text-xs text-muted-foreground">
+                 <span>Vault</span><span>{isPro ? 'Unlimited' : `${config?.vaultLimit || 10} slots`}</span>
                </div>
             </div>
-
-            {/* AI Builder */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-               <div className="flex justify-between items-start mb-6">
-                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
-                   <Wand2 className="w-6 h-6 fill-current" />
+            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+               <div className="flex justify-between items-start mb-3">
+                 <div className="w-8 h-8 bg-emerald-500/10 rounded-md flex items-center justify-center text-emerald-500">
+                   <Wand2 className="w-4 h-4" />
                  </div>
-                 <div className="text-right">
-                   <span className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Builder</span>
-                   <span className="text-2xl font-black text-slate-900 leading-none">{todayCount}</span>
-                 </div>
+                 <span className="text-xl font-bold text-foreground">{todayCount}</span>
                </div>
-               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
-                 <motion.div
-                   initial={{ width: 0 }}
-                   animate={{ width: `${usagePercent}%` }}
-                   className={`h-full rounded-full ${usagePercent > 80 ? 'bg-rose-500' : 'bg-emerald-500'} shadow-[0_0_10px_rgba(16,185,129,0.3)]`}
-                 />
+               <div className="w-full h-1.5 bg-border rounded-full overflow-hidden mb-2">
+                 <motion.div initial={{ width: 0 }} animate={{ width: `${usagePercent}%` }} className={`h-full rounded-full ${usagePercent > 80 ? 'bg-rose-500' : 'bg-emerald-500'}`} />
                </div>
-               <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                 <span>Daily Cap</span>
-                 <span>{permissions.maxDailyPrompts} Built</span>
+               <div className="flex justify-between text-xs text-muted-foreground">
+                 <span>Builder</span><span>{permissions.maxDailyPrompts} daily</span>
                </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
-        <div className="flex flex-wrap md:flex-nowrap gap-2 p-1.5 bg-slate-100 rounded-2xl w-full md:w-fit overflow-x-auto scrollbar-hide">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-fit">
           <TabButton active={activeTab === 'library'} onClick={() => handleTabChange('library')} icon={LayoutGrid}>My Library</TabButton>
           <TabButton active={activeTab === 'favorites'} onClick={() => handleTabChange('favorites')} icon={Heart}>Favorites</TabButton>
           <TabButton active={activeTab === 'builder'} onClick={() => handleTabChange('builder')} icon={Wand2}>AI Builder</TabButton>
           {isAdmin && (
-            <Link to="/admin" className="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-black text-indigo-600 hover:bg-white hover:shadow-sm transition-all">
+            <Link to="/admin" className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-primary hover:bg-card transition-all">
               <ShieldCheck className="w-4 h-4" />
-              Admin Portal
+              Admin
             </Link>
           )}
         </div>
 
         <button
           onClick={() => handleTabChange('builder')}
-          className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+          className="flex items-center gap-2 bg-foreground text-background px-4 py-2 rounded-md font-semibold text-sm hover:bg-foreground/90 transition-all shadow-sm"
         >
           <Plus className="w-4 h-4" />
           Create New Prompt
@@ -313,46 +282,46 @@ export default function DashboardPage() {
 
         {activeTab === 'builder' && (
           <motion.div key="builder" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-[4rem] border border-slate-100 p-8 md:p-14 shadow-sm">
+            <div className="bg-card rounded-xl border border-border p-8 md:p-14 shadow-sm">
               <div className="flex items-center gap-4 mb-10">
-                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-200">
+                <div className="w-16 h-16 bg-primary rounded-md flex items-center justify-center text-white shadow-md shadow-primary/20">
                   <Sparkles className="w-8 h-8" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-slate-900">AI Prompt Builder</h2>
-                  <p className="text-slate-500 font-medium">Transform simple ideas into expert-level prompts.</p>
+                  <h2 className="text-3xl font-bold text-foreground">AI Prompt Builder</h2>
+                  <p className="text-muted-foreground font-medium">Transform simple ideas into expert-level prompts.</p>
                 </div>
               </div>
 
               <div className="space-y-10">
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Select Optimized Model</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Select Optimized Model</label>
                   <div className="flex gap-4 flex-wrap">
                     {models.map(m => (
-                      <button key={m.id} onClick={() => setTargetModel(m.id)} className={`px-8 py-4 rounded-2xl font-black transition-all border-2 ${targetModel === m.id ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100'}`}>{m.name}</button>
+                      <button key={m.id} onClick={() => setTargetModel(m.id)} className={`px-8 py-2.5 rounded-md font-semibold transition-all border-2 ${targetModel === m.id ? 'border-primary bg-primary/10 text-primary' : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-muted'}`}>{m.name}</button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-4">What do you want to build?</label>
-                  <textarea rows={4} value={idea} onChange={(e) => setIdea(e.target.value)} placeholder="e.g. Generate an SEO optimized blog post about React performance tips with a friendly tone." className="w-full bg-slate-50 border-2 border-transparent rounded-[2rem] p-8 focus:outline-none focus:bg-white focus:border-indigo-600 transition-all text-xl font-medium placeholder:text-slate-300" />
+                  <label className="block text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">What do you want to build?</label>
+                  <textarea rows={4} value={idea} onChange={(e) => setIdea(e.target.value)} placeholder="e.g. Generate an SEO optimized blog post about React performance tips with a friendly tone." className="textarea" />
                 </div>
 
-                <button onClick={handleGenerate} disabled={isGenerating || !idea.trim()} className="w-full bg-indigo-600 text-white font-black py-6 rounded-[2rem] text-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-4 shadow-2xl shadow-indigo-100 disabled:opacity-50">
-                  {isGenerating ? <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" /> : <>Generate Prompt <Send className="w-6 h-6" /></>}
+                <button onClick={handleGenerate} disabled={isGenerating || !idea.trim()} className="w-full btn-primary btn-lg">
+                  {isGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Generate Prompt <Send className="w-5 h-5" /></>}
                 </button>
               </div>
 
               {generatedPrompt && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-12 pt-12 border-t border-slate-100">
-                  <div className="bg-slate-900 rounded-[2.5rem] p-10 text-indigo-100 font-mono text-sm leading-relaxed mb-8 border border-slate-800 whitespace-pre-wrap shadow-2xl">{generatedPrompt}</div>
-                  <div className="flex gap-4">
-                    <button onClick={handleSavePrompt} className="flex-grow bg-slate-900 text-white font-black py-5 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
-                      <Plus className="w-5 h-5" />
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-10 pt-10 border-t border-border">
+                  <div className="bg-foreground rounded-md p-6 text-primary-foreground/80 font-mono text-sm leading-relaxed mb-6 border border-border/20 whitespace-pre-wrap shadow-md">{generatedPrompt}</div>
+                  <div className="flex gap-3">
+                    <button onClick={handleSavePrompt} className="flex-grow bg-foreground text-background font-semibold py-3 rounded-md hover:bg-foreground/90 transition-all flex items-center justify-center gap-2 text-sm">
+                      <Plus className="w-4 h-4" />
                       Save to My Library
                     </button>
-                    <button onClick={() => setGeneratedPrompt('')} className="px-10 bg-slate-100 text-slate-500 font-black py-5 rounded-2xl hover:bg-slate-200 transition-all">Discard</button>
+                    <button onClick={() => setGeneratedPrompt('')} className="px-6 bg-muted text-muted-foreground font-semibold py-3 rounded-md hover:bg-muted/80 transition-all text-sm">Discard</button>
                   </div>
                 </motion.div>
               )}
@@ -366,8 +335,8 @@ export default function DashboardPage() {
 
 function TabButton({ active, onClick, icon: Icon, children }: any) {
   return (
-    <button onClick={onClick} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 flex-shrink-0 ${active ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-900'}`}>
-      <Icon className="w-4 h-4" />
+    <button onClick={onClick} className={`px-4 py-2 rounded-md text-sm font-semibold transition-all flex items-center gap-2 flex-shrink-0 ${active ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+      <Icon className="w-3.5 h-3.5" />
       {children}
     </button>
   );
@@ -375,22 +344,22 @@ function TabButton({ active, onClick, icon: Icon, children }: any) {
 
 function EmptyState({ icon: Icon, title, desc, onBtnClick, btnText }: any) {
   return (
-    <div className="col-span-full py-24 bg-white border border-slate-100 rounded-[3rem] text-center">
-      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
-        <Icon className="w-8 h-8" />
+    <div className="col-span-full py-20 bg-muted/30 border border-border border-dashed rounded-lg text-center">
+      <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+        <Icon className="w-6 h-6" />
       </div>
-      <h3 className="text-2xl font-bold mb-2">{title}</h3>
-      <p className="text-slate-500 mb-8 max-w-sm mx-auto">{desc}</p>
-      <button onClick={onBtnClick} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200">{btnText}</button>
+      <h3 className="text-base font-semibold text-foreground mb-1">{title}</h3>
+      <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">{desc}</p>
+      <button onClick={onBtnClick} className="btn-primary">{btnText}</button>
     </div>
   );
 }
 
 function StatCard({ label, value }: any) {
   return (
-    <div className="bg-slate-50 p-6 rounded-2xl">
-      <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</div>
-      <div className="text-3xl font-black text-slate-900">{value}</div>
+    <div className="bg-muted/50 px-4 py-3 rounded-md border border-border">
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-0.5">{label}</div>
+      <div className="text-2xl font-bold text-foreground">{value}</div>
     </div>
   );
 }

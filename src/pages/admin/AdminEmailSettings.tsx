@@ -77,58 +77,61 @@ export default function AdminEmailSettings() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest animate-pulse">Loading Config...</div>;
+  if (loading) return <div className="p-12 text-center text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Loading Config...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-10">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-black text-slate-900">Email SMTP Settings</h2>
-          <p className="text-slate-500 mt-2 font-medium">Configure your custom SMTP server for reliable email delivery.</p>
+          <h3 className="text-base font-semibold text-foreground flex items-center gap-3">
+            <Mail className="w-6 h-6 text-primary" />
+            Email SMTP Infrastructure
+          </h3>
+          <p className="text-muted-foreground mt-1 font-medium">Configure your custom SMTP server for reliable transactional email delivery.</p>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center gap-2 disabled:opacity-50"
+          className="btn-primary"
         >
           <Save className="w-5 h-5" />
-          {saving ? 'Saving...' : 'Save Config'}
+          {saving ? 'Saving...' : 'Save Configuration'}
         </button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
           {/* SMTP Configuration */}
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
-            <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-              <Mail className="w-6 h-6 text-indigo-600" />
-              SMTP Server Configuration
-            </h3>
+          <div className="bg-card rounded-lg border border-border p-8 shadow-sm">
+            <h4 className="text-lg font-bold mb-6 flex items-center gap-3">
+              <Zap className="w-6 h-6 text-primary" />
+              Server Configuration
+            </h4>
 
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">SMTP Host</label>
+                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">SMTP Host</label>
                   <input
                     type="text"
                     value={config.smtpHost}
                     onChange={e => setConfig({ ...config, smtpHost: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-mono"
+                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm"
                     placeholder="smtp.hostinger.com"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Port</label>
+                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Port</label>
                   <input
                     type="text"
                     value={config.smtpPort}
                     onChange={e => setConfig({ ...config, smtpPort: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-mono"
+                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm"
                     placeholder="587"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Encryption</label>
+                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Encryption</label>
                   <select
                     value={config.smtpSecure ? 'ssl' : 'tls'}
                     onChange={e => {
@@ -139,7 +142,7 @@ export default function AdminEmailSettings() {
                         smtpPort: isSSL ? '465' : '587'
                       });
                     }}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-bold text-sm"
+                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-bold text-sm"
                   >
                     <option value="tls">STARTTLS (587)</option>
                     <option value="ssl">SSL/TLS (465)</option>
@@ -149,29 +152,29 @@ export default function AdminEmailSettings() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Username</label>
+                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Username</label>
                   <input
                     type="text"
                     value={config.smtpUser}
                     onChange={e => setConfig({ ...config, smtpUser: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all font-mono"
+                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm"
                     placeholder="support@techworldproduct.com"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Password</label>
+                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
                       value={config.smtpPass}
                       onChange={e => setConfig({ ...config, smtpPass: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 pr-12 focus:bg-white focus:border-indigo-600 transition-all font-mono"
+                      className="w-full bg-muted/50 border border-border rounded-md p-4 pr-12 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm"
                       placeholder="••••••••••••"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -179,14 +182,14 @@ export default function AdminEmailSettings() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <p className="text-xs text-slate-500 max-w-md italic">
+              <div className="pt-4 border-t border-border flex items-center justify-between">
+                <p className="text-xs text-muted-foreground max-w-md italic">
                   Note: You must use an App Password if using Gmail or Outlook with 2FA enabled.
                 </p>
                 <button
                   onClick={handleTestConnection}
                   disabled={testing || saving}
-                  className="px-6 py-3 rounded-xl border-2 border-indigo-100 text-indigo-600 font-bold text-sm hover:bg-indigo-50 transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-6 py-3 rounded-md border-2 border-primary/20 text-primary font-bold text-sm hover:bg-primary/5 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
                   <Mail className="w-4 h-4" />
                   {testing ? 'Sending Test...' : 'Send Test Email'}
@@ -196,28 +199,28 @@ export default function AdminEmailSettings() {
           </div>
 
           {/* Sender Details */}
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
-            <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-              <Globe className="w-6 h-6 text-indigo-600" />
+          <div className="bg-card rounded-lg border border-border p-8 shadow-sm">
+            <h4 className="text-lg font-bold mb-6 flex items-center gap-3">
+              <Globe className="w-6 h-6 text-primary" />
               Sender Details
-            </h3>
+            </h4>
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">From Name</label>
+                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">From Name</label>
                 <input
                   type="text"
                   value={config.fromName}
                   onChange={e => setConfig({ ...config, fromName: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all"
+                  className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all text-sm"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">From Email</label>
+                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">From Email</label>
                 <input
                   type="email"
                   value={config.fromEmail}
                   onChange={e => setConfig({ ...config, fromEmail: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 transition-all"
+                  className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all text-sm"
                 />
               </div>
             </div>
@@ -225,19 +228,24 @@ export default function AdminEmailSettings() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-slate-900 text-white rounded-[2rem] p-8">
-            <h4 className="font-black text-lg mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-indigo-400" />
-              SMTP Delivery
-            </h4>
-            <p className="text-slate-400 text-sm leading-relaxed mb-6">
-              Your SaaS is configured to send transactional emails via your custom SMTP server. Ensure your host and credentials are correct.
-            </p>
-            <div className="flex items-start gap-3 p-4 bg-white/5 rounded-2xl">
-              <AlertCircle className="w-5 h-5 text-indigo-400 shrink-0" />
-              <p className="text-[10px] font-medium text-slate-300">
-                You are using a <strong>Custom SMTP</strong> provider. Ensure your server allows outbound connections on the specified port.
+          <div className="bg-muted text-white rounded-lg p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <Zap className="w-24 h-24 text-primary" />
+            </div>
+            <div className="relative z-10">
+              <h4 className="text-base font-semibold mb-4 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-primary" />
+                SMTP Delivery
+              </h4>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                Your SaaS is configured to send transactional emails via your custom SMTP server. Ensure your host and credentials are correct.
               </p>
+              <div className="flex items-start gap-3 p-4 bg-white/5 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-primary shrink-0" />
+                <p className="text-[10px] font-medium text-muted-foreground/60">
+                  You are using a <strong>Custom SMTP</strong> provider. Ensure your server allows outbound connections on the specified port.
+                </p>
+              </div>
             </div>
           </div>
         </div>

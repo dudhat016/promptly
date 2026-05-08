@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -76,14 +76,14 @@ export default function SocialProofToaster() {
             initial={{ opacity: 0, x: -50, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: -20, scale: 0.95 }}
-            className="bg-card/90 backdrop-blur-xl border border-border p-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm pointer-events-auto"
+            className="bg-card/90 backdrop-blur-xl border border-border p-4 rounded-md shadow-2xl flex items-center gap-4 max-w-sm pointer-events-auto"
           >
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-medium">
-                <span className="text-foreground font-black">{current.userName}</span> just unlocked
+                <span className="text-foreground font-bold">{current.userName}</span> just unlocked
               </p>
               <p className="text-sm font-bold text-foreground truncate max-w-[200px]">
                 {current.promptTitle}

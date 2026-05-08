@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
+﻿import { addDoc, collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import {
   Award,
   Check,
@@ -145,20 +145,20 @@ export default function AffiliatePage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.2em] text-xs">
+          <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[0.2em] text-xs">
             <Award className="w-4 h-4" />
             Partner Ecosystem
           </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">Affiliate Dashboard</h1>
-          <p className="text-muted-foreground text-lg max-w-xl">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Affiliate Dashboard</h1>
+          <p className="text-sm text-muted-foreground max-w-xl">
             Track your impact, monitor earnings, and grow your recurring revenue.
           </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-2xl border border-primary/20">
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-md border border-primary/20">
           <Gift className="w-4 h-4" />
-          <span className="text-[10px] font-black uppercase tracking-widest">25% Recurring Commission</span>
+          <span className="text-xs font-bold uppercase tracking-widest">25% Recurring Commission</span>
         </div>
       </div>
 
@@ -169,19 +169,19 @@ export default function AffiliatePage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-card p-8 md:p-12 rounded-[3rem] border border-border shadow-sm"
+              className="bg-card p-6 rounded-2xl border border-border shadow-sm"
             >
-              <h2 className="text-xl font-black mb-6 flex items-center gap-2 text-foreground">
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-foreground">
                 <LinkIcon className="w-5 h-5 text-primary" />
                 Your Referral Engine
               </h2>
               <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-grow bg-muted/50 p-5 rounded-2xl font-mono text-sm text-muted-foreground border border-border break-all flex items-center">
+                <div className="flex-grow bg-muted/50 p-5 rounded-xl font-mono text-sm text-muted-foreground border border-border break-all flex items-center">
                   {referralLink}
                 </div>
                 <button
                   onClick={copyToClipboard}
-                  className={`flex items-center justify-center gap-2 px-10 py-5 rounded-2xl font-black transition-all whitespace-nowrap ${copied ? 'bg-green-500 text-white' : 'bg-primary text-primary-foreground hover:opacity-90'}`}
+                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all whitespace-nowrap ${copied ? 'bg-green-500 text-white' : 'bg-primary text-primary-foreground hover:opacity-90'}`}
                 >
                   {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                   {copied ? 'Copied!' : 'Copy Link'}
@@ -198,14 +198,14 @@ export default function AffiliatePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-card rounded-[3rem] border border-border shadow-sm overflow-hidden"
+              className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm"
             >
               <div className="p-8 border-b border-border bg-muted/30 flex items-center justify-between">
-                <h2 className="text-xl font-black flex items-center gap-2 text-foreground">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-foreground">
                   <Users className="w-5 h-5 text-primary" />
                   Recent Referrals
                 </h2>
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{referrals.length} Total Users</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{referrals.length} Total Users</span>
               </div>
 
               <div className="p-8">
@@ -218,7 +218,7 @@ export default function AffiliatePage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
                       <thead>
-                        <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                        <tr className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                           <th className="pb-6">Subscriber</th>
                           <th className="pb-6">Onboarded</th>
                           <th className="pb-6">Account Type</th>
@@ -233,23 +233,23 @@ export default function AffiliatePage() {
                                 {ref.photoURL ? (
                                   <img src={ref.photoURL} className="w-8 h-8 rounded-lg shadow-sm" alt="" />
                                 ) : (
-                                  <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center text-[10px] font-black">
+                                  <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center text-xs font-bold">
                                     {ref.email.charAt(0).toUpperCase()}
                                   </div>
                                 )}
                                 <span className="font-bold text-foreground line-clamp-1">{ref.email.split('@')[0]}</span>
                               </div>
                             </td>
-                            <td className="py-5 text-[10px] text-muted-foreground font-bold">
+                            <td className="py-5 text-xs text-muted-foreground font-bold">
                               {formatDate(ref.createdAt)}
                             </td>
                             <td className="py-5">
-                              <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${ref.subscriptionStatus === 'pro' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-muted text-muted-foreground/60 border-border'}`}>
+                              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${ref.subscriptionStatus === 'pro' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-muted text-muted-foreground/60 border-border'}`}>
                                 {ref.subscriptionStatus?.toUpperCase()}
                               </span>
                             </td>
                             <td className="py-5 text-right">
-                              <span className={`font-black ${ref.subscriptionStatus === 'pro' ? 'text-foreground' : 'text-muted-foreground/40'}`}>
+                              <span className={`font-bold ${ref.subscriptionStatus === 'pro' ? 'text-foreground' : 'text-muted-foreground/40'}`}>
                                 {ref.subscriptionStatus === 'pro' ? `$${(15 * (marketingConfig.referralCommission / 100)).toFixed(2)}` : '$0.00'}
                               </span>
                             </td>
@@ -263,7 +263,7 @@ export default function AffiliatePage() {
                     <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-6">
                       <Users className="w-8 h-8 text-muted-foreground/30" />
                     </div>
-                    <h3 className="text-lg font-black text-foreground mb-1">Growth starting point</h3>
+                    <h3 className="text-lg font-bold text-foreground mb-1">Growth starting point</h3>
                     <p className="text-muted-foreground text-sm max-w-[200px] mx-auto">Your referrals will appear here once users join through your link.</p>
                   </div>
                 )}
@@ -277,16 +277,16 @@ export default function AffiliatePage() {
             <StatCard label="Total Network" value={referrals.length} icon={Users} color="text-primary" />
             <StatCard label="Yield Rate" value={referrals.length > 0 ? `${Math.round((referrals.filter(r => r.subscriptionStatus === 'pro').length / referrals.length) * 100)}%` : '0%'} icon={TrendingUp} color="text-amber-500" />
 
-            <div className="bg-foreground text-background p-8 md:p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+            <div className="bg-foreground text-background p-8 md:p-10 rounded-2xl shadow-2xl relative overflow-hidden group">
                <Award className="w-32 h-32 absolute -right-8 -bottom-8 opacity-5 rotate-12" />
                <div className="relative z-10">
                  <div className="flex items-center gap-2 mb-6">
-                   <div className="px-3 py-1 bg-background/10 text-[10px] font-black rounded-full uppercase tracking-widest border border-background/20">Tier 1 Milestone</div>
+                   <div className="px-3 py-1 bg-background/10 text-xs font-bold rounded-full uppercase tracking-widest border border-background/20">Tier 1 Milestone</div>
                  </div>
-                 <h3 className="text-2xl font-black mb-4 tracking-tighter">Growth Accelerator</h3>
-                 <p className="opacity-60 text-sm mb-8 leading-relaxed font-medium">Refer 10 Pro users to unlock a <span className="text-primary font-black">$100 instant bonus</span> and lifetime platform access.</p>
+                 <h3 className="text-2xl font-bold mb-4 tracking-tighter">Growth Accelerator</h3>
+                 <p className="opacity-60 text-sm mb-8 leading-relaxed font-medium">Refer 10 Pro users to unlock a <span className="text-primary font-bold">$100 instant bonus</span> and lifetime platform access.</p>
 
-                 <div className="bg-background/10 h-3 rounded-full overflow-hidden border border-background/5">
+                 <div className="bg-background/10 h-2.5 rounded-full overflow-hidden border border-background/5">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(100, (referrals.filter(r => r.subscriptionStatus === 'pro').length / 10) * 100)}%` }}
@@ -294,26 +294,26 @@ export default function AffiliatePage() {
                     />
                  </div>
                  <div className="flex justify-between items-center mt-4">
-                   <p className="text-[10px] uppercase font-black tracking-widest opacity-40">{referrals.filter(r => r.subscriptionStatus === 'pro').length} / 10 Referrals</p>
-                   <p className="text-[10px] uppercase font-black tracking-widest text-primary">
+                   <p className="text-xs uppercase font-bold tracking-widest opacity-40">{referrals.filter(r => r.subscriptionStatus === 'pro').length} / 10 Referrals</p>
+                   <p className="text-xs uppercase font-bold tracking-widest text-primary">
                      {Math.round((referrals.filter(r => r.subscriptionStatus === 'pro').length / 10) * 100)}%
                    </p>
                  </div>
                </div>
             </div>
 
-            <div className="bg-primary text-primary-foreground p-8 md:p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
+            <div className="bg-primary text-primary-foreground p-8 md:p-10 rounded-2xl shadow-xl relative overflow-hidden">
                <Zap className="w-24 h-24 absolute -left-6 -bottom-6 opacity-10 -rotate-12" />
                <div className="relative z-10">
                  <div className="flex items-center gap-2 mb-4">
                    <Clock className="w-5 h-5 opacity-60" />
-                   <h3 className="text-xl font-black">Payout Hub</h3>
+                   <h3 className="text-xl font-bold">Payout Hub</h3>
                  </div>
                  <p className="text-primary-foreground/60 text-sm mb-10 leading-relaxed font-medium">Earnings are distributed automatically via PayPal once you reach the ${marketingConfig.minWithdrawalAmount} threshold.</p>
                  <button
                    onClick={handleWithdraw}
                    disabled={Number(profile?.affiliateEarnings || 0) < marketingConfig.minWithdrawalAmount || loading}
-                   className={`w-full font-black py-5 rounded-2xl transition-all shadow-lg text-sm uppercase tracking-widest ${Number(profile?.affiliateEarnings || 0) >= marketingConfig.minWithdrawalAmount ? 'bg-white text-primary hover:bg-white/90' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}
+                   className={`w-full font-semibold py-3 rounded-xl transition-all shadow-lg text-sm uppercase tracking-widest ${Number(profile?.affiliateEarnings || 0) >= marketingConfig.minWithdrawalAmount ? 'bg-card text-primary hover:bg-card/90' : 'bg-card/10 text-white/30 cursor-not-allowed'}`}
                  >
                    {loading ? 'Processing...' : (Number(profile?.affiliateEarnings || 0) >= marketingConfig.minWithdrawalAmount ? 'Withdraw Funds' : `Min. $${marketingConfig.minWithdrawalAmount} for Payout`)}
                  </button>
@@ -327,10 +327,10 @@ export default function AffiliatePage() {
 
 function StatCard({ label, value, icon: Icon, color }: any) {
   return (
-    <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-sm flex items-center justify-between group hover:border-primary/30 transition-all">
+    <div className="bg-card p-8 rounded-2xl border border-border shadow-sm flex items-center justify-between group hover:border-primary/30 transition-all">
       <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">{label}</p>
-        <h4 className="text-3xl font-black text-foreground">{value}</h4>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">{label}</p>
+        <h4 className="text-3xl font-bold text-foreground">{value}</h4>
       </div>
       <div className={`w-14 h-14 bg-muted rounded-2xl flex items-center justify-center border border-border group-hover:bg-primary/5 transition-colors`}>
         <Icon className={`w-6 h-6 ${color}`} />

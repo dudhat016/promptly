@@ -1,170 +1,466 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { 
-  Users, LayoutGrid, CreditCard, BarChart3, Shield, Tag as TagIcon, Mail, Edit2, Zap, ShieldCheck, Send, ChevronDown, Cpu, FileText, MessageSquare, Search, X, Settings as SettingsIcon
+import { useTheme } from '../../hooks/useTheme';
+import { auth, db } from '../../lib/firebase';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import {
+  BarChart3,
+  BarChart2,
+  ChevronDown,
+  Cpu,
+  Edit2,
+  ExternalLink,
+  FileText,
+  History,
+  LayoutGrid,
+  Link as LinkIcon,
+  LogOut,
+  Mail,
+  MessageSquare,
+  Moon,
+  Search,
+  Send,
+  Settings,
+  Shield,
+  Sun,
+  Tag,
+  Users,
+  Wallet,
+  X,
+  Zap,
 } from 'lucide-react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { AdminBreadcrumb, AdminNotificationBell, AdminGlobalSearch, AdminShortcutsModal } from '../../components/admin';
 
-function SidebarLink({ to, icon: Icon, children }: any) {
+/* ── Types ─────────────────────────────────────────────── */
+interface NavItem {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  end?: boolean;
+  count?: number;
+}
+
+/* ── Sidebar Link ───────────────────────────────────────── */
+function SidebarLink({ to, icon: Icon, label, end = false, count }: NavItem) {
   return (
-    <NavLink 
+    <NavLink
       to={to}
-      end={to === '/admin'}
-      className={({ isActive }) => 
-        `flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${
-          isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+      end={end}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+          isActive
+            ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
         }`
       }
     >
-      <Icon className="w-5 h-5" />
-      {children}
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="flex-1">{label}</span>
+      {!!count && (
+        <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-bold px-1 shrink-0">
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
     </NavLink>
   );
 }
 
-function SidebarSubLink({ to, children }: any) {
-  return (
-    <NavLink 
-      to={to}
-      className={({ isActive }) => 
-        `flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-          isActive ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'
-        }`
-      }
-    >
-      <div className="w-1.5 h-1.5 rounded-full bg-current opacity-40" />
-      {children}
-    </NavLink>
-  );
-}
-
-function SidebarGroup({ icon: Icon, label, children, activePath }: any) {
+/* ── Sidebar Group ──────────────────────────────────────── */
+function SidebarGroup({
+  icon: Icon,
+  label,
+  activePath,
+  children,
+}: {
+  icon: React.ElementType;
+  label: string;
+  activePath: string;
+  children: React.ReactNode;
+}) {
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(location.pathname.includes(activePath));
+  const isActive = location.pathname.includes(activePath);
+  const [open, setOpen] = useState(isActive);
 
   useEffect(() => {
-    setIsOpen(location.pathname.includes(activePath));
-  }, [location.pathname, activePath]);
+    if (isActive) setOpen(true);
+  }, [isActive]);
 
   return (
-    <div className="space-y-1">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold transition-all ${
-          location.pathname.includes(activePath) ? 'text-white bg-indigo-600/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+          isActive
+            ? 'text-primary bg-primary/10'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
         }`}
       >
-        <div className="flex items-center gap-3">
-          <Icon className="w-5 h-5" />
+        <span className="flex items-center gap-3">
+          <Icon className="w-4 h-4 shrink-0" />
           {label}
-        </div>
-        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
-      <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="pl-6 mt-1 space-y-1 border-l-2 border-slate-800 ml-6">
-          {children}
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-0.5 ml-4 pl-3 border-l border-border space-y-0.5 py-0.5">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── Sidebar Sub Link ───────────────────────────────────── */
+function SidebarSubLink({ to, label }: { to: string; label: string }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+          isActive
+            ? 'text-primary bg-primary/10'
+            : 'text-muted-foreground/70 hover:text-foreground hover:bg-muted/40'
+        }`
+      }
+    >
+      <span className="w-1 h-1 rounded-full bg-current opacity-50" />
+      {label}
+    </NavLink>
+  );
+}
+
+/* ── Profile Dropdown ───────────────────────────────────── */
+function AdminProfileDropdown() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    navigate('/');
+  };
+
+  const initials = (user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'A').toUpperCase();
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-md hover:bg-muted/60 transition-all group"
+      >
+        {user?.photoURL ? (
+          <img src={user.photoURL} className="w-7 h-7 rounded-md object-cover" alt="" />
+        ) : (
+          <div className="w-7 h-7 rounded-md bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
+            {initials}
+          </div>
+        )}
+        <div className="hidden md:block text-left">
+          <p className="text-xs font-semibold text-foreground leading-tight max-w-[120px] truncate">
+            {user?.displayName || 'Admin'}
+          </p>
+          <p className="text-[10px] text-muted-foreground leading-tight max-w-[120px] truncate">
+            {user?.email}
+          </p>
         </div>
+        <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-lg shadow-xl shadow-black/10 z-50 overflow-hidden"
+          >
+            <div className="px-4 py-3 border-b border-border bg-muted/30">
+              <p className="text-sm font-semibold text-foreground truncate">{user?.displayName || 'Admin User'}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            </div>
+
+            <div className="py-1">
+              <Link
+                to="/admin/settings"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted/60 transition-colors"
+              >
+                <Settings className="w-4 h-4 text-muted-foreground" />
+                Settings
+              </Link>
+              <Link
+                to="/"
+                target="_blank"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted/60 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                View Site
+              </Link>
+            </div>
+
+            <div className="border-t border-border py-1">
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-500/10 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── Admin Layout ───────────────────────────────────────── */
+export default function AdminLayout() {
+  const { theme, setTheme } = useTheme();
+  const [isMobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
+  const [openTickets, setOpenTickets] = useState(0);
+  const [unreadInquiries, setUnreadInquiries] = useState(0);
+
+  const isDark = theme === 'dark' ||
+    (theme === 'system' && typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  // Ctrl+K and ? global shortcuts
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+      if (e.key === '?' && !isInput) {
+        setShortcutsOpen(v => !v);
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Live badge counts
+  useEffect(() => {
+    const unsubW = onSnapshot(
+      query(collection(db, 'payouts'), where('status', '==', 'pending')),
+      snap => setPendingWithdrawals(snap.size),
+    );
+    const unsubT = onSnapshot(
+      query(collection(db, 'tickets'), where('status', '==', 'open')),
+      snap => setOpenTickets(snap.size),
+    );
+    const unsubI = onSnapshot(
+      collection(db, 'contact_messages'),
+      snap => setUnreadInquiries(snap.docs.filter(d => !d.data().readAt).length),
+    );
+    return () => { unsubW(); unsubT(); unsubI(); };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-background flex font-sans">
+
+      <AdminGlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <AdminShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="lg:hidden fixed bottom-5 right-5 z-50 bg-primary text-primary-foreground p-3.5 rounded-md shadow-xl shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all"
+      >
+        <LayoutGrid className="w-5 h-5" />
+      </button>
+
+      {/* Mobile Backdrop */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-60"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Sidebar ── */}
+      <aside
+        className={`w-60 bg-sidebar border-r border-border flex flex-col fixed lg:sticky top-0 h-screen overflow-y-auto z-70 transition-transform duration-300 ease-out shrink-0 ${
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        {/* Logo */}
+        <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
+          <Link to="/admin" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+            <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center shadow-sm">
+              <Shield className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground leading-none">Promptly</p>
+              <p className="text-[9px] text-muted-foreground/60 uppercase tracking-widest font-medium leading-none mt-0.5">Admin Panel</p>
+            </div>
+          </Link>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          <NavSection label="Overview">
+            <SidebarLink to="/admin" icon={BarChart3} label="Dashboard" end />
+            <SidebarLink to="/admin/users" icon={Users} label="Users" />
+          </NavSection>
+
+          <NavSection label="Content">
+            <SidebarLink to="/admin/prompts" icon={LayoutGrid} label="Prompts" />
+            <SidebarLink to="/admin/categories" icon={Tag} label="Categories" />
+            <SidebarLink to="/admin/templates" icon={Edit2} label="Templates" />
+            <SidebarLink to="/admin/blog" icon={FileText} label="Blog" />
+            <SidebarLink to="/admin/seo" icon={Search} label="SEO Audit" />
+            <SidebarLink to="/admin/models" icon={Cpu} label="AI Models" />
+          </NavSection>
+
+          <NavSection label="Support">
+            <SidebarLink to="/admin/inquiries" icon={MessageSquare} label="Inquiries" count={unreadInquiries} />
+            <SidebarLink to="/admin/tickets" icon={BarChart2} label="Tickets" count={openTickets} />
+          </NavSection>
+
+          <NavSection label="Revenue">
+            <SidebarLink to="/admin/subscriptions" icon={Zap} label="Plans" />
+            <SidebarLink to="/admin/revenue" icon={BarChart3} label="Financials" />
+            <SidebarLink to="/admin/referrals" icon={LinkIcon} label="Affiliates" />
+            <SidebarLink to="/admin/withdrawals" icon={Wallet} label="Withdrawals" count={pendingWithdrawals} />
+          </NavSection>
+
+          <NavSection label="Comms">
+            <SidebarLink to="/admin/emails" icon={Mail} label="Email Logs" />
+            <SidebarLink to="/admin/emails/settings" icon={Settings} label="Email Config" />
+            <SidebarGroup icon={Send} label="Marketing & CRM" activePath="/admin/marketing">
+              <SidebarSubLink to="/admin/marketing/contacts" label="Contacts" />
+              <SidebarSubLink to="/admin/marketing/tags" label="Tags" />
+              <SidebarSubLink to="/admin/marketing/segments" label="Segments" />
+              <SidebarSubLink to="/admin/marketing/automations" label="Automations" />
+            </SidebarGroup>
+          </NavSection>
+
+          <NavSection label="System">
+            <SidebarLink to="/admin/permissions" icon={Shield} label="Permissions" />
+            <SidebarLink to="/admin/activity" icon={History} label="Activity Log" />
+            <SidebarLink to="/admin/settings" icon={Settings} label="Settings" />
+          </NavSection>
+        </nav>
+      </aside>
+
+      {/* ── Right Column: header + content + footer ── */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-x-hidden">
+
+        {/* ── Top Header ── */}
+        <header className="h-14 shrink-0 sticky top-0 z-40 bg-sidebar border-b border-border flex items-center gap-4 px-6">
+
+          {/* Breadcrumb */}
+          <div className="flex-1 min-w-0">
+            <AdminBreadcrumb />
+          </div>
+
+          {/* Search trigger */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="relative hidden md:flex items-center gap-2 pl-9 pr-3 py-1.5 text-sm bg-muted/50 border border-border rounded-md w-48 hover:bg-muted/80 hover:border-border/80 transition-all text-muted-foreground cursor-pointer"
+            aria-label="Open search"
+          >
+            <Search className="absolute left-3 w-3.5 h-3.5 text-muted-foreground" />
+            <span className="flex-1 text-left">Search...</span>
+            <kbd className="hidden sm:flex items-center gap-0.5 text-[9px] font-bold bg-muted border border-border rounded px-1 py-0.5 shrink-0">
+              ⌘K
+            </kbd>
+          </button>
+
+          {/* Dark mode toggle */}
+          <button
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+            aria-label="Toggle theme"
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Notifications */}
+          <AdminNotificationBell />
+
+          {/* Profile */}
+          <AdminProfileDropdown />
+        </header>
+
+        {/* ── Page Content ── */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="px-6 md:px-8 py-8 max-w-[1400px] mx-auto w-full animate-fade-in">
+            <Outlet />
+          </div>
+        </main>
+
+        {/* ── Footer ── */}
+        <footer className="shrink-0 border-t border-border bg-sidebar">
+          <div className="px-6 md:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 max-w-[1400px] mx-auto w-full">
+            <p className="text-xs text-muted-foreground font-medium">
+              &copy; {new Date().getFullYear()} Promptly. All rights reserved.
+            </p>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <Link to="/" className="hover:text-foreground transition-colors flex items-center gap-1">
+                <ExternalLink className="w-3 h-3" />
+                View Site
+              </Link>
+              <span>Admin Panel v1.0</span>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );
 }
 
-export default function AdminLayout() {
-  const { user } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
+/* ── Nav Section Label ──────────────────────────────────── */
+function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
-      {/* Mobile Sidebar Toggle */}
-      <button 
-        onClick={() => setIsSidebarOpen(true)}
-        className="lg:hidden fixed bottom-6 right-6 z-50 bg-indigo-600 text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all"
-      >
-        <LayoutGrid className="w-6 h-6" />
-      </button>
-
-      {/* Backdrop for Mobile */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60]"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar */}
-      <aside className={`w-72 bg-slate-900 text-white min-h-screen flex flex-col p-6 fixed lg:sticky top-0 h-screen overflow-y-auto z-[70] shadow-2xl shadow-slate-900/50 transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className="flex items-center justify-between mb-12 px-2">
-          <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-xl">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="font-black text-xl leading-tight">Admin</h1>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Control Tower</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden p-2 text-slate-500 hover:text-white transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <nav className="space-y-2 flex-grow">
-          <SidebarLink to="/admin" icon={BarChart3}>Overview</SidebarLink>
-          <SidebarLink to="/admin/prompts" icon={LayoutGrid}>Prompts</SidebarLink>
-          <SidebarLink to="/admin/seo" icon={Search}>SEO Audit</SidebarLink>
-          <SidebarLink to="/admin/categories" icon={TagIcon}>Categories</SidebarLink>
-          <SidebarLink to="/admin/inquiries" icon={MessageSquare}>Inquiries</SidebarLink>
-          <SidebarLink to="/admin/tickets" icon={ShieldCheck}>Support Tickets</SidebarLink>
-          <SidebarLink to="/admin/blog" icon={FileText}>Blog</SidebarLink>
-          <SidebarLink to="/admin/users" icon={Users}>Users</SidebarLink>
-          <SidebarLink to="/admin/models" icon={Cpu}>AI Models</SidebarLink>
-          <SidebarLink to="/admin/referrals" icon={CreditCard}>Affiliates</SidebarLink>
-          <SidebarLink to="/admin/withdrawals" icon={Send}>Withdrawals</SidebarLink>
-          <SidebarLink to="/admin/revenue" icon={CreditCard}>Financials</SidebarLink>
-          <SidebarLink to="/admin/emails" icon={Mail}>Email Logs</SidebarLink>
-          <SidebarLink to="/admin/templates" icon={Edit2}>Templates</SidebarLink>
-          <SidebarLink to="/admin/subscriptions" icon={Zap}>Plans & Trial</SidebarLink>
-          <SidebarLink to="/admin/permissions" icon={ShieldCheck}>Permissions</SidebarLink>
-          <SidebarLink to="/admin/settings" icon={SettingsIcon}>Settings</SidebarLink>
-          
-          <SidebarGroup icon={Send} label="Marketing & CRM" activePath="/admin/marketing">
-            <SidebarSubLink to="/admin/marketing/contacts">Contacts</SidebarSubLink>
-            <SidebarSubLink to="/admin/marketing/tags">Tags</SidebarSubLink>
-            <SidebarSubLink to="/admin/marketing/segments">Segments</SidebarSubLink>
-            <SidebarSubLink to="/admin/marketing/automations">Automations</SidebarSubLink>
-          </SidebarGroup>
-        </nav>
-
-        <div className="mt-auto pt-6 border-t border-slate-800">
-          <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-2xl">
-            {user?.photoURL ? (
-              <img src={user.photoURL} className="w-10 h-10 rounded-xl" alt="" />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center text-white font-bold uppercase">
-                {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'A'}
-              </div>
-            )}
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold truncate">{user?.displayName}</p>
-              <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-grow w-full lg:w-auto p-4 lg:p-10 max-w-[1400px] mx-auto overflow-x-hidden">
-        <Outlet />
-      </main>
+    <div className="pb-3">
+      <p className="px-3 mb-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
+        {label}
+      </p>
+      <div className="space-y-0.5">{children}</div>
     </div>
   );
 }

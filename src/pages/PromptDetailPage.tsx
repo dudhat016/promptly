@@ -1,11 +1,12 @@
-import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, Check, ChevronRight, Clock, Copy, Eye, Heart, Lock, Share2, Sparkles, User, Zap } from 'lucide-react';
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, query, updateDoc, where } from 'firebase/firestore';
+import { ArrowLeft, BookOpen, Check, ChevronRight, Copy, Eye, Heart, Lock, Share2, Sparkles, Star, Terminal, User, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import ReactMarkdown from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import NeuralAdBanner from '../components/NeuralAdBanner';
 import ShareModal from '../components/ShareModal';
+import UpgradeModal from '../components/UpgradeModal';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { usePermissions } from '../hooks/usePermissions';
@@ -14,7 +15,46 @@ import { recordPromptInteraction } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
 import { Prompt, UserProfile } from '../types';
-import NeuralAdBanner from '../components/NeuralAdBanner';
+
+// ── helpers ────────────────────────────────────────────────────────────────────
+
+const UNLOCK_PERKS = [
+  'Full prompt text with all variables',
+  'Optimized system prompt + parameters',
+  'Step-by-step usage guide',
+  'Copy-to-clipboard in one click',
+];
+
+const DIFFICULTY_CONFIG = {
+  beginner:     { label: 'Beginner',     color: 'text-emerald-600 dark:text-emerald-400', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)' },
+  intermediate: { label: 'Intermediate', color: 'text-amber-600 dark:text-amber-400',    bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
+  advanced:     { label: 'Advanced',     color: 'text-rose-600 dark:text-rose-400',      bg: 'rgba(239,68,68,0.1)',  border: 'rgba(239,68,68,0.2)'  },
+};
+
+/** Highlight [VAR], {{var}}, <var> placeholders in a prompt formula. */
+function HighlightedFormula({ content }: { content: string }) {
+  const VAR_RE = /(\[[\w\s.,!?'-]+\]|\{\{[\w\s.,!?'-]+\}\}|<[\w\s.,!?'-]+>)/g;
+  const parts = content.split(VAR_RE);
+  return (
+    <pre className="font-mono text-sm leading-loose whitespace-pre-wrap break-words text-foreground/70">
+      {parts.map((part, i) => {
+        if (VAR_RE.test(part)) {
+          VAR_RE.lastIndex = 0;
+          return (
+            <span key={i} title="Fill in this variable"
+              className="inline-block px-1.5 py-0.5 rounded text-xs font-bold cursor-help"
+              style={{ background: 'rgba(139,92,246,0.15)', color: 'rgb(167,139,250)', border: '1px solid rgba(139,92,246,0.2)' }}>
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </pre>
+  );
+}
+
+// ── main component ─────────────────────────────────────────────────────────────
 
 export default function PromptDetailPage() {
   const { slug } = useParams();
@@ -28,13 +68,22 @@ export default function PromptDetailPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [relatedPrompts, setRelatedPrompts] = useState<Prompt[]>([]);
   const [category, setCategory] = useState<any | null>(null);
+  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
 
-  // Stable dependency for access check — avoids re-fetching on every profile update
   const unlockedKey = JSON.stringify(profile?.unlockedPrompts || []);
-
   const isLiked = prompt?.id ? isFavorited(prompt.id) : false;
+  const hasNoCredits = user && profile && (profile.credits || 0) <= 0 && !isPro && !isAdmin;
+
+  // Load recently viewed from localStorage
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+      setRecentlyViewed(stored);
+    } catch (e) {}
+  }, [slug]);
 
   const seoMeta = useMemo(() => {
     if (!prompt) return null;
@@ -59,24 +108,14 @@ export default function PromptDetailPage() {
         "description": prompt.description,
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Web",
-        "offers": {
-          "@type": "Offer",
-          "price": prompt.isPaid ? "Subscription" : "0",
-          "priceCurrency": "USD"
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "reviewCount": prompt.likesCount || 12
-        }
+        "offers": { "@type": "Offer", "price": prompt.isPaid ? "Subscription" : "0", "priceCurrency": "USD" },
+        "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": prompt.likesCount || 12 }
       };
       const script = document.createElement('script');
       script.type = "application/ld+json";
       script.text = JSON.stringify(schema);
       document.head.appendChild(script);
-      return () => {
-        document.head.removeChild(script);
-      };
+      return () => { document.head.removeChild(script); };
     }
   }, [prompt]);
 
@@ -97,16 +136,10 @@ export default function PromptDetailPage() {
 
         if (docSnap) {
           const pData = { id: docSnap.id, ...docSnap.data() } as Prompt;
-
-          // SECURITY: Proactively scrub content from the main document
-          // The real formula must ONLY come from the private subcollection
           const alreadyUnlocked = (profile?.unlockedPrompts || []).includes(pData.id!);
           const hasAccess = isPro || isAdmin || alreadyUnlocked || !pData.isPaid;
 
-          // Scrub initial content to prevent inspection leaks
-          if (!hasAccess) {
-            delete pData.content;
-          }
+          if (!hasAccess) delete pData.content;
 
           if (hasAccess) {
             try {
@@ -124,7 +157,7 @@ export default function PromptDetailPage() {
           try {
             const recent = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
             const filtered = recent.filter((p: any) => p.id !== pData.id);
-            const updated = [{ id: pData.id, slug: pData.slug, title: pData.title, model: pData.model }, ...filtered].slice(0, 5);
+            const updated = [{ id: pData.id, slug: pData.slug, title: pData.title, model: pData.model }, ...filtered].slice(0, 6);
             localStorage.setItem('recentlyViewed', JSON.stringify(updated));
           } catch (e) {}
 
@@ -133,9 +166,9 @@ export default function PromptDetailPage() {
             if (creatorDoc.exists()) setCreator({ uid: creatorDoc.id, ...creatorDoc.data() } as UserProfile);
           }
 
-          const relatedQ = query(collection(db, 'prompts'), where('categoryId', '==', pData.categoryId || 'general'), limit(3));
+          const relatedQ = query(collection(db, 'prompts'), where('categoryId', '==', pData.categoryId || 'general'), limit(4));
           const relatedSnap = await getDocs(relatedQ);
-          setRelatedPrompts(relatedSnap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt)).filter(p => p.id !== pData.id));
+          setRelatedPrompts(relatedSnap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt)).filter(p => p.id !== pData.id).slice(0, 3));
 
           if (pData.categoryId) {
             const catSnap = await getDoc(doc(db, 'categories', pData.categoryId));
@@ -153,7 +186,6 @@ export default function PromptDetailPage() {
 
   useEffect(() => {
     if (!prompt) return;
-    // Track engagement every 60s instead of 10s to reduce API calls
     const interval = setInterval(() => {
       if (!document.hidden) recordPromptInteraction(prompt, 1, false);
     }, 60000);
@@ -171,12 +203,12 @@ export default function PromptDetailPage() {
 
   const handleCopy = async () => {
     if (!prompt || !user || !profile) { toast.error("Please login."); navigate('/login'); return; }
-    if (!permissions.canCopyPrompts) { toast.error("Upgrade to Pro to copy!"); return; }
-    const isPro = profile.subscriptionStatus !== 'free';
-    if (!isPro && (profile.credits || 0) <= 0) { toast.error("Out of credits!"); return; }
+    if (!permissions.canCopyPrompts) { setIsUpgradeModalOpen(true); return; }
+    const userIsPro = profile.subscriptionStatus !== 'free';
+    if (!userIsPro && (profile.credits || 0) <= 0) { setIsUpgradeModalOpen(true); return; }
 
     try {
-      if (!isPro) await updateDoc(doc(db, 'users', user.uid), { credits: increment(-1), totalUsedCredits: increment(1) });
+      if (!userIsPro) await updateDoc(doc(db, 'users', user.uid), { credits: increment(-1), totalUsedCredits: increment(1) });
       await updateDoc(doc(db, 'prompts', prompt.id!), { copiesCount: increment(1) });
       navigator.clipboard.writeText(prompt.content);
       setCopied(true);
@@ -188,38 +220,26 @@ export default function PromptDetailPage() {
 
   const handleUnlock = async () => {
     if (!prompt || !user || !profile) { navigate('/login'); return; }
+    if (hasNoCredits) { setIsUpgradeModalOpen(true); return; }
     const unlockedCount = (profile.unlockedPrompts || []).length;
     const vaultLimit = config?.vaultLimit || 10;
 
     if (!isPro && !isAdmin && unlockedCount >= vaultLimit) {
-      toast.error(`Vault full! Upgrade for more than ${vaultLimit} prompts.`, { icon: '🗄️' });
+      toast.error(`Vault full! Upgrade for more than ${vaultLimit} prompts.`);
+      setIsUpgradeModalOpen(true);
       return;
     }
 
-    if ((profile.credits || 0) <= 0) { toast.error("No credits left!"); return; }
-
     try {
-      // Only subtract credits if user is NOT pro/admin (Gap #3)
       if (!isPro && !isAdmin) {
         await updateDoc(doc(db, 'users', user.uid), {
-          credits: increment(-1),
-          totalUsedCredits: increment(1),
-          unlockedPrompts: arrayUnion(prompt.id!)
+          credits: increment(-1), totalUsedCredits: increment(1), unlockedPrompts: arrayUnion(prompt.id!)
         });
-
         await addDoc(collection(db, 'credits_history'), {
-          userId: user.uid,
-          type: 'unlock',
-          promptId: prompt.id,
-          promptTitle: prompt.title,
-          amount: 1,
-          createdAt: new Date()
+          userId: user.uid, type: 'unlock', promptId: prompt.id, promptTitle: prompt.title, amount: 1, createdAt: new Date()
         });
       } else {
-        // Just add to unlockedPrompts for Pro/Admin tracking
-        await updateDoc(doc(db, 'users', user.uid), {
-          unlockedPrompts: arrayUnion(prompt.id!)
-        });
+        await updateDoc(doc(db, 'users', user.uid), { unlockedPrompts: arrayUnion(prompt.id!) });
       }
 
       const privateDoc = await getDoc(doc(db, 'prompts', prompt.id!, 'private', 'content'));
@@ -230,280 +250,471 @@ export default function PromptDetailPage() {
 
   const isUnlocked = !!(prompt && (!prompt.isPaid || isPro || isAdmin || (profile?.unlockedPrompts || []).includes(prompt.id!)));
   const isCategoryLocked = !!(category?.isPremium && !isPro && !isAdmin);
+  const diffConfig = prompt?.difficulty ? DIFFICULTY_CONFIG[prompt.difficulty] : null;
+
+  // Pre-filled share tweet text
+  const tweetText = prompt
+    ? `Just found this "${prompt.title}" prompt on Promptly — insane for ${prompt.tags?.[0] || 'AI'} workflows. Check it out:`
+    : '';
 
   if (loading && !prompt) return (
-    <div className="container mx-auto px-4 py-32">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="h-12 w-2/3 skeleton rounded-2xl" />
-        <div className="h-96 w-full skeleton rounded-[3rem]" />
-        <div className="space-y-4">
-          <div className="h-6 w-full skeleton rounded-xl" />
-          <div className="h-6 w-5/6 skeleton rounded-xl" />
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-32 max-w-5xl">
+        <div className="animate-pulse space-y-8 max-w-4xl mx-auto">
+          <div className="h-10 w-2/3 rounded-xl bg-muted" />
+          <div className="h-96 w-full rounded-2xl bg-muted" />
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => <div key={i} className="h-5 rounded-lg bg-muted" style={{ width: `${95 - i * 8}%` }} />)}
+          </div>
         </div>
       </div>
     </div>
   );
 
-  if (!prompt && !loading) return <div className="container mx-auto px-4 py-32 text-center text-muted-foreground uppercase tracking-widest font-black">Prompt not found</div>;
+  if (!prompt && !loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <p className="text-muted-foreground font-bold uppercase tracking-widest">Prompt not found</p>
+    </div>
+  );
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl min-h-screen">
-      <button
-        onClick={() => navigate('/explore')}
-        className="flex items-center gap-2 text-muted-foreground hover:text-primary mb-8 transition-colors group text-sm font-bold"
-      >
-        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-        Back to Library
-      </button>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-12 max-w-5xl">
+        <button
+          onClick={() => navigate('/explore')}
+          className="flex items-center gap-2 mb-8 transition-colors group text-sm font-semibold text-muted-foreground hover:text-primary"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          Back to Library
+        </button>
 
-      <div className="grid lg:grid-cols-3 gap-12">
-        {/* Main Content */}
-        <div className="lg:col-span-2">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="bg-primary/10 text-primary px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-primary/20">
-                  {models.find(m => m.id === prompt.model)?.name || prompt.model}
-                </span>
-                <div className="flex items-center gap-4 text-muted-foreground text-[10px] font-black uppercase tracking-widest">
-                  <div className="flex items-center gap-1.5">
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>{prompt.viewsCount || 0}</span>
+        <div className="grid lg:grid-cols-3 gap-12">
+
+          {/* ── Main column ── */}
+          <div className="lg:col-span-2">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+
+              {/* ── Meta row ── */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Model badge */}
+                  <span className="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest"
+                    style={{ background: 'rgba(139,92,246,0.12)', color: 'rgb(167,139,250)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                    {models.find(m => m.id === prompt!.model)?.name || prompt!.model}
+                  </span>
+
+                  {/* Difficulty badge */}
+                  {diffConfig && (
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-widest ${diffConfig.color}`}
+                      style={{ background: diffConfig.bg, border: `1px solid ${diffConfig.border}` }}>
+                      {diffConfig.label}
+                    </span>
+                  )}
+
+                  {/* Stats */}
+                  <div className="flex items-center gap-3 text-xs font-semibold text-muted-foreground/60">
+                    <span className="flex items-center gap-1">
+                      <Eye className="w-3.5 h-3.5" /> {prompt!.viewsCount || 0}
+                    </span>
+                    {(prompt!.copiesCount || 0) > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Copy className="w-3.5 h-3.5" /> {prompt!.copiesCount} copied
+                      </span>
+                    )}
+                    <span>{formatDate(prompt!.updatedAt || prompt!.createdAt)}</span>
                   </div>
-                  <span>{formatDate(prompt.updatedAt || prompt.createdAt)}</span>
                 </div>
-              </div>
-              <button
-                onClick={handleLikeClick}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all active:scale-95 border-2 ${isLiked ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-card text-muted-foreground/40 border-border hover:border-muted-foreground/20'}`}
-              >
-                <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                {prompt.likesCount || 0}
-              </button>
-            </div>
 
-            <h1 className="text-4xl md:text-5xl font-black text-foreground mb-6 leading-[1.1] tracking-tight">
-              {prompt.title}
-            </h1>
-
-            <p className={cn(
-              "text-lg text-muted-foreground mb-8 leading-relaxed font-medium transition-all",
-              !isUnlocked && "blur-[5px] select-none opacity-40"
-            )}>
-              {isUnlocked ? prompt.description : "🔒 UNLOCK PREMIUM BLUEPRINT: This expert-engineered AI formula and its optimized parameters are reserved for authorized users. Unlock this asset now, upgrade to Pro, or purchase credits to reveal the full blueprints and technical logic."}
-            </p>
-
-            {prompt.imageUrl && (
-              <div className="mb-12 rounded-[2.5rem] overflow-hidden border border-border shadow-2xl aspect-[16/9] md:aspect-[21/9]">
-                <img src={prompt.imageUrl} className="w-full h-full object-cover" alt={prompt.title} />
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2 mb-12">
-              {prompt.tags.map(tag => (
-                <Link
-                  key={tag}
-                  to={`/explore?q=${tag}`}
-                  className="bg-muted text-muted-foreground px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-border hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all"
+                {/* Like button */}
+                <button
+                  onClick={handleLikeClick}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border ${isLiked ? 'text-rose-500 border-rose-500/25 bg-rose-500/10' : 'text-muted-foreground border-border bg-muted hover:bg-muted/70'}`}
                 >
-                  #{tag}
-                </Link>
-              ))}
-            </div>
+                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                  {prompt!.likesCount || 0} saves
+                </button>
+              </div>
 
-            <div className="relative group mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-primary" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">The Formula</h3>
+              {/* ── Title ── */}
+              <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight">
+                {prompt!.title}
+              </h1>
+
+              {/* ── Description — blurred when locked ── */}
+              <p className={cn(
+                "text-lg mb-8 leading-relaxed transition-all text-muted-foreground",
+                !isUnlocked && "blur-[5px] select-none opacity-30"
+              )}>
+                {isUnlocked
+                  ? prompt!.description
+                  : "Unlock this premium prompt to see the full description, parameters, and optimization guide."}
+              </p>
+
+              {/* ── Cover image ── */}
+              {prompt!.imageUrl && (
+                <div className="mb-10 rounded-2xl overflow-hidden border border-border aspect-[16/9] md:aspect-[21/9]">
+                  <img src={prompt!.imageUrl} className="w-full h-full object-cover" alt={prompt!.title} />
                 </div>
-                {isUnlocked && (
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-xs font-black hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-primary/20"
+              )}
+
+              {/* ── Tags ── */}
+              <div className="flex flex-wrap gap-2 mb-10">
+                {prompt!.tags.map(tag => (
+                  <Link key={tag} to={`/explore?q=${tag}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all bg-muted text-muted-foreground border border-border hover:bg-primary/10 hover:text-primary hover:border-primary/20"
                   >
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Copied' : 'Copy Formula'}
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+
+              {/* ── Partial teaser (locked only) ── */}
+              {!isUnlocked && prompt!.description && (
+                <div className="mb-6 rounded-xl p-5 bg-card border border-border relative overflow-hidden">
+                  <div className="absolute top-2 right-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Preview</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 pr-12">
+                    {prompt!.description}
+                  </p>
+                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent" />
+                </div>
+              )}
+
+              {/* ── Formula block ── */}
+              <div className="relative group mb-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-primary" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">The Formula</h3>
+                    {isUnlocked && prompt!.content && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                        {(prompt!.content.match(/(\[[\w\s.,!?'-]+\]|\{\{[\w\s.,!?'-]+\}\})/g) || []).length} variables
+                      </span>
+                    )}
+                  </div>
+                  {isUnlocked && (
+                    <button onClick={handleCopy}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all"
+                      style={{ background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.15)', color: copied ? 'rgb(52,211,153)' : 'rgb(167,139,250)', border: `1px solid ${copied ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.25)'}` }}>
+                      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied ? 'Copied!' : 'Copy Formula'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Formula content */}
+                <div className={cn(
+                  "rounded-2xl p-8 md:p-10 min-h-[300px] bg-muted border border-border",
+                  !isUnlocked && "blur-[10px] pointer-events-none select-none overflow-hidden h-[300px] opacity-20"
+                )}>
+                  {isUnlocked
+                    ? <HighlightedFormula content={prompt!.content || ''} />
+                    : <pre className="font-mono text-sm leading-loose text-foreground/40 whitespace-pre-wrap">
+                        {"### [PREMIUM BLUEPRINT LOCKED]\n--model v6.0 --parameter [HIDDEN]\n--logic [ENCRYPTED_FLOW]\n--system-prompt [REDACTED]\n\n1. [HIDDEN_STEP_A]\n2. [HIDDEN_STEP_B]\n3. [HIDDEN_STEP_C]"}
+                      </pre>
+                  }
+                </div>
+
+                {/* ── Locked overlay ── */}
+                {!isUnlocked && (
+                  <div className="absolute inset-0 flex items-center justify-center p-6 z-10">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="rounded-2xl p-8 max-w-sm w-full text-center relative overflow-hidden bg-background border border-primary/25"
+                      style={{ boxShadow: '0 0 40px rgba(139,92,246,0.1)' }}
+                    >
+                      <div className="absolute top-0 left-0 right-0 h-0.5"
+                        style={{ background: 'linear-gradient(90deg, transparent, hsl(258,90%,56%), transparent)' }} />
+
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                        style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                        <Lock className="w-6 h-6 text-violet-400" />
+                      </div>
+
+                      {/* Context-aware heading */}
+                      <h3 className="text-xl font-bold text-foreground mb-1.5">
+                        {hasNoCredits
+                          ? "You're out of credits"
+                          : isCategoryLocked
+                          ? 'Pro Members Only'
+                          : 'Unlock This Prompt'}
+                      </h3>
+                      <p className="text-sm mb-5 text-muted-foreground">
+                        {hasNoCredits
+                          ? 'Upgrade to Pro for unlimited access — no credits needed.'
+                          : isCategoryLocked
+                          ? 'This collection is reserved for Pro subscribers.'
+                          : 'Use 1 credit to unlock permanently, or go Pro for unlimited.'}
+                      </p>
+
+                      {/* Perks */}
+                      <ul className="space-y-2 mb-5 text-left">
+                        {UNLOCK_PERKS.map(perk => (
+                          <li key={perk} className="flex items-center gap-2.5 text-xs text-muted-foreground">
+                            <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0"
+                              style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                              <Check className="w-2.5 h-2.5 text-violet-400" />
+                            </div>
+                            {perk}
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Urgency + social proof */}
+                      <div className="flex items-center justify-between mb-5 px-1 text-xs text-muted-foreground/60">
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                          {(prompt!.copiesCount || 0) + 12} used this week
+                        </span>
+                        <span className="flex -space-x-1">
+                          {['V', 'A', 'K'].map(l => (
+                            <span key={l} className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border"
+                              style={{ background: 'rgba(139,92,246,0.2)', borderColor: 'rgba(139,92,246,0.3)', color: 'rgb(167,139,250)' }}>{l}</span>
+                          ))}
+                          <span className="ml-2 self-center">{(prompt!.likesCount || 0) + 42} creators</span>
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {!isCategoryLocked && !hasNoCredits && (
+                          <button onClick={handleUnlock}
+                            className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all"
+                            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+                            <Zap className="w-4 h-4 fill-current" />
+                            Unlock for 1 Credit
+                          </button>
+                        )}
+                        <button onClick={() => setIsUpgradeModalOpen(true)}
+                          className="w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                          style={{ background: hasNoCredits || isCategoryLocked ? 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' : 'hsl(var(--muted))', color: hasNoCredits || isCategoryLocked ? '#fff' : 'hsl(var(--foreground))', border: hasNoCredits || isCategoryLocked ? 'none' : '1px solid hsl(var(--border))' }}
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          {hasNoCredits || isCategoryLocked ? 'Go Pro — Unlimited Access' : 'Upgrade to Pro — Unlimited'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Sample Output ── */}
+              {isUnlocked && prompt!.sampleOutput && (
+                <div className="mb-10 rounded-2xl border border-border overflow-hidden">
+                  <div className="flex items-center gap-2 px-6 py-4 bg-muted border-b border-border">
+                    <Star className="w-4 h-4 text-amber-500" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sample Output</h3>
+                    <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20">
+                      AI Generated
+                    </span>
+                  </div>
+                  <div className="p-6 bg-card">
+                    <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{prompt!.sampleOutput}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Usage Guide ── */}
+              {isUnlocked && prompt!.usageGuide && (
+                <div className="mb-10 rounded-2xl border border-border overflow-hidden">
+                  <div className="flex items-center gap-2 px-6 py-4 bg-muted border-b border-border">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">How to Use This Prompt</h3>
+                  </div>
+                  <div className="p-6 bg-card prose prose-neutral dark:prose-invert prose-sm max-w-none
+                    prose-p:text-muted-foreground prose-li:text-muted-foreground
+                    prose-headings:text-foreground prose-strong:text-foreground">
+                    {prompt!.usageGuide.split('\n').map((line, i) => (
+                      <p key={i} className="text-sm leading-relaxed text-muted-foreground mb-2 last:mb-0">{line}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Action bar ── */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 py-8 border-t border-border">
+                <button onClick={() => setIsShareModalOpen(true)}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all bg-muted border border-border text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                >
+                  <Share2 className="w-4 h-4" /> Share & Earn
+                </button>
+                {!isPro && (
+                  <button onClick={() => setIsUpgradeModalOpen(true)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all"
+                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+                    <Zap className="w-4 h-4" /> Go Pro — Unlimited Access
                   </button>
                 )}
               </div>
 
-              <div className={isUnlocked ? "" : "blur-[10px] pointer-events-none select-none overflow-hidden h-[400px] rounded-[2.5rem] border border-border opacity-30"}>
-                <div className="bg-card rounded-[2.5rem] p-8 md:p-12 text-foreground font-mono text-sm leading-loose border border-border shadow-2xl min-h-[400px]">
-                  <ReactMarkdown>
-                    {isUnlocked
-                      ? (prompt.content || "")
-                      : `### [PREMIUM BLUEPRINT LOCKED]
---model v6.0 --parameter [HIDDEN]
---logic [ENCRYPTED_FLOW]
---system-prompt [REDACTED_FOR_SECURITY]
---optimization-layer [SECURE_BLUEPRINT]
-
-1. [HIDDEN_STEP_A]
-2. [HIDDEN_STEP_B]
-3. [HIDDEN_STEP_C]
-
-This premium AI formula is protected by the Promptly secure content layer.
-Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full engineering logic.`}
-                  </ReactMarkdown>
-                </div>
-              </div>
-
-              {!isUnlocked && (
-                <div className="absolute inset-0 flex items-center justify-center p-6 z-10">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-card rounded-[3rem] border border-border p-10 shadow-2xl max-w-sm w-full text-center relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
-
-                    <div className="mb-8">
-                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <Lock className="w-8 h-8 text-primary" />
-                      </div>
-                      <h3 className="text-2xl font-black text-foreground mb-3 tracking-tighter">
-                        {isCategoryLocked ? 'Exclusive Vault' : 'Premium Asset'}
-                      </h3>
-                      <p className="text-muted-foreground text-sm font-medium leading-relaxed mb-6">
-                        {isCategoryLocked
-                          ? `This collection is reserved for professional Pro members only.`
-                          : 'Unlock this expert-engineered formula to reveal the full technical parameters and AI blueprints.'}
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      {!isCategoryLocked && (
-                        <button
-                          onClick={handleUnlock}
-                          className="w-full bg-primary text-primary-foreground font-black py-4 rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
-                        >
-                          <Zap className="w-4 h-4 fill-current" />
-                          Unlock for 1 Credit
-                        </button>
-                      )}
-                      <button
-                        onClick={() => navigate('/pricing')}
-                        className="w-full bg-foreground text-background font-black py-4 rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                        Upgrade to Pro
-                      </button>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col md:flex-row items-center gap-4 py-8 border-t border-border">
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-muted text-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all shadow-sm border border-border"
-              >
-                <Share2 className="w-5 h-5" />
-                Spread the Word
-              </button>
-            </div>
-
-            <NeuralAdBanner className="mt-8" />
-          </motion.div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="flex flex-col gap-8">
-          <div className="bg-card rounded-[2.5rem] border border-border p-8 shadow-sm">
-            <h4 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground mb-8 flex items-center gap-2">
-              <User className="w-4 h-4 text-primary" />
-              Creator
-            </h4>
-            <div className="flex items-center gap-4 mb-8">
-              {creator?.photoURL ? (
-                <img src={creator.photoURL} className="w-14 h-14 rounded-2xl object-cover shadow-sm border border-border" alt="" />
-              ) : (
-                <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center text-muted-foreground/40 font-black text-lg">
-                  {creator?.displayName?.charAt(0) || 'C'}
-                </div>
-              )}
-              <div>
-                <div className="font-black text-foreground text-lg leading-tight mb-1">{creator?.displayName || 'Designer'}</div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-primary">
-                  {creator?.subscriptionStatus === 'pro' ? 'Verified Expert' : 'Creator'}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex justify-between items-center py-3 border-b border-border">
-                <span className="text-xs font-bold text-muted-foreground">Model</span>
-                <span className="text-xs font-black text-foreground">{models.find(m => m.id === prompt.model)?.name || prompt.model}</span>
-              </div>
-              <div className="flex justify-between items-center py-3 border-b border-border">
-                <span className="text-xs font-bold text-muted-foreground">Category</span>
-                <span className="text-xs font-black text-foreground">{prompt.categoryId}</span>
-              </div>
-              <div className="flex justify-between items-center py-3">
-                <span className="text-xs font-bold text-muted-foreground">Standard</span>
-                <span className="text-xs font-black text-green-500 uppercase">Production Ready</span>
-              </div>
-            </div>
+              <NeuralAdBanner className="mt-4" />
+            </motion.div>
           </div>
 
-          <NeuralAdBanner slot="sidebar-ad" format="rectangle" />
+          {/* ── Sidebar ── */}
+          <div className="flex flex-col gap-6">
 
-          <div className="bg-foreground text-background rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
-            <Zap className="w-32 h-32 absolute -right-8 -bottom-8 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000" />
-            <div className="relative z-10">
-              <h4 className="text-2xl font-black mb-4 tracking-tighter">Unlimited Access?</h4>
-              <p className="opacity-60 text-sm mb-8 leading-relaxed font-medium">Get lifetime access to our entire 5,000+ prompt database and pro engineering lab.</p>
-              <button
-                onClick={() => navigate('/pricing')}
-                className="w-full bg-primary text-primary-foreground font-black py-4 rounded-2xl hover:opacity-90 transition-all text-sm"
-              >
-                Go Pro Now
-              </button>
+            {/* Creator card */}
+            <div className="rounded-2xl p-6 bg-card border border-border">
+              <h4 className="text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2 text-muted-foreground">
+                <User className="w-3.5 h-3.5 text-primary" /> Creator
+              </h4>
+              <div className="flex items-center gap-3 mb-5">
+                {creator?.photoURL ? (
+                  <img src={creator.photoURL} className="w-12 h-12 rounded-xl object-cover border border-border" alt="" />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-primary bg-primary/15">
+                    {creator?.displayName?.charAt(0) || 'C'}
+                  </div>
+                )}
+                <div>
+                  <div className="font-bold text-foreground">{creator?.displayName || 'Designer'}</div>
+                  <div className="text-xs font-semibold text-primary">
+                    {creator?.subscriptionStatus === 'pro' ? 'Verified Expert' : 'Creator'}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-0.5">
+                {[
+                  { label: 'Model',    value: models.find(m => m.id === prompt!.model)?.name || prompt!.model },
+                  { label: 'Category', value: prompt!.categoryId },
+                  { label: 'Copied',   value: `${prompt!.copiesCount || 0} times` },
+                  { label: 'Standard', value: 'Production Ready', valueClass: 'text-emerald-600 dark:text-emerald-400' },
+                ].map(({ label, value, valueClass }) => (
+                  <div key={label} className="flex justify-between items-center py-2.5 border-b border-border last:border-0">
+                    <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+                    <span className={`text-xs font-bold text-foreground ${valueClass || ''}`}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <NeuralAdBanner slot="sidebar-ad" format="rectangle" />
+
+            {/* Upgrade CTA — sticky sidebar */}
+            {!isPro && (
+              <div className="rounded-2xl p-6 relative overflow-hidden"
+                style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                <div className="absolute top-0 right-0 w-28 h-28 pointer-events-none"
+                  style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)' }} />
+                <div className="relative z-10">
+                  <div className="text-xs font-bold uppercase tracking-widest text-primary mb-3">Pro Plan</div>
+                  <h4 className="text-lg font-bold text-foreground mb-1.5">Unlimited Access</h4>
+                  <p className="text-sm mb-4 leading-relaxed text-muted-foreground">
+                    Get every prompt. Copy without limits. Cancel anytime.
+                  </p>
+                  <ul className="space-y-1.5 mb-5">
+                    {['5,000+ expert prompts', 'Unlimited copies', 'New prompts weekly'].map(item => (
+                      <li key={item} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Check className="w-3.5 h-3.5 text-violet-400 shrink-0" /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <button onClick={() => setIsUpgradeModalOpen(true)}
+                    className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all"
+                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 20px rgba(139,92,246,0.25)' }}>
+                    <Sparkles className="w-4 h-4" /> See Plans
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Credits meter (free users) */}
+            {user && !isPro && !isAdmin && (
+              <div className="rounded-xl p-4 bg-card border border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-muted-foreground">Credits remaining</span>
+                  <span className={`text-sm font-bold ${(profile?.credits || 0) === 0 ? 'text-rose-500' : 'text-foreground'}`}>
+                    {profile?.credits || 0}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(100, ((profile?.credits || 0) / (profile?.monthlyLimit || 50)) * 100)}%`,
+                      background: (profile?.credits || 0) === 0 ? 'rgb(239,68,68)' : 'linear-gradient(90deg, hsl(258,90%,56%), hsl(280,90%,60%))',
+                    }}
+                  />
+                </div>
+                {(profile?.credits || 0) === 0 && (
+                  <button onClick={() => setIsUpgradeModalOpen(true)}
+                    className="w-full mt-3 py-2 rounded-lg text-xs font-bold text-white"
+                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+                    Upgrade for Unlimited
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Related prompts ── */}
+        {relatedPrompts.length > 0 && (
+          <div className="mt-20 pt-12 border-t border-border">
+            <h2 className="text-2xl font-bold text-foreground mb-8 tracking-tight">
+              Similar{' '}
+              <span style={{ background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                Formulas
+              </span>
+            </h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {relatedPrompts.map(p => (
+                <Link key={p.id} to={`/prompt/${p.slug}`}
+                  className="group rounded-2xl p-6 flex flex-col transition-all bg-card border border-border hover:border-primary/20 hover:bg-muted/30"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-widest bg-muted text-muted-foreground border border-border">
+                      {p.model}
+                    </span>
+                    {p.isPaid && <Zap className="w-3.5 h-3.5 text-amber-500 fill-current" />}
+                  </div>
+                  <h3 className="font-bold text-base mb-2 text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                    {p.title}
+                  </h3>
+                  <p className="text-sm line-clamp-2 mb-5 flex-grow leading-relaxed text-muted-foreground">
+                    {p.description}
+                  </p>
+                  <div className="flex items-center justify-between text-muted-foreground/50">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1 text-xs font-bold">
+                        <Heart className="w-3.5 h-3.5" /> {p.likesCount || 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs font-bold">
+                        <Eye className="w-3.5 h-3.5" /> {p.viewsCount || 0}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-primary/50" />
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
+        )}
 
-        </div>
+        {/* ── Recently viewed ── */}
+        {recentlyViewed.filter(p => p.id !== prompt?.id).length > 0 && (
+          <div className="mt-12 pt-12 border-t border-border">
+            <h2 className="text-lg font-bold text-foreground mb-5 tracking-tight">Continue Exploring</h2>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+              {recentlyViewed.filter(p => p.id !== prompt?.id).map((p) => (
+                <Link key={p.id} to={`/prompt/${p.slug}`}
+                  className="flex-none rounded-xl px-4 py-3 bg-card border border-border hover:border-primary/20 hover:bg-muted/30 transition-all group min-w-[200px] max-w-[240px]"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">{p.model}</div>
+                  <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                    {p.title}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
 
-      {relatedPrompts.length > 0 && (
-        <div className="mt-24 border-t border-border pt-20">
-          <h2 className="text-4xl font-black text-foreground mb-12 tracking-tight">Similar <span className="text-primary">Formulas</span></h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {relatedPrompts.map(p => (
-              <Link
-                key={p.id}
-                to={`/prompt/${p.slug}`}
-                className="group bg-card rounded-[2.5rem] border border-border p-8 hover:border-primary/40 hover:shadow-2xl transition-all flex flex-col"
-              >
-                <div className="flex items-center gap-2 mb-6">
-                  <span className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                    {p.model}
-                  </span>
-                  {p.isPaid && <Zap className="w-3.5 h-3.5 text-amber-500 fill-current" />}
-                </div>
-                <h3 className="font-black text-xl mb-3 text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-tight">{p.title}</h3>
-                <p className="text-muted-foreground text-sm line-clamp-2 mb-8 flex-grow font-medium leading-relaxed">{p.description}</p>
-                <div className="flex items-center justify-between text-muted-foreground/40">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5">
-                      <Heart className="w-3.5 h-3.5" />
-                      <span className="text-xs font-black">{p.likesCount || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Eye className="w-3.5 h-3.5" />
-                      <span className="text-xs font-black">{p.viewsCount || 0}</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
+      {/* ── Modals ── */}
       {prompt && (
         <ShareModal
           isOpen={isShareModalOpen}
@@ -513,26 +724,11 @@ Unlock this blueprint, upgrade to Pro, or purchase credits to reveal the full en
           referralCode={profile?.referralCode}
         />
       )}
-    </div>
-  );
-}
 
-function Terminal(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="4 17 10 11 4 5" />
-      <line x1="12" x2="20" y1="19" y2="19" />
-    </svg>
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+      />
+    </div>
   );
 }

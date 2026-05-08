@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { EmailTemplate } from '../../types';
-import { Save, ChevronRight, Edit2, Eye, X, Mail, Send, Settings } from 'lucide-react';
+import { Save, Edit2, Eye, X, Mail, Send, Settings } from 'lucide-react';
+import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
@@ -104,7 +105,7 @@ export default function AdminTemplateForm() {
             ${content.replace(/\n/g, '<br />')}
           </div>
           <div style="background: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
-            <p>© 2026 Promptly AI. All rights reserved.</p>
+            <p>Â© 2026 Promptly AI. All rights reserved.</p>
             <p style="margin-top: 10px;">
               <a href="${unsubscribeUrl}" style="color: #4f46e5; font-weight: 700;">Unsubscribe</a>
             </p>
@@ -115,74 +116,71 @@ export default function AdminTemplateForm() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Breadcrumbs */}
-      <div className="flex items-center gap-2 text-sm text-slate-500 mb-8 font-medium">
-        <Link to="/admin" className="hover:text-indigo-600 flex items-center gap-2"><Edit2 className="w-4 h-4" /> Admin</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link to="/admin/templates" className="hover:text-indigo-600">Templates</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-slate-900">{id === 'new' ? 'Create Template' : 'Edit Template'}</span>
-      </div>
+    <div className="max-w-4xl">
+      <AdminPageHeader
+        label="Content"
+        labelIcon={Mail}
+        title={id === 'new' ? 'Create Template' : 'Edit Template'}
+        subtitle="Build and configure email template content and variables."
+      />
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-10">
-            <h2 className="text-3xl font-black mb-8">{id === 'new' ? 'Create Template' : 'Edit Template'}</h2>
+          <div className="bg-card rounded-lg border border-border shadow-sm p-8">
             
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Template Name</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Template Name</label>
                   <input 
                     type="text" required
                     value={template.name || ''}
                     onChange={e => setTemplate({...template, name: e.target.value})}
                     placeholder="e.g. Welcome Email"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Internal Type (ID)</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Internal Type (ID)</label>
                   <input 
                     type="text" required
                     disabled={id !== 'new'}
                     value={template.type || ''}
                     onChange={e => setTemplate({...template, type: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
                     placeholder="e.g. welcome"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all disabled:opacity-50"
+                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all disabled:opacity-50"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Subject Line</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Subject Line</label>
                 <input 
                   type="text" required
                   value={template.subject || ''}
                   onChange={e => setTemplate({...template, subject: e.target.value})}
                   placeholder="e.g. Welcome to Promptly!"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
+                  className="input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Email Body (Markdown/Text)</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Email Body (Markdown/Text)</label>
                 <textarea 
                   required rows={12}
                   value={template.body || ''}
                   onChange={e => setTemplate({...template, body: e.target.value})}
                   placeholder="Hi {{name}}, welcome to Promptly..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all font-mono text-sm"
+                  className="input font-mono"
                 />
-                <p className="text-xs text-slate-500 mt-2">Use {'{{variable_name}}'} syntax to insert dynamic variables.</p>
+                <p className="text-xs text-muted-foreground mt-2">Use {'{{variable_name}}'} syntax to insert dynamic variables.</p>
               </div>
 
-              <div className="pt-6 border-t border-slate-100 flex flex-wrap gap-4">
+              <div className="pt-6 border-t border-border flex flex-wrap gap-4">
                 <button 
                   type="submit" 
                   disabled={saving}
-                  className="flex-grow bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-w-[200px]"
+                  className="flex-grow btn-primary btn-lg min-w-[200px]"
                 >
                   <Save className="w-5 h-5" />
                   {saving ? 'Saving...' : 'Save Template'}
@@ -190,7 +188,7 @@ export default function AdminTemplateForm() {
                 <button 
                   type="button"
                   onClick={() => setShowPreview(true)}
-                  className="px-6 bg-white border border-slate-200 text-slate-900 font-bold py-4 rounded-2xl hover:bg-slate-50 transition-all flex items-center gap-2"
+                  className="btn-secondary btn-lg"
                 >
                   <Eye className="w-5 h-5" />
                   Preview
@@ -199,21 +197,21 @@ export default function AdminTemplateForm() {
                   type="button"
                   disabled={isTesting}
                   onClick={handleSendTest}
-                  className="px-6 bg-white border border-slate-200 text-indigo-600 font-bold py-4 rounded-2xl hover:bg-indigo-50 transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-6 bg-card border border-border text-primary font-bold py-4 rounded-md hover:bg-primary/8 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
                   <Send className="w-5 h-5" />
                   {isTesting ? 'Sending...' : 'Send Test'}
                 </button>
                 <Link 
                   to="/admin/emails/settings"
-                  className="p-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
+                  className="p-4 bg-muted text-muted-foreground font-bold rounded-md hover:bg-muted transition-all"
                   title="Email Settings"
                 >
                   <Settings className="w-6 h-6" />
                 </Link>
                 <Link 
                   to="/admin/templates"
-                  className="px-8 bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200 transition-all text-center"
+                  className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all text-center"
                 >
                   Cancel
                 </Link>
@@ -223,32 +221,32 @@ export default function AdminTemplateForm() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-indigo-900 text-white rounded-[2rem] p-8 shadow-xl shadow-indigo-200">
-            <h3 className="font-black text-xl mb-6">Template Tips</h3>
-            <ul className="space-y-4 text-sm text-indigo-100">
+          <div className="bg-primary text-primary-foreground rounded-md p-8 shadow-xl shadow-primary/20">
+            <h3 className="font-bold text-xl mb-6">Template Tips</h3>
+            <ul className="space-y-4 text-sm text-primary-foreground/80">
               <li className="flex gap-3">
-                <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] shrink-0">1</div>
-                Use double braces like <code className="bg-white/10 px-1 rounded">{'{{name}}'}</code> for dynamic content.
+                <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center text-xs shrink-0">1</div>
+                Use double braces like <code className="bg-card/10 px-1 rounded">{'{{name}}'}</code> for dynamic content.
               </li>
               <li className="flex gap-3">
-                <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] shrink-0">2</div>
+                <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center text-xs shrink-0">2</div>
                 Avoid using complex HTML unless you are comfortable with email client compatibility.
               </li>
               <li className="flex gap-3">
-                <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] shrink-0">3</div>
+                <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center text-xs shrink-0">3</div>
                 The "Internal Type" must match the value used in the code (e.g., "welcome").
               </li>
             </ul>
           </div>
 
-          <div className="bg-white rounded-[2rem] border border-slate-100 p-8">
-            <h3 className="font-black text-lg mb-4">Detected Variables</h3>
+          <div className="bg-card rounded-md border border-border p-8">
+            <h3 className="font-bold text-lg mb-4">Detected Variables</h3>
             <div className="flex flex-wrap gap-2">
               {(template.body?.match(/{{(.*?)}}/g)?.map(v => v.replace(/[{}]/g, '')) || []).map((v, i) => (
-                <span key={i} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
+                <span key={i} className="px-3 py-1 bg-muted text-muted-foreground rounded-lg text-xs font-bold">
                   {v}
                 </span>
-              )) || <span className="text-slate-400 text-sm italic">No variables detected yet</span>}
+              )) || <span className="text-muted-foreground text-sm italic">No variables detected yet</span>}
             </div>
           </div>
         </div>
@@ -257,45 +255,45 @@ export default function AdminTemplateForm() {
       {/* Preview Modal */}
       <AnimatePresence>
         {showPreview && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-muted/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="bg-card rounded-lg w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="p-8 border-b border-border flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                  <div className="w-12 h-12 bg-primary/8 rounded-md flex items-center justify-center text-primary">
                     <Mail className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-slate-900">Email Preview</h3>
-                    <p className="text-xs text-slate-500 font-medium">Testing with mock data</p>
+                    <h3 className="text-base font-semibold text-foreground">Email Preview</h3>
+                    <p className="text-xs text-muted-foreground font-medium">Testing with mock data</p>
                   </div>
                 </div>
-                <button onClick={() => setShowPreview(false)} className="p-3 hover:bg-slate-100 rounded-2xl transition-colors">
+                <button onClick={() => setShowPreview(false)} className="p-3 hover:bg-muted rounded-md transition-colors">
                   <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <div className="p-8 overflow-y-auto bg-slate-50 flex-grow">
+              <div className="p-8 overflow-y-auto bg-muted/50 flex-grow">
                 <div className="max-w-xl mx-auto">
-                  <div className="bg-white border border-slate-100 rounded-3xl shadow-sm p-6 mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Subject</p>
-                    <p className="font-bold text-slate-900">{template.subject || 'No Subject'}</p>
+                  <div className="bg-card border border-border rounded-lg shadow-sm p-6 mb-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Subject</p>
+                    <p className="font-bold text-foreground">{template.subject || 'No Subject'}</p>
                   </div>
                   <div 
-                    className="prose prose-slate max-w-none shadow-xl rounded-[1.5rem] overflow-hidden"
+                    className="prose prose-slate max-w-none shadow-xl rounded-md overflow-hidden"
                     dangerouslySetInnerHTML={{ __html: renderPreview() }} 
                   />
                 </div>
               </div>
 
-              <div className="p-8 bg-white border-t border-slate-100 text-center shrink-0">
+              <div className="p-8 bg-card border-t border-border text-center shrink-0">
                 <button 
                   onClick={() => setShowPreview(false)}
-                  className="bg-slate-900 text-white px-12 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all"
+                  className="bg-muted text-white px-12 py-4 rounded-md font-bold hover:bg-muted transition-all"
                 >
                   Got it, close
                 </button>

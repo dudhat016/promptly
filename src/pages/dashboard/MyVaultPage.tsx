@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from 'firebase/firestore';
+﻿import { collection, getDocs, query, where } from 'firebase/firestore';
 import { FolderLock, Lock, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -62,14 +62,14 @@ export default function MyVaultPage() {
   return (
     <div>
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.2em] text-xs">
+          <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[0.2em] text-xs">
             <ShieldCheck className="w-4 h-4" />
             Secure Assets
           </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">My Private Vault</h1>
-          <p className="text-muted-foreground text-lg max-w-xl">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Private Vault</h1>
+          <p className="text-sm text-muted-foreground max-w-xl">
             Access your unlocked premium formulas and expert AI blueprints.
           </p>
         </div>
@@ -79,7 +79,7 @@ export default function MyVaultPage() {
           <input
             type="text"
             placeholder="Search your vault..."
-            className="w-full bg-card border border-border rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
+            className="w-full bg-card border border-border rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-primary/50 transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -94,18 +94,18 @@ export default function MyVaultPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-32 bg-muted/30 rounded-[3rem] border border-border border-dashed"
+          className="text-center py-32 bg-muted/30 rounded-2xl border border-border border-dashed"
         >
-          <div className="w-20 h-20 bg-background rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/5">
+          <div className="w-20 h-20 bg-background rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/5">
             <Lock className="w-10 h-10 text-muted-foreground" />
           </div>
-          <h2 className="text-2xl font-black text-foreground mb-2">Your vault is empty</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Your vault is empty</h2>
           <p className="text-muted-foreground max-w-sm mx-auto mb-8">
             You haven't unlocked any premium prompts yet. Start exploring our marketplace to build your library.
           </p>
           <Link
             to="/explore"
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-black hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+            className="btn-primary btn-lg"
           >
             <Sparkles className="w-5 h-5" />
             Explore Marketplace
@@ -131,7 +131,7 @@ export default function MyVaultPage() {
       )}
 
       {/* Security Banner */}
-      <div className="mt-24 p-8 bg-card border border-border rounded-[2.5rem] flex flex-col md:flex-row items-center gap-8 shadow-sm">
+      <div className="mt-24 p-8 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-center gap-8 shadow-sm">
         <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
           <FolderLock className="w-8 h-8 text-primary" />
         </div>
@@ -142,9 +142,9 @@ export default function MyVaultPage() {
             Even with your browser open, your secret content is only loaded when you explicitly view it.
           </p>
         </div>
-        <div className="shrink-0 flex items-center gap-2 bg-muted px-4 py-2 rounded-xl border border-border">
+        <div className="shrink-0 flex items-center gap-2 bg-muted px-4 py-2 rounded-md border border-border">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Secure Connection</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Secure Connection</span>
         </div>
       </div>
     </div>

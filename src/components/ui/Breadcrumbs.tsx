@@ -1,4 +1,4 @@
-import { ChevronRight, Home } from 'lucide-react';
+﻿import { ChevronRight, Home } from 'lucide-react';
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -9,8 +9,8 @@ export default function Breadcrumbs() {
   if (pathnames.length === 0) return null;
 
   return (
-    <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 py-3 px-3 bg-slate-200">
-      <Link to="/dashboard" className="hover:text-indigo-600 transition-colors flex items-center gap-1">
+    <nav className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground py-3 px-3 bg-muted">
+      <Link to="/dashboard" className="hover:text-primary transition-colors flex items-center gap-1">
         <Home className="w-3 h-3" />
         Workspace
       </Link>
@@ -22,9 +22,9 @@ export default function Breadcrumbs() {
           <React.Fragment key={to}>
             <ChevronRight className="w-3 h-3 opacity-30" />
             {last ? (
-              <span className="text-slate-900">{value.replace(/-/g, ' ')}</span>
+              <span className="text-foreground">{value.replace(/-/g, ' ')}</span>
             ) : (
-              <Link to={to} className="hover:text-indigo-600 transition-colors">
+              <Link to={to} className="hover:text-primary transition-colors">
                 {value.replace(/-/g, ' ')}
               </Link>
             )}

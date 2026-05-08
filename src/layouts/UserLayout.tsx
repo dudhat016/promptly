@@ -1,20 +1,23 @@
-import {
+﻿import {
   BookOpen,
-  ChevronRight,
+  ChevronDown,
   Coins,
   CreditCard,
   Gift,
   Heart,
   HelpCircle,
   LayoutGrid,
-  LogOut, Menu,
-  MessageSquare,
-  SearchIcon,
+  Lock,
+  LogOut,
+  Mail,
+  Menu,
+  Search,
   Settings,
+  ShieldCheck,
   User as UserIcon,
   Wand2,
   X,
-  Zap
+  Zap,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
@@ -23,191 +26,286 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { useAuth } from '../hooks/useAuth';
 import { auth } from '../lib/firebase';
 
+const NAV_ITEMS = [
+  { label: 'Marketplace',  icon: Search,      path: '/explore' },
+  { label: 'My Vault',     icon: LayoutGrid,  path: '/vault' },
+  { label: 'My Creations', icon: BookOpen,    path: '/dashboard/library' },
+  { label: 'Favorites',    icon: Heart,       path: '/dashboard/favorites' },
+  { label: 'AI Builder',   icon: Wand2,       path: '/builder' },
+  { label: 'Partner',      icon: Gift,        path: '/affiliate/dashboard' },
+  { label: 'Credits',      icon: Coins,       path: '/credits' },
+  { label: 'Support',      icon: HelpCircle,  path: '/support' },
+];
+
+const SETTINGS_ITEMS = [
+  { label: 'Profile',       path: '/settings/profile' },
+  { label: 'Billing',       path: '/settings/billing' },
+  { label: 'Security',      path: '/settings/security' },
+  { label: 'Notifications', path: '/settings/notifications' },
+];
+
 export default function UserLayout() {
   const { user, profile, isPro, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobileOpen, setMobileOpen] = useState(false);
+
+  // Block suspended users immediately
+  if (profile?.suspended) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="text-center max-w-sm">
+          <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-10 h-10 text-rose-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-3">Account Suspended</h1>
+          <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
+            Your account has been temporarily suspended. Please contact our support team for assistance.
+          </p>
+          <div className="flex flex-col gap-3">
+            <a
+              href="mailto:support@promptly.com"
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-all"
+            >
+              <Mail className="w-4 h-4" /> Contact Support
+            </a>
+            <button
+              onClick={() => auth.signOut().then(() => navigate('/'))}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-muted text-foreground rounded-lg font-semibold text-sm hover:bg-muted/80 transition-all"
+            >
+              <LogOut className="w-4 h-4" /> Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
+  const [isSettingsOpen, setSettingsOpen] = useState(
+    location.pathname.startsWith('/settings')
+  );
 
   const isActive = (path: string) => location.pathname === path;
-
-  const navItems = [
-    { label: 'Marketplace', icon: SearchIcon, path: '/explore' },
-    { label: 'My Vault', icon: LayoutGrid, path: '/vault' },
-    { label: 'My Creations', icon: BookOpen, path: '/dashboard/library' },
-    { label: 'Favorites', icon: Heart, path: '/dashboard/favorites' },
-    { label: 'AI Builder', icon: Wand2, path: '/builder' },
-    { label: 'Partner Program', icon: Gift, path: '/affiliate/dashboard' },
-    { label: 'Credit Ledger', icon: Coins, path: '/credits' },
-    { label: 'Neural Support', icon: HelpCircle, path: '/support' },
-  ];
-
-  if (isAdmin) {
-    navItems.push({ label: 'Admin Terminal', icon: BookOpen, path: '/admin' });
-  }
+  const isSettingsActive = location.pathname.startsWith('/settings');
 
   const handleSignOut = async () => {
     await auth.signOut();
     navigate('/');
   };
 
+  const creditsUsed = profile?.totalUsedCredits || 0;
+  const creditsTotal = 10;
+  const creditPct = isPro ? 100 : Math.min(100, (creditsUsed / creditsTotal) * 100);
+
+  const navItems = isAdmin
+    ? [...NAV_ITEMS, { label: 'Admin', icon: ShieldCheck, path: '/admin' }]
+    : NAV_ITEMS;
+
   return (
     <div className="min-h-screen bg-background flex text-foreground">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex flex-col w-72 bg-card border-r border-border fixed inset-y-0 left-0 z-50">
-        <div className="p-8">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-6 transition-transform">
-              <Zap className="w-6 h-6 text-primary-foreground fill-current" />
+
+      {/* â”€â”€ Desktop Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <aside className="hidden lg:flex flex-col w-60 bg-sidebar border-r border-border fixed inset-y-0 left-0 z-50 overflow-y-auto">
+
+        {/* Logo */}
+        <div className="h-16 flex items-center px-5 border-b border-border shrink-0">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center shadow-sm shadow-primary/30 group-hover:scale-95 transition-transform">
+              <Zap className="w-4 h-4 text-white fill-white" />
             </div>
-            <span className="text-2xl font-black tracking-tighter">promptly</span>
+            <span className="text-base font-bold tracking-tight font-display">promptly</span>
           </Link>
         </div>
 
-        <nav className="flex-grow px-4 space-y-2 mt-4 overflow-y-auto">
-          <p className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4 opacity-50">Main Deck</p>
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5">
+          <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+            Navigation
+          </p>
+
           {navItems.map((item) => (
-            <Link
+            <SidebarLink
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-sm transition-all group ${
-                isActive(item.path)
-                  ? 'bg-primary text-primary-foreground shadow-xl shadow-primary/20'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
+              icon={item.icon}
+              active={isActive(item.path)}
             >
-              <item.icon className={`w-5 h-5 ${isActive(item.path) ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground'}`} />
               {item.label}
-              {isActive(item.path) && (
-                <motion.div layoutId="activeNav" className="ml-auto w-1.5 h-1.5 bg-primary-foreground rounded-full" />
-              )}
-            </Link>
+            </SidebarLink>
           ))}
 
-          <p className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-10 mb-4 opacity-50">Control Center</p>
-          <div className="space-y-1">
-            <Link
-              to="/settings/profile"
-              className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-sm transition-all group ${
-                location.pathname.startsWith('/settings')
-                  ? 'bg-foreground text-background shadow-xl'
+          <div className="pt-4 mt-2 border-t border-border/60">
+            <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+              Account
+            </p>
+
+            <button
+              onClick={() => setSettingsOpen(!isSettingsOpen)}
+              className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isSettingsActive
+                  ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
-              <Settings className={`w-5 h-5 ${location.pathname.startsWith('/settings') ? 'text-background' : 'text-muted-foreground group-hover:text-foreground'}`} />
-              Account Settings
-            </Link>
+              <span className="flex items-center gap-2.5">
+                <Settings className="w-4 h-4 shrink-0" />
+                Settings
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isSettingsOpen ? 'rotate-180' : ''}`} />
+            </button>
 
             <AnimatePresence initial={false}>
-              {location.pathname.startsWith('/settings') && (
+              {isSettingsOpen && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden pl-4 space-y-1 mt-2"
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="overflow-hidden pl-3 mt-0.5 space-y-0.5"
                 >
-                  <SubNavLink to="/settings/profile" label="Profile" />
-                  <SubNavLink to="/settings/billing" label="Financials" />
-                  <SubNavLink to="/settings/security" label="Security" />
-                  <SubNavLink to="/settings/notifications" label="Alerts" />
+                  {SETTINGS_ITEMS.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center gap-2 pl-6 pr-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        isActive(item.path)
+                          ? 'text-primary bg-accent'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${isActive(item.path) ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                      {item.label}
+                    </Link>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </nav>
 
-        <div className="p-4 mt-auto border-t border-border/50">
+        {/* Bottom: Upgrade Card + User */}
+        <div className="p-3 space-y-2 border-t border-border shrink-0">
+          {/* Upgrade / Pro Card */}
           <div
-            className={`rounded-3xl p-6 text-white relative overflow-hidden group cursor-pointer ${isPro ? 'bg-foreground text-background' : 'bg-primary text-primary-foreground'}`}
             onClick={() => navigate(isPro ? '/settings/billing' : '/pricing')}
+            className={`rounded-md p-3.5 cursor-pointer transition-transform hover:scale-[0.98] ${
+              isPro
+                ? 'bg-foreground text-background'
+                : 'gradient-primary text-white'
+            }`}
           >
-            <Zap className="w-20 h-20 absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500" />
-            <div className="relative z-10">
-              <h4 className="font-black mb-1">
-                {isPro ? 'Pro Workspace' : 'Go Unlimited'}
-              </h4>
-              <p className="opacity-60 text-[10px] font-bold mb-4 uppercase tracking-[0.1em]">
-                {isPro
-                  ? `${profile?.totalUsedCredits || 0} / Unlimited Usage`
-                  : 'Unlock your true potential.'}
-              </p>
-              <div className={`${isPro ? 'bg-background/20' : 'bg-primary-foreground/20'} h-1.5 rounded-full overflow-hidden`}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: isPro ? '100%' : `${Math.min(100, ((profile?.totalUsedCredits || 0) / 10) * 100)}%` }}
-                  className={`${isPro ? 'bg-background' : 'bg-primary-foreground'} h-full`}
-                />
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-widest opacity-70">
+                {isPro ? 'Pro Plan' : 'Free Plan'}
+              </span>
+              <Zap className={`w-3.5 h-3.5 ${isPro ? 'opacity-60' : 'opacity-80'}`} />
             </div>
+            <p className="text-xs font-semibold mb-2.5 leading-snug">
+              {isPro ? 'Unlimited access active' : 'Upgrade for unlimited prompts'}
+            </p>
+            <div className="h-1 rounded-full bg-card/20 overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${creditPct}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                className="h-full bg-card/80 rounded-full"
+              />
+            </div>
+            <p className="text-xs mt-1.5 opacity-60 font-medium">
+              {isPro ? 'Unlimited' : `${creditsUsed} / ${creditsTotal} credits`}
+            </p>
           </div>
 
-          <div className="mt-6 flex items-center gap-3 px-4 py-4 rounded-3xl border border-border bg-muted/30">
+          {/* User Row */}
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded hover:bg-muted transition-colors group">
             {profile?.photoURL ? (
-              <img src={profile.photoURL} className="w-10 h-10 rounded-2xl bg-card object-cover border border-border" alt="" />
+              <img
+                src={profile.photoURL}
+                className="w-8 h-8 rounded object-cover border border-border shrink-0"
+                alt=""
+              />
             ) : (
-              <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs border border-primary/20">
-                {profile?.displayName?.charAt(0) || 'U'}
+              <div className="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 border border-primary/10">
+                {profile?.displayName?.charAt(0)?.toUpperCase() || 'U'}
               </div>
             )}
-            <div className="flex-grow min-w-0">
-              <p className="text-sm font-black truncate leading-tight">{profile?.displayName?.split(' ')[0]}</p>
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">{profile?.subscriptionStatus || 'Free'}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate leading-tight">
+                {profile?.displayName?.split(' ')[0] || 'User'}
+              </p>
+              <p className="text-xs text-muted-foreground truncate capitalize">
+                {profile?.subscriptionStatus || 'free'}
+              </p>
             </div>
-            <button onClick={handleSignOut} className="p-2.5 bg-background text-muted-foreground hover:text-destructive rounded-xl transition-all border border-border">
-              <LogOut className="w-4 h-4" />
+            <button
+              onClick={handleSignOut}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+              title="Sign out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-grow lg:ml-72 min-h-screen flex flex-col">
-        {/* Top Header */}
-        <header className="h-20 bg-background/80 backdrop-blur-md border-b border-border flex items-center justify-between px-6 md:px-10 sticky top-0 z-40">
-          <div className="flex items-center gap-4 lg:hidden">
-            <button onClick={() => setSidebarOpen(true)} className="p-2.5 bg-muted text-foreground rounded-xl border border-border">
-              <Menu className="w-6 h-6" />
+      {/* â”€â”€ Main Area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <main className="flex-1 lg:ml-60 flex flex-col min-h-screen">
+
+        {/* Header */}
+        <header className="h-16 glass sticky top-0 z-40 flex items-center justify-between px-4 md:px-6 shrink-0">
+          {/* Mobile: burger + logo */}
+          <div className="flex items-center gap-3 lg:hidden">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="p-2 rounded bg-muted text-foreground hover:bg-border transition-colors"
+            >
+              <Menu className="w-5 h-5" />
             </button>
             <Link to="/" className="flex items-center gap-2">
-              <Zap className="w-8 h-8 text-primary" />
+              <Zap className="w-5 h-5 text-primary fill-primary" />
+              <span className="font-bold text-sm font-display">promptly</span>
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center flex-grow max-w-xl">
-            <div className="relative w-full group">
-              <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+          {/* Desktop: search */}
+          <div className="hidden lg:flex items-center flex-1 max-w-sm">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search blueprints..."
-                className="w-full bg-muted/50 border-transparent focus:bg-background focus:border-primary/20 focus:ring-0 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold transition-all placeholder:text-muted-foreground/30"
+                placeholder="Search blueprintsâ€¦"
+                className="w-full bg-muted/60 border border-transparent focus:border-primary/30 focus:bg-background rounded-md pl-9 pr-4 py-2 text-sm transition-all placeholder:text-muted-foreground/50 focus:outline-none focus:ring-0"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-5">
-            <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl border border-primary/20">
-               <Coins className="w-4 h-4" />
-               <span className="text-[10px] font-black uppercase tracking-widest">
-                 {isPro ? 'Unlimited' : `${profile?.credits || 0} Credits`}
-               </span>
+          {/* Right actions */}
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/8 text-primary rounded border border-primary/12 text-xs font-semibold">
+              <Coins className="w-3.5 h-3.5" />
+              <span>{isPro ? 'âˆž' : profile?.credits ?? 0}</span>
             </div>
 
             <ThemeToggle />
 
+            {/* Avatar + dropdown */}
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-3 p-1.5 bg-muted/50 hover:bg-muted rounded-2xl transition-all border border-transparent hover:border-border"
+                className="flex items-center gap-2 p-1.5 rounded hover:bg-muted transition-colors"
               >
                 {profile?.photoURL ? (
-                  <img src={profile.photoURL} className="w-9 h-9 rounded-xl bg-card shadow-sm border border-border object-cover" alt="" />
+                  <img
+                    src={profile.photoURL}
+                    className="w-8 h-8 rounded object-cover border border-border"
+                    alt=""
+                  />
                 ) : (
-                  <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-black text-xs">
-                    {profile?.displayName?.charAt(0) || 'U'}
+                  <div className="w-8 h-8 rounded bg-primary text-white flex items-center justify-center text-xs font-bold">
+                    {profile?.displayName?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                 )}
-                <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isUserMenuOpen ? 'rotate-90' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
@@ -215,30 +313,25 @@ export default function UserLayout() {
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
                     <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-3 w-64 bg-card rounded-[2rem] shadow-2xl border border-border p-3 z-50 overflow-hidden"
+                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-56 bg-card rounded-md shadow-lg border border-border p-1 z-50"
                     >
-                      <div className="px-5 py-5 border-b border-border mb-3">
-                        <p className="text-sm font-black text-foreground truncate leading-tight">{profile?.displayName}</p>
-                        <p className="text-[10px] font-black text-muted-foreground truncate uppercase tracking-widest opacity-60">{profile?.email}</p>
+                      <div className="px-3 py-2.5 border-b border-border mb-1">
+                        <p className="text-sm font-semibold truncate">{profile?.displayName || 'User'}</p>
+                        <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
                       </div>
-                      <Link to="/settings/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
-                        <UserIcon className="w-4 h-4" />
-                        Public Profile
-                      </Link>
-                      <Link to="/settings/billing" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
-                        <CreditCard className="w-4 h-4" />
-                        Billing & Plans
-                      </Link>
-                      <div className="h-[1px] bg-border my-2" />
+                      <DropdownItem to="/settings/profile" icon={UserIcon} onClick={() => setUserMenuOpen(false)}>Profile</DropdownItem>
+                      <DropdownItem to="/settings/billing" icon={CreditCard} onClick={() => setUserMenuOpen(false)}>Billing</DropdownItem>
+                      <div className="h-px bg-border my-1" />
                       <button
-                        onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black text-destructive hover:bg-destructive/5 transition-all"
+                        onClick={() => { setUserMenuOpen(false); handleSignOut(); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium text-destructive hover:bg-destructive/8 transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
-                        Sign Out
+                        Sign out
                       </button>
                     </motion.div>
                   </>
@@ -248,83 +341,103 @@ export default function UserLayout() {
           </div>
         </header>
 
-        {/* Page Content Container */}
-        <div className="flex-grow container mx-auto px-6 py-8 min-h-screen">
-          <Outlet />
+        {/* Page content */}
+        <div className="flex-1 p-6 md:p-8">
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </div>
 
-        {/* Footer info for users */}
-        <footer className="p-10 text-center bg-card border-t border-border">
-           <div className="flex flex-wrap justify-center gap-10 mb-8">
-             <FooterLink icon={HelpCircle} label="Documentation" />
-             <FooterLink icon={BookOpen} label="Blueprint Guide" />
-             <FooterLink icon={MessageSquare} label="Lab Feedback" />
-           </div>
-           <p className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.3em]">Promptly OS v2.5.0 • Authorized Personal Workspace</p>
+        {/* Footer */}
+        <footer className="border-t border-border px-6 py-4 flex items-center justify-between">
+          <p className="text-xs text-muted-foreground/50 font-medium uppercase tracking-widest">
+            Promptly Â· Personal Workspace
+          </p>
+          <div className="flex items-center gap-4">
+            <Link to="/support" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors uppercase tracking-widest font-medium">
+              Help
+            </Link>
+            <Link to="/privacy" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors uppercase tracking-widest font-medium">
+              Privacy
+            </Link>
+          </div>
         </footer>
       </main>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* â”€â”€ Mobile Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <AnimatePresence>
-        {isSidebarOpen && (
+        {isMobileOpen && (
           <>
             <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60]"
-              onClick={() => setSidebarOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-60"
+              onClick={() => setMobileOpen(false)}
             />
-            <motion.div
-              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-80 bg-card z-[70] p-10 shadow-2xl flex flex-col"
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+              className="fixed inset-y-0 left-0 w-72 bg-sidebar border-r border-border z-70 flex flex-col shadow-2xl"
             >
-               <div className="flex items-center justify-between mb-12">
-                 <Link to="/" className="flex items-center gap-3">
-                   <Zap className="w-8 h-8 text-primary fill-current" />
-                   <span className="text-2xl font-black tracking-tighter">promptly</span>
-                 </Link>
-                 <button onClick={() => setSidebarOpen(false)} className="p-3 bg-muted text-muted-foreground hover:text-foreground rounded-2xl transition-all border border-border">
-                   <X className="w-6 h-6" />
-                 </button>
-               </div>
+              <div className="h-16 flex items-center justify-between px-5 border-b border-border shrink-0">
+                <Link to="/" className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-white fill-white" />
+                  </div>
+                  <span className="font-bold font-display">promptly</span>
+                </Link>
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="p-1.5 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-               <nav className="flex-grow space-y-3">
-                 <p className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4 opacity-50">Main Deck</p>
-                 {navItems.map((item) => (
-                   <Link
-                     key={item.path}
-                     to={item.path}
-                     onClick={() => setSidebarOpen(false)}
-                     className={`flex items-center gap-4 px-6 py-5 rounded-[2rem] font-black text-lg transition-all ${
-                       isActive(item.path) ? 'bg-primary text-primary-foreground shadow-xl' : 'text-muted-foreground hover:bg-muted'
-                     }`}
-                   >
-                     <item.icon className="w-6 h-6" />
-                     {item.label}
-                   </Link>
-                 ))}
-                 <div className="h-[1px] bg-border my-10" />
-                 <p className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4 opacity-50">Control</p>
-                 <Link
-                   to="/settings/profile"
-                   onClick={() => setSidebarOpen(false)}
-                   className={`flex items-center gap-4 px-6 py-5 rounded-[2rem] font-black text-lg transition-all ${
-                     location.pathname.startsWith('/settings') ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted'
-                   }`}
-                 >
-                   <Settings className="w-6 h-6" />
-                   Settings
-                 </Link>
-               </nav>
+              <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+                {navItems.map((item) => (
+                  <SidebarLink
+                    key={item.path}
+                    to={item.path}
+                    icon={item.icon}
+                    active={isActive(item.path)}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {item.label}
+                  </SidebarLink>
+                ))}
+                <div className="pt-3 mt-2 border-t border-border/60">
+                  {SETTINGS_ITEMS.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive(item.path)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      <Settings className="w-4 h-4 shrink-0" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </nav>
 
-               <button
-                 onClick={handleSignOut}
-                 className="mt-auto flex items-center justify-center gap-4 px-6 py-6 text-destructive font-black border-t border-border text-lg uppercase tracking-widest"
-               >
-                 <LogOut className="w-6 h-6" />
-                 Sign Out
-               </button>
-            </motion.div>
+              <div className="p-3 border-t border-border shrink-0">
+                <button
+                  onClick={() => { setMobileOpen(false); handleSignOut(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-sm font-medium text-destructive hover:bg-destructive/8 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign out
+                </button>
+              </div>
+            </motion.aside>
           </>
         )}
       </AnimatePresence>
@@ -332,30 +445,49 @@ export default function UserLayout() {
   );
 }
 
-function FooterLink({ icon: Icon, label }: any) {
-  return (
-    <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all">
-      <Icon className="w-4 h-4" />
-      {label}
-    </button>
-  );
-}
+/* â”€â”€ Shared sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-function SubNavLink({ to, label }: { to: string; label: string }) {
-  const location = useLocation();
-  const isActive = location.pathname === to;
-
+function SidebarLink({
+  to, icon: Icon, active, children, onClick,
+}: {
+  to: string;
+  icon: React.ElementType;
+  active: boolean;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
     <Link
       to={to}
-      className={`flex items-center gap-3 px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-        isActive
-          ? 'text-foreground bg-muted border border-border'
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+      onClick={onClick}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+        active
+          ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       }`}
     >
-      <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-primary' : 'bg-transparent'}`} />
-      {label}
+      <Icon className="w-4 h-4 shrink-0" />
+      {children}
+    </Link>
+  );
+}
+
+function DropdownItem({
+  to, icon: Icon, children, onClick,
+}: {
+  to: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className="flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+    >
+      <Icon className="w-4 h-4" />
+      {children}
     </Link>
   );
 }

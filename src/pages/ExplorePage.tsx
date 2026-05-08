@@ -1,7 +1,7 @@
-import { limit } from 'firebase/firestore';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+﻿import { limit } from 'firebase/firestore';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Search, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ExploreSidebar from '../components/ExploreSidebar';
 import PromptCard from '../components/PromptCard';
 import PromptCardSkeleton from '../components/PromptCardSkeleton';
@@ -18,6 +18,7 @@ export default function ExplorePage() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
 
   const { tagSlug, categorySlug, modelSlug } = useParams();
   const [searchParams] = useSearchParams();
@@ -65,9 +66,15 @@ export default function ExplorePage() {
   const activePricing = new Set(pathPricing.map(p => p.toLowerCase()));
 
   useEffect(() => {
-    // Reset to first page when filters change
     setCurrentPage(1);
   }, [location.pathname]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+      setRecentlyViewed(stored);
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     async function fetchPrompts() {
@@ -206,7 +213,7 @@ export default function ExplorePage() {
               ))}
             </div>
           ) : fetchError ? (
-            <div className="col-span-full text-center py-24 bg-destructive/10 rounded-[2.5rem] border border-destructive/20">
+            <div className="col-span-full text-center py-24 bg-destructive/10 rounded-lg border border-destructive/20">
               <h3 className="text-xl font-bold text-destructive mb-2">Failed to load prompts</h3>
               <p className="text-muted-foreground font-mono text-sm max-w-2xl mx-auto">{fetchError}</p>
             </div>
@@ -220,7 +227,7 @@ export default function ExplorePage() {
                 <div className="relative">
                   <button
                     onClick={() => setIsSortOpen(!isSortOpen)}
-                    className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="flex items-center gap-2 bg-card border border-border rounded-md px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
                     <span>{sortOptions.find(o => o.id === sortBy)?.label}</span>
@@ -230,7 +237,7 @@ export default function ExplorePage() {
                   {isSortOpen && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setIsSortOpen(false)} />
-                      <div className="absolute right-0 top-full mt-2 w-full min-w-[200px] bg-card border border-border rounded-2xl shadow-xl z-20 py-2 overflow-hidden">
+                      <div className="absolute right-0 top-full mt-2 w-full min-w-[200px] bg-card border border-border rounded-md shadow-xl z-20 py-2 overflow-hidden">
                         {sortOptions.map(option => (
                           <button
                             key={option.id}
@@ -255,28 +262,59 @@ export default function ExplorePage() {
               </div>
 
               {filteredPrompts.length === 0 ? (
-                <div className="text-center py-24 bg-muted rounded-[2.5rem] border border-border">
-                  <div className="bg-background w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                <div className="text-center py-24 bg-muted rounded-xl border border-border">
+                  <div className="bg-background w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
                     <Search className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <h3 className="text-xl font-bold text-foreground mb-1">No prompts found</h3>
                   <p className="text-muted-foreground max-w-xs mx-auto">Try adjusting your search or filters to find what you're looking for.</p>
                   <button
-                    onClick={() => {
-                      setSearchTerm('');
-                      navigate('/explore');
-                    }}
+                    onClick={() => { setSearchTerm(''); navigate('/explore'); }}
                     className="mt-6 text-primary font-bold hover:underline"
                   >
                     Clear all filters
                   </button>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {paginatedPrompts.map((prompt) => (
-                    <PromptCard key={prompt.id} prompt={prompt} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {paginatedPrompts.slice(0, 6).map((prompt) => (
+                      <PromptCard key={prompt.id} prompt={prompt} />
+                    ))}
+                  </div>
+
+                  {/* Pro upsell inline banner — shown to free users after first 6 cards */}
+                  {!isPro && !isAdmin && paginatedPrompts.length > 6 && (
+                    <div className="my-6 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden"
+                      style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)' }}>
+                      <div className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
+                        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)' }} />
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                          <Sparkles className="w-5 h-5 text-violet-400" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-foreground text-sm">Unlock all {filteredPrompts.length}+ prompts</p>
+                          <p className="text-xs text-muted-foreground">Pro members get unlimited access, copies, and new prompts every week.</p>
+                        </div>
+                      </div>
+                      <button onClick={() => navigate('/pricing')}
+                        className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-all relative z-10"
+                        style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+                        <Zap className="w-4 h-4" /> Go Pro
+                      </button>
+                    </div>
+                  )}
+
+                  {paginatedPrompts.length > 6 && (
+                    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {paginatedPrompts.slice(6).map((prompt) => (
+                        <PromptCard key={prompt.id} prompt={prompt} />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Pagination */}
@@ -285,16 +323,16 @@ export default function ExplorePage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="p-2 rounded-xl border border-border disabled:opacity-30 hover:bg-muted transition-colors text-foreground"
+                    className="p-2 rounded-md border border-border disabled:opacity-30 hover:bg-muted transition-colors text-foreground"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <div className="flex items-center gap-1">
-                    {[...Array(totalPages)].map((_, i) => (
+                    {[...Array(Math.min(totalPages, 7))].map((_, i) => (
                       <button
                         key={i}
                         onClick={() => setCurrentPage(i + 1)}
-                        className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${
+                        className={`w-10 h-10 rounded-md text-sm font-bold transition-all ${
                           currentPage === i + 1
                             ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-110'
                             : 'text-muted-foreground hover:bg-muted'
@@ -303,14 +341,37 @@ export default function ExplorePage() {
                         {i + 1}
                       </button>
                     ))}
+                    {totalPages > 7 && <span className="text-muted-foreground text-sm px-1">…{totalPages}</span>}
                   </div>
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-xl border border-border disabled:opacity-30 hover:bg-muted transition-colors text-foreground"
+                    className="p-2 rounded-md border border-border disabled:opacity-30 hover:bg-muted transition-colors text-foreground"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
+                </div>
+              )}
+
+              {/* Recently viewed strip */}
+              {recentlyViewed.length > 0 && (
+                <div className="mt-16 pt-10 border-t border-border">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="w-4 h-4 text-muted-foreground/60" />
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Recently Viewed</h3>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {recentlyViewed.map(p => (
+                      <Link key={p.id} to={`/prompt/${p.slug}`}
+                        className="flex-none rounded-xl px-4 py-3 bg-card border border-border hover:border-primary/20 hover:bg-muted/30 transition-all group min-w-[180px] max-w-[220px]"
+                      >
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">{p.model}</div>
+                        <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                          {p.title}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
             </>

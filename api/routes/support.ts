@@ -7,6 +7,17 @@ const router = Router();
 // 1. Create a Ticket (User)
 router.post("/tickets", json(), async (req, res) => {
   const { userId, userEmail, subject, message, priority } = req.body;
+
+  if (!userId || !userEmail || !subject || !message) {
+    return res.status(400).json({ error: "userId, userEmail, subject, and message are required" });
+  }
+  if (typeof subject !== 'string' || subject.length > 300) {
+    return res.status(400).json({ error: "subject must be a string under 300 characters" });
+  }
+  if (typeof message !== 'string' || message.length > 10000) {
+    return res.status(400).json({ error: "message must be a string under 10,000 characters" });
+  }
+
   const firebase = await initFirebase();
   if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
 

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, query, getDocs, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Tag, EmailTemplate, AutomationFlow } from '../../types';
-import { GitBranch, ChevronRight } from 'lucide-react';
+import { GitBranch } from 'lucide-react';
+import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AutomationBuilder from '../../components/marketing/AutomationBuilder';
 import { toast } from 'react-hot-toast';
@@ -62,18 +63,16 @@ export default function AdminMarketingAutomationForm() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto">
-      {/* Breadcrumbs */}
-      <div className="flex items-center gap-2 text-sm text-slate-500 mb-8 font-medium">
-        <Link to="/admin" className="hover:text-indigo-600 flex items-center gap-2"><GitBranch className="w-4 h-4" /> Admin</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link to="/admin/marketing?tab=automation" className="hover:text-indigo-600">Marketing & CRM</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-slate-900">{id === 'new' ? 'Create Automation' : 'Edit Automation'}</span>
-      </div>
+    <div>
+      <AdminPageHeader
+        label="Marketing CRM"
+        labelIcon={GitBranch}
+        title={id === 'new' ? 'Create Automation' : 'Edit Automation'}
+        subtitle="Design a workflow to trigger automated actions for your contacts."
+      />
 
       {loading ? (
-        <div className="p-12 text-center text-slate-500 font-bold">Loading Builder...</div>
+        <div className="p-12 text-center text-muted-foreground font-bold">Loading Builder...</div>
       ) : (
         <AutomationBuilder 
           flow={flow} 

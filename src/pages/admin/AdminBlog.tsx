@@ -1,130 +1,140 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, Edit2, Trash2, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FileText, Plus } from 'lucide-react';
+import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
+import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { db } from '../../lib/firebase';
 import { BlogPost } from '../../types';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
+import { logAuditEvent } from '../../lib/auditLog';
 
 export default function AdminBlog() {
+  const confirm = useConfirm();
+  const { user } = useAuth();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
+  useEffect(() => { fetchPosts(); }, []);
 
-  const fetchPosts = async () => {
+  async function fetchPosts() {
     try {
       const q = query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      setPosts(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost)));
-    } catch (error) {
-      console.error("Error fetching blog posts:", error);
-      toast.error("Failed to fetch blog posts");
+      const snap = await getDocs(q);
+      setPosts(snap.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost)));
+    } catch {
+      toast.error('Failed to fetch blog posts');
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this blog post?")) return;
-    
+  const handleDelete = async (post: BlogPost) => {
+    if (!post.id) return;
+    const ok = await confirm({ title: 'Delete this blog post?', description: 'This action cannot be undone.', confirmLabel: 'Delete', destructive: true });
+    if (!ok) return;
     try {
-      await deleteDoc(doc(db, 'blog_posts', id));
-      toast.success("Blog post deleted successfully");
-      setPosts(posts.filter(p => p.id !== id));
-    } catch (error) {
-      console.error("Error deleting post:", error);
-      toast.error("Failed to delete blog post");
+      await deleteDoc(doc(db, 'blog_posts', post.id));
+      logAuditEvent({ action: 'blog.deleted', entityType: 'blog_post', entityId: post.id, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { title: post.title } });
+      toast.success('Blog post deleted');
+      setPosts(prev => prev.filter(p => p.id !== post.id));
+    } catch {
+      toast.error('Failed to delete blog post');
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Blog Posts</h2>
-          <p className="text-slate-500">Manage your platform's blog content.</p>
-        </div>
-        <Link 
-          to="/admin/blog/new" 
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Create Post
-        </Link>
-      </div>
+  const handleBulkDelete = async (rows: BlogPost[]) => {
+    await Promise.all(rows.filter(p => p.id).map(p => deleteDoc(doc(db, 'blog_posts', p.id!))));
+    setPosts(prev => prev.filter(p => !rows.some(r => r.id === p.id)));
+    logAuditEvent({ action: 'blog.bulk_deleted', entityType: 'blog_post', actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { count: rows.length } });
+    toast.success(`${rows.length} posts deleted`);
+  };
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-slate-500">Loading posts...</div>
-        ) : posts.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 flex flex-col items-center">
-            <FileText className="w-12 h-12 text-slate-300 mb-3" />
-            <p>No blog posts found. Create your first post!</p>
-          </div>
-        ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="p-4 text-sm font-semibold text-slate-600">Title</th>
-                <th className="p-4 text-sm font-semibold text-slate-600">Status</th>
-                <th className="p-4 text-sm font-semibold text-slate-600">Date</th>
-                <th className="p-4 text-sm font-semibold text-slate-600 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {posts.map(post => (
-                <tr key={post.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                  <td className="p-4">
-                    <div className="font-semibold text-slate-800 mb-1">{post.title}</div>
-                    <div className="text-xs text-slate-500">/{post.slug}</div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      post.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'
-                    }`}>
-                      {post.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-sm text-slate-500">
-                    {post.createdAt ? new Date(post.createdAt.toMillis?.() || Date.now()).toLocaleDateString() : 'N/A'}
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <a 
-                        href={`/blog/${post.slug}`} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="View Post"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </a>
-                      <Link 
-                        to={`/admin/blog/${post.id}`} 
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Link>
-                      <button 
-                        onClick={() => post.id && handleDelete(post.id)}
-                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+  const formatDate = (post: BlogPost) => {
+    if (!post.createdAt) return 'N/A';
+    try { return new Date(post.createdAt.toMillis?.() ?? Date.now()).toLocaleDateString(); }
+    catch { return 'N/A'; }
+  };
+
+  const columns: DataTableColumn<BlogPost>[] = [
+    {
+      key: 'title',
+      header: 'Title & Slug',
+      searchValue: p => `${p.title} ${p.slug}`,
+      sortable: true,
+      sortValue: p => p.title,
+      render: p => (
+        <div>
+          <p className="font-bold text-foreground">{p.title}</p>
+          <p className="text-xs text-muted-foreground font-medium">/{p.slug}</p>
+        </div>
+      ),
+      csvValue: p => p.title,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      searchValue: p => p.status,
+      sortable: true,
+      sortValue: p => p.status,
+      render: p => (
+        <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${
+          p.status === 'published'
+            ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+            : 'bg-muted text-muted-foreground border-border'
+        }`}>
+          {p.status}
+        </span>
+      ),
+      csvValue: p => p.status,
+    },
+    {
+      key: 'date',
+      header: 'Published Date',
+      sortable: true,
+      sortValue: p => p.createdAt?.toMillis?.() ?? 0,
+      render: p => (
+        <span className="text-xs font-bold text-muted-foreground">{formatDate(p)}</span>
+      ),
+      csvValue: p => formatDate(p),
+    },
+  ];
+
+  const actions: DataTableActions<BlogPost> = {
+    viewExternal: p => `/blog/${p.slug}`,
+    edit: p => `/admin/blog/${p.id}`,
+    onDelete: handleDelete,
+  };
+
+  return (
+    <div className="space-y-8">
+      <AdminPageHeader
+        label="Content"
+        labelIcon={FileText}
+        title="Blog"
+        subtitle="Manage your platform's blog content and announcements."
+        actions={
+          <Link to="/admin/blog/new" className="btn-primary">
+            <Plus className="w-4 h-4" />
+            Create New Post
+          </Link>
+        }
+      />
+      <DataTable
+        columns={columns}
+        data={posts}
+        rowKey={p => p.id ?? p.slug}
+        loading={loading}
+        actions={actions}
+        searchPlaceholder="Search by title or slug..."
+        selectable
+        onBulkDelete={handleBulkDelete}
+        exportFilename="blog-posts"
+        emptyIcon={FileText}
+        emptyTitle="No blog posts found"
+        emptyMessage="Start by creating your first platform announcement."
+      />
     </div>
   );
 }

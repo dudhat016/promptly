@@ -2,19 +2,43 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Coins, ArrowUpRight, ArrowDownRight, Clock, Search, Filter } from 'lucide-react';
+import {
+  Coins, ArrowUpRight, ArrowDownRight, Clock,
+  ShieldCheck, Gift, Zap,
+} from 'lucide-react';
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 
 interface Transaction {
   id: string;
-  type: 'unlock' | 'topup' | 'reward';
+  type: 'unlock' | 'topup' | 'reward' | 'admin_grant' | 'admin_deduct';
   amount: number;
   promptTitle?: string;
+  reason?: string;
+  balanceAfter?: number;
   createdAt: any;
 }
 
+const TX_CONFIG: Record<Transaction['type'], { label: (tx: Transaction) => string; icon: React.ElementType; color: string; sign: '+' | '-' }> = {
+  unlock:       { label: tx => `Unlocked: ${tx.promptTitle || 'Prompt'}`, icon: ArrowDownRight, color: 'bg-rose-500/10 text-rose-500',     sign: '-' },
+  topup:        { label: () => 'Credit Top-up',                           icon: ArrowUpRight,   color: 'bg-emerald-500/10 text-emerald-600', sign: '+' },
+  reward:       { label: () => 'Reward Credits',                          icon: Gift,           color: 'bg-amber-500/10 text-amber-600',     sign: '+' },
+  admin_grant:  { label: tx => `Admin Grant${tx.reason ? `: ${tx.reason}` : ''}`,   icon: ShieldCheck, color: 'bg-primary/10 text-primary',    sign: '+' },
+  admin_deduct: { label: tx => `Admin Deduct${tx.reason ? `: ${tx.reason}` : ''}`,  icon: ShieldCheck, color: 'bg-rose-500/10 text-rose-500',  sign: '-' },
+};
+
+function formatDate(ts: any): string {
+  if (!ts) return 'Recent';
+  try {
+    const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return 'Recent';
+  }
+}
+
 export default function CreditHistoryPage() {
-  const { user } = useAuth();
+  const { user, profile, isPro } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,17 +46,16 @@ export default function CreditHistoryPage() {
     async function fetchHistory() {
       if (!user) return;
       try {
-        const historyRef = collection(db, 'credits_history');
         const q = query(
-          historyRef, 
+          collection(db, 'credits_history'),
           where('userId', '==', user.uid),
           orderBy('createdAt', 'desc'),
-          limit(50)
+          limit(50),
         );
         const snap = await getDocs(q);
         setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() } as Transaction)));
       } catch (err) {
-        console.error("Error fetching credit history:", err);
+        console.error('Error fetching credit history:', err);
       } finally {
         setLoading(false);
       }
@@ -41,69 +64,114 @@ export default function CreditHistoryPage() {
   }, [user]);
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-4xl">
-      <div className="mb-12">
-        <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs mb-2">
-          <Coins className="w-4 h-4" />
-          Financial Ledger
+    <div>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+        <div>
+          <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[0.2em] text-xs mb-2">
+            <Coins className="w-4 h-4" />
+            Financial Ledger
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Transaction History</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Monitor your credit usage and balance movements.
+            {transactions.length > 0 && <span className="ml-1 text-primary font-semibold">{transactions.length} records</span>}
+          </p>
         </div>
-        <h1 className="text-4xl font-black tracking-tight text-foreground">Transaction History</h1>
-        <p className="text-muted-foreground text-lg">Monitor your credit usage and balance movements.</p>
+        {!isPro && (
+          <Link
+            to="/pricing"
+            className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
+            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
+          >
+            <Zap className="w-4 h-4" />
+            Get More Credits
+          </Link>
+        )}
+      </div>
+
+      {/* Balance card */}
+      <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-4 mb-6 shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <Zap className="w-7 h-7" />
+        </div>
+        <div>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Current Balance</p>
+          <p className="text-4xl font-black text-foreground leading-none mt-1">
+            {isPro ? '∞' : (profile?.credits ?? 0)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{isPro ? 'Pro — unlimited access' : 'credits remaining'}</p>
+        </div>
+        <div className="ml-auto text-right">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Total Used</p>
+          <p className="text-2xl font-bold text-foreground mt-1">{profile?.totalUsedCredits ?? 0}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">all time</p>
+        </div>
       </div>
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-20 skeleton rounded-2xl w-full" />
+            <div key={i} className="h-20 bg-muted/50 rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : transactions.length === 0 ? (
-        <div className="text-center py-24 bg-card border border-border rounded-[2.5rem]">
-          <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Clock className="w-8 h-8 text-muted-foreground" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-32 bg-muted/30 rounded-2xl border border-border border-dashed"
+        >
+          <div className="w-20 h-20 bg-background rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/5">
+            <Clock className="w-10 h-10 text-muted-foreground/30" />
           </div>
-          <h3 className="text-xl font-bold text-foreground mb-1">No transactions yet</h3>
-          <p className="text-muted-foreground">Your credit usage will appear here once you start unlocking prompts.</p>
-        </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">No transactions yet</h2>
+          <p className="text-muted-foreground max-w-sm mx-auto mb-8">
+            Your credit usage and top-ups will appear here as you interact with the platform.
+          </p>
+          <Link
+            to="/explore"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
+            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
+          >
+            <Coins className="w-4 h-4" />
+            Explore Prompts
+          </Link>
+        </motion.div>
       ) : (
-        <div className="bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-sm">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
           <div className="divide-y divide-border">
-            {transactions.map((tx) => (
-              <motion.div 
-                key={tx.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-6 hover:bg-muted/50 transition-colors flex items-center justify-between gap-4"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                    tx.type === 'unlock' ? 'bg-destructive/10 text-destructive' : 'bg-green-500/10 text-green-600'
-                  }`}>
-                    {tx.type === 'unlock' ? <ArrowDownRight className="w-6 h-6" /> : <ArrowUpRight className="w-6 h-6" />}
+            {transactions.map(tx => {
+              const config = TX_CONFIG[tx.type] ?? TX_CONFIG['topup'];
+              const Icon = config.icon;
+              const isCredit = config.sign === '+';
+              return (
+                <motion.div
+                  key={tx.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-5 hover:bg-muted/30 transition-colors flex items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${config.color}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{config.label(tx)}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                        <Clock className="w-3 h-3" />
+                        {formatDate(tx.createdAt)}
+                        {tx.balanceAfter !== undefined && (
+                          <span className="text-muted-foreground/60 ml-1">· balance: {tx.balanceAfter}</span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-foreground">
-                      {tx.type === 'unlock' ? `Unlocked: ${tx.promptTitle}` : 'Credit Top-up'}
-                    </p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                      <Clock className="w-3 h-3" />
-                      {tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString(undefined, {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) : 'Recent'}
-                    </p>
+                  <div className={`text-lg font-bold tabular-nums ${isCredit ? 'text-emerald-600' : 'text-rose-500'}`}>
+                    {config.sign}{tx.amount}
                   </div>
-                </div>
-                <div className={`text-lg font-black ${
-                  tx.type === 'unlock' ? 'text-destructive' : 'text-green-600'
-                }`}>
-                  {tx.type === 'unlock' ? '-' : '+'}{tx.amount}
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       )}

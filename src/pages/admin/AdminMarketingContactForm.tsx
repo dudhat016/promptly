@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Contact, Tag } from '../../types';
-import { Save, ChevronRight, Users } from 'lucide-react';
+import { Save, Users } from 'lucide-react';
+import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export default function AdminMarketingContactForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const [tags, setTags] = useState<Tag[]>([]);
   const [saving, setSaving] = useState(false);
   const [contact, setContact] = useState<Partial<Contact>>({
@@ -60,47 +61,47 @@ export default function AdminMarketingContactForm() {
     }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-2 text-sm text-slate-500 mb-8 font-medium">
-        <Link to="/admin" className="hover:text-indigo-600 flex items-center gap-2"><Users className="w-4 h-4" /> Admin</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link to="/admin/marketing?tab=contact" className="hover:text-indigo-600">Marketing & CRM</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-slate-900">{id === 'new' ? 'Create Contact' : 'Edit Contact'}</span>
-      </div>
+  const inputCls = "w-full bg-card border border-border rounded-2xl p-4 text-foreground focus:outline-none focus:border-primary transition-all";
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-10">
-        <h2 className="text-3xl font-black mb-8">{id === 'new' ? 'Create Contact' : 'Edit Contact'}</h2>
-        
+  return (
+    <div className="max-w-4xl">
+      <AdminPageHeader
+        label="Marketing CRM"
+        labelIcon={Users}
+        title={id === 'new' ? 'Create Contact' : 'Edit Contact'}
+        subtitle="Add or update a contact in your CRM database."
+      />
+
+      <div className="bg-card rounded-lg border border-border p-8">
+
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Email Address</label>
-              <input 
+              <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Email Address</label>
+              <input
                 type="email" required
                 value={contact.email || ''}
-                onChange={e => setContact({...contact, email: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
+                onChange={e => setContact({ ...contact, email: e.target.value })}
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Display Name</label>
-              <input 
+              <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Display Name</label>
+              <input
                 type="text"
                 value={contact.displayName || ''}
-                onChange={e => setContact({...contact, displayName: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
+                onChange={e => setContact({ ...contact, displayName: e.target.value })}
+                className={inputCls}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Status</label>
+            <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Status</label>
             <select
               value={contact.status || 'active'}
-              onChange={e => setContact({...contact, status: e.target.value as any})}
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all appearance-none"
+              onChange={e => setContact({ ...contact, status: e.target.value as any })}
+              className={inputCls + " appearance-none"}
             >
               <option value="active">Active</option>
               <option value="unsubscribed">Unsubscribed</option>
@@ -109,7 +110,7 @@ export default function AdminMarketingContactForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Applied Tags</label>
+            <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Applied Tags</label>
             <div className="flex flex-wrap gap-3">
               {tags.map(tag => {
                 const isActive = (contact.tags || []).includes(tag.id);
@@ -119,31 +120,32 @@ export default function AdminMarketingContactForm() {
                     type="button"
                     onClick={() => toggleTag(tag.id)}
                     className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                      isActive 
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm' 
-                        : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                      isActive
+                        ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                        : 'border-border bg-card text-muted-foreground hover:border-primary/50'
                     }`}
                   >
                     {tag.name}
                   </button>
                 );
               })}
-              {tags.length === 0 && <p className="text-sm text-slate-400 italic">No tags available. Create some in the CRM dashboard.</p>}
+              {tags.length === 0 && <p className="text-sm text-muted-foreground italic">No tags available. Create some in the CRM dashboard.</p>}
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-100 flex gap-4">
-            <button 
-              type="submit" 
+          <div className="pt-6 border-t border-border flex gap-4">
+            <button
+              type="submit"
               disabled={saving}
-              className="flex-grow bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-grow text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
             >
               <Save className="w-5 h-5" />
               {saving ? 'Saving...' : 'Save Contact'}
             </button>
-            <Link 
+            <Link
               to="/admin/marketing?tab=contact"
-              className="px-8 bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200 transition-all text-center"
+              className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-2xl hover:bg-muted/80 transition-all text-center"
             >
               Cancel
             </Link>

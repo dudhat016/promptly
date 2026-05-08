@@ -140,6 +140,12 @@ service cloud.firestore {
       allow read: if isSignedIn(); // Allow reading for system services
       allow write: if isAdmin();
     }
+    match /tickets/{ticketId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
 
     // Pricing & Config
     match /plans/{planId} {
@@ -165,8 +171,15 @@ service cloud.firestore {
     // Payouts
     match /payouts/{payoutId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow write: if isAdmin();
-      allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 50); // Note: specific query for list
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Audit logs — append-only by admins, immutable once written
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
     }
 
     // Marketing & CRM
@@ -182,6 +195,9 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /marketing_automations/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /marketing_activities/{id} {
       allow read, write: if isAdmin();
     }
 

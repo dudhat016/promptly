@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Tag } from '../../types';
-import { Save, ChevronRight, Tag as TagIcon } from 'lucide-react';
+import { Save, Tag as TagIcon } from 'lucide-react';
+import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
@@ -48,63 +49,61 @@ export default function AdminMarketingTagForm() {
   };
 
   return (
-    <div className="max-w-xl mx-auto">
-      <div className="flex items-center gap-2 text-sm text-slate-500 mb-8 font-medium">
-        <Link to="/admin" className="hover:text-indigo-600 flex items-center gap-2"><TagIcon className="w-4 h-4" /> Admin</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link to="/admin/marketing?tab=tag" className="hover:text-indigo-600">Marketing & CRM</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-slate-900">{id === 'new' ? 'Create Tag' : 'Edit Tag'}</span>
-      </div>
+    <div className="max-w-xl">
+      <AdminPageHeader
+        label="Marketing CRM"
+        labelIcon={TagIcon}
+        title={id === 'new' ? 'Create Tag' : 'Edit Tag'}
+        subtitle="Define a label to segment and organize your contacts."
+      />
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-10">
-        <h2 className="text-3xl font-black mb-8">{id === 'new' ? 'Create Tag' : 'Edit Tag'}</h2>
+      <div className="bg-card rounded-lg border border-border shadow-sm p-8">
         
         <form onSubmit={handleSave} className="space-y-6">
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Tag Name</label>
+            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Tag Name</label>
             <input 
               type="text" required
               value={tag.name || ''}
               onChange={e => setTag({...tag, name: e.target.value})}
               placeholder="e.g. VIP Customer"
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
+              className="input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Description</label>
+            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Description</label>
             <textarea 
               rows={3}
               value={tag.description || ''}
               onChange={e => setTag({...tag, description: e.target.value})}
               placeholder="What does this tag mean?"
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:border-indigo-600 focus:outline-none transition-all resize-none"
+              className="textarea"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Color</label>
+            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Color</label>
             <input 
               type="color"
               value={tag.color || '#4f46e5'}
               onChange={e => setTag({...tag, color: e.target.value})}
-              className="w-full h-12 rounded-xl cursor-pointer"
+              className="w-full h-12 rounded-md cursor-pointer"
             />
           </div>
 
-          <div className="pt-6 border-t border-slate-100 flex gap-4">
+          <div className="pt-6 border-t border-border flex gap-4">
             <button 
               type="submit" 
               disabled={saving}
-              className="flex-grow bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-grow btn-primary btn-lg"
             >
               <Save className="w-5 h-5" />
               {saving ? 'Saving...' : 'Save Tag'}
             </button>
             <Link 
               to="/admin/marketing?tab=tag"
-              className="px-8 bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200 transition-all text-center"
+              className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all text-center"
             >
               Cancel
             </Link>

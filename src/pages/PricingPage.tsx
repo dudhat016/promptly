@@ -1,218 +1,245 @@
-import { ArrowRight, Calendar, Check, CreditCard, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Calendar, Check, CreditCard, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { PricingPlan } from '../types';
 import { useConfig } from '../hooks/useConfig';
-import { useEffect } from 'react';
 import { useCurrency } from '../context/CurrencyContext';
 
 export default function PricingPage() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const { config, loading: configLoading } = useConfig();
   const { currency, symbol, exchangeRate } = useCurrency();
   const plans = config.plans;
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-
-  // Static data is now managed globally by useConfig, eliminating local fetch logic.
-
-  const handleSubscribe = async (plan: PricingPlan) => {
-    // Redirect to the dedicated checkout page (login is handled there or not required just to view)
+  const handleSubscribe = (plan: PricingPlan) => {
     navigate(`/checkout?plan=${plan.id}&cycle=${billingCycle}`);
   };
 
   if (configLoading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   return (
-    <div className="container mx-auto px-4 py-24">
-      {/* Conditional Banners */}
+    <div className="min-h-screen bg-background">
+
+      {/* ── Hero ── */}
+      <div className="relative pt-24 pb-16 text-center overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.14) 0%, transparent 70%)' }} />
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 bg-primary/10 border border-primary/25 text-primary">
+            <Sparkles className="w-3.5 h-3.5" />
+            Simple, transparent pricing
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4 tracking-tight leading-[1.1]">
+            Invest in better<br />
+            <span style={{
+              background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+            }}>AI results</span>
+          </h1>
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-10">
+            Start free. Upgrade only when you're ready. No hidden fees, no contracts.
+          </p>
+
+          {/* Billing toggle */}
+          <div className="inline-flex items-center p-1.5 rounded-xl gap-1 bg-muted border border-border">
+            {(['monthly', 'yearly'] as const).map(cycle => (
+              <button
+                key={cycle}
+                onClick={() => setBillingCycle(cycle)}
+                className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${billingCycle === cycle ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
+                {cycle === 'yearly' && plans.length > 0 && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                    style={{
+                      background: config?.activePromotion === 'yearly_bonus' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.2)',
+                      color: config?.activePromotion === 'yearly_bonus' ? 'rgb(52,211,153)' : 'rgb(167,139,250)',
+                      border: `1px solid ${config?.activePromotion === 'yearly_bonus' ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.3)'}`,
+                    }}>
+                    {config?.activePromotion === 'yearly_bonus'
+                      ? (config.yearlyIncentiveType === 'months' ? `${config.yearlyIncentiveValue}mo Free` : `${config.yearlyIncentiveValue}% Off`)
+                      : 'Save 20%'}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Promotional banners ── */}
       <AnimatePresence mode="wait">
         {config?.activePromotion === 'trial' && !profile?.trialUsed && (
-          <motion.div
-            key="trial-banner"
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="max-w-4xl mx-auto mb-12"
-          >
-            <div className="bg-amber-50 border-2 border-amber-200 rounded-[2rem] p-6 flex items-center justify-between shadow-lg shadow-amber-100">
+          <motion.div key="trial-banner" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            className="container mx-auto px-4 max-w-4xl mb-8">
+            <div className="rounded-xl p-5 flex items-center justify-between border"
+              style={{ background: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.2)' }}>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
-                  <Sparkles className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  <Calendar className="w-5 h-5 text-amber-500 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h4 className="font-black text-slate-900 text-lg tracking-tight">Limited Time Offer!</h4>
-                  <p className="text-sm text-slate-600 font-medium">Start any premium plan and get the first <span className="font-bold text-amber-600">{config.freeTrialDays} days FREE</span>.</p>
+                  <p className="font-semibold text-foreground text-sm">Limited Time Offer</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">
+                    Start any plan and get the first{' '}
+                    <span className="text-amber-500 dark:text-amber-400 font-bold">{config.freeTrialDays} days FREE</span>.
+                  </p>
                 </div>
               </div>
-              <div className="hidden md:block">
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl text-xs font-black uppercase text-amber-600 tracking-wider border border-amber-100">
-                  <Calendar className="w-4 h-4" />
-                  Trial Available
-                </div>
-              </div>
+              <span className="hidden md:block text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">Trial Available</span>
             </div>
           </motion.div>
         )}
 
         {config?.activePromotion === 'yearly_bonus' && (
-          <motion.div
-            key="yearly-banner"
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="max-w-4xl mx-auto mb-12"
-          >
-            <div className="bg-emerald-50 border-2 border-emerald-200 rounded-[2rem] p-6 flex items-center justify-between shadow-lg shadow-emerald-100">
+          <motion.div key="yearly-banner" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            className="container mx-auto px-4 max-w-4xl mb-8">
+            <div className="rounded-xl p-5 flex items-center justify-between border"
+              style={{ background: 'rgba(16,185,129,0.06)', borderColor: 'rgba(16,185,129,0.2)' }}>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  <ShieldCheck className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h4 className="font-black text-slate-900 text-lg tracking-tight">Annual Value Pack</h4>
-                  <p className="text-sm text-slate-600 font-medium">
-                    Switch to yearly billing and get <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">
-                      {config.yearlyIncentiveType === 'months' ? `${config.yearlyIncentiveValue} MONTHS COMPLETELY FREE` : `${config.yearlyIncentiveValue}% ADDITIONAL DISCOUNT`}
+                  <p className="font-semibold text-foreground text-sm">Annual Value Pack</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">
+                    Switch to yearly and get{' '}
+                    <span className="text-emerald-500 dark:text-emerald-400 font-bold">
+                      {config.yearlyIncentiveType === 'months'
+                        ? `${config.yearlyIncentiveValue} MONTHS FREE`
+                        : `${config.yearlyIncentiveValue}% EXTRA DISCOUNT`}
                     </span>.
                   </p>
                 </div>
               </div>
-              <div className="hidden md:block">
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl text-xs font-black uppercase text-emerald-600 tracking-wider border border-emerald-100">
-                  Best Value
-                </div>
-              </div>
+              <span className="hidden md:block text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest">Best Value</span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="text-center max-w-2xl mx-auto mb-12">
-        <h1 className="text-5xl font-black text-slate-900 mb-6 tracking-tight">Simple, Powerful <span className="text-indigo-600">Plans</span></h1>
+      {/* ── Plan cards ── */}
+      <div className="container mx-auto px-4 pb-20">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
+          {plans.map((plan, i) => {
+            const discount = plan.monthlyPrice > 0
+              ? Math.round(((plan.monthlyPrice * 12 - plan.yearlyPrice) / (plan.monthlyPrice * 12)) * 100)
+              : 0;
+            const isCurrent = plan.id === profile?.activePlanId;
+            const displayPrice = billingCycle === 'monthly'
+              ? (currency === 'INR' ? Math.round(plan.monthlyPrice * exchangeRate) : plan.monthlyPrice)
+              : (currency === 'INR' ? Math.round((plan.yearlyPrice / 12) * exchangeRate) : Math.floor(plan.yearlyPrice / 12));
 
-        {/* Toggle */}
-        <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-2xl mb-8">
-          <button
-            onClick={() => setBillingCycle('monthly')}
-            className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${billingCycle === 'monthly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingCycle('yearly')}
-            className={`px-8 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Yearly
-            {plans.length > 0 && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
-                config?.activePromotion === 'yearly_bonus'
-                  ? 'bg-emerald-100 text-emerald-600 border-emerald-200 animate-pulse'
-                  : 'bg-indigo-100 text-indigo-600 border-indigo-200'
-              }`}>
-                {config?.activePromotion === 'yearly_bonus'
-                  ? (config.yearlyIncentiveType === 'months'
-                      ? `${config.yearlyIncentiveValue} Months Free!`
-                      : `Up to ${Math.max(...plans.map(p => p.monthlyPrice > 0 ? Math.round(((p.monthlyPrice * 12 - p.yearlyPrice) / (p.monthlyPrice * 12)) * 100) : 0))}% Off`)
-                  : 'Save 20%'}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+            return (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="rounded-2xl p-8 flex flex-col relative overflow-hidden"
+                style={plan.isPopular
+                  ? { background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.35)', boxShadow: '0 0 40px rgba(139,92,246,0.12)' }
+                  : { border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }
+                }
+              >
+                {plan.isPopular && (
+                  <>
+                    <div className="absolute top-0 left-0 right-0 h-px"
+                      style={{ background: 'linear-gradient(90deg, transparent, hsl(258,90%,60%), transparent)' }} />
+                    <div className="absolute top-4 right-4">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
+                        style={{ background: 'rgba(139,92,246,0.2)', color: 'rgb(167,139,250)', border: '1px solid rgba(139,92,246,0.3)' }}>
+                        Most Popular
+                      </span>
+                    </div>
+                  </>
+                )}
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
-        {plans.map((plan, i) => {
-          const discount = plan.monthlyPrice > 0 ? Math.round(((plan.monthlyPrice * 12 - plan.yearlyPrice) / (plan.monthlyPrice * 12)) * 100) : 0;
-
-          return (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`relative bg-white rounded-[3rem] p-10 border-2 transition-all flex flex-col ${
-                plan.isPopular ? 'border-indigo-600 shadow-2xl shadow-indigo-500/10' : 'border-slate-100 shadow-sm'
-              }`}
-            >
-              {plan.isPopular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest px-8 py-2.5 rounded-full shadow-xl">
-                  Most Popular
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-foreground mb-1">{plan.name}</h3>
+                  <p className="text-muted-foreground text-sm">{plan.description}</p>
                 </div>
-              )}
 
-              <div className="mb-10">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-black text-slate-900">{plan.name}</h3>
-                  {billingCycle === 'yearly' && discount > 0 && (
-                    <span className="bg-emerald-100 text-emerald-600 text-[10px] font-black px-2 py-1 rounded-lg border border-emerald-200">
-                      -{discount}%
-                    </span>
-                  )}
-                </div>
-                <p className="text-slate-500 text-sm font-medium">{plan.description}</p>
-              </div>
-
-                <div className="flex flex-col gap-1 mb-10">
+                <div className="mb-7">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-6xl font-black text-slate-900 leading-none">
-                      {symbol}{billingCycle === 'monthly' 
-                        ? (currency === 'INR' ? Math.round(plan.monthlyPrice * exchangeRate) : plan.monthlyPrice)
-                        : (currency === 'INR' ? Math.round((plan.yearlyPrice / 12) * exchangeRate) : Math.floor(plan.yearlyPrice / 12))
-                      }
-                    </span>
-                    <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">/mo</span>
+                    <span className="text-5xl font-bold text-foreground">{symbol}{displayPrice}</span>
+                    <span className="text-muted-foreground text-sm font-medium">/mo</span>
+                    {billingCycle === 'yearly' && discount > 0 && (
+                      <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-md"
+                        style={{ background: 'rgba(16,185,129,0.12)', color: 'rgb(52,211,153)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                        -{discount}%
+                      </span>
+                    )}
                   </div>
-                  {billingCycle === 'yearly' && (
-                    <p className="text-indigo-600 font-black text-xs uppercase tracking-widest mt-2 animate-in fade-in slide-in-from-top-1">
+                  {billingCycle === 'yearly' && plan.yearlyPrice > 0 && (
+                    <p className="text-primary text-xs font-semibold mt-2 uppercase tracking-wider">
                       Billed as {symbol}{currency === 'INR' ? Math.round(plan.yearlyPrice * exchangeRate) : plan.yearlyPrice}/year
                     </p>
                   )}
                 </div>
 
-            <ul className="space-y-5 mb-12 flex-1">
-              {plan.features.map((feature, j) => (
-                <li key={j} className="flex items-start gap-4">
-                  <div className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${plan.isPopular ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    <Check className="w-4 h-4" />
-                  </div>
-                  <span className="text-slate-600 font-bold text-sm leading-tight">{feature}</span>
-                </li>
-              ))}
-            </ul>
+                <ul className="space-y-3.5 mb-8 flex-1">
+                  {plan.features.map((feature, j) => (
+                    <li key={j} className="flex items-start gap-3">
+                      <div
+                        className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5"
+                        style={plan.isPopular
+                          ? { background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.3)' }
+                          : { background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }
+                        }
+                      >
+                        <Check className={`w-3 h-3 ${plan.isPopular ? 'text-violet-400' : 'text-muted-foreground'}`} />
+                      </div>
+                      <span className="text-muted-foreground text-sm leading-snug">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
-            <button
-              onClick={() => handleSubscribe(plan)}
-              disabled={loading || (plan.id === profile?.activePlanId)}
-              className={`w-full py-5 rounded-[1.5rem] font-black text-lg transition-all flex items-center justify-center gap-3 ${
-                plan.isPopular
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 hover:-translate-y-1'
-                  : 'bg-slate-900 text-white hover:bg-black'
-              } disabled:opacity-50 disabled:cursor-not-allowed active:scale-95`}
-            >
-              {plan.id === profile?.activePlanId ? 'Current Plan' : (
-                config?.activePromotion === 'trial' && !profile?.trialUsed && plan.monthlyPrice > 0 ? 'Start Free Trial' : 'Get Started'
-              )}
-              {plan.id !== profile?.activePlanId && <ArrowRight className="w-5 h-5 font-black" />}
-            </button>
-          </motion.div>
-        );
-      })}
-    </div>
+                <button
+                  onClick={() => handleSubscribe(plan)}
+                  disabled={loading || isCurrent}
+                  className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={plan.isPopular && !isCurrent
+                    ? { background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', color: '#fff', boxShadow: '0 0 24px rgba(139,92,246,0.3)' }
+                    : { background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }
+                  }
+                >
+                  {isCurrent ? 'Current Plan' : (
+                    config?.activePromotion === 'trial' && !profile?.trialUsed && plan.monthlyPrice > 0
+                      ? 'Start Free Trial'
+                      : 'Get Started'
+                  )}
+                  {!isCurrent && <ArrowRight className="w-4 h-4" />}
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
 
-      <div className="mt-24 text-center">
-        <div className="inline-flex flex-wrap justify-center gap-8 px-12 py-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-          <div className="flex items-center gap-3 text-slate-400">
-            <ShieldCheck className="w-6 h-6" />
-            <span className="text-xs font-black uppercase tracking-widest">Secure Bank-Level Payments</span>
-          </div>
-          <div className="flex items-center gap-3 text-slate-400">
-            <CreditCard className="w-6 h-6" />
-            <span className="text-xs font-black uppercase tracking-widest">Cashfree & PayPal Support</span>
-          </div>
+        {/* ── Trust badges ── */}
+        <div className="mt-16 flex flex-wrap items-center justify-center gap-6 max-w-2xl mx-auto">
+          {[
+            { icon: ShieldCheck, label: 'Secure Bank-Level Payments' },
+            { icon: CreditCard, label: 'Cashfree & PayPal Support' },
+            { icon: Zap,         label: 'Instant Access After Payment' },
+          ].map(({ icon: Icon, label }, i) => (
+            <div key={i} className="flex items-center gap-2.5">
+              <Icon className="w-4 h-4 text-muted-foreground/40" />
+              <span className="text-xs text-muted-foreground/40 uppercase tracking-widest font-medium">{label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

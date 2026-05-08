@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { BookOpen, Plus, Sparkles } from 'lucide-react';
+import { motion } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import PromptCard from '../../components/PromptCard';
+import PromptCardSkeleton from '../../components/PromptCardSkeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Prompt } from '../../types';
-import PromptCard from '../../components/PromptCard';
-import { BookOpen, Sparkles } from 'lucide-react';
-import { motion } from 'motion/react';
-import { Link } from 'react-router-dom';
-import PageShell from '../../components/ui/PageShell';
 
 export default function DashboardLibrary() {
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,43 +30,54 @@ export default function DashboardLibrary() {
     fetchData();
   }, [user]);
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-32">
-      <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-    </div>
-  );
-
   return (
-    <PageShell
-      title="My Creations"
-      description="Manage and optimize the custom-built AI formulas you've contributed to the marketplace."
-    >
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
-      >
-        {prompts.length > 0 ? (
-          prompts.map(p => <PromptCard key={p.id} prompt={p} />)
-        ) : (
-          <div className="col-span-full py-32 bg-muted/30 rounded-[3rem] border border-border border-dashed text-center">
-            <div className="w-20 h-20 bg-background rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/5">
-              <BookOpen className="w-10 h-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-2xl font-black text-foreground mb-2">Your library is empty</h3>
-            <p className="text-muted-foreground max-w-sm mx-auto mb-10">
-              You haven't built any public prompts yet. Use our AI engineering lab to start creating.
-            </p>
-            <Link 
-              to="/builder" 
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-10 py-5 rounded-2xl font-black text-lg hover:opacity-90 transition-all shadow-xl shadow-primary/20"
-            >
-              <Sparkles className="w-5 h-5" />
-              Open AI Builder
-            </Link>
+    <div>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div>
+          <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[0.2em] text-xs mb-2">
+            <BookOpen className="w-4 h-4" />
+            My Contributions
           </div>
-        )}
-      </motion.div>
-    </PageShell>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">My Creations</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage the custom-built AI formulas you've contributed to the marketplace.
+            {prompts.length > 0 && <span className="ml-1 text-primary font-semibold">{prompts.length} published</span>}
+          </p>
+        </div>
+        <Link to="/builder"
+          className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
+          style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+          <Plus className="w-4 h-4" /> New Prompt
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => <PromptCardSkeleton key={i} />)}
+        </div>
+      ) : prompts.length > 0 ? (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {prompts.map(p => <PromptCard key={p.id} prompt={p} />)}
+        </motion.div>
+      ) : (
+        <div className="py-24 bg-muted/30 rounded-2xl border border-border border-dashed text-center">
+          <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <BookOpen className="w-8 h-8 text-muted-foreground/30" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-1">Your library is empty</h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
+            You haven't built any public prompts yet. Use the AI Builder to start creating.
+          </p>
+          <Link to="/builder" className="btn-primary">
+            <Sparkles className="w-4 h-4" />
+            Open AI Builder
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }

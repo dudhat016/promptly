@@ -5,7 +5,9 @@ import { db } from '../../lib/firebase';
 import { BlogPost } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
-import { Save, ArrowLeft, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
+import { useTheme } from '../../hooks/useTheme';
+import { Save, ArrowLeft, Upload, Loader2, FileText } from 'lucide-react';
+import { AdminPageHeader } from '../../components/admin';
 import MDEditor from '@uiw/react-md-editor';
 import TagInput from '../../components/TagInput';
 import { useImageUpload } from '../../hooks/useImageUpload';
@@ -14,7 +16,12 @@ export default function AdminBlogForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const isNew = !id || id === 'new';
+
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const { uploadImage, isUploading } = useImageUpload();
   const [loading, setLoading] = useState(!isNew);
@@ -44,7 +51,7 @@ export default function AdminBlogForm() {
       setLoading(false);
       return;
     }
-    
+
     async function fetchPost() {
       if (!id) return;
       try {
@@ -52,7 +59,6 @@ export default function AdminBlogForm() {
         if (docSnap.exists()) {
           const data = docSnap.id ? { id: docSnap.id, ...docSnap.data() } as BlogPost : { ...docSnap.data() } as BlogPost;
           setPost(data);
-          // If editing, assume existing SEO is manual
           setIsManualSEO({
             slug: !!data.slug,
             metaTitle: !!data.metaTitle,
@@ -70,11 +76,10 @@ export default function AdminBlogForm() {
         setLoading(false);
       }
     }
-    
+
     fetchPost();
   }, [id, navigate, isNew]);
 
-  // Auto-generate slug from title if slug is empty
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const title = e.target.value;
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -89,10 +94,10 @@ export default function AdminBlogForm() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    
+
     setSaving(true);
     const toastId = toast.loading('Saving blog post...');
-    
+
     try {
       const docId = isNew ? post.slug || Date.now().toString() : id!;
       const postData = {
@@ -110,7 +115,7 @@ export default function AdminBlogForm() {
       }
 
       await setDoc(doc(db, 'blog_posts', docId), postData, { merge: true });
-      
+
       toast.success("Blog post saved successfully!", { id: toastId });
       navigate('/admin/blog');
     } catch (error) {
@@ -121,35 +126,36 @@ export default function AdminBlogForm() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-slate-500">Loading...</div>;
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
+
+  const inputCls = "w-full bg-card border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => navigate('/admin/blog')}
-          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">
-            {isNew ? 'Create Blog Post' : 'Edit Blog Post'}
-          </h2>
-        </div>
-      </div>
+    <div className="max-w-4xl space-y-6">
+      <AdminPageHeader
+        label="Content"
+        labelIcon={FileText}
+        title={isNew ? 'Create Blog Post' : 'Edit Blog Post'}
+        subtitle="Write and publish platform blog content and announcements."
+        actions={
+          <button onClick={() => navigate('/admin/blog')} className="btn-secondary">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Blog
+          </button>
+        }
+      />
 
-      <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6">
+      <form onSubmit={handleSave} className="bg-card rounded-2xl border border-border p-6 md:p-8 space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-4 md:col-span-2">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Title</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Title</label>
               <input
                 type="text"
                 required
                 value={post.title || ''}
                 onChange={handleTitleChange}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={inputCls}
                 placeholder="The Future of AI Prompts..."
               />
             </div>
@@ -157,23 +163,23 @@ export default function AdminBlogForm() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Slug (URL)</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Slug (URL)</label>
               <input
                 type="text"
                 required
                 value={post.slug || ''}
                 onChange={e => setPost({ ...post, slug: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={inputCls}
                 placeholder="the-future-of-ai-prompts"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Status</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Status</label>
               <select
                 value={post.status || 'draft'}
                 onChange={e => setPost({ ...post, status: e.target.value as 'draft' | 'published' })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={inputCls}
               >
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
@@ -183,23 +189,23 @@ export default function AdminBlogForm() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Cover Image</label>
               <div className="flex gap-2">
                 <div className="relative flex-grow">
                   <input
                     type="url"
                     value={post.coverImage || ''}
                     onChange={e => setPost({ ...post, coverImage: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    className={inputCls}
                     placeholder="https://example.com/image.jpg"
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    <label className="cursor-pointer p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Upload to Hostinger">
+                    <label className="cursor-pointer p-1.5 text-primary hover:bg-primary/10 rounded-md transition-colors" title="Upload image">
                       {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*" 
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -215,7 +221,7 @@ export default function AdminBlogForm() {
                   </div>
                 </div>
                 {post.coverImage && (
-                  <div className="w-11 h-11 rounded-lg border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center bg-slate-50">
+                  <div className="w-11 h-11 rounded-lg border border-border overflow-hidden shrink-0 flex items-center justify-center bg-muted">
                     <img src={post.coverImage} alt="Cover Preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
                   </div>
                 )}
@@ -225,12 +231,12 @@ export default function AdminBlogForm() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Tags</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Tags</label>
               <TagInput
                 value={post.tags || []}
                 onChange={(tags) => {
-                  setPost(prev => ({ 
-                    ...prev, 
+                  setPost(prev => ({
+                    ...prev,
                     tags,
                     metaKeywords: isManualSEO.metaKeywords ? prev.metaKeywords : tags.join(', ')
                   }));
@@ -239,7 +245,7 @@ export default function AdminBlogForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Meta Keywords (SEO)</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Meta Keywords (SEO)</label>
               <input
                 type="text"
                 value={post.metaKeywords || ''}
@@ -247,7 +253,7 @@ export default function AdminBlogForm() {
                   setPost({ ...post, metaKeywords: e.target.value });
                   setIsManualSEO(prev => ({ ...prev, metaKeywords: true }));
                 }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={inputCls}
                 placeholder="ai, blog, tech, tutorial..."
               />
             </div>
@@ -255,7 +261,7 @@ export default function AdminBlogForm() {
 
           <div className="space-y-4 md:col-span-2 grid md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Meta Title (SEO)</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Meta Title (SEO)</label>
               <input
                 type="text"
                 value={post.metaTitle || ''}
@@ -263,19 +269,19 @@ export default function AdminBlogForm() {
                   setPost({ ...post, metaTitle: e.target.value });
                   setIsManualSEO(prev => ({ ...prev, metaTitle: true }));
                 }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={inputCls}
                 placeholder="Google search title..."
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Meta Description (SEO)</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Meta Description (SEO)</label>
               <textarea
                 value={post.metaDescription || ''}
                 onChange={e => {
                   setPost({ ...post, metaDescription: e.target.value });
                   setIsManualSEO(prev => ({ ...prev, metaDescription: true }));
                 }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={inputCls}
                 rows={1}
                 placeholder="SEO meta description..."
               />
@@ -284,7 +290,7 @@ export default function AdminBlogForm() {
 
           <div className="space-y-4 md:col-span-2">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Excerpt</label>
+              <label className="block text-sm font-semibold text-muted-foreground mb-1">Excerpt</label>
               <textarea
                 required
                 value={post.excerpt || ''}
@@ -296,17 +302,17 @@ export default function AdminBlogForm() {
                     metaDescription: isManualSEO.metaDescription ? prev.metaDescription : excerpt
                   }));
                 }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={inputCls}
                 rows={2}
                 placeholder="A short summary of the blog post..."
               />
             </div>
-            
+
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-semibold text-slate-700">Content (Markdown supported)</label>
+                <label className="block text-sm font-semibold text-muted-foreground">Content (Markdown supported)</label>
               </div>
-              <div data-color-mode="light" className="border border-slate-200 rounded-lg overflow-hidden">
+              <div data-color-mode={isDark ? 'dark' : 'light'} className="border border-border rounded-lg overflow-hidden">
                 <MDEditor
                   value={post.content || ''}
                   onChange={(val) => setPost({ ...post, content: val || '' })}
@@ -320,11 +326,12 @@ export default function AdminBlogForm() {
           </div>
         </div>
 
-        <div className="flex justify-end pt-6 border-t border-slate-100">
+        <div className="flex justify-end pt-6 border-t border-border">
           <button
             type="submit"
             disabled={saving}
-            className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm text-white transition-all disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
           >
             <Save className="w-5 h-5" />
             {saving ? 'Saving...' : 'Save Post'}
