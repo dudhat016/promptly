@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { db } from '../lib/firebase';
@@ -123,7 +123,7 @@ export default function ProfilePage() {
                       </div>
                       <label className="absolute -bottom-2 -right-2 p-3 bg-foreground text-white rounded-md shadow-xl border-4 border-white hover:scale-110 transition-transform cursor-pointer">
                         <Camera className="w-4 h-4" />
-                        <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
+                        <input id="photo-upload-1" name="photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
                       </label>
                     </div>
                     <div>
@@ -132,7 +132,7 @@ export default function ProfilePage() {
                       <div className="flex gap-3">
                         <label className="text-xs font-bold uppercase tracking-widest text-primary px-4 py-2 bg-primary/8 rounded-md hover:bg-primary/15 transition-all cursor-pointer">
                           {isUploading ? 'Uploading...' : 'Upload New'}
-                          <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
+                          <input id="photo-upload-2" name="photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
                         </label>
                         <button 
                           onClick={() => updateDoc(doc(db, 'users', user.uid), { photoURL: null })}
@@ -147,8 +147,10 @@ export default function ProfilePage() {
                   <form onSubmit={handleUpdateProfile} className="space-y-8">
                     <div className="grid md:grid-cols-2 gap-8">
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Display Name</label>
+                        <label htmlFor="profileDisplayName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Display Name</label>
                         <input 
+                          id="profileDisplayName"
+                          name="displayName"
                           type="text" 
                           value={displayName}
                           onChange={(e) => setDisplayName(e.target.value)}
@@ -352,6 +354,7 @@ function NotificationToggle({ title, desc, defaultEnabled = false }: any) {
       </div>
       <button 
         onClick={() => setEnabled(!enabled)}
+        aria-label={`Toggle ${title}`}
         className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 ${enabled ? 'bg-primary shadow-lg shadow-primary/10' : 'bg-muted'}`}
       >
         <motion.div 

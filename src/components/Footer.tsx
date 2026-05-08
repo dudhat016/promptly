@@ -28,7 +28,7 @@ export default function Footer() {
       heading: 'Support',
       links: [
         { to: '/contact', label: 'Contact Us'  },
-        { to: '/support', label: 'Help Center' },
+        { to: '/dashboard/support', label: 'Help Center' },
       ],
     },
   ];

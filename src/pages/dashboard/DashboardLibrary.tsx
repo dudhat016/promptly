@@ -44,7 +44,7 @@ export default function DashboardLibrary() {
             {prompts.length > 0 && <span className="ml-1 text-primary font-semibold">{prompts.length} published</span>}
           </p>
         </div>
-        <Link to="/builder"
+        <Link to="/dashboard/builder"
           className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
           style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
           <Plus className="w-4 h-4" /> New Prompt
@@ -72,7 +72,7 @@ export default function DashboardLibrary() {
           <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
             You haven't built any public prompts yet. Use the AI Builder to start creating.
           </p>
-          <Link to="/builder" className="btn-primary">
+          <Link to="/dashboard/builder" className="btn-primary">
             <Sparkles className="w-4 h-4" />
             Open AI Builder
           </Link>

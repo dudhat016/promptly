@@ -4,20 +4,28 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const response = await fetch('http://ip-api.com/json/?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,currency,isp,org,as,query');
+    // Switch to https://ipapi.co/json/ for better reliability on Vercel (HTTPS support)
+    const response = await fetch('https://ipapi.co/json/');
+    
     if (!response.ok) {
-      throw new Error(`ip-api failed with ${response.status}`);
+      throw new Error(`Location API failed with status: ${response.status}`);
     }
+    
     const data = await response.json();
 
+    // Map ipapi.co fields to our internal format
     res.json({
       ...data,
-      country: data.countryCode,
+      country: data.country_code, // ipapi.co uses country_code
       localCurrency: data.currency || "USD"
     });
   } catch (err: any) {
-    console.error("Backend Location Error:", err.message);
-    res.status(500).json({ error: "Failed to detect location", message: err.message });
+    console.error("❌ [Backend Location Error]:", err.message);
+    res.status(500).json({ 
+      error: "Failed to detect location", 
+      message: err.message,
+      fallback: true
+    });
   }
 });
 

@@ -254,5 +254,11 @@ service cloud.firestore {
       allow read: if true; // Publicly accessible via the site
       allow write: if isAdmin();
     }
+
+    // Orders & Transactions
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
   }
 }

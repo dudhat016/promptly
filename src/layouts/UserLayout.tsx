@@ -1,4 +1,4 @@
-﻿import {
+import {
   BookOpen,
   ChevronDown,
   Coins,
@@ -28,13 +28,13 @@ import { auth } from '../lib/firebase';
 
 const NAV_ITEMS = [
   { label: 'Marketplace',  icon: Search,      path: '/explore' },
-  { label: 'My Vault',     icon: LayoutGrid,  path: '/vault' },
+  { label: 'My Vault',     icon: LayoutGrid,  path: '/dashboard/vault' },
   { label: 'My Creations', icon: BookOpen,    path: '/dashboard/library' },
   { label: 'Favorites',    icon: Heart,       path: '/dashboard/favorites' },
-  { label: 'AI Builder',   icon: Wand2,       path: '/builder' },
-  { label: 'Partner',      icon: Gift,        path: '/affiliate/dashboard' },
-  { label: 'Credits',      icon: Coins,       path: '/credits' },
-  { label: 'Support',      icon: HelpCircle,  path: '/support' },
+  { label: 'AI Builder',   icon: Wand2,       path: '/dashboard/builder' },
+  { label: 'Partner',      icon: Gift,        path: '/dashboard/affiliate' },
+  { label: 'Credits',      icon: Coins,       path: '/dashboard/credits' },
+  { label: 'Support',      icon: HelpCircle,  path: '/dashboard/support' },
 ];
 
 const SETTINGS_ITEMS = [
@@ -354,7 +354,7 @@ export default function UserLayout() {
             Promptly Â· Personal Workspace
           </p>
           <div className="flex items-center gap-4">
-            <Link to="/support" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors uppercase tracking-widest font-medium">
+            <Link to="/dashboard/support" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors uppercase tracking-widest font-medium">
               Help
             </Link>
             <Link to="/privacy" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors uppercase tracking-widest font-medium">

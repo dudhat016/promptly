@@ -9,3 +9,4 @@ export type { ConfirmOptions } from './ConfirmModal';
 export { default as AdminNotificationBell } from './AdminNotificationBell';
 export { default as AdminGlobalSearch } from './AdminGlobalSearch';
 export { default as AdminShortcutsModal } from './AdminShortcutsModal';
+export { default as ImageUpload } from './ImageUpload';

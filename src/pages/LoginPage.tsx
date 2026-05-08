@@ -1,4 +1,4 @@
-﻿import { signInWithGoogle, signInAsGuest, signInWithEmail, signUpWithEmail } from '../lib/firebase';
+import { signInWithGoogle, signInAsGuest, signInWithEmail, signUpWithEmail } from '../lib/firebase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useEffect, useState } from 'react';
@@ -71,6 +71,8 @@ export default function LoginPage() {
         <div className="space-y-4">
           <div className="space-y-3 mb-6">
             <input 
+              id="email"
+              name="email"
               type="email" 
               placeholder="Email address" 
               value={email}
@@ -78,6 +80,8 @@ export default function LoginPage() {
               className="w-full bg-card border border-border rounded-md py-3 px-4 focus:ring-2 focus:ring-primary focus:outline-none"
             />
             <input 
+              id="password"
+              name="password"
               type="password" 
               placeholder="Password" 
               value={password}

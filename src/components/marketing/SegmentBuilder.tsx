@@ -1,9 +1,10 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, X, Filter, Sliders, ChevronDown, 
   Trash2, Database, Info, Save, Search, Check
 } from 'lucide-react';
+import Select from '../ui/Select';
 import { Segment, Contact } from '../../types';
 
 interface Props {
@@ -149,30 +150,31 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
                 >
                   <div className="flex-1 min-w-[150px]">
                     <label className="block text-[8px] font-bold uppercase text-muted-foreground mb-2 ml-1 tracking-[0.2em]">Field</label>
-                    <select 
+                    <Select
                       value={filter.field}
-                      onChange={e => updateFilter(idx, { field: e.target.value })}
-                      className="w-full bg-muted/50 border-none rounded-md p-4 text-xs font-bold shadow-sm focus:ring-2 focus:ring-indigo-600 appearance-none transition-all cursor-pointer"
-                    >
-                      <option value="email">Email Address</option>
-                      <option value="displayName">Display Name</option>
-                      <option value="subscriptionStatus">Subscription</option>
-                      <option value="lastActivity">Last Activity</option>
-                      <option value="tags">Tags</option>
-                    </select>
+                      onChange={val => updateFilter(idx, { field: val })}
+                      options={[
+                        { label: 'Email Address', value: 'email' },
+                        { label: 'Display Name', value: 'displayName' },
+                        { label: 'Subscription', value: 'subscriptionStatus' },
+                        { label: 'Last Activity', value: 'lastActivity' },
+                        { label: 'Tags', value: 'tags' }
+                      ]}
+                      isSearchable={false}
+                    />
                   </div>
 
                   <div className="flex-1 min-w-[150px]">
                     <label className="block text-[8px] font-bold uppercase text-muted-foreground mb-2 ml-1 tracking-[0.2em]">Operator</label>
-                    <select 
+                    <Select
                       value={filter.operator}
-                      onChange={e => updateFilter(idx, { operator: e.target.value })}
-                      className="w-full bg-muted/50 border-none rounded-md p-4 text-xs font-bold shadow-sm focus:ring-2 focus:ring-indigo-600 appearance-none transition-all cursor-pointer"
-                    >
-                      {(OPERATORS_BY_FIELD[filter.field] || []).map(op => (
-                        <option key={op} value={op}>{op.replace('_', ' ')}</option>
-                      ))}
-                    </select>
+                      onChange={val => updateFilter(idx, { operator: val })}
+                      options={(OPERATORS_BY_FIELD[filter.field] || []).map(op => ({
+                        label: op.replace('_', ' ').charAt(0).toUpperCase() + op.replace('_', ' ').slice(1),
+                        value: op
+                      }))}
+                      isSearchable={false}
+                    />
                   </div>
 
                   <div className="flex-[2] min-w-[250px] relative">

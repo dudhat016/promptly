@@ -292,4 +292,14 @@ app.post("/api/create-checkout-session", async (req, res) => {
   }
 });
 
+// --- Global Error Handler ---
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("🔥 [Critical Server Error]:", err);
+  res.status(500).json({
+    error: "Internal Server Error",
+    message: err.message,
+    path: req.path
+  });
+});
+
 export default app;

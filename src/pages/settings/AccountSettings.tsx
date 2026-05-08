@@ -1,4 +1,4 @@
-﻿import { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import { db } from '../../lib/firebase';
@@ -77,7 +77,7 @@ export default function AccountSettings() {
               <span className="text-3xl font-bold text-foreground">{profile?.credits || 0}</span>
               <span className="text-xs font-bold text-muted-foreground">Tokens</span>
             </div>
-            <Link to="/credits" className="text-xs font-bold text-primary hover:underline mt-4 inline-block">View History â†’</Link>
+            <Link to="/dashboard/credits" className="text-xs font-bold text-primary hover:underline mt-4 inline-block">View History →</Link>
           </div>
           <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center">
             <Coins className="w-8 h-8 text-primary" />
@@ -109,6 +109,8 @@ export default function AccountSettings() {
         </h2>
         
         <input 
+          id="avatar-upload"
+          name="avatar-upload"
           type="file" 
           ref={fileInputRef} 
           onChange={handleImageUpload} 
@@ -157,8 +159,10 @@ export default function AccountSettings() {
         <form onSubmit={handleUpdateProfile} className="space-y-8">
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Display Name</label>
+              <label htmlFor="displayName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Display Name</label>
               <input 
+                id="displayName"
+                name="displayName"
                 type="text" 
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -184,8 +188,10 @@ export default function AccountSettings() {
             </h3>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">UPI ID (India)</label>
+                <label htmlFor="upiId" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">UPI ID (India)</label>
                 <input 
+                  id="upiId"
+                  name="upiId"
                   type="text" 
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
@@ -194,8 +200,10 @@ export default function AccountSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">PayPal Email (Global)</label>
+                <label htmlFor="paypalEmail" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">PayPal Email (Global)</label>
                 <input 
+                  id="paypalEmail"
+                  name="paypalEmail"
                   type="email" 
                   value={paypalEmail}
                   onChange={(e) => setPaypalEmail(e.target.value)}
@@ -204,8 +212,10 @@ export default function AccountSettings() {
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Bank Account Details (Swift/IFSC, A/C No)</label>
+                <label htmlFor="bankDetails" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Bank Account Details (Swift/IFSC, A/C No)</label>
                 <textarea 
+                  id="bankDetails"
+                  name="bankDetails"
                   value={bankDetails}
                   onChange={(e) => setBankDetails(e.target.value)}
                   className="w-full bg-muted border-2 border-transparent rounded-md p-5 focus:bg-card focus:border-primary focus:outline-none transition-all font-bold text-foreground min-h-[120px]"

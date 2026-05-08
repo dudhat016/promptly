@@ -201,6 +201,21 @@ router.post("/paypal/verify", async (req, res) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+      // Save Order Record
+      await firebase.db.collection("orders").doc(orderID).set({
+        orderId: orderID,
+        userId: customerId,
+        userEmail: customerEmail,
+        planId: planId,
+        planName: planData.name,
+        amount: captureData.purchase_units[0].payments.captures[0].amount.value,
+        currency: captureData.purchase_units[0].payments.captures[0].amount.currency_code,
+        status: 'completed',
+        billingCycle: billingCycle,
+        gateway: 'paypal',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
       if (userData?.referredBy) {
         await awardAffiliateCommission(customerId, captureData.purchase_units[0].payments.captures[0].amount.value, orderID, captureData.purchase_units[0].payments.captures[0].amount.currency_code, userData.referredBy);
       }

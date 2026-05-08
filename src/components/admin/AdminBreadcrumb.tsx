@@ -34,12 +34,23 @@ export default function AdminBreadcrumb() {
 
   if (segments.length <= 1) return null;
 
-  const crumbs = segments.map((seg, i) => {
-    const path = '/' + segments.slice(0, i + 1).join('/');
-    const label = SEGMENT_LABELS[seg] ?? seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const isLast = i === segments.length - 1;
-    return { path, label, isLast };
+  const crumbs: { path: string; label: string; isLast: boolean }[] = [];
+  let cumulativePath = '';
+
+  segments.forEach((seg, i) => {
+    cumulativePath += `/${seg}`;
+    if (seg === 'edit') return;
+
+    crumbs.push({
+      path: cumulativePath,
+      label: SEGMENT_LABELS[seg] ?? seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      isLast: false // Initial value, fixed after loop
+    });
   });
+
+  if (crumbs.length > 0) {
+    crumbs[crumbs.length - 1].isLast = true;
+  }
 
   return (
     <nav className="flex items-center gap-1.5 text-xs font-medium">

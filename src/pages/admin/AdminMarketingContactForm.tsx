@@ -7,6 +7,8 @@ import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
+import Select from '../../components/ui/Select';
+
 export default function AdminMarketingContactForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -98,15 +100,16 @@ export default function AdminMarketingContactForm() {
 
           <div>
             <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Status</label>
-            <select
+            <Select
               value={contact.status || 'active'}
-              onChange={e => setContact({ ...contact, status: e.target.value as any })}
-              className={inputCls + " appearance-none"}
-            >
-              <option value="active">Active</option>
-              <option value="unsubscribed">Unsubscribed</option>
-              <option value="bounced">Bounced</option>
-            </select>
+              onChange={val => setContact({ ...contact, status: val as any })}
+              options={[
+                { label: 'Active', value: 'active', description: 'Contact is subscribed and receiving emails' },
+                { label: 'Unsubscribed', value: 'unsubscribed', description: 'User opted out of marketing' },
+                { label: 'Bounced', value: 'bounced', description: 'Email delivery failed' }
+              ]}
+              isSearchable={false}
+            />
           </div>
 
           <div>

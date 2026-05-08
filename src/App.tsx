@@ -87,15 +87,37 @@ function ScrollToTop() {
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { profile, loading } = useAuth();
-  if (loading) return null;
-  if (profile?.role !== 'admin') return <Navigate to="/" replace />;
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+  
+  if (profile?.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+  
   return <>{children}</>;
 };
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
   return <>{children}</>;
 };
 
@@ -143,14 +165,16 @@ function App() {
   
                 {/* Dashboard Layout: Sidebar + Specialized Header */}
                 <Route element={<PrivateRoute><UserLayout /></PrivateRoute>}>
-                  <Route path="dashboard" element={<MyVaultPage />} />
-                  <Route path="dashboard/favorites" element={<DashboardFavorites />} />
-                  <Route path="dashboard/library" element={<DashboardLibrary />} />
-                  <Route path="vault" element={<MyVaultPage />} />
-                  <Route path="credits" element={<CreditHistoryPage />} />
-                  <Route path="builder" element={<DashboardBuilder />} />
-                  <Route path="affiliate/dashboard" element={<AffiliatePage />} />
-                  <Route path="support" element={<SupportPage />} />
+                  <Route path="dashboard" element={<Outlet />}>
+                    <Route index element={<MyVaultPage />} />
+                    <Route path="vault" element={<MyVaultPage />} />
+                    <Route path="favorites" element={<DashboardFavorites />} />
+                    <Route path="library" element={<DashboardLibrary />} />
+                    <Route path="credits" element={<CreditHistoryPage />} />
+                    <Route path="builder" element={<DashboardBuilder />} />
+                    <Route path="affiliate" element={<AffiliatePage />} />
+                    <Route path="support" element={<SupportPage />} />
+                  </Route>
                   
                   <Route path="settings" element={<Outlet />}>
                     <Route index element={<Navigate to="profile" replace />} />

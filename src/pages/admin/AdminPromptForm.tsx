@@ -1,15 +1,14 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, serverTimestamp, addDoc, query, where, limit } from 'firebase/firestore';
 import { Prompt, Category, AIModel } from '../../types';
 import { Save, LayoutGrid, ChevronDown } from 'lucide-react';
-import { AdminPageHeader } from '../../components/admin';
+import { AdminPageHeader, ImageUpload } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import TagInput from '../../components/TagInput';
-import { useImageUpload } from '../../hooks/useImageUpload';
-import { Image as ImageIcon, X } from 'lucide-react';
+import Select from '../../components/ui/Select';
 
 export default function AdminPromptForm() {
   const { id } = useParams();
@@ -25,7 +24,6 @@ export default function AdminPromptForm() {
     sampleOutput: '', usageGuide: '', difficulty: undefined
   });
 
-  const { uploadImage, isUploading } = useImageUpload();
 
   const [isManualSEO, setIsManualSEO] = useState({
     slug: false,
@@ -166,8 +164,10 @@ export default function AdminPromptForm() {
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Title</label>
+              <label htmlFor="promptTitle" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Title</label>
               <input 
+                id="promptTitle"
+                name="promptTitle"
                 type="text" required
                 value={prompt.title || ''}
                 onChange={e => handleTitleChange(e.target.value)}
@@ -176,8 +176,10 @@ export default function AdminPromptForm() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">SEO Slug</label>
+              <label htmlFor="promptSlug" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">SEO Slug</label>
               <input 
+                id="promptSlug"
+                name="promptSlug"
                 type="text" required
                 value={prompt.slug || ''}
                 onChange={e => {
@@ -192,8 +194,10 @@ export default function AdminPromptForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Title (SEO)</label>
+              <label htmlFor="metaTitle" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Title (SEO)</label>
               <input 
+                id="metaTitle"
+                name="metaTitle"
                 type="text"
                 value={prompt.metaTitle || ''}
                 onChange={e => {
@@ -205,8 +209,10 @@ export default function AdminPromptForm() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Keywords (SEO)</label>
+              <label htmlFor="metaKeywords" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Keywords (SEO)</label>
               <input 
+                id="metaKeywords"
+                name="metaKeywords"
                 type="text"
                 value={prompt.metaKeywords || ''}
                 onChange={e => {
@@ -220,8 +226,10 @@ export default function AdminPromptForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Description (SEO)</label>
+            <label htmlFor="metaDescription" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Description (SEO)</label>
             <textarea 
+              id="metaDescription"
+              name="metaDescription"
               rows={2}
               value={prompt.metaDescription || ''}
               onChange={e => {
@@ -236,39 +244,29 @@ export default function AdminPromptForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Model</label>
-              <div className="relative">
-                <select 
-                  required
-                  value={prompt.model || ''}
-                  onChange={e => setPrompt({...prompt, model: e.target.value})}
-                  className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all appearance-none cursor-pointer pr-12"
-                >
-                  <option value="">Select Model</option>
-                  {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              </div>
-              {models.length === 0 && <p className="text-xs text-amber-600 mt-1 font-bold">No models found in database. Please add models first.</p>}
+              <Select
+                id="promptModel"
+                name="promptModel"
+                value={prompt.model || ''}
+                onChange={val => setPrompt({...prompt, model: val})}
+                options={models.map(m => ({ label: m.name, value: m.id, description: m.provider }))}
+                placeholder="Select Model"
+                isSearchable={true}
+              />
+              {models.length === 0 && <p className="text-xs text-amber-600 mt-1 font-bold">No models found in database.</p>}
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Category</label>
-              <div className="relative">
-                <select 
-                  required
-                  value={prompt.categoryId || ''}
-                  onChange={e => setPrompt({...prompt, categoryId: e.target.value})}
-                  className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all appearance-none cursor-pointer pr-12"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              </div>
-              {categories.length === 0 && <p className="text-xs text-amber-600 mt-1 font-bold">No categories found in database. Please add categories first.</p>}
+              <Select
+                id="promptCategory"
+                name="promptCategory"
+                value={prompt.categoryId || ''}
+                onChange={val => setPrompt({...prompt, categoryId: val})}
+                options={categories.map(c => ({ label: c.name, value: c.id }))}
+                placeholder="Select Category"
+                isSearchable={true}
+              />
+              {categories.length === 0 && <p className="text-xs text-amber-600 mt-1 font-bold">No categories found in database.</p>}
             </div>
           </div>
 
@@ -289,49 +287,20 @@ export default function AdminPromptForm() {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Prompt Preview Image</label>
-            <div className="flex items-start gap-6">
-              {prompt.imageUrl ? (
-                <div className="relative group w-48 h-48 rounded-md overflow-hidden border-2 border-border shadow-xl">
-                  <img src={prompt.imageUrl} className="w-full h-full object-cover" alt="Preview" />
-                  <button 
-                    onClick={() => setPrompt(prev => ({ ...prev, imageUrl: '' }))}
-                    className="absolute top-2 right-2 bg-rose-500 text-white p-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="w-48 h-48 rounded-md border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted hover:border-primary/300 transition-all text-muted-foreground hover:text-primary">
-                  <input 
-                    type="file" className="hidden" accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const res = await uploadImage(file, 'prompts');
-                        if (res?.success) setPrompt(prev => ({ ...prev, imageUrl: res.url }));
-                      }
-                    }}
-                  />
-                  {isUploading ? (
-                    <div className="w-6 h-6 border-2 border-primary/600 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <ImageIcon className="w-8 h-8 opacity-40" />
-                      <span className="text-xs font-bold uppercase tracking-widest">Upload Image</span>
-                    </>
-                  )}
-                </label>
-              )}
-              <div className="flex-grow pt-4">
-                <p className="text-xs text-muted-foreground font-medium leading-relaxed mb-2">Recommended: 1200x800px or 3:2 Aspect Ratio. <br/> This image will be used in marketplace cards and search results.</p>
-                <div className="text-xs font-bold uppercase tracking-widest text-primary bg-primary/8 px-3 py-1 rounded-lg w-fit">Supports PNG, JPG, WEBP</div>
-              </div>
-            </div>
+            <ImageUpload
+              value={prompt.imageUrl || ''}
+              onChange={url => setPrompt(prev => ({ ...prev, imageUrl: url }))}
+              folder="prompts"
+              aspectRatio="square"
+              helpText="Recommended: 1200x800px or 3:2 Aspect Ratio. This image will be used in marketplace cards and search results."
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Short Description</label>
+            <label htmlFor="description" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Short Description</label>
             <textarea 
+              id="description"
+              name="description"
               required rows={2}
               value={prompt.description || ''}
               onChange={e => handleDescriptionChange(e.target.value)}
@@ -341,8 +310,10 @@ export default function AdminPromptForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Full Prompt Template</label>
+            <label htmlFor="content" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Full Prompt Template</label>
             <textarea
+              id="content"
+              name="content"
               required rows={8}
               value={prompt.content || ''}
               onChange={e => setPrompt({...prompt, content: e.target.value})}
@@ -353,8 +324,10 @@ export default function AdminPromptForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Sample Output <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">optional</span></label>
+            <label htmlFor="sampleOutput" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Sample Output <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">optional</span></label>
             <textarea
+              id="sampleOutput"
+              name="sampleOutput"
               rows={5}
               value={prompt.sampleOutput || ''}
               onChange={e => setPrompt({...prompt, sampleOutput: e.target.value})}
@@ -364,8 +337,10 @@ export default function AdminPromptForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Usage Guide <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">optional</span></label>
+            <label htmlFor="usageGuide" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Usage Guide <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">optional</span></label>
             <textarea
+              id="usageGuide"
+              name="usageGuide"
               rows={4}
               value={prompt.usageGuide || ''}
               onChange={e => setPrompt({...prompt, usageGuide: e.target.value})}
@@ -377,26 +352,26 @@ export default function AdminPromptForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Difficulty Level <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">optional</span></label>
-              <div className="relative">
-                <select
-                  value={prompt.difficulty || ''}
-                  onChange={e => setPrompt({...prompt, difficulty: (e.target.value as Prompt['difficulty']) || undefined})}
-                  className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all appearance-none cursor-pointer pr-12"
-                >
-                  <option value="">Not set</option>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              </div>
+              <Select
+                id="promptDifficulty"
+                name="promptDifficulty"
+                value={prompt.difficulty || ''}
+                onChange={val => setPrompt({...prompt, difficulty: (val as Prompt['difficulty']) || undefined})}
+                options={[
+                  { label: 'Not set', value: '' },
+                  { label: 'Beginner', value: 'beginner', description: 'Basic prompt structure' },
+                  { label: 'Intermediate', value: 'intermediate', description: 'Uses variables and context' },
+                  { label: 'Advanced', value: 'advanced', description: 'Complex logic and chain of thought' }
+                ]}
+                isSearchable={false}
+              />
             </div>
             <div className="flex items-end pb-1">
               <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-md border border-border w-full">
                 <input
-                  type="checkbox" id="isPaid"
+                  type="checkbox" 
+                  id="isPaid"
+                  name="isPaid"
                   checked={prompt.isPaid || false}
                   onChange={e => setPrompt({...prompt, isPaid: e.target.checked})}
                   className="w-5 h-5 rounded border-border text-primary focus:ring-primary"

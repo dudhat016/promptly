@@ -10,6 +10,9 @@ import ShareModal from '../components/ShareModal';
 import { useAuth } from '../hooks/useAuth';
 import { useSEO } from '../hooks/useSEO';
 import { recordBlogInteraction } from '../lib/affinity';
+import Schema from '../components/SEO/Schema';
+import Breadcrumbs from '../components/ui/Breadcrumbs';
+import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -23,8 +26,8 @@ export default function BlogDetailPage() {
     if (!post) return null;
     return {
       title: post.metaTitle || `${post.title} - Promptly Blog`,
-      description: post.metaDescription || post.excerpt || post.content.substring(0, 160),
-      keywords: post.metaKeywords || (post.tags || []).join(', '),
+      description: generateSmartDescription(post, 'blog'),
+      keywords: generateSmartKeywords(post),
       author: author?.displayName || 'Promptly Team',
       tags: post.tags,
       ogImage: post.coverImage || 'https://promptly.com/og-image.png',
@@ -33,24 +36,6 @@ export default function BlogDetailPage() {
 
   useSEO(seoMeta || 'blog');
 
-  useEffect(() => {
-    if (post) {
-      const schema = {
-        "@context": "https://schema.org",
-        "@type": "BlogPosting",
-        "headline": post.title,
-        "image": post.coverImage || "",
-        "datePublished": post.publishedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        "author": { "@type": "Person", "name": author?.displayName || "Promptly Team" },
-        "description": post.excerpt
-      };
-      const script = document.createElement('script');
-      script.type = "application/ld+json";
-      script.text = JSON.stringify(schema);
-      document.head.appendChild(script);
-      return () => { if (document.head.contains(script)) document.head.removeChild(script); };
-    }
-  }, [post, author]);
 
   useEffect(() => {
     async function fetchPost() {
@@ -128,12 +113,29 @@ export default function BlogDetailPage() {
 
   return (
     <div className="min-h-screen pt-24 pb-16 bg-background">
+      {post && (
+        <Schema 
+          type="Blog" 
+          data={{ ...post, authorName: author?.displayName }} 
+          breadcrumbs={[
+            { name: 'Blog', item: '/blog' },
+            { name: post.title, item: `/blog/${post.slug}` }
+          ]}
+        />
+      )}
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex flex-col lg:flex-row gap-10">
 
           {/* ── Article ── */}
           <div className="flex-grow lg:w-2/3 max-w-3xl">
-            <Link to="/blog"
+            <Breadcrumbs 
+          items={[
+            { name: 'Blog', item: '/blog' },
+            { name: post.title, item: `/blog/${post.slug}` }
+          ]} 
+        />
+
+        <Link to="/blog"
               className="inline-flex items-center gap-2 text-sm font-semibold mb-8 transition-colors text-muted-foreground hover:text-primary"
             >
               <ArrowLeft className="w-4 h-4" /> Back to all posts

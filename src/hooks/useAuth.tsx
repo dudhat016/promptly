@@ -236,8 +236,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
               sessionStorage.setItem(`login_email_${user.uid}`, 'true');
             }
+            setLoading(false); // Done loading profile
           } catch (err) {
             console.error("Error in profile listener:", err);
+            setLoading(false);
           }
         });
 
@@ -250,8 +252,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setProfile(null);
         setFavoriteIds([]);
+        setLoading(false); // Only set loading false here if no user
       }
-      setLoading(false);
     });
 
     return () => {

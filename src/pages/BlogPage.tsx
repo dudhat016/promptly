@@ -4,6 +4,7 @@ import { Link, useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { db } from '../lib/firebase';
 import { BlogPost } from '../types';
 import { Calendar, ArrowRight, LayoutGrid, List as ListIcon, X, Eye, Sparkles, Clock } from 'lucide-react';
+import Select from '../components/ui/Select';
 import { motion } from 'motion/react';
 import BlogSidebar from '../components/BlogSidebar';
 import { cn } from '../lib/utils';
@@ -155,14 +156,17 @@ export default function BlogPage() {
               </div>
               <div className="flex items-center gap-3">
                 {hasAffinityProfile && (
-                  <select
-                    value={sortBy}
-                    onChange={e => setSortBy(e.target.value as 'newest' | 'foryou')}
-                    className="text-sm font-semibold px-3 py-2 rounded-lg outline-none transition-all bg-muted border border-border text-foreground"
-                  >
-                    <option value="foryou">Recommended ✨</option>
-                    <option value="newest">Newest First</option>
-                  </select>
+                  <div className="w-48">
+                    <Select
+                      value={sortBy}
+                      onChange={val => setSortBy(val as 'newest' | 'foryou')}
+                      options={[
+                        { label: 'Recommended ✨', value: 'foryou', description: 'Based on your interests' },
+                        { label: 'Newest First', value: 'newest', description: 'Latest articles first' }
+                      ]}
+                      isSearchable={false}
+                    />
+                  </div>
                 )}
                 <div className="flex items-center p-1 rounded-lg gap-0.5 bg-muted border border-border">
                   {([['grid', LayoutGrid], ['list', ListIcon]] as const).map(([mode, Icon]) => (

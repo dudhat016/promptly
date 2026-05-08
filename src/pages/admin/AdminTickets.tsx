@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
+import Select from '../../components/ui/Select';
 
 interface Ticket {
   id: string;
@@ -169,15 +170,18 @@ export default function AdminTickets() {
                     <User className="w-3 h-3" /> {selectedTicket.userEmail}
                   </p>
                 </div>
-                <select
-                  value={selectedTicket.status}
-                  onChange={(e) => handleUpdateStatus(selectedTicket.id, e.target.value)}
-                  className="w-auto text-xs uppercase tracking-wider text-primary bg-muted/50 border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="open">Open</option>
-                  <option value="pending">Pending</option>
-                  <option value="resolved">Resolved</option>
-                </select>
+                <div className="w-40">
+                  <Select
+                    value={selectedTicket.status}
+                    onChange={(val) => handleUpdateStatus(selectedTicket.id, val)}
+                    options={[
+                      { label: 'Open', value: 'open', description: 'User needs attention' },
+                      { label: 'Pending', value: 'pending', description: 'Waiting for user response' },
+                      { label: 'Resolved', value: 'resolved', description: 'Issue has been closed' }
+                    ]}
+                    isSearchable={false}
+                  />
+                </div>
               </div>
 
               {/* Messages */}

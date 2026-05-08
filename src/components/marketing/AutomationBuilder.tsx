@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, Mail, Clock, GitBranch, Plus, X, Save, Play, 
@@ -6,6 +6,7 @@ import {
   Database, Send, Bell, Users, Filter, Layers, Info, Tag as TagIcon,
   Sparkles, Activity, Split, Globe, Share2, AlertCircle, Award
 } from 'lucide-react';
+import Select from '../ui/Select';
 import { AutomationFlow, Tag as TagType, EmailTemplate } from '../../types';
 
 interface Props {
@@ -419,39 +420,39 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                      <div className="space-y-6">
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">Trigger Event</label>
-                        <select 
-                          className="w-full bg-card border border-border rounded-md p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                        <Select
                           value={activeFlow.trigger?.type || 'user_signup'}
-                          onChange={e => setActiveFlow({ ...activeFlow, trigger: { ...activeFlow.trigger, type: e.target.value as any } })}
-                        >
-                          <option value="user_signup">New Register</option>
-                          <option value="user_login">User Login</option>
-                          <option value="contact_created">Contact Created</option>
-                          <option value="tag_added">Tag Apply</option>
-                          <option value="tag_remove">Tag Remove</option>
-                          <option value="list_applied">List Applied</option>
-                          <option value="list_removed">List Removed</option>
-                          <option value="form_submited">Form Submitted</option>
-                          <option value="subscription_changed">Subscription Changed</option>
-                          <option value="subscription_payment_recived">Subscription Payment Received</option>
-                          <option value="subscription_cancled">Subscription Canceled</option>
-                          <option value="prompt_favorite">Prompt Favorite</option>
-                          <option value="limit_reached">Limit Reached</option>
-                          <option value="affiliate_commison">Affiliate Commission</option>
-                        </select>
+                          onChange={val => setActiveFlow({ ...activeFlow, trigger: { ...activeFlow.trigger, type: val as any } })}
+                          options={[
+                            { label: 'New Register', value: 'user_signup', description: 'Triggered on new user registration' },
+                            { label: 'User Login', value: 'user_login', description: 'Triggered on user sign in' },
+                            { label: 'Contact Created', value: 'contact_created', description: 'Triggered when a contact is manually or automatically added' },
+                            { label: 'Tag Apply', value: 'tag_added', description: 'Triggered when a specific tag is applied' },
+                            { label: 'Tag Remove', value: 'tag_remove', description: 'Triggered when a tag is removed' },
+                            { label: 'List Applied', value: 'list_applied', description: 'Triggered when a user is added to a list' },
+                            { label: 'List Removed', value: 'list_removed', description: 'Triggered when a user is removed from a list' },
+                            { label: 'Form Submitted', value: 'form_submited', description: 'Triggered when a specific form is submitted' },
+                            { label: 'Subscription Changed', value: 'subscription_changed', description: 'Triggered on plan upgrades or downgrades' },
+                            { label: 'Payment Received', value: 'subscription_payment_recived', description: 'Triggered when a payment is successful' },
+                            { label: 'Subscription Canceled', value: 'subscription_cancled', description: 'Triggered when a plan is canceled' },
+                            { label: 'Prompt Favorite', value: 'prompt_favorite', description: 'Triggered when a user favorites a prompt' },
+                            { label: 'Limit Reached', value: 'limit_reached', description: 'Triggered when usage quotas are met' },
+                            { label: 'Affiliate Commission', value: 'affiliate_commison', description: 'Triggered when a commission is earned' }
+                          ]}
+                        />
                       </div>
                       
                       {['tag_added', 'tag_remove'].includes(activeFlow.trigger?.type || '') && (
                         <div className="bg-muted/50 p-6 rounded-lg border border-border">
                           <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">Select Tag</label>
-                          <select 
-                            className="w-full bg-card border border-border rounded-md p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                          <Select
                             value={activeFlow.trigger?.value || ''}
-                            onChange={e => setActiveFlow({ ...activeFlow, trigger: { ...activeFlow.trigger!, value: e.target.value } })}
-                          >
-                            <option value="">Any Tag</option>
-                            {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                          </select>
+                            onChange={val => setActiveFlow({ ...activeFlow, trigger: { ...activeFlow.trigger!, value: val } })}
+                            options={[
+                              { label: 'Any Tag', value: '' },
+                              ...tags.map(t => ({ label: t.name, value: t.id }))
+                            ]}
+                          />
                         </div>
                       )}
                       
@@ -483,16 +484,17 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                             value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.duration || 1}
                             onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, duration: parseInt(e.target.value) })}
                           />
-                           <select 
-                            className="flex-1 bg-card border border-border rounded-md p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
-                            value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.unit || 'days'}
-                            onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, unit: e.target.value })}
-                          >
-                            <option value="minutes">Minutes</option>
-                            <option value="hours">Hours</option>
-                            <option value="days">Days</option>
-                            <option value="weeks">Weeks</option>
-                          </select>
+                             <Select
+                              value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.unit || 'days'}
+                              onChange={val => updateStep(selectedStepId as string, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, unit: val })}
+                              options={[
+                                { label: 'Minutes', value: 'minutes' },
+                                { label: 'Hours', value: 'hours' },
+                                { label: 'Days', value: 'days' },
+                                { label: 'Weeks', value: 'weeks' }
+                              ]}
+                              isSearchable={false}
+                            />
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground px-2 italic">
@@ -506,24 +508,22 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                      <div className="space-y-6">
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-4">Email Template</label>
-                        <select 
-                          className="w-full bg-card border border-border rounded-md p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                        <Select
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.templateId || ''}
-                          onChange={e => {
-                            const template = templates.find(t => t.id === e.target.value);
-                            updateStep(selectedStepId, { 
+                          onChange={val => {
+                            const template = templates.find(t => t.id === val);
+                            updateStep(selectedStepId as string, { 
                               ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, 
-                              templateId: e.target.value,
+                              templateId: val,
                               templateName: template?.type || 'Custom Email'
                             });
                           }}
-                        >
-                          <option value="">Select a template...</option>
-                          <option value="custom">-- Custom Email --</option>
-                          {templates.map(t => (
-                            <option key={t.id} value={t.id}>{t.type} - {t.subject}</option>
-                          ))}
-                        </select>
+                          options={[
+                            { label: 'Select a template...', value: '' },
+                            { label: '-- Custom Email --', value: 'custom', description: 'Write your own HTML email' },
+                            ...templates.map(t => ({ label: `${t.type} - ${t.subject}`, value: t.id }))
+                          ]}
+                        />
                       </div>
 
                       {activeFlow.steps?.find(s => s.id === selectedStepId)?.params.templateId === 'custom' && (
@@ -576,29 +576,30 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                      <div className="space-y-6">
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">Recommendation Strategy</label>
-                        <select 
-                          className="w-full bg-card border border-border rounded-md p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                        <Select
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.strategy || 'personalized'}
-                          onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, strategy: e.target.value })}
-                        >
-                          <option value="personalized">AI Personalized (Best Match)</option>
-                          <option value="trending">Trending in Category</option>
-                          <option value="new_arrivals">New Arrivals</option>
-                          <option value="curated">Editor's Pick</option>
-                        </select>
+                          onChange={val => updateStep(selectedStepId as string, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, strategy: val })}
+                          options={[
+                            { label: 'AI Personalized (Best Match)', value: 'personalized', description: 'Deep learning based relevance' },
+                            { label: 'Trending in Category', value: 'trending', description: 'Most popular in the last 24h' },
+                            { label: 'New Arrivals', value: 'new_arrivals', description: 'Freshly released content' },
+                            { label: "Editor's Pick", value: 'curated', description: 'Manually selected excellence' }
+                          ]}
+                          isSearchable={false}
+                        />
                       </div>
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">Target Category</label>
-                        <select 
-                          className="w-full bg-card border border-border rounded-md p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                        <Select
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.category || 'all'}
-                          onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, category: e.target.value })}
-                        >
-                          <option value="all">All Categories</option>
-                          <option value="creative">Creative Writing</option>
-                          <option value="technical">Technical/Coding</option>
-                          <option value="marketing">Sales & Marketing</option>
-                        </select>
+                          onChange={val => updateStep(selectedStepId as string, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, category: val })}
+                          options={[
+                            { label: 'All Categories', value: 'all' },
+                            { label: 'Creative Writing', value: 'creative' },
+                            { label: 'Technical/Coding', value: 'technical' },
+                            { label: 'Sales & Marketing', value: 'marketing' }
+                          ]}
+                        />
                       </div>
                     </div>
                   )}
@@ -636,15 +637,16 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                       </div>
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Method</label>
-                        <select 
-                          className="w-full bg-card border border-border rounded-md p-3 text-xs font-bold"
+                        <Select
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.method || 'POST'}
-                          onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, method: e.target.value })}
-                        >
-                          <option value="POST">POST</option>
-                          <option value="PUT">PUT</option>
-                          <option value="GET">GET</option>
-                        </select>
+                          onChange={val => updateStep(selectedStepId as string, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, method: val })}
+                          options={[
+                            { label: 'POST', value: 'POST' },
+                            { label: 'PUT', value: 'PUT' },
+                            { label: 'GET', value: 'GET' }
+                          ]}
+                          isSearchable={false}
+                        />
                       </div>
                     </div>
                   )}
@@ -653,32 +655,33 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                      <div className="space-y-6">
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Field to Check</label>
-                        <select 
-                          className="w-full bg-card border border-border rounded-md p-3 text-xs font-bold"
+                        <Select
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.field || 'subscriptionStatus'}
-                          onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, field: e.target.value })}
-                        >
-                          <option value="subscriptionStatus">Subscription Status</option>
-                          <option value="tags">Tags</option>
-                          <option value="credits">Credits</option>
-                          <option value="button_click">Button Click</option>
-                          <option value="email_response">Email Response</option>
-                        </select>
+                          onChange={val => updateStep(selectedStepId as string, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, field: val })}
+                          options={[
+                            { label: 'Subscription Status', value: 'subscriptionStatus' },
+                            { label: 'Tags', value: 'tags' },
+                            { label: 'Credits', value: 'credits' },
+                            { label: 'Button Click', value: 'button_click' },
+                            { label: 'Email Response', value: 'email_response' }
+                          ]}
+                        />
                       </div>
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Condition</label>
-                        <select 
-                          className="w-full bg-card border border-border rounded-md p-3 text-xs font-bold"
+                        <Select
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.operator || 'equals'}
-                          onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, operator: e.target.value })}
-                        >
-                          <option value="equals">Equals</option>
-                          <option value="greater_than">Greater than</option>
-                          <option value="less_than">Less than</option>
-                          <option value="contains">Contains</option>
-                          <option value="is_positive">Is Positive (Yes)</option>
-                          <option value="is_negative">Is Negative (No)</option>
-                        </select>
+                          onChange={val => updateStep(selectedStepId as string, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, operator: val })}
+                          options={[
+                            { label: 'Equals', value: 'equals' },
+                            { label: 'Greater than', value: 'greater_than' },
+                            { label: 'Less than', value: 'less_than' },
+                            { label: 'Contains', value: 'contains' },
+                            { label: 'Is Positive (Yes)', value: 'is_positive' },
+                            { label: 'Is Negative (No)', value: 'is_negative' }
+                          ]}
+                          isSearchable={false}
+                        />
                       </div>
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Compare Value</label>
@@ -699,16 +702,14 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">
                           {activeFlow.steps?.find(s => s.id === selectedStepId)?.type === 'add_tag' ? 'Select Tag to Apply' : 'Select Tag to Remove'}
                         </label>
-                        <select 
-                          className="w-full bg-card border border-border rounded-md p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
+                        <Select
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.tagId || ''}
-                          onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, tagId: e.target.value })}
-                        >
-                          <option value="">Select a tag...</option>
-                          {tags.map(tag => (
-                            <option key={tag.id} value={tag.id}>{tag.name}</option>
-                          ))}
-                        </select>
+                          onChange={val => updateStep(selectedStepId as string, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, tagId: val })}
+                          options={[
+                            { label: 'Select a tag...', value: '' },
+                            ...tags.map(tag => ({ label: tag.name, value: tag.id }))
+                          ]}
+                        />
                       </div>
                     </div>
                   )}

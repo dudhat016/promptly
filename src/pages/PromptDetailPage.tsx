@@ -12,6 +12,9 @@ import { useConfig } from '../hooks/useConfig';
 import { usePermissions } from '../hooks/usePermissions';
 import { useSEO } from '../hooks/useSEO';
 import { recordPromptInteraction } from '../lib/affinity';
+import Schema from '../components/SEO/Schema';
+import Breadcrumbs from '../components/ui/Breadcrumbs';
+import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
 import { Prompt, UserProfile } from '../types';
@@ -89,35 +92,16 @@ export default function PromptDetailPage() {
     if (!prompt) return null;
     return {
       title: prompt.metaTitle || `${prompt.title} - Expert Prompt Marketplace`,
-      description: prompt.metaDescription || prompt.description,
-      keywords: prompt.metaKeywords || (prompt.tags || []).join(', '),
+      description: generateSmartDescription(prompt, 'prompt'),
+      keywords: generateSmartKeywords(prompt),
       author: creator?.displayName || 'Premium Creator',
       tags: prompt.tags,
-      ogImage: 'https://promptly.com/og-image.png',
+      ogImage: prompt.imageUrl || 'https://promptly.com/og-image.png',
     };
   }, [prompt, creator]);
 
   useSEO(seoMeta || 'explore');
 
-  useEffect(() => {
-    if (prompt) {
-      const schema = {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": prompt.title,
-        "description": prompt.description,
-        "applicationCategory": "MultimediaApplication",
-        "operatingSystem": "Web",
-        "offers": { "@type": "Offer", "price": prompt.isPaid ? "Subscription" : "0", "priceCurrency": "USD" },
-        "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": prompt.likesCount || 12 }
-      };
-      const script = document.createElement('script');
-      script.type = "application/ld+json";
-      script.text = JSON.stringify(schema);
-      document.head.appendChild(script);
-      return () => { document.head.removeChild(script); };
-    }
-  }, [prompt]);
 
   useEffect(() => {
     async function fetchPrompt() {
@@ -279,7 +263,26 @@ export default function PromptDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {prompt && (
+        <Schema 
+          type="Prompt" 
+          data={prompt} 
+          breadcrumbs={[
+            { name: 'Library', item: '/explore' },
+            { name: category?.name || 'Category', item: `/explore?category=${prompt.categoryId}` },
+            { name: prompt.title, item: `/prompt/${prompt.slug}` }
+          ]}
+        />
+      )}
       <div className="container mx-auto px-4 py-12 max-w-5xl">
+        <Breadcrumbs 
+          items={[
+            { name: 'Library', item: '/explore' },
+            { name: category?.name || 'Category', item: `/explore?category=${prompt.categoryId}` },
+            { name: prompt.title, item: `/prompt/${prompt.slug}` }
+          ]} 
+        />
+
         <button
           onClick={() => navigate('/explore')}
           className="flex items-center gap-2 mb-8 transition-colors group text-sm font-semibold text-muted-foreground hover:text-primary"

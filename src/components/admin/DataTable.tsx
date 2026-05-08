@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useConfirm } from './ConfirmModal';
+import Select from '../ui/Select';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -262,15 +263,17 @@ export default function DataTable<T>({
 
         <div className="flex items-center gap-2 ml-auto flex-wrap">
           {/* Rows per page */}
-          <select
-            value={pageSize}
-            onChange={e => setPageSize(Number(e.target.value))}
-            className="text-xs font-bold border border-border rounded-lg px-3 py-2.5 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-          >
-            {PAGE_SIZE_OPTIONS.map(n => (
-              <option key={n} value={n}>{n} / page</option>
-            ))}
-          </select>
+          <div className="w-32">
+            <Select
+              value={String(pageSize)}
+              onChange={val => setPageSize(Number(val))}
+              options={PAGE_SIZE_OPTIONS.map(n => ({
+                label: `${n} / page`,
+                value: String(n)
+              }))}
+              isSearchable={false}
+            />
+          </div>
 
           {/* Column visibility */}
           <div className="relative" ref={colMenuRef}>

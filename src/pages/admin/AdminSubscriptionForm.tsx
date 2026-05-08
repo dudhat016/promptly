@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { PricingPlan, AccessConfig, PermissionGroup } from '../../types';
@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { RefreshCw } from 'lucide-react';
+import Select from '../../components/ui/Select';
 
 export default function AdminSubscriptionForm() {
   const { id } = useParams();
@@ -88,8 +89,9 @@ export default function AdminSubscriptionForm() {
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Plan Name</label>
+              <label htmlFor="planName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Plan Name</label>
               <input 
+                id="planName"
                 type="text" required
                 value={plan.name || ''}
                 onChange={e => setPlan({...plan, name: e.target.value})}
@@ -99,8 +101,9 @@ export default function AdminSubscriptionForm() {
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Monthly Price ($)</label>
+                <label htmlFor="monthlyPrice" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Monthly Price ($)</label>
                 <input 
+                  id="monthlyPrice"
                   type="number" required min="0" step="0.01"
                   value={plan.monthlyPrice || 0}
                   onChange={e => setPlan({...plan, monthlyPrice: parseFloat(e.target.value)})}
@@ -108,8 +111,9 @@ export default function AdminSubscriptionForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Annual Price ($)</label>
+                <label htmlFor="annualPrice" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Annual Price ($)</label>
                 <input 
+                  id="annualPrice"
                   type="number" min="0" step="0.01"
                   value={plan.yearlyPrice || 0}
                   onChange={e => setPlan({...plan, yearlyPrice: parseFloat(e.target.value)})}
@@ -121,22 +125,20 @@ export default function AdminSubscriptionForm() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Linked Permission Group</label>
-              <select 
-                required
+              <label htmlFor="permissionGroup" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Linked Permission Group</label>
+              <Select
+                id="permissionGroup"
                 value={plan.permissionGroupId || ''}
-                onChange={e => setPlan({...plan, permissionGroupId: e.target.value})}
-                className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all font-bold"
-              >
-                <option value="">Select a Group</option>
-                {groups.map(g => (
-                  <option key={g.id} value={g.id}>{g.name} ({g.id})</option>
-                ))}
-              </select>
+                onChange={val => setPlan({...plan, permissionGroupId: val})}
+                options={groups.map(g => ({ label: g.name, value: g.id, description: `ID: ${g.id}` }))}
+                placeholder="Select a Group"
+                isSearchable={true}
+              />
             </div>
             <div className="flex items-end">
-              <label className="flex items-center gap-4 bg-muted/50 border border-border rounded-md p-4 w-full cursor-pointer hover:bg-muted transition-all">
+              <label htmlFor="isPopular" className="flex items-center gap-4 bg-muted/50 border border-border rounded-md p-4 w-full cursor-pointer hover:bg-muted transition-all">
                 <input 
+                  id="isPopular"
                   type="checkbox"
                   checked={plan.isPopular}
                   onChange={e => setPlan({...plan, isPopular: e.target.checked})}
@@ -148,8 +150,9 @@ export default function AdminSubscriptionForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Features (Comma Separated)</label>
+            <label htmlFor="features" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Features (Comma Separated)</label>
             <textarea 
+              id="features"
               required rows={4}
               value={plan.features?.join(', ') || ''}
               onChange={e => setPlan({...plan, features: e.target.value.split(',').map(f => f.trim()).filter(Boolean)})}

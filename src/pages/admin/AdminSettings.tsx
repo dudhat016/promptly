@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import {
@@ -9,6 +9,7 @@ import { AdminPageHeader } from '../../components/admin';
 import { logAuditEvent } from '../../lib/auditLog';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
+import Select from '../../components/ui/Select';
 import AdminEmailSettings from './AdminEmailSettings';
 import AdminAssetManager from './AdminAssetManager';
 import AdminPaymentSettings from './AdminPaymentSettings';
@@ -141,8 +142,10 @@ export default function AdminSettings() {
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-5">
                       <div>
-                        <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Platform Name</label>
+                        <label htmlFor="siteName" className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Platform Name</label>
                         <input 
+                          id="siteName"
+                          name="siteName"
                           type="text"
                           value={generalConfig.siteName}
                           onChange={e => setGeneralConfig({ ...generalConfig, siteName: e.target.value })}
@@ -150,8 +153,10 @@ export default function AdminSettings() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Support Email</label>
+                        <label htmlFor="supportEmail" className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Support Email</label>
                         <input 
+                          id="supportEmail"
+                          name="supportEmail"
                           type="email"
                           value={generalConfig.supportEmail}
                           onChange={e => setGeneralConfig({ ...generalConfig, supportEmail: e.target.value })}
@@ -160,8 +165,10 @@ export default function AdminSettings() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Platform Tagline</label>
+                      <label htmlFor="siteTagline" className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Platform Tagline</label>
                       <textarea 
+                        id="siteTagline"
+                        name="siteTagline"
                         value={generalConfig.siteTagline}
                         onChange={e => setGeneralConfig({ ...generalConfig, siteTagline: e.target.value })}
                         className="w-full bg-muted/50 border border-border rounded-md px-3 py-2.5 focus:bg-card focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all text-sm h-[148px] resize-none"
@@ -178,20 +185,25 @@ export default function AdminSettings() {
                   <div className="grid md:grid-cols-3 gap-6">
                     <div>
                       <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Default Currency</label>
-                      <select 
+                      <Select
+                        id="currency"
+                        name="currency"
                         value={generalConfig.currency}
-                        onChange={e => setGeneralConfig({ ...generalConfig, currency: e.target.value })}
-                        className="select"
-                      >
-                        <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (â‚¬)</option>
-                        <option value="GBP">GBP (Â£)</option>
-                        <option value="INR">INR (â‚¹)</option>
-                      </select>
+                        onChange={val => setGeneralConfig({ ...generalConfig, currency: val })}
+                        options={[
+                          { label: 'USD ($)', value: 'USD', description: 'United States Dollar' },
+                          { label: 'EUR (â‚¬)', value: 'EUR', description: 'Euro' },
+                          { label: 'GBP (Â£)', value: 'GBP', description: 'British Pound' },
+                          { label: 'INR (â‚¹)', value: 'INR', description: 'Indian Rupee' }
+                        ]}
+                        isSearchable={false}
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Base Tax Rate (%)</label>
+                      <label htmlFor="taxRate" className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Base Tax Rate (%)</label>
                       <input 
+                        id="taxRate"
+                        name="taxRate"
                         type="number"
                         value={generalConfig.taxRate}
                         onChange={e => setGeneralConfig({ ...generalConfig, taxRate: Number(e.target.value) })}

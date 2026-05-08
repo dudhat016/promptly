@@ -1,4 +1,4 @@
-﻿import { addDoc, collection, doc, updateDoc, increment } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc, increment } from 'firebase/firestore';
 import { Plus, Send, ShieldCheck, Sparkles, Terminal, Wand2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -92,7 +92,7 @@ export default function DashboardBuilder() {
       };
       await addDoc(collection(db, 'prompts'), newPrompt);
       toast.success("Saved to your Vault!");
-      navigate('/vault');
+      navigate('/dashboard/vault');
     } catch (err) {
       toast.error("Failed to save prompt");
       console.error(err);
@@ -147,9 +147,10 @@ export default function DashboardBuilder() {
 
             {/* Input Area */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6 ml-1 text-center md:text-left">Describe your vision</label>
+              <label htmlFor="builderVision" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6 ml-1 text-center md:text-left">Describe your vision</label>
               <div className="relative group">
                 <textarea
+                  id="builderVision"
                   rows={4}
                   value={idea}
                   onChange={(e) => setIdea(e.target.value)}

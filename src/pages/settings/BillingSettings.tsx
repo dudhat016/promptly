@@ -1,4 +1,4 @@
-﻿import { collection, getDocs, orderBy, query, where, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, where, updateDoc, doc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,16 +19,21 @@ export default function BillingSettings() {
   }, [user]);
 
   async function fetchOrders() {
+    if (!user?.uid) return;
+    setLoading(true);
     try {
       const q = query(
         collection(db, 'orders'),
-        where('userId', '==', user?.uid),
+        where('userId', '==', user.uid),
         orderBy('createdAt', 'desc')
       );
       const snap = await getDocs(q);
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching orders:", err);
+      if (err.message?.includes('index')) {
+        console.warn("Firestore Index Required: Please click the link in the console error above to create the composite index for 'orders'.");
+      }
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { Layout, Save, Trash2, Globe, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -147,8 +147,10 @@ export default function AdminSitePages() {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Page ID (System)</label>
+                    <label htmlFor="pageId" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Page ID (System)</label>
                     <input 
+                      id="pageId"
+                      name="pageId"
                       type="text" 
                       value={editingPage.id || ''}
                       onChange={e => setEditingPage({...editingPage, id: e.target.value})}
@@ -157,8 +159,10 @@ export default function AdminSitePages() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Path</label>
+                    <label htmlFor="pagePath" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Path</label>
                     <input 
+                      id="pagePath"
+                      name="pagePath"
                       type="text" 
                       value={editingPage.path || ''}
                       onChange={e => setEditingPage({...editingPage, path: e.target.value})}
@@ -169,8 +173,10 @@ export default function AdminSitePages() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Title</label>
+                  <label htmlFor="metaTitle" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Title</label>
                   <input 
+                    id="metaTitle"
+                    name="metaTitle"
                     type="text" 
                     value={editingPage.title || ''}
                     onChange={e => setEditingPage({...editingPage, title: e.target.value})}
@@ -180,8 +186,10 @@ export default function AdminSitePages() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Description</label>
+                  <label htmlFor="metaDescription" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Description</label>
                   <textarea 
+                    id="metaDescription"
+                    name="metaDescription"
                     rows={3}
                     value={editingPage.description || ''}
                     onChange={e => setEditingPage({...editingPage, description: e.target.value})}
@@ -191,8 +199,10 @@ export default function AdminSitePages() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Keywords (Comma separated)</label>
+                  <label htmlFor="metaKeywords" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Keywords (Comma separated)</label>
                   <input 
+                    id="metaKeywords"
+                    name="metaKeywords"
                     type="text" 
                     value={editingPage.keywords || ''}
                     onChange={e => setEditingPage({...editingPage, keywords: e.target.value})}
@@ -203,8 +213,10 @@ export default function AdminSitePages() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">OG Image URL</label>
+                    <label htmlFor="ogImage" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">OG Image URL</label>
                     <input 
+                      id="ogImage"
+                      name="ogImage"
                       type="text" 
                       value={editingPage.ogImage || ''}
                       onChange={e => setEditingPage({...editingPage, ogImage: e.target.value})}
@@ -213,8 +225,10 @@ export default function AdminSitePages() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Canonical URL</label>
+                    <label htmlFor="canonicalUrl" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Canonical URL</label>
                     <input 
+                      id="canonicalUrl"
+                      name="canonicalUrl"
                       type="text" 
                       value={editingPage.canonical || ''}
                       onChange={e => setEditingPage({...editingPage, canonical: e.target.value})}

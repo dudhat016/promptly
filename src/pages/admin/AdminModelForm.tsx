@@ -1,4 +1,4 @@
-﻿import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { Cpu, Save } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { useEffect, useState } from 'react';
@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { AIModel } from '../../types';
 import { toast } from 'react-hot-toast';
+import Select from '../../components/ui/Select';
 
 export default function AdminModelForm() {
   const { id } = useParams();
@@ -68,8 +69,9 @@ export default function AdminModelForm() {
 
         <form onSubmit={handleSave} className="space-y-6">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Model Name</label>
+            <label htmlFor="modelName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Model Name</label>
             <input
+              id="modelName"
               type="text" required
               value={model.name || ''}
               onChange={e => setModel({...model, name: e.target.value})}
@@ -80,24 +82,26 @@ export default function AdminModelForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Provider</label>
-              <select
-                required
+              <label htmlFor="modelProvider" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Provider</label>
+              <Select
+                id="modelProvider"
                 value={model.provider || 'OpenAI'}
-                onChange={e => setModel({...model, provider: e.target.value})}
-                className="select"
-              >
-                <option value="OpenAI">OpenAI</option>
-                <option value="Anthropic">Anthropic</option>
-                <option value="Google">Google</option>
-                <option value="Meta">Meta</option>
-                <option value="Mistral">Mistral</option>
-                <option value="Other">Other</option>
-              </select>
+                onChange={val => setModel({...model, provider: val})}
+                options={[
+                  { label: 'OpenAI', value: 'OpenAI', description: 'GPT-3.5, GPT-4, etc.' },
+                  { label: 'Anthropic', value: 'Anthropic', description: 'Claude 2, Claude 3, etc.' },
+                  { label: 'Google', value: 'Google', description: 'Gemini, PaLM, etc.' },
+                  { label: 'Meta', value: 'Meta', description: 'Llama 2, Llama 3, etc.' },
+                  { label: 'Mistral', value: 'Mistral', description: 'Mistral 7B, Mixtral, etc.' },
+                  { label: 'Other', value: 'Other', description: 'Custom or open source models' }
+                ]}
+                isSearchable={false}
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Version</label>
+              <label htmlFor="modelVersion" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Version</label>
               <input
+                id="modelVersion"
                 type="text" required
                 value={model.version || ''}
                 onChange={e => setModel({...model, version: e.target.value})}
@@ -108,8 +112,9 @@ export default function AdminModelForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Description</label>
+            <label htmlFor="modelDescription" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Description</label>
             <textarea
+              id="modelDescription"
               rows={3}
               value={model.description || ''}
               onChange={e => setModel({...model, description: e.target.value})}

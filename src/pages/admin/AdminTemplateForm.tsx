@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { EmailTemplate } from '../../types';
@@ -131,8 +131,9 @@ export default function AdminTemplateForm() {
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Template Name</label>
+                  <label htmlFor="templateName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Template Name</label>
                   <input 
+                    id="templateName"
                     type="text" required
                     value={template.name || ''}
                     onChange={e => setTemplate({...template, name: e.target.value})}
@@ -141,8 +142,9 @@ export default function AdminTemplateForm() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Internal Type (ID)</label>
+                  <label htmlFor="templateType" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Internal Type (ID)</label>
                   <input 
+                    id="templateType"
                     type="text" required
                     disabled={id !== 'new'}
                     value={template.type || ''}
@@ -154,8 +156,9 @@ export default function AdminTemplateForm() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Subject Line</label>
+                <label htmlFor="templateSubject" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Subject Line</label>
                 <input 
+                  id="templateSubject"
                   type="text" required
                   value={template.subject || ''}
                   onChange={e => setTemplate({...template, subject: e.target.value})}
@@ -165,8 +168,9 @@ export default function AdminTemplateForm() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Email Body (Markdown/Text)</label>
+                <label htmlFor="templateBody" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Email Body (Markdown/Text)</label>
                 <textarea 
+                  id="templateBody"
                   required rows={12}
                   value={template.body || ''}
                   onChange={e => setTemplate({...template, body: e.target.value})}

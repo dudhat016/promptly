@@ -1,4 +1,4 @@
-﻿import { addDoc, collection, getDocs, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
 import { Clock, Database, Heart, LayoutGrid, Plus, Send, ShieldCheck, Sparkles, Wand2, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -304,8 +304,8 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">What do you want to build?</label>
-                  <textarea rows={4} value={idea} onChange={(e) => setIdea(e.target.value)} placeholder="e.g. Generate an SEO optimized blog post about React performance tips with a friendly tone." className="textarea" />
+                  <label htmlFor="builderIdea" className="block text-sm font-medium uppercase tracking-widest text-muted-foreground mb-3">What do you want to build?</label>
+                  <textarea id="builderIdea" rows={4} value={idea} onChange={(e) => setIdea(e.target.value)} placeholder="e.g. Generate an SEO optimized blog post about React performance tips with a friendly tone." className="textarea" />
                 </div>
 
                 <button onClick={handleGenerate} disabled={isGenerating || !idea.trim()} className="w-full btn-primary btn-lg">

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Category } from '../../types';
@@ -70,8 +70,9 @@ export default function AdminCategoryForm() {
         
         <form onSubmit={handleSave} className="space-y-6">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Category Name</label>
+            <label htmlFor="categoryName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Category Name</label>
             <input 
+              id="categoryName"
               type="text" required
               value={category.name || ''}
               onChange={e => setCategory({...category, name: e.target.value})}
@@ -81,8 +82,9 @@ export default function AdminCategoryForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">URL Slug (Optional)</label>
+            <label htmlFor="categorySlug" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">URL Slug (Optional)</label>
             <input 
+              id="categorySlug"
               type="text"
               value={category.slug || ''}
               onChange={e => setCategory({...category, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}

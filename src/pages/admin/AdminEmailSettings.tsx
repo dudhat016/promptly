@@ -3,6 +3,7 @@ import { AlertCircle, Eye, EyeOff, Globe, Mail, Save, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
+import Select from '../../components/ui/Select';
 
 export default function AdminEmailSettings() {
   const [loading, setLoading] = useState(true);
@@ -132,21 +133,22 @@ export default function AdminEmailSettings() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Encryption</label>
-                  <select
+                  <Select
                     value={config.smtpSecure ? 'ssl' : 'tls'}
-                    onChange={e => {
-                      const isSSL = e.target.value === 'ssl';
+                    onChange={val => {
+                      const isSSL = val === 'ssl';
                       setConfig({
                         ...config,
                         smtpSecure: isSSL,
                         smtpPort: isSSL ? '465' : '587'
                       });
                     }}
-                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-bold text-sm"
-                  >
-                    <option value="tls">STARTTLS (587)</option>
-                    <option value="ssl">SSL/TLS (465)</option>
-                  </select>
+                    options={[
+                      { label: 'STARTTLS (587)', value: 'tls', description: 'Recommended for most servers' },
+                      { label: 'SSL/TLS (465)', value: 'ssl', description: 'Legacy secure connection' }
+                    ]}
+                    isSearchable={false}
+                  />
                 </div>
               </div>
 

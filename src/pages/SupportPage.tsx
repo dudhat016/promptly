@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/firebase';
+import Select from '../components/ui/Select';
 
 interface Message {
   senderId: string;
@@ -144,22 +145,27 @@ export default function SupportPage() {
           <h2 className="text-lg font-bold text-foreground mb-6">Describe your issue</h2>
           <form onSubmit={handleCreateTicket} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Subject</label>
-              <input type="text" value={subject} onChange={e => setSubject(e.target.value)}
+              <label htmlFor="subject" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Subject</label>
+              <input id="subject" type="text" value={subject} onChange={e => setSubject(e.target.value)}
                 className={inputClass} placeholder="What can we help you with?" required />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Priority</label>
-              <select value={priority} onChange={e => setPriority(e.target.value)}
-                className={inputClass}>
-                <option value="low">Low — General question</option>
-                <option value="medium">Medium — Feature or account issue</option>
-                <option value="high">High — Billing or access problem</option>
-              </select>
+              <label htmlFor="priority" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Priority</label>
+              <Select
+                id="priority"
+                value={priority}
+                onChange={val => setPriority(val)}
+                options={[
+                  { label: 'Low', value: 'low', description: 'General question' },
+                  { label: 'Medium', value: 'medium', description: 'Feature or account issue' },
+                  { label: 'High', value: 'high', description: 'Billing or access problem' }
+                ]}
+                isSearchable={false}
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Message</label>
-              <textarea value={message} onChange={e => setMessage(e.target.value)}
+              <label htmlFor="message" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Message</label>
+              <textarea id="message" value={message} onChange={e => setMessage(e.target.value)}
                 rows={6} className={inputClass} placeholder="Describe your issue in detail..." required />
             </div>
             <button type="submit" disabled={submitting}

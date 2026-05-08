@@ -275,9 +275,10 @@ export default function CheckoutPage() {
 
                   {/* Terms checkbox */}
                   <div className="rounded-xl p-5 bg-muted border border-border">
-                    <label className="flex items-start gap-4 cursor-pointer group">
+                    <label htmlFor="termsCheckbox" className="flex items-start gap-4 cursor-pointer group">
                       <div className="relative flex items-center mt-0.5">
                         <input
+                          id="termsCheckbox"
                           type="checkbox"
                           checked={agreeToTerms}
                           onChange={e => setAgreeToTerms(e.target.checked)}
@@ -354,16 +355,16 @@ export default function CheckoutPage() {
                     {!paymentConfig?.cashfree?.enabled && !paymentConfig?.paypal?.enabled && (
                       <form onSubmit={handleCheckout} className="space-y-5">
                         <div>
-                          <label className="block text-sm font-semibold mb-2 text-muted-foreground">Cardholder Name</label>
-                          <input type="text" required placeholder="Name on card" value={name} onChange={e => setName(e.target.value)}
+                          <label htmlFor="cardName" className="block text-sm font-semibold mb-2 text-muted-foreground">Cardholder Name</label>
+                          <input id="cardName" type="text" required placeholder="Name on card" value={name} onChange={e => setName(e.target.value)}
                             className={inputClass}
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold mb-2 text-muted-foreground">Card Information</label>
+                          <label htmlFor="cardNumber" className="block text-sm font-semibold mb-2 text-muted-foreground">Card Information</label>
                           <div className="relative">
                             <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                            <input type="text" required placeholder="0000 0000 0000 0000" value={cardNumber} onChange={handleCardNumber}
+                            <input id="cardNumber" type="text" required placeholder="0000 0000 0000 0000" value={cardNumber} onChange={handleCardNumber}
                               className={`${inputClass} pl-12 font-mono`}
                             />
                           </div>
@@ -374,8 +375,8 @@ export default function CheckoutPage() {
                             { label: 'CVC', placeholder: '123', value: cvc, onChange: handleCvc },
                           ].map(({ label, placeholder, value, onChange }) => (
                             <div key={label}>
-                              <label className="block text-sm font-semibold mb-2 text-muted-foreground">{label}</label>
-                              <input type="text" required placeholder={placeholder} value={value} onChange={onChange}
+                              <label htmlFor={`field-${label.toLowerCase().replace(/\s+/g, '-')}`} className="block text-sm font-semibold mb-2 text-muted-foreground">{label}</label>
+                              <input id={`field-${label.toLowerCase().replace(/\s+/g, '-')}`} type="text" required placeholder={placeholder} value={value} onChange={onChange}
                                 className={`${inputClass} font-mono`}
                               />
                             </div>

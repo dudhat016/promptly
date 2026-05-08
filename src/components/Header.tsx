@@ -173,10 +173,10 @@ export default function Header() {
                           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                         </div>
 
-                        <DMenuItem to="/dashboard"           icon={LayoutGrid} onClick={() => setUserMenuOpen(false)}>My Vault</DMenuItem>
+                        <DMenuItem to="/dashboard/vault"     icon={LayoutGrid} onClick={() => setUserMenuOpen(false)}>My Vault</DMenuItem>
                         <DMenuItem to="/dashboard/favorites"  icon={Heart}      onClick={() => setUserMenuOpen(false)}>Favorites</DMenuItem>
-                        <DMenuItem to="/credits"              icon={Coins}      onClick={() => setUserMenuOpen(false)}>Credits</DMenuItem>
-                        <DMenuItem to="/affiliate/dashboard"  icon={Gift}       onClick={() => setUserMenuOpen(false)}>Partner Program</DMenuItem>
+                        <DMenuItem to="/dashboard/credits"    icon={Coins}      onClick={() => setUserMenuOpen(false)}>Credits</DMenuItem>
+                        <DMenuItem to="/dashboard/affiliate"  icon={Gift}       onClick={() => setUserMenuOpen(false)}>Partner Program</DMenuItem>
                         {isAdmin && (
                           <DMenuItem to="/admin" icon={ShieldCheck} onClick={() => setUserMenuOpen(false)} accent>Admin Panel</DMenuItem>
                         )}
@@ -269,7 +269,7 @@ export default function Header() {
               {user && (
                 <>
                   <div className="h-px my-3 bg-border" />
-                  <MobileLink to="/dashboard"          icon={LayoutGrid} onClick={() => setMobileOpen(false)}>My Vault</MobileLink>
+                  <MobileLink to="/dashboard/vault"     icon={LayoutGrid} onClick={() => setMobileOpen(false)}>My Vault</MobileLink>
                   <MobileLink to="/dashboard/favorites" icon={Heart}     onClick={() => setMobileOpen(false)}>Favorites</MobileLink>
                   <MobileLink to="/settings/profile"    icon={Settings}  onClick={() => setMobileOpen(false)}>Settings</MobileLink>
                   {isAdmin && (

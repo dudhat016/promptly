@@ -7,10 +7,11 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { Save, ArrowLeft, Upload, Loader2, FileText } from 'lucide-react';
-import { AdminPageHeader } from '../../components/admin';
+import { AdminPageHeader, ImageUpload } from '../../components/admin';
 import MDEditor from '@uiw/react-md-editor';
 import TagInput from '../../components/TagInput';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import Select from '../../components/ui/Select';
 
 export default function AdminBlogForm() {
   const { id } = useParams<{ id: string }>();
@@ -176,57 +177,27 @@ export default function AdminBlogForm() {
 
             <div>
               <label className="block text-sm font-semibold text-muted-foreground mb-1">Status</label>
-              <select
+              <Select
                 value={post.status || 'draft'}
-                onChange={e => setPost({ ...post, status: e.target.value as 'draft' | 'published' })}
-                className={inputCls}
-              >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-              </select>
+                onChange={val => setPost({ ...post, status: val as 'draft' | 'published' })}
+                options={[
+                  { label: 'Draft', value: 'draft', description: 'Post is only visible to admins' },
+                  { label: 'Published', value: 'published', description: 'Post is live for all users' }
+                ]}
+                isSearchable={false}
+              />
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-muted-foreground mb-1">Cover Image</label>
-              <div className="flex gap-2">
-                <div className="relative flex-grow">
-                  <input
-                    type="url"
-                    value={post.coverImage || ''}
-                    onChange={e => setPost({ ...post, coverImage: e.target.value })}
-                    className={inputCls}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    <label className="cursor-pointer p-1.5 text-primary hover:bg-primary/10 rounded-md transition-colors" title="Upload image">
-                      {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const data = await uploadImage(file, 'blog');
-                            if (data?.success) {
-                              setPost(prev => ({ ...prev, coverImage: data.url }));
-                            }
-                          }
-                        }}
-                        disabled={isUploading}
-                      />
-                    </label>
-                  </div>
-                </div>
-                {post.coverImage && (
-                  <div className="w-11 h-11 rounded-lg border border-border overflow-hidden shrink-0 flex items-center justify-center bg-muted">
-                    <img src={post.coverImage} alt="Cover Preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-semibold text-muted-foreground mb-2">Cover Image</label>
+            <ImageUpload
+              value={post.coverImage || ''}
+              onChange={url => setPost({ ...post, coverImage: url })}
+              folder="blog"
+              aspectRatio="video"
+              helpText="Recommended: 1200x630px (Open Graph Standard). This image will be used in blog cards and social sharing previews."
+            />
           </div>
 
           <div className="space-y-4">

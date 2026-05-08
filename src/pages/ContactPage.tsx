@@ -6,6 +6,7 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { useConfig } from '../hooks/useConfig';
 import { Link } from 'react-router-dom';
+import Select from '../components/ui/Select';
 
 export default function ContactPage() {
   const { config } = useConfig();
@@ -111,7 +112,7 @@ export default function ContactPage() {
                 title: 'Help Center',
                 desc: 'Browse our documentation and guides.',
                 action: (
-                  <Link to="/support" className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-opacity">
+                  <Link to="/dashboard/support" className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-opacity">
                     Open Help Center <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 ),
@@ -180,8 +181,9 @@ export default function ContactPage() {
                       { label: 'Email Address', key: 'email', type: 'email', placeholder: 'john@example.com' },
                     ].map(({ label, key, type, placeholder }) => (
                       <div key={key}>
-                        <label className="block text-sm font-semibold text-muted-foreground mb-2">{label}</label>
+                        <label htmlFor={key} className="block text-sm font-semibold text-muted-foreground mb-2">{label}</label>
                         <input
+                          id={key}
                           type={type}
                           required
                           value={formData[key as keyof typeof formData]}
@@ -194,24 +196,26 @@ export default function ContactPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-muted-foreground mb-2">Subject</label>
-                    <select
-                      required
+                    <label htmlFor="subject" className="block text-sm font-semibold text-muted-foreground mb-2">Subject</label>
+                    <Select
+                      id="subject"
                       value={formData.subject}
-                      onChange={e => setFormData({ ...formData, subject: e.target.value })}
-                      className="w-full rounded-xl px-4 py-3 text-sm text-foreground outline-none transition-all bg-background border border-border focus:border-primary/50"
-                    >
-                      <option value="" disabled>Select a topic...</option>
-                      <option value="general">General Inquiry</option>
-                      <option value="support">Technical Support</option>
-                      <option value="billing">Billing Question</option>
-                      <option value="partnership">Partnership</option>
-                    </select>
+                      onChange={val => setFormData({ ...formData, subject: val })}
+                      options={[
+                        { label: 'General Inquiry', value: 'general', description: 'General questions about our platform' },
+                        { label: 'Technical Support', value: 'support', description: 'Help with technical issues' },
+                        { label: 'Billing Question', value: 'billing', description: 'Help with payments and subscriptions' },
+                        { label: 'Partnership', value: 'partnership', description: 'Collaborate with us' }
+                      ]}
+                      placeholder="Select a topic..."
+                      isSearchable={false}
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-muted-foreground mb-2">Message</label>
+                    <label htmlFor="message" className="block text-sm font-semibold text-muted-foreground mb-2">Message</label>
                     <textarea
+                      id="message"
                       required
                       rows={5}
                       value={formData.message}

@@ -10,6 +10,7 @@ export default function AdminSEO() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
   const [sitePages, setSitePages] = useState<any[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,6 +23,9 @@ export default function AdminSEO() {
 
       const sSnap = await getDocs(collection(db, 'site_pages'));
       setSitePages(sSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      const tSnap = await getDocs(collection(db, 'tags'));
+      setTags(tSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
       setLoading(false);
     }
@@ -68,17 +72,51 @@ export default function AdminSEO() {
 
   const getSEOIssues = (p: Prompt) => {
     const issues = [];
+    
+    // 1. Meta Tags (Foundational)
     if (!p.metaDescription) issues.push('Missing meta description');
+    else if (p.metaDescription.length < 120) issues.push('Meta description too short (<120 chars)');
+    
     if (p.title && p.title.length > 60) issues.push('Title too long (>60 chars)');
-    if (!p.content || p.content.split(' ').length < 100) issues.push('Content too short (<100 words)');
     if (!p.slug) issues.push('Missing SEO slug');
+
+    // 2. Content Quality (Expert)
+    const wordCount = p.content?.split(/\s+/).length || 0;
+    if (wordCount < 100) issues.push(`Thin content (${wordCount} words)`);
+    else if (wordCount > 1500) issues.push('Content may be too long for a prompt (potential noise)');
+
+    if (!p.usageGuide) issues.push('Expert Tip: Missing Usage Guide (Schema improvement)');
+    if (!p.sampleOutput) issues.push('Expert Tip: Missing Sample Output (Trust indicator)');
+
+    // 3. Technical & Keywords (Marketing)
+    if (!p.metaKeywords || p.metaKeywords.split(',').length < 3) {
+      issues.push('Low keyword density (aim for 3+ keywords)');
+    }
+
+    // Check if title contains at least one tag (Keyword optimization)
+    const titleLower = p.title.toLowerCase();
+    const hasTagInTitle = p.tags?.some(tagId => {
+      const tag = tags.find(t => t.id === tagId);
+      return tag && titleLower.includes(tag.name.toLowerCase());
+    });
+    if (!hasTagInTitle && p.tags?.length > 0) {
+      issues.push('Title lacks primary keyword/tag');
+    }
+
     return issues;
   };
 
-  const auditData = prompts.map(p => ({
-    ...p,
-    issues: getSEOIssues(p)
-  }));
+  const auditData = prompts.map(p => {
+    const issues = getSEOIssues(p);
+    // Expert Scoring Algorithm
+    const totalPotentialChecks = 8;
+    const score = Math.max(0, Math.round(((totalPotentialChecks - issues.length) / totalPotentialChecks) * 100));
+    return { ...p, issues, score };
+  });
+
+  const avgScore = auditData.length > 0 
+    ? Math.round(auditData.reduce((acc, p) => acc + p.score, 0) / auditData.length) 
+    : 100;
 
   const totalIssues = auditData.reduce((acc, p) => acc + p.issues.length, 0);
   const promptsWithIssues = auditData.filter(p => p.issues.length > 0).length;
@@ -107,13 +145,19 @@ export default function AdminSEO() {
         }
       />
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-4 gap-6">
         <div className="bg-card p-6 rounded-3xl border border-border">
-          <div className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-2">SEO Issues</div>
+          <div className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-2">Total Issues</div>
           <div className="text-4xl font-black text-rose-500">{totalIssues + coreAuditIssues}</div>
         </div>
         <div className="bg-card p-6 rounded-3xl border border-border">
-          <div className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-2">Optimized Content</div>
+          <div className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-2">Health Score</div>
+          <div className={`text-4xl font-black ${avgScore > 80 ? 'text-emerald-500' : avgScore > 50 ? 'text-amber-500' : 'text-rose-500'}`}>
+            {avgScore}%
+          </div>
+        </div>
+        <div className="bg-card p-6 rounded-3xl border border-border">
+          <div className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-2">Optimized</div>
           <div className="text-4xl font-black text-emerald-500">{prompts.length - promptsWithIssues}</div>
         </div>
         <div className="bg-card p-6 rounded-3xl border border-border">
@@ -175,7 +219,8 @@ export default function AdminSEO() {
           <thead>
             <tr className="bg-muted/30 border-b border-border">
               <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-muted-foreground">Prompt</th>
-              <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-muted-foreground">SEO Health</th>
+              <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-muted-foreground">Marketing Score</th>
+              <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-muted-foreground">SEO Health Checks</th>
               <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-muted-foreground text-right">Action</th>
             </tr>
           </thead>
@@ -187,6 +232,23 @@ export default function AdminSEO() {
                   <div className="text-xs text-muted-foreground font-mono">/{p.slug || 'no-slug'}</div>
                 </td>
                 <td className="px-8 py-6">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-full border-4 flex items-center justify-center text-xs font-black ${
+                      p.score > 80 ? 'border-emerald-500 text-emerald-600' : 
+                      p.score > 50 ? 'border-amber-500 text-amber-600' : 
+                      'border-rose-500 text-rose-600'
+                    }`}>
+                      {p.score}%
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Visibility</div>
+                      <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${p.score > 80 ? 'bg-emerald-500' : p.score > 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${p.score}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-8 py-6">
                   {p.issues.length === 0 ? (
                     <div className="flex items-center gap-2 text-emerald-600 text-sm font-bold">
                       <CheckCircle2 className="w-4 h-4" />
@@ -194,12 +256,17 @@ export default function AdminSEO() {
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {p.issues.map((issue, idx) => (
+                      {p.issues.slice(0, 3).map((issue, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-rose-500 text-[11px] font-bold">
                           <AlertCircle className="w-3 h-3" />
                           {issue}
                         </div>
                       ))}
+                      {p.issues.length > 3 && (
+                        <div className="text-[9px] text-muted-foreground font-black uppercase tracking-widest pl-5">
+                          + {p.issues.length - 3} more expert tips
+                        </div>
+                      )}
                     </div>
                   )}
                 </td>
