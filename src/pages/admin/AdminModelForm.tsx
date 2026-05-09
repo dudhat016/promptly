@@ -7,6 +7,9 @@ import { db } from '../../lib/firebase';
 import { AIModel } from '../../types';
 import { toast } from 'react-hot-toast';
 import Select from '../../components/ui/Select';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
+import Button from '../../components/ui/Button';
 
 export default function AdminModelForm() {
   const { id } = useParams();
@@ -68,17 +71,15 @@ export default function AdminModelForm() {
       <div className="bg-card rounded-lg border border-border shadow-sm p-8">
 
         <form onSubmit={handleSave} className="space-y-6">
-          <div>
-            <label htmlFor="modelName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Model Name</label>
-            <input
-              id="modelName"
-              type="text" required
-              value={model.name || ''}
-              onChange={e => setModel({...model, name: e.target.value})}
-              placeholder="e.g. GPT-4 Turbo"
-              className="input"
-            />
-          </div>
+          <Input 
+            label="Model Name"
+            id="modelName"
+            name="modelName"
+            type="text" required
+            value={model.name || ''}
+            onChange={e => setModel({...model, name: e.target.value})}
+            placeholder="e.g. GPT-4 Turbo"
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -99,45 +100,50 @@ export default function AdminModelForm() {
               />
             </div>
             <div>
-              <label htmlFor="modelVersion" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Version</label>
-              <input
+              <Input 
+                label="Version"
                 id="modelVersion"
+                name="modelVersion"
                 type="text" required
                 value={model.version || ''}
                 onChange={e => setModel({...model, version: e.target.value})}
                 placeholder="e.g. v2024-05"
-                className="input"
               />
             </div>
           </div>
 
-          <div>
-            <label htmlFor="modelDescription" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Description</label>
-            <textarea
-              id="modelDescription"
-              rows={3}
-              value={model.description || ''}
-              onChange={e => setModel({...model, description: e.target.value})}
-              placeholder="What are the strengths of this model?"
-              className="textarea"
-            />
-          </div>
+          <Textarea 
+            label="Description"
+            id="modelDescription"
+            name="modelDescription"
+            rows={3}
+            value={model.description || ''}
+            onChange={e => setModel({...model, description: e.target.value})}
+            placeholder="What are the strengths of this model?"
+            variant="filled"
+          />
 
           <div className="pt-6 border-t border-border flex gap-4">
-            <button
+            <Button
               type="submit"
-              disabled={saving}
-              className="flex-grow btn-primary btn-lg"
+              isLoading={saving}
+              variant="primary"
+              size="lg"
+              fullWidth
+              leftIcon={Save}
+              className="font-bold"
             >
-              <Save className="w-5 h-5" />
               {saving ? 'Saving...' : 'Save Model'}
-            </button>
-            <Link
+            </Button>
+            <Button
+              as={Link}
               to="/admin/models"
-              className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all text-center"
+              variant="secondary"
+              size="lg"
+              className="px-8 font-bold"
             >
               Cancel
-            </Link>
+            </Button>
           </div>
         </form>
       </div>

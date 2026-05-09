@@ -1,8 +1,9 @@
-﻿import { ArrowRight, CheckCircle2, Home, Loader2, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Home, Loader2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import Button from '../components/ui/Button';
 
 export default function CheckoutVerifyPage() {
   const [searchParams] = useSearchParams();
@@ -63,13 +64,16 @@ export default function CheckoutVerifyPage() {
             </div>
             <h2 className="text-2xl font-bold text-foreground">Payment Successful!</h2>
             <p className="text-muted-foreground font-medium">{message}</p>
-            <button
+            <Button
               onClick={() => navigate(`/checkout/success?order_id=${orderId}`)}
-              className="w-full bg-foreground text-white font-bold py-4 rounded-md hover:bg-foreground/90 transition-all flex items-center justify-center gap-2 group mt-4"
+              variant="primary"
+              size="lg"
+              fullWidth
+              rightIcon={ArrowRight}
+              className="mt-4 font-bold shadow-xl shadow-primary/20"
             >
               Finish Upgrade
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </Button>
           </div>
         )}
 
@@ -81,19 +85,23 @@ export default function CheckoutVerifyPage() {
             <h2 className="text-2xl font-bold text-foreground">Payment Failed</h2>
             <p className="text-muted-foreground font-medium">{message}</p>
             <div className="grid grid-cols-2 gap-4 mt-4">
-              <button
+              <Button
                 onClick={() => navigate('/pricing')}
-                className="bg-muted text-foreground font-bold py-4 rounded-md hover:bg-muted transition-all flex items-center justify-center gap-2"
+                variant="secondary"
+                size="lg"
+                className="font-bold"
               >
                 Try Again
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => navigate('/')}
-                className="bg-card border-2 border-border text-muted-foreground font-bold py-4 rounded-md hover:bg-muted/50 transition-all flex items-center justify-center gap-2"
+                variant="outline"
+                size="lg"
+                leftIcon={Home}
+                className="font-bold border-2"
               >
-                <Home className="w-4 h-4" />
                 Home
-              </button>
+              </Button>
             </div>
           </div>
         )}

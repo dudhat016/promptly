@@ -13,6 +13,7 @@ import { recordBlogInteraction } from '../lib/affinity';
 import Schema from '../components/SEO/Schema';
 import Breadcrumbs from '../components/ui/Breadcrumbs';
 import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
+import Button from '../components/ui/Button';
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -160,12 +161,15 @@ export default function BlogDetailPage() {
                 <h1 className="text-4xl md:text-5xl font-bold text-foreground leading-tight tracking-tight">
                   {post.title}
                 </h1>
-                <button
+                <Button
                   onClick={() => setIsShareModalOpen(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shrink-0 bg-muted border border-border text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                  variant="secondary"
+                  size="md"
+                  leftIcon={Share2}
+                  className="rounded-xl font-semibold text-sm transition-all shrink-0 bg-muted border border-border text-muted-foreground hover:bg-muted/70 hover:text-foreground h-11"
                 >
-                  <Share2 className="w-4 h-4" /> Share
-                </button>
+                  Share
+                </Button>
               </div>
 
               <div className="flex flex-wrap items-center gap-5 pb-8 border-b border-border">

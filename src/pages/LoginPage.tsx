@@ -2,9 +2,11 @@ import { signInWithGoogle, signInAsGuest, signInWithEmail, signUpWithEmail } fro
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useEffect, useState } from 'react';
-import { Sparkles, LogIn, User } from 'lucide-react';
+import { Sparkles, LogIn, User, Mail, Lock as LockIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
@@ -70,39 +72,45 @@ export default function LoginPage() {
 
         <div className="space-y-4">
           <div className="space-y-3 mb-6">
-            <input 
+            <Input 
               id="email"
               name="email"
               type="email" 
               placeholder="Email address" 
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full bg-card border border-border rounded-md py-3 px-4 focus:ring-2 focus:ring-primary focus:outline-none"
+              leftIcon={Mail}
+              variant="filled"
             />
-            <input 
+            <Input 
               id="password"
               name="password"
               type="password" 
               placeholder="Password" 
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full bg-card border border-border rounded-md py-3 px-4 focus:ring-2 focus:ring-primary focus:outline-none"
+              leftIcon={LockIcon}
+              variant="filled"
             />
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => handleLogin('email-signin')}
-                disabled={isLoggingIn}
-                className="flex-1 btn-primary"
+                isLoading={isLoggingIn}
+                variant="primary"
+                className="flex-1"
+                leftIcon={LogIn}
               >
                 Sign In
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => handleLogin('email-signup')}
-                disabled={isLoggingIn}
-                className="flex-1 bg-foreground py-3 rounded-md font-bold text-white hover:bg-foreground/90 transition-all shadow-md disabled:opacity-50"
+                isLoading={isLoggingIn}
+                variant="white"
+                className="flex-1"
+                leftIcon={User}
               >
                 Sign Up
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -112,14 +120,17 @@ export default function LoginPage() {
             <div className="flex-grow border-t border-border"></div>
           </div>
 
-          <button
+          <Button
             onClick={() => handleLogin('google')}
-            disabled={isLoggingIn}
-            className="w-full flex items-center justify-center gap-3 bg-card border-2 border-border py-4 px-6 rounded-md font-bold text-foreground hover:border-primary/20 hover:bg-muted transition-all active:scale-95 shadow-sm disabled:opacity-50"
+            isLoading={isLoggingIn}
+            variant="outline"
+            fullWidth
+            size="lg"
+            className="border-2 font-bold"
           >
-            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+            <img src="https://www.google.com/favicon.ico" className="w-5 h-5 mr-1" alt="Google" />
             Continue with Google
-          </button>
+          </Button>
         </div>
 
         <div className="mt-8 pt-8 border-t border-border text-center">

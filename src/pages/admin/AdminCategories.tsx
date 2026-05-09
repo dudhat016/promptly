@@ -4,6 +4,7 @@ import { collection, query, getDocs, doc, deleteDoc, orderBy } from 'firebase/fi
 import { Category } from '../../types';
 import { Plus, Tag } from 'lucide-react';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
+import Button from '../../components/ui/Button';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -81,10 +82,16 @@ export default function AdminCategories() {
         title="Categories"
         subtitle="Manage the organizational structure of prompts."
         actions={
-          <Link to="/admin/categories/new" className="btn-primary">
-            <Plus className="w-4 h-4" />
+          <Button
+            as={Link}
+            to="/admin/categories/new"
+            variant="primary"
+            size="md"
+            leftIcon={Plus}
+            className="font-bold shadow-sm shadow-primary/20"
+          >
             Add Category
-          </Link>
+          </Button>
         }
       />
       <DataTable

@@ -3,6 +3,7 @@ import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/fi
 import { Link } from 'react-router-dom';
 import { FileText, Plus } from 'lucide-react';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
+import Button from '../../components/ui/Button';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { db } from '../../lib/firebase';
 import { BlogPost } from '../../types';
@@ -115,10 +116,16 @@ export default function AdminBlog() {
         title="Blog"
         subtitle="Manage your platform's blog content and announcements."
         actions={
-          <Link to="/admin/blog/new" className="btn-primary">
-            <Plus className="w-4 h-4" />
+          <Button
+            as={Link}
+            to="/admin/blog/new"
+            variant="primary"
+            size="md"
+            leftIcon={Plus}
+            className="font-bold shadow-sm shadow-primary/20"
+          >
             Create New Post
-          </Link>
+          </Button>
         }
       />
       <DataTable

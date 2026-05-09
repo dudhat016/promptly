@@ -1,10 +1,13 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Target, Save, BarChart3, Facebook, DollarSign, ShieldCheck, Info } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import { cn } from '../../lib/utils';
 
 export default function AdminMarketingSettings() {
   const [loading, setLoading] = useState(true);
@@ -75,37 +78,40 @@ export default function AdminMarketingSettings() {
             Neural Analytics
           </h4>
           <div className="space-y-6">
-            <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Google Analytics ID</label>
-              <input 
-                type="text"
-                placeholder="G-XXXXXXXXXX"
-                value={config.gaTrackingId}
-                onChange={e => setConfig({ ...config, gaTrackingId: e.target.value })}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Facebook Pixel ID</label>
-              <div className="relative">
-                <Facebook className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input 
-                  type="text"
-                  placeholder="123456789012345"
-                  value={config.fbPixelId}
-                  onChange={e => setConfig({ ...config, fbPixelId: e.target.value })}
-                  className="input pl-12"
-                />
-              </div>
-            </div>
+            <Input
+              label="Google Analytics ID"
+              id="gaTrackingId"
+              name="gaTrackingId"
+              type="text"
+              placeholder="G-XXXXXXXXXX"
+              value={config.gaTrackingId}
+              onChange={e => setConfig({ ...config, gaTrackingId: e.target.value })}
+              variant="filled"
+            />
+            <Input
+              label="Facebook Pixel ID"
+              id="fbPixelId"
+              name="fbPixelId"
+              type="text"
+              placeholder="123456789012345"
+              value={config.fbPixelId}
+              onChange={e => setConfig({ ...config, fbPixelId: e.target.value })}
+              variant="filled"
+              leftIcon={Facebook}
+            />
             <div className="flex items-center justify-between p-4 bg-primary/8 rounded-md border border-primary/100">
               <p className="font-bold text-foreground text-sm">Enable Global Tracking</p>
-              <button 
+              <Button 
                 onClick={() => setConfig({ ...config, analyticsEnabled: !config.analyticsEnabled })}
-                className={`w-12 h-6 rounded-full relative transition-all ${config.analyticsEnabled ? 'bg-primary' : 'bg-muted'}`}
+                variant={config.analyticsEnabled ? 'primary' : 'ghost'}
+                size="sm"
+                className={cn(
+                  "w-12 h-6 rounded-full transition-all relative p-0",
+                  config.analyticsEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
+                )}
               >
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full transition-all ${config.analyticsEnabled ? 'left-7' : 'left-1'}`} />
-              </button>
+                <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm", config.analyticsEnabled ? 'left-7' : 'left-1')} />
+              </Button>
             </div>
           </div>
         </div>
@@ -117,16 +123,17 @@ export default function AdminMarketingSettings() {
             Ad Network
           </h4>
           <div className="space-y-6">
-            <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Ad Unit / Slot ID</label>
-              <input 
-                type="text"
-                placeholder="ca-pub-XXXXXXXXXXXXXXXX"
-                value={config.admobSlotId}
-                onChange={e => setConfig({ ...config, admobSlotId: e.target.value })}
-                className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-bold"
-              />
-            </div>
+            <Input
+              label="Ad Unit / Slot ID"
+              id="admobSlotId"
+              name="admobSlotId"
+              type="text"
+              placeholder="ca-pub-XXXXXXXXXXXXXXXX"
+              value={config.admobSlotId}
+              onChange={e => setConfig({ ...config, admobSlotId: e.target.value })}
+              variant="filled"
+              className="font-bold"
+            />
             <div className="p-6 bg-muted/50 rounded-md border border-border flex items-start gap-4">
               <ShieldCheck className="w-8 h-8 text-emerald-600 shrink-0" />
               <div>
@@ -136,12 +143,17 @@ export default function AdminMarketingSettings() {
             </div>
             <div className="flex items-center justify-between p-4 bg-emerald-500/10 rounded-md border border-emerald-500/20">
               <p className="font-bold text-emerald-600 text-sm">Enable Display Ads</p>
-              <button 
+              <Button 
                 onClick={() => setConfig({ ...config, adsEnabled: !config.adsEnabled })}
-                className={`w-12 h-6 rounded-full relative transition-all ${config.adsEnabled ? 'bg-emerald-600' : 'bg-muted'}`}
+                variant={config.adsEnabled ? 'success' : 'ghost'}
+                size="sm"
+                className={cn(
+                  "w-12 h-6 rounded-full transition-all relative p-0",
+                  config.adsEnabled ? 'bg-emerald-600' : 'bg-muted-foreground/30'
+                )}
               >
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full transition-all ${config.adsEnabled ? 'left-7' : 'left-1'}`} />
-              </button>
+                <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm", config.adsEnabled ? 'left-7' : 'left-1')} />
+              </Button>
             </div>
           </div>
         </div>
@@ -153,34 +165,34 @@ export default function AdminMarketingSettings() {
             Governance & Ecosystem
           </h4>
           <div className="grid md:grid-cols-3 gap-8">
-            <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Min. Payout ($)</label>
-              <input 
-                type="number"
-                value={config.minWithdrawalAmount || 50}
-                onChange={e => setConfig({ ...config, minWithdrawalAmount: Number(e.target.value) })}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Fraud Risk Threshold</label>
-              <input 
-                type="number"
-                value={config.fraudScoreThreshold || 70}
-                onChange={e => setConfig({ ...config, fraudScoreThreshold: Number(e.target.value) })}
-                className="input"
-              />
-              <p className="text-xs text-muted-foreground mt-2 font-medium italic">Higher = Less Sensitive</p>
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Referral Commission (%)</label>
-              <input 
-                type="number"
-                value={config.referralCommission || 25}
-                onChange={e => setConfig({ ...config, referralCommission: Number(e.target.value) })}
-                className="input"
-              />
-            </div>
+            <Input
+              label="Min. Payout ($)"
+              id="minWithdrawalAmount"
+              name="minWithdrawalAmount"
+              type="number"
+              value={config.minWithdrawalAmount || 50}
+              onChange={e => setConfig({ ...config, minWithdrawalAmount: Number(e.target.value) })}
+              variant="filled"
+            />
+            <Input
+              label="Fraud Risk Threshold"
+              id="fraudScoreThreshold"
+              name="fraudScoreThreshold"
+              type="number"
+              value={config.fraudScoreThreshold || 70}
+              onChange={e => setConfig({ ...config, fraudScoreThreshold: Number(e.target.value) })}
+              variant="filled"
+              helperText="Higher = Less Sensitive"
+            />
+            <Input
+              label="Referral Commission (%)"
+              id="referralCommission"
+              name="referralCommission"
+              type="number"
+              value={config.referralCommission || 25}
+              onChange={e => setConfig({ ...config, referralCommission: Number(e.target.value) })}
+              variant="filled"
+            />
           </div>
         </div>
       </div>
@@ -190,14 +202,16 @@ export default function AdminMarketingSettings() {
           <Info className="w-5 h-5 text-primary" />
           Settings are applied globally across the neural workspace.
         </div>
-        <button 
+        <Button 
           onClick={handleSave}
-          disabled={saving}
-          className="btn-primary btn-lg"
+          isLoading={saving}
+          variant="primary"
+          size="lg"
+          leftIcon={Save}
+          className="font-bold shadow-lg shadow-primary/20 px-8"
         >
-          {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-5 h-5" />}
           {saving ? 'Synchronizing...' : 'Save Marketing Engine'}
-        </button>
+        </Button>
       </div>
     </motion.div>
   );

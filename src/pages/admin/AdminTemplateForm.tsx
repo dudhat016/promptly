@@ -6,8 +6,11 @@ import { Save, Edit2, Eye, X, Mail, Send, Settings } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 import { motion, AnimatePresence } from 'motion/react';
 import { EmailService } from '../../services/emailService';
+import Button from '../../components/ui/Button';
 
 export default function AdminTemplateForm() {
   const { id } = useParams();
@@ -130,95 +133,108 @@ export default function AdminTemplateForm() {
             
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="templateName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Template Name</label>
-                  <input 
-                    id="templateName"
-                    type="text" required
-                    value={template.name || ''}
-                    onChange={e => setTemplate({...template, name: e.target.value})}
-                    placeholder="e.g. Welcome Email"
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="templateType" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Internal Type (ID)</label>
-                  <input 
-                    id="templateType"
-                    type="text" required
-                    disabled={id !== 'new'}
-                    value={template.type || ''}
-                    onChange={e => setTemplate({...template, type: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
-                    placeholder="e.g. welcome"
-                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="templateSubject" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Subject Line</label>
-                <input 
-                  id="templateSubject"
-                  type="text" required
-                  value={template.subject || ''}
-                  onChange={e => setTemplate({...template, subject: e.target.value})}
-                  placeholder="e.g. Welcome to Promptly!"
-                  className="input"
+                <Input 
+                  label="Template Name"
+                  id="templateName"
+                  name="templateName"
+                  type="text"
+                  required
+                  value={template.name || ''}
+                  onChange={e => setTemplate({...template, name: e.target.value})}
+                  placeholder="e.g. Welcome Email"
+                  variant="filled"
+                />
+                <Input 
+                  label="Internal Type (ID)"
+                  id="templateType"
+                  name="templateType"
+                  type="text"
+                  required
+                  disabled={id !== 'new'}
+                  value={template.type || ''}
+                  onChange={e => setTemplate({...template, type: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
+                  placeholder="e.g. welcome"
+                  variant="filled"
+                  className="font-mono"
                 />
               </div>
 
-              <div>
-                <label htmlFor="templateBody" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Email Body (Markdown/Text)</label>
-                <textarea 
-                  id="templateBody"
-                  required rows={12}
-                  value={template.body || ''}
-                  onChange={e => setTemplate({...template, body: e.target.value})}
-                  placeholder="Hi {{name}}, welcome to Promptly..."
-                  className="input font-mono"
-                />
-                <p className="text-xs text-muted-foreground mt-2">Use {'{{variable_name}}'} syntax to insert dynamic variables.</p>
-              </div>
+              <Input 
+                label="Subject Line"
+                id="templateSubject"
+                name="templateSubject"
+                type="text"
+                required
+                value={template.subject || ''}
+                onChange={e => setTemplate({...template, subject: e.target.value})}
+                placeholder="e.g. Welcome to Promptly!"
+                variant="filled"
+              />
+
+              <Textarea 
+                label="Email Body (Markdown/Text)"
+                id="templateBody"
+                name="templateBody"
+                required
+                rows={12}
+                value={template.body || ''}
+                onChange={e => setTemplate({...template, body: e.target.value})}
+                placeholder="Hi {{name}}, welcome to Promptly..."
+                variant="filled"
+                className="font-mono min-h-[300px]"
+                helperText="Use {{variable_name}} syntax to insert dynamic variables."
+              />
 
               <div className="pt-6 border-t border-border flex flex-wrap gap-4">
-                <button 
-                  type="submit" 
-                  disabled={saving}
-                  className="flex-grow btn-primary btn-lg min-w-[200px]"
-                >
-                  <Save className="w-5 h-5" />
-                  {saving ? 'Saving...' : 'Save Template'}
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setShowPreview(true)}
-                  className="btn-secondary btn-lg"
-                >
-                  <Eye className="w-5 h-5" />
-                  Preview
-                </button>
-                <button 
-                  type="button"
-                  disabled={isTesting}
-                  onClick={handleSendTest}
-                  className="px-6 bg-card border border-border text-primary font-bold py-4 rounded-md hover:bg-primary/8 transition-all flex items-center gap-2 disabled:opacity-50"
-                >
-                  <Send className="w-5 h-5" />
-                  {isTesting ? 'Sending...' : 'Send Test'}
-                </button>
-                <Link 
-                  to="/admin/emails/settings"
-                  className="p-4 bg-muted text-muted-foreground font-bold rounded-md hover:bg-muted transition-all"
-                  title="Email Settings"
-                >
-                  <Settings className="w-6 h-6" />
-                </Link>
-                <Link 
-                  to="/admin/templates"
-                  className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all text-center"
-                >
-                  Cancel
-                </Link>
+                 <Button 
+                   type="submit" 
+                   isLoading={saving}
+                   variant="primary"
+                   size="lg"
+                   leftIcon={Save}
+                   className="flex-grow min-w-[200px]"
+                 >
+                   Save Template
+                 </Button>
+                 <Button 
+                   type="button"
+                   onClick={() => setShowPreview(true)}
+                   variant="secondary"
+                   size="lg"
+                   leftIcon={Eye}
+                 >
+                   Preview
+                 </Button>
+                 <Button 
+                   type="button"
+                   isLoading={isTesting}
+                   onClick={handleSendTest}
+                   variant="outline"
+                   size="lg"
+                   leftIcon={Send}
+                   className="px-6 bg-card"
+                 >
+                   Send Test
+                 </Button>
+                 <Button 
+                   as={Link}
+                   to="/admin/emails/settings"
+                   variant="ghost"
+                   size="lg"
+                   className="bg-muted text-muted-foreground"
+                   title="Email Settings"
+                 >
+                   <Settings className="w-6 h-6" />
+                 </Button>
+                 <Button 
+                   as={Link}
+                   to="/admin/templates"
+                   variant="ghost"
+                   size="lg"
+                   className="px-8 bg-muted text-muted-foreground"
+                 >
+                   Cancel
+                 </Button>
               </div>
             </form>
           </div>
@@ -276,9 +292,14 @@ export default function AdminTemplateForm() {
                     <p className="text-xs text-muted-foreground font-medium">Testing with mock data</p>
                   </div>
                 </div>
-                <button onClick={() => setShowPreview(false)} className="p-3 hover:bg-muted rounded-md transition-colors">
+                <Button 
+                  onClick={() => setShowPreview(false)} 
+                  variant="ghost" 
+                  size="icon" 
+                  className="p-3 hover:bg-muted rounded-md transition-colors"
+                >
                   <X className="w-6 h-6" />
-                </button>
+                </Button>
               </div>
               
               <div className="p-8 overflow-y-auto bg-muted/50 flex-grow">
@@ -295,12 +316,14 @@ export default function AdminTemplateForm() {
               </div>
 
               <div className="p-8 bg-card border-t border-border text-center shrink-0">
-                <button 
+                <Button 
                   onClick={() => setShowPreview(false)}
-                  className="bg-muted text-white px-12 py-4 rounded-md font-bold hover:bg-muted transition-all"
+                  variant="white"
+                  size="lg"
+                  className="px-12 font-bold"
                 >
                   Got it, close
-                </button>
+                </Button>
               </div>
             </motion.div>
           </div>

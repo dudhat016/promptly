@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import Button from '../ui/Button';
 import { Filter, Trash2 } from 'lucide-react';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -63,15 +64,22 @@ export default function SegmentManager() {
               </td>
               <td className="p-8 text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Link to={`/admin/marketing/segments/edit/${segment.id}`} className="btn-secondary py-2 px-4 text-xs">
+                  <Button
+                    as={Link}
+                    to={`/admin/marketing/segments/edit/${segment.id}`}
+                    variant="secondary"
+                    size="sm"
+                  >
                     Edit
-                  </Link>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => handleDeleteSegment(segment.id)} 
-                    className="p-2 text-muted-foreground hover:text-rose-600 transition-colors"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-rose-600"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </td>
             </tr>

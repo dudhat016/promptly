@@ -1,15 +1,28 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
 import {
-  X, Mail, Tag as TagIcon, Clock, TrendingUp, AlertTriangle,
-  CheckCircle2, Database, ExternalLink, Activity, ArrowLeft,
-  Edit2, Trash2, Shield, Calendar, MailOpen, MousePointer2, Send
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Database,
+  Edit2,
+  Mail,
+  MailOpen, MousePointer2, Send,
+  Shield,
+  Tag as TagIcon,
+  Trash2,
+  TrendingUp
 } from 'lucide-react';
-import { AdminPageHeader } from '../../components/admin';
-import { collection, query, where, getDocs, orderBy, doc, getDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
-import { Contact, Tag, ActivityItem } from '../../types';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AdminPageHeader } from '../../components/admin';
+import Button from '../../components/ui/Button';
+import Textarea from '../../components/ui/Textarea';
+import { db } from '../../lib/firebase';
+import { cn } from '../../lib/utils';
+import { ActivityItem, Contact, Tag } from '../../types';
 
 export default function AdminMarketingContactDetails() {
   const { id } = useParams();
@@ -79,18 +92,34 @@ export default function AdminMarketingContactDetails() {
         subtitle="View engagement history, tags, and contact profile."
         actions={
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/admin/marketing/contacts')} className="btn-secondary">
-              <ArrowLeft className="w-4 h-4" />
+            <Button
+              onClick={() => navigate('/admin/marketing/contacts')}
+              variant="secondary"
+              size="md"
+              leftIcon={ArrowLeft}
+              className="font-bold"
+            >
               Back
-            </button>
-            <Link to={`/admin/marketing/contacts/edit/${contact.id}`} className="btn-secondary">
-              <Edit2 className="w-4 h-4" />
+            </Button>
+            <Button
+              as={Link}
+              to={`/admin/marketing/contacts/edit/${contact.id}`}
+              variant="secondary"
+              size="md"
+              leftIcon={Edit2}
+              className="font-bold"
+            >
               Edit
-            </Link>
-            <button onClick={handleDelete} className="btn-secondary text-rose-600 hover:bg-rose-500/10 border-rose-500/20">
-              <Trash2 className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={handleDelete}
+              variant="secondary"
+              size="md"
+              leftIcon={Trash2}
+              className="text-rose-600 hover:bg-rose-500/10 border-rose-500/20 font-bold"
+            >
               Delete
-            </button>
+            </Button>
           </div>
         }
       />
@@ -128,7 +157,7 @@ export default function AdminMarketingContactDetails() {
                 <span className="text-xs font-bold text-muted-foreground mb-1">/ 100</span>
               </div>
               <div className="w-full h-1.5 bg-muted rounded-full mt-4 overflow-hidden">
-                 <div 
+                 <div
                    className={`h-full ${contact.leadScore && contact.leadScore > 70 ? 'bg-emerald-500' : 'bg-amber-500'}`}
                    style={{ width: `${contact.leadScore || 0}%` }}
                  />
@@ -140,7 +169,7 @@ export default function AdminMarketingContactDetails() {
                 <AlertTriangle className={`w-3 h-3 ${contact.prediction?.churnRisk === 'high' ? 'text-rose-500' : 'text-emerald-500'}`} /> Churn Risk
               </p>
               <span className={`text-2xl font-black uppercase tracking-tight ${
-                contact.prediction?.churnRisk === 'high' ? 'text-rose-600' : 
+                contact.prediction?.churnRisk === 'high' ? 'text-rose-600' :
                 contact.prediction?.churnRisk === 'medium' ? 'text-amber-600' : 'text-emerald-600'
               }`}>
                 {contact.prediction?.churnRisk || 'Low'}
@@ -153,17 +182,20 @@ export default function AdminMarketingContactDetails() {
         {/* Tab Navigation */}
         <div className="flex border-t border-border bg-muted/20">
           {(['timeline', 'details', 'marketing'] as const).map(tab => (
-            <button 
+            <Button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-10 py-5 text-xs font-black uppercase tracking-[0.2em] transition-all border-b-2 ${
-                activeTab === tab 
-                ? 'border-primary text-primary bg-background' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+              variant="ghost"
+              size="lg"
+              className={cn(
+                "px-10 py-5 text-xs font-black uppercase tracking-[0.2em] rounded-none h-auto transition-all border-b-2",
+                activeTab === tab
+                ? 'border-primary text-primary bg-background'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/10'
+              )}
             >
               {tab}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -177,7 +209,7 @@ export default function AdminMarketingContactDetails() {
                 <Activity className="w-6 h-6 text-primary" />
                 Customer Journey
               </h3>
-              
+
               <div className="space-y-12 relative before:absolute before:left-[23px] before:top-2 before:bottom-2 before:w-1 before:bg-border/50">
                 {activities.map((activity) => (
                   <div key={activity.id} className="relative pl-20 group">
@@ -290,7 +322,7 @@ export default function AdminMarketingContactDetails() {
              <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-8 flex items-center gap-2 opacity-60">
                <Activity className="w-4 h-4" /> Engagement Metrics
              </h4>
-             
+
              <div className="space-y-6">
                 <div className="flex items-center justify-between pb-6 border-b border-background/10">
                    <div className="flex items-center gap-3">
@@ -315,19 +347,33 @@ export default function AdminMarketingContactDetails() {
                 </div>
              </div>
 
-             <button className="w-full btn-primary py-5 mt-10 shadow-lg">
-               <Mail className="w-5 h-5" />
+             <Button
+               variant="primary"
+               size="lg"
+               fullWidth
+               leftIcon={Mail}
+               className="py-5 mt-10 shadow-lg font-bold"
+             >
                Send Campaign Now
-             </button>
+             </Button>
            </div>
 
            <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
              <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground mb-6">CRM Notes</h4>
-             <textarea 
+             <Textarea
                placeholder="Add a private note about this contact..."
-               className="w-full bg-muted/30 border-none rounded-xl p-4 text-sm font-medium focus:ring-1 focus:ring-primary/20 min-h-[150px] transition-all"
+               variant="filled"
+               className="min-h-[150px]"
              />
-             <button className="w-full btn-secondary py-3 mt-4 text-[10px]">Save Note</button>
+             <Button
+                variant="secondary"
+                size="sm"
+                fullWidth
+                className="py-3 mt-4 text-[10px] font-bold"
+              >
+                Save Note
+              </Button>
+
            </div>
         </div>
       </div>

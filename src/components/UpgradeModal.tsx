@@ -1,9 +1,10 @@
-import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Check, Shield, Sparkles, X, Zap } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { useConfig } from '../hooks/useConfig';
-import { useAuth } from '../hooks/useAuth';
 import { useCurrency } from '../context/CurrencyContext';
+import { useAuth } from '../hooks/useAuth';
+import { useConfig } from '../hooks/useConfig';
+import Button from './ui/Button';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -56,10 +57,14 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
               style={{ background: 'linear-gradient(90deg, transparent, hsl(258,90%,56%), transparent)' }} />
 
-            <button onClick={onClose}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+            >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
 
             <div className="text-center mb-7">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -88,12 +93,16 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               ))}
             </ul>
 
-            <button onClick={handleUpgrade}
-              className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all mb-3"
-              style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 30px rgba(139,92,246,0.3)' }}>
-              {isTrial ? <Zap className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+            <Button
+              onClick={handleUpgrade}
+              variant="primary"
+              size="lg"
+              fullWidth
+              leftIcon={isTrial ? Zap : ArrowRight}
+              className="mb-3 shadow-[0_0_30px_rgba(139,92,246,0.3)]"
+            >
               {isTrial ? `Start Free Trial` : `Upgrade Now — ${symbol}${price}/mo`}
-            </button>
+            </Button>
 
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/40">
               <span className="flex items-center gap-1"><Shield className="w-3 h-3" /> Secure checkout</span>

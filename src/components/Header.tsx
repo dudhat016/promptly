@@ -11,6 +11,8 @@ import { useTheme } from '../hooks/useTheme';
 import { useConfig } from '../hooks/useConfig';
 import { auth, signInWithGoogle } from '../lib/firebase';
 import { useCurrency } from '../context/CurrencyContext';
+import Button from './ui/Button';
+import { cn } from '../lib/utils';
 
 function CurrencyDropdown() {
   const { currency, setCurrency, symbol } = useCurrency();
@@ -18,14 +20,16 @@ function CurrencyDropdown() {
 
   return (
     <div className="relative">
-      <button
+      <Button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-all text-muted-foreground hover:bg-muted hover:text-foreground"
+        variant="ghost"
+        size="sm"
+        rightIcon={ChevronDown}
+        className="gap-1.5 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground font-semibold"
       >
         <span className="text-primary font-bold">{symbol}</span>
         {currency}
-        <ChevronDown className="w-3 h-3 opacity-50" />
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open && (
@@ -39,18 +43,17 @@ function CurrencyDropdown() {
               className="absolute right-0 mt-1.5 w-28 rounded-xl p-1.5 z-50 bg-card border border-border shadow-xl"
             >
               {(['USD', 'INR'] as const).map((c) => (
-                <button
+                <Button
                   key={c}
                   onClick={() => { setCurrency(c); setOpen(false); }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    currency === c
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
+                  variant={currency === c ? 'primary' : 'ghost'}
+                  size="sm"
+                  fullWidth
+                  className="justify-between px-2.5 py-1.5 font-semibold"
                 >
                   <span>{c}</span>
                   <span className="opacity-60">{c === 'USD' ? '$' : '₹'}</span>
-                </button>
+                </Button>
               ))}
             </motion.div>
           </>
@@ -63,14 +66,16 @@ function CurrencyDropdown() {
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   return (
-    <button
+    <Button
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="p-2 rounded-md transition-all text-muted-foreground hover:bg-muted hover:text-foreground relative"
+      variant="ghost"
+      size="icon"
+      className="text-muted-foreground hover:bg-muted hover:text-foreground relative"
       aria-label="Toggle theme"
     >
       <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
       <Moon className="absolute top-2 left-2 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-    </button>
+    </Button>
   );
 }
 
@@ -129,9 +134,16 @@ export default function Header() {
           {!loading && (
             user ? (
               <div className="relative">
-                <button
+                <Button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-lg transition-all border border-transparent hover:bg-muted hover:border-border"
+                  variant="ghost"
+                  size="md"
+                  rightIcon={ChevronDown}
+                  className={cn(
+                    "pl-2 pr-2.5 py-1.5 border border-transparent hover:bg-muted hover:border-border",
+                    userMenuOpen && "bg-muted border-border"
+                  )}
+                  iconClassName={cn("w-3.5 h-3.5 text-muted-foreground transition-transform duration-200", userMenuOpen && "rotate-180")}
                 >
                   <div className="w-7 h-7 rounded-lg overflow-hidden border border-border shrink-0">
                     {user.photoURL ? (
@@ -143,15 +155,14 @@ export default function Header() {
                       </div>
                     )}
                   </div>
-                  <div className="hidden sm:block text-left">
+                  <div className="hidden sm:block text-left ml-2 mr-1">
                     <p className="text-xs font-semibold text-foreground leading-none">{user.displayName?.split(' ')[0] || 'User'}</p>
                     <p className="text-xs text-muted-foreground leading-none mt-0.5 flex items-center gap-1">
                       <Coins className="w-2.5 h-2.5" />
                       {isPro ? '∞' : profile?.credits ?? 0}
                     </p>
                   </div>
-                  <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
+                </Button>
 
                 <AnimatePresence>
                   {userMenuOpen && (
@@ -183,13 +194,16 @@ export default function Header() {
                         <DMenuItem to="/settings/profile" icon={Settings} onClick={() => setUserMenuOpen(false)}>Settings</DMenuItem>
 
                         <div className="h-px my-1 bg-border" />
-                        <button
+                        <Button
                           onClick={() => { setUserMenuOpen(false); handleSignOut(); }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all text-destructive hover:bg-destructive/10"
+                          variant="ghost"
+                          size="md"
+                          fullWidth
+                          leftIcon={LogOut}
+                          className="justify-start px-3 py-2 text-destructive hover:bg-destructive/10 font-medium"
                         >
-                          <LogOut className="w-4 h-4" />
                           Sign out
-                        </button>
+                        </Button>
                       </motion.div>
                     </>
                   )}
@@ -197,31 +211,36 @@ export default function Header() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link
+                <Button
+                  as={Link}
                   to="/login"
-                  className="hidden sm:block text-sm font-medium px-3 py-1.5 rounded-md transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:block px-3 font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
                 >
                   Sign in
-                </Link>
-                <button
+                </Button>
+                <Button
                   onClick={signInWithGoogle}
-                  className="text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all active:scale-95"
-                  style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 20px rgba(139,92,246,0.3)' }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 32px rgba(139,92,246,0.5)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 20px rgba(139,92,246,0.3)'; }}
+                  variant="primary"
+                  size="md"
+                  className="px-6 font-semibold shadow-xl shadow-primary/30"
+                  style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
                 >
                   Get started
-                </button>
+                </Button>
               </div>
             )
           )}
 
-          <button
-            className="md:hidden p-2 rounded-md transition-all text-muted-foreground hover:bg-muted hover:text-foreground"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -276,32 +295,42 @@ export default function Header() {
                     <MobileLink to="/admin" icon={ShieldCheck} onClick={() => setMobileOpen(false)} accent>Admin Panel</MobileLink>
                   )}
                   <div className="h-px my-3 bg-border" />
-                  <button
+                  <Button
                     onClick={() => { setMobileOpen(false); handleSignOut(); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-destructive hover:bg-destructive/10"
+                    variant="ghost"
+                    size="md"
+                    fullWidth
+                    leftIcon={LogOut}
+                    className="justify-start px-3 py-2.5 text-destructive hover:bg-destructive/10 font-medium"
                   >
-                    <LogOut className="w-4 h-4" />
                     Sign out
-                  </button>
+                  </Button>
                 </>
               )}
 
               {!user && (
                 <div className="mt-4 flex gap-2">
-                  <Link
+                  <Button
+                    as={Link}
                     to="/login"
                     onClick={() => setMobileOpen(false)}
-                    className="flex-1 text-center text-sm font-medium py-2.5 rounded-xl transition-all text-muted-foreground border border-border hover:bg-muted hover:text-foreground"
+                    variant="outline"
+                    size="lg"
+                    fullWidth
+                    className="font-medium text-muted-foreground hover:text-foreground hover:bg-muted border-border"
                   >
                     Sign in
-                  </Link>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => { setMobileOpen(false); signInWithGoogle(); }}
-                    className="flex-1 text-white text-sm font-semibold py-2.5 rounded-xl transition-all"
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    className="font-semibold"
                     style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
                   >
                     Get started
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

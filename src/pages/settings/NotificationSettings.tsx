@@ -1,6 +1,7 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Bell, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
+import Button from '../../components/ui/Button';
 
 export default function NotificationSettings() {
   return (
@@ -43,9 +44,13 @@ export default function NotificationSettings() {
             <p className="text-sm font-medium text-muted-foreground text-center md:text-left max-w-sm">
               We respect your inbox. You can unsubscribe from non-essential emails at any time.
             </p>
-            <button className="text-xs font-bold uppercase tracking-[0.2em] text-primary hover:bg-primary/10 px-6 py-3 rounded-md border border-primary/20 transition-all">
+            <Button 
+              variant="outline" 
+              size="md" 
+              className="text-primary font-bold uppercase tracking-[0.2em] border-primary/20"
+            >
               Mute All Notifications
-            </button>
+            </Button>
           </div>
         </div>
     </motion.div>

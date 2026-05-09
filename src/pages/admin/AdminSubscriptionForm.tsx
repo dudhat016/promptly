@@ -8,6 +8,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { RefreshCw } from 'lucide-react';
 import Select from '../../components/ui/Select';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
+import Checkbox from '../../components/ui/Checkbox';
+import Button from '../../components/ui/Button';
 
 export default function AdminSubscriptionForm() {
   const { id } = useParams();
@@ -89,35 +93,35 @@ export default function AdminSubscriptionForm() {
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="md:col-span-2">
-              <label htmlFor="planName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Plan Name</label>
-              <input 
+              <Input 
+                label="Plan Name"
                 id="planName"
+                name="planName"
                 type="text" required
                 value={plan.name || ''}
                 onChange={e => setPlan({...plan, name: e.target.value})}
                 placeholder="e.g. Pro Plan"
-                className="input"
               />
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label htmlFor="monthlyPrice" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Monthly Price ($)</label>
-                <input 
+                <Input 
+                  label="Monthly Price ($)"
                   id="monthlyPrice"
+                  name="monthlyPrice"
                   type="number" required min="0" step="0.01"
                   value={plan.monthlyPrice || 0}
                   onChange={e => setPlan({...plan, monthlyPrice: parseFloat(e.target.value)})}
-                  className="input"
                 />
               </div>
               <div>
-                <label htmlFor="annualPrice" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Annual Price ($)</label>
-                <input 
+                <Input 
+                  label="Annual Price ($)"
                   id="annualPrice"
+                  name="annualPrice"
                   type="number" min="0" step="0.01"
                   value={plan.yearlyPrice || 0}
                   onChange={e => setPlan({...plan, yearlyPrice: parseFloat(e.target.value)})}
-                  className="input"
                 />
               </div>
             </div>
@@ -135,47 +139,48 @@ export default function AdminSubscriptionForm() {
                 isSearchable={true}
               />
             </div>
-            <div className="flex items-end">
-              <label htmlFor="isPopular" className="flex items-center gap-4 bg-muted/50 border border-border rounded-md p-4 w-full cursor-pointer hover:bg-muted transition-all">
-                <input 
-                  id="isPopular"
-                  type="checkbox"
-                  checked={plan.isPopular}
-                  onChange={e => setPlan({...plan, isPopular: e.target.checked})}
-                  className="w-5 h-5 rounded border-border text-primary focus:ring-primary/600"
-                />
-                <span className="font-bold text-foreground">Mark as Popular Plan</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="features" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Features (Comma Separated)</label>
-            <textarea 
-              id="features"
-              required rows={4}
-              value={plan.features?.join(', ') || ''}
-              onChange={e => setPlan({...plan, features: e.target.value.split(',').map(f => f.trim()).filter(Boolean)})}
-              placeholder="e.g. Unlimited Prompts, API Access, Priority Support"
-              className="textarea"
+            <Checkbox 
+              label="Mark as Popular Plan"
+              description="This plan will be highlighted on the pricing page as the best value."
+              id="isPopular"
+              checked={plan.isPopular}
+              onChange={e => setPlan({...plan, isPopular: e.target.checked})}
+              className="flex-1"
             />
           </div>
 
+          <Textarea 
+            label="Features (Comma Separated)"
+            id="features"
+            name="features"
+            required rows={4}
+            value={plan.features?.join(', ') || ''}
+            onChange={e => setPlan({...plan, features: e.target.value.split(',').map(f => f.trim()).filter(Boolean)})}
+            placeholder="e.g. Unlimited Prompts, API Access, Priority Support"
+            variant="filled"
+          />
+
           <div className="pt-6 border-t border-border flex gap-4">
-            <button 
+            <Button 
               type="submit" 
-              disabled={saving}
-              className="flex-grow btn-primary btn-lg"
+              isLoading={saving}
+              variant="primary"
+              size="lg"
+              fullWidth
+              leftIcon={Save}
+              className="font-bold shadow-lg shadow-primary/20"
             >
-              <Save className="w-5 h-5" />
               {saving ? 'Saving...' : 'Save Plan'}
-            </button>
-            <Link 
+            </Button>
+            <Button 
+              as={Link}
               to="/admin/subscriptions"
-              className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all text-center"
+              variant="secondary"
+              size="lg"
+              className="px-8 font-bold"
             >
               Cancel
-            </Link>
+            </Button>
           </div>
         </form>
       </div>

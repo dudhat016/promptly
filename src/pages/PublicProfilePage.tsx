@@ -1,10 +1,11 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { Prompt, UserProfile } from '../types';
 import { User, LayoutGrid, Star, Calendar, ArrowRight, ShieldCheck, Zap, Mail, MessageSquare } from 'lucide-react';
 import { motion } from 'motion/react';
+import Button from '../components/ui/Button';
 
 export default function PublicProfilePage() {
   const { uid } = useParams();
@@ -53,7 +54,9 @@ export default function PublicProfilePage() {
         <User className="w-16 h-16 text-muted-foreground/20 mb-6" />
         <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Vault Not Found</h2>
         <p className="text-muted-foreground mb-10 max-w-sm">The creator profile you're searching for might have moved or been set to private.</p>
-        <Link to="/explore" className="btn-primary">Return to Library</Link>
+        <Button as={Link} to="/explore" variant="primary" size="lg">
+          Return to Library
+        </Button>
       </div>
     );
   }
@@ -105,22 +108,21 @@ export default function PublicProfilePage() {
                  </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                 <button className="flex-grow sm:flex-grow-0 bg-muted text-foreground font-bold px-6 py-2.5 rounded-md hover:bg-muted/80 transition-all border border-border shadow-sm">
-                   Follow
-                 </button>
-                 <button className="flex-grow sm:flex-grow-0 btn-primary">
-                   <MessageSquare className="w-5 h-5" />
-                   Connect
-                 </button>
+                  <Button variant="secondary" size="md" className="flex-grow sm:flex-grow-0">
+                    Follow
+                  </Button>
+                  <Button variant="primary" size="md" leftIcon={MessageSquare} className="flex-grow sm:flex-grow-0">
+                    Connect
+                  </Button>
               </div>
            </div>
         </div>
 
         {/* Content Tabs */}
         <div className="flex gap-4 md:gap-12 mb-12 border-b border-border overflow-x-auto scrollbar-hide px-2">
-           <button className="px-2 py-4 border-b-4 border-primary font-bold text-foreground whitespace-nowrap text-sm uppercase tracking-widest">Shared Blueprint</button>
-           <button className="px-2 py-4 border-b-4 border-transparent font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap text-sm uppercase tracking-widest">Platform Stats</button>
-           <button className="px-2 py-4 border-b-4 border-transparent font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap text-sm uppercase tracking-widest">Engineering Logic</button>
+           <Button variant="ghost" size="lg" className="px-2 py-4 border-b-4 border-primary rounded-none font-bold text-foreground whitespace-nowrap text-sm uppercase tracking-widest hover:bg-transparent">Shared Blueprint</Button>
+           <Button variant="ghost" size="lg" className="px-2 py-4 border-b-4 border-transparent rounded-none font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap text-sm uppercase tracking-widest hover:bg-transparent">Platform Stats</Button>
+           <Button variant="ghost" size="lg" className="px-2 py-4 border-b-4 border-transparent rounded-none font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap text-sm uppercase tracking-widest hover:bg-transparent">Engineering Logic</Button>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -148,12 +150,15 @@ export default function PublicProfilePage() {
                 </p>
                 <div className="mt-auto pt-6 border-t border-border flex items-center justify-between">
                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest opacity-60">Engineered {new Date(prompt.createdAt).toLocaleDateString()}</span>
-                    <Link 
+                    <Button 
+                      as={Link}
                       to={`/prompt/${prompt.slug || prompt.id}`}
-                      className="bg-foreground text-background p-4 rounded-md group-hover:bg-primary group-hover:text-primary-foreground transition-all active:scale-95 shadow-lg"
+                      variant="primary"
+                      size="icon"
+                      className="w-12 h-12 bg-foreground text-background hover:bg-primary hover:text-primary-foreground shadow-lg"
                     >
                       <ArrowRight className="w-5 h-5" />
-                    </Link>
+                    </Button>
                 </div>
              </motion.div>
            ))}

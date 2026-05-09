@@ -1,4 +1,4 @@
-﻿import { addDoc, collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import {
   Award,
   Check,
@@ -17,6 +17,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useMarketing } from '../hooks/useMarketing';
 import { db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
+import Button from '../components/ui/Button';
+import { cn } from '../lib/utils';
 
 const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -179,13 +181,15 @@ export default function AffiliatePage() {
                 <div className="flex-grow bg-muted/50 p-5 rounded-xl font-mono text-sm text-muted-foreground border border-border break-all flex items-center">
                   {referralLink}
                 </div>
-                <button
+                <Button
                   onClick={copyToClipboard}
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all whitespace-nowrap ${copied ? 'bg-green-500 text-white' : 'bg-primary text-primary-foreground hover:opacity-90'}`}
+                  variant={copied ? 'success' : 'primary'}
+                  size="lg"
+                  leftIcon={copied ? Check : Copy}
+                  className="px-6 h-12"
                 >
-                  {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                   {copied ? 'Copied!' : 'Copy Link'}
-                </button>
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-8 font-medium flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-500" />
@@ -310,13 +314,20 @@ export default function AffiliatePage() {
                    <h3 className="text-xl font-bold">Payout Hub</h3>
                  </div>
                  <p className="text-primary-foreground/60 text-sm mb-10 leading-relaxed font-medium">Earnings are distributed automatically via PayPal once you reach the ${marketingConfig.minWithdrawalAmount} threshold.</p>
-                 <button
+                 <Button
                    onClick={handleWithdraw}
-                   disabled={Number(profile?.affiliateEarnings || 0) < marketingConfig.minWithdrawalAmount || loading}
-                   className={`w-full font-semibold py-3 rounded-xl transition-all shadow-lg text-sm uppercase tracking-widest ${Number(profile?.affiliateEarnings || 0) >= marketingConfig.minWithdrawalAmount ? 'bg-card text-primary hover:bg-card/90' : 'bg-card/10 text-white/30 cursor-not-allowed'}`}
+                   isLoading={loading}
+                   disabled={Number(profile?.affiliateEarnings || 0) < marketingConfig.minWithdrawalAmount}
+                   variant="white"
+                   size="lg"
+                   fullWidth
+                   className={cn(
+                     "font-bold uppercase tracking-widest h-12 shadow-lg",
+                     Number(profile?.affiliateEarnings || 0) < marketingConfig.minWithdrawalAmount && "bg-card/10 text-white/30 border-none shadow-none"
+                   )}
                  >
-                   {loading ? 'Processing...' : (Number(profile?.affiliateEarnings || 0) >= marketingConfig.minWithdrawalAmount ? 'Withdraw Funds' : `Min. $${marketingConfig.minWithdrawalAmount} for Payout`)}
-                 </button>
+                   {Number(profile?.affiliateEarnings || 0) >= marketingConfig.minWithdrawalAmount ? 'Withdraw Funds' : `Min. $${marketingConfig.minWithdrawalAmount} for Payout`}
+                 </Button>
                </div>
             </div>
           </div>

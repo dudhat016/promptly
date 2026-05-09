@@ -7,6 +7,8 @@ import { Gift, Award, Check, Percent } from 'lucide-react';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { toast } from 'react-hot-toast';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
 import { useMarketing } from '../../hooks/useMarketing';
 
 const formatDate = (date: any) => {
@@ -140,12 +142,14 @@ export default function AdminAffiliates() {
       header: 'Payout',
       hideable: false,
       render: u => (u.affiliateEarnings ?? 0) > 0 ? (
-        <button
+        <Button
           onClick={() => handleProcessPayout(u)}
-          className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all"
+          variant="secondary"
+          size="sm"
+          className="bg-primary/10 text-primary border border-primary/20 font-bold hover:bg-primary/20"
         >
           Mark as Paid
-        </button>
+        </Button>
       ) : (
         <span className="text-xs text-muted-foreground font-bold bg-muted px-3 py-1.5 rounded-lg">All Paid</span>
       ),
@@ -172,20 +176,36 @@ export default function AdminAffiliates() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Commission Rate</p>
               {isEditingRate ? (
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
+                    id="commissionRate"
+                    name="commissionRate"
                     type="number"
                     value={newRate}
                     onChange={e => setNewRate(Number(e.target.value))}
-                    className="w-16 bg-card border border-border rounded-lg px-2 py-1 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-20"
+                    variant="filled"
+                    inputSize="sm"
                   />
-                  <button onClick={handleUpdateRate} className="bg-primary text-white p-1.5 rounded-lg hover:bg-primary/90 transition-all">
+                  <Button
+                    onClick={handleUpdateRate}
+                    variant="primary"
+                    size="icon"
+                    className="shrink-0 h-8 w-8"
+                  >
                     <Check className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm font-semibold text-foreground">{marketingConfig.referralCommission}% Commission</p>
-                  <button onClick={() => setIsEditingRate(true)} className="text-xs font-bold text-primary hover:underline">Edit</button>
+                  <Button
+                    onClick={() => setIsEditingRate(true)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-primary hover:underline font-bold"
+                  >
+                    Edit
+                  </Button>
                 </div>
               )}
             </div>

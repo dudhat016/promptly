@@ -4,8 +4,10 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Category } from '../../types';
 import { Save, Tag } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
+import Button from '../../components/ui/Button';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import Input from '../../components/ui/Input';
 
 export default function AdminCategoryForm() {
   const { id } = useParams();
@@ -69,46 +71,49 @@ export default function AdminCategoryForm() {
       <div className="bg-card rounded-lg border border-border shadow-sm p-8">
         
         <form onSubmit={handleSave} className="space-y-6">
-          <div>
-            <label htmlFor="categoryName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Category Name</label>
-            <input 
-              id="categoryName"
-              type="text" required
-              value={category.name || ''}
-              onChange={e => setCategory({...category, name: e.target.value})}
-              placeholder="e.g. Marketing"
-              className="input"
-            />
-          </div>
+          <Input 
+            label="Category Name"
+            id="categoryName"
+            name="categoryName"
+            type="text" required
+            value={category.name || ''}
+            onChange={e => setCategory({...category, name: e.target.value})}
+            placeholder="e.g. Marketing"
+          />
 
-          <div>
-            <label htmlFor="categorySlug" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">URL Slug (Optional)</label>
-            <input 
-              id="categorySlug"
-              type="text"
-              value={category.slug || ''}
-              onChange={e => setCategory({...category, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
-              placeholder="e.g. marketing-tools"
-              className="input font-mono"
-            />
-            <p className="text-xs text-muted-foreground mt-2">Leave blank to auto-generate from name.</p>
-          </div>
+          <Input 
+            label="URL Slug (Optional)"
+            id="categorySlug"
+            name="categorySlug"
+            type="text"
+            value={category.slug || ''}
+            onChange={e => setCategory({...category, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
+            placeholder="e.g. marketing-tools"
+            className="font-mono"
+            helperText="Leave blank to auto-generate from name."
+          />
 
           <div className="pt-6 border-t border-border flex gap-4">
-            <button 
+            <Button 
               type="submit" 
-              disabled={saving}
-              className="flex-grow btn-primary btn-lg"
+              isLoading={saving}
+              variant="primary"
+              size="lg"
+              fullWidth
+              leftIcon={Save}
+              className="font-bold"
             >
-              <Save className="w-5 h-5" />
               {saving ? 'Saving...' : 'Save Category'}
-            </button>
-            <Link 
+            </Button>
+            <Button 
+              as={Link}
               to="/admin/categories"
-              className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all text-center"
+              variant="secondary"
+              size="lg"
+              className="px-8 font-bold"
             >
               Cancel
-            </Link>
+            </Button>
           </div>
         </form>
       </div>

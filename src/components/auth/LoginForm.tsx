@@ -1,10 +1,11 @@
-﻿import { useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-hot-toast';
 import { Mail, Lock, LogIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import AuthInput from './AuthInput';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
 import { signInWithEmail, signInWithGoogle } from '../../lib/firebase';
 
 const loginSchema = z.object({
@@ -40,22 +41,24 @@ export default function LoginForm() {
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <AuthInput
+        <Input
           label="Email Address"
-          icon={Mail}
+          leftIcon={Mail}
           type="email"
           placeholder="name@example.com"
           {...register('email')}
           error={errors.email?.message}
+          variant="filled"
         />
         <div className="space-y-2">
-          <AuthInput
+          <Input
             label="Password"
-            icon={Lock}
+            leftIcon={Lock}
             type="password"
-            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+            placeholder="••••••••"
             {...register('password')}
             error={errors.password?.message}
+            variant="filled"
           />
           <div className="text-right">
             <Link
@@ -67,20 +70,17 @@ export default function LoginForm() {
           </div>
         </div>
 
-        <button
+        <Button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-foreground text-background py-3 rounded-md font-semibold text-sm hover:bg-foreground/90 transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+          isLoading={isSubmitting}
+          variant="primary"
+          size="lg"
+          fullWidth
+          leftIcon={LogIn}
+          className="font-bold shadow-xl shadow-primary/20"
         >
-          {isSubmitting ? (
-            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <LogIn className="w-4 h-4" />
-              Sign In
-            </>
-          )}
-        </button>
+          {isSubmitting ? 'Signing in...' : 'Sign In'}
+        </Button>
       </form>
 
       <div className="relative flex items-center py-2">
@@ -89,14 +89,17 @@ export default function LoginForm() {
         <div className="flex-grow border-t border-border"></div>
       </div>
 
-      <button
+      <Button
         onClick={handleGoogleLogin}
-        disabled={isSubmitting}
-        className="w-full flex items-center justify-center gap-3 bg-card border border-border py-3 px-6 rounded-md font-semibold text-sm text-foreground hover:border-primary/30 hover:bg-muted/50 transition-all shadow-sm disabled:opacity-50"
+        isLoading={isSubmitting}
+        variant="white"
+        size="lg"
+        fullWidth
+        className="font-bold border border-border"
       >
-        <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+        <img src="https://www.google.com/favicon.ico" className="w-5 h-5 mr-1" alt="Google" />
         Google Account
-      </button>
+      </Button>
 
       <p className="text-center text-sm font-medium text-muted-foreground">
         Don't have an account?{' '}

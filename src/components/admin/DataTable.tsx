@@ -8,6 +8,10 @@ import {
 import { Link } from 'react-router-dom';
 import { useConfirm } from './ConfirmModal';
 import Select from '../ui/Select';
+import Input from '../ui/Input';
+import Checkbox from '../ui/Checkbox';
+import Button from '../ui/Button';
+import { cn } from '../../lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,7 +29,7 @@ export interface DataTableColumn<T> {
 }
 
 interface RowAction<T> {
-  icon: LucideIcon;
+  icon: React.ElementType;
   label: string;
   onClick: (row: T) => void;
   className?: string;
@@ -45,7 +49,7 @@ interface DataTableProps<T> {
   rowKey: (row: T) => string;
   loading?: boolean;
   skeletonRows?: number;
-  emptyIcon?: LucideIcon;
+  emptyIcon?: React.ElementType;
   emptyTitle?: string;
   emptyMessage?: string;
   actions?: DataTableActions<T>;
@@ -242,24 +246,27 @@ export default function DataTable<T>({
 
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            placeholder={searchPlaceholder}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-8 py-2.5 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-          />
-          {search && (
-            <button
+        <Input
+          id="tableSearch"
+          name="tableSearch"
+          type="text"
+          placeholder={searchPlaceholder}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          leftIcon={Search}
+          className="flex-1 min-w-[180px] max-w-xs"
+          variant="filled"
+          rightAction={search ? (
+            <Button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground"
             >
               <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+            </Button>
+          ) : undefined}
+        />
 
         <div className="flex items-center gap-2 ml-auto flex-wrap">
           {/* Rows per page */}
@@ -277,22 +284,23 @@ export default function DataTable<T>({
 
           {/* Column visibility */}
           <div className="relative" ref={colMenuRef}>
-            <button
+            <Button
               onClick={() => setColMenuOpen(v => !v)}
-              className={`flex items-center gap-2 px-3 py-2.5 text-xs font-bold border rounded-lg transition-all ${
-                colMenuOpen
-                  ? 'border-primary/50 bg-primary/5 text-primary'
-                  : 'border-border bg-card text-muted-foreground hover:text-foreground'
-              }`}
+              variant={colMenuOpen ? 'primary' : 'outline'}
+              size="md"
+              leftIcon={SlidersHorizontal}
+              className={cn(
+                "px-3 font-bold",
+                !colMenuOpen && "bg-card text-muted-foreground hover:text-foreground"
+              )}
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
               Columns
               {hiddenCols.size > 0 && (
-                <span className="w-4 h-4 bg-primary text-white rounded-full text-[9px] flex items-center justify-center leading-none">
+                <span className="ml-2 w-4 h-4 bg-white/20 text-white rounded-full text-[9px] flex items-center justify-center leading-none">
                   {hiddenCols.size}
                 </span>
               )}
-            </button>
+            </Button>
 
             {colMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-52 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
@@ -303,10 +311,13 @@ export default function DataTable<T>({
                 </div>
                 <div className="p-2 space-y-0.5">
                   {columns.filter(c => c.hideable !== false).map(col => (
-                    <button
+                    <Button
                       key={col.key}
                       onClick={() => toggleCol(col.key)}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-muted/50 transition-all text-left"
+                      variant="ghost"
+                      size="sm"
+                      fullWidth
+                      className="justify-start gap-3 px-3 py-2 h-auto"
                     >
                       <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                         !hiddenCols.has(col.key) ? 'bg-primary border-primary' : 'border-border'
@@ -318,17 +329,19 @@ export default function DataTable<T>({
                         )}
                       </div>
                       <span className="font-medium text-foreground">{col.header}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 {hiddenCols.size > 0 && (
                   <div className="px-4 py-3 border-t border-border">
-                    <button
+                    <Button
                       onClick={() => setHiddenCols(new Set())}
-                      className="text-xs font-bold text-primary hover:underline"
+                      variant="ghost"
+                      size="sm"
+                      className="text-primary hover:underline font-bold"
                     >
                       Show all columns
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -337,14 +350,16 @@ export default function DataTable<T>({
 
           {/* Export CSV */}
           {exportFilename && (
-            <button
+            <Button
               onClick={() => exportCSV(columns, selectedRows.length > 0 ? selectedRows : sorted, exportFilename)}
+              variant="outline"
+              size="md"
+              leftIcon={Download}
               title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows` : 'Export all as CSV'}
-              className="flex items-center gap-2 px-3 py-2.5 text-xs font-bold border border-border rounded-lg bg-card text-muted-foreground hover:text-foreground hover:border-border/80 transition-all"
+              className="bg-card text-muted-foreground hover:text-foreground font-bold"
             >
-              <Download className="w-3.5 h-3.5" />
               {selectedRows.length > 0 ? `Export (${selectedRows.length})` : 'Export CSV'}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -353,31 +368,38 @@ export default function DataTable<T>({
       {selectable && selected.size > 0 && (
         <div className="flex items-center gap-4 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
           <span className="text-sm font-bold text-primary">{selected.size} selected</span>
-          <button
+          <Button
             onClick={() => setSelected(new Set())}
-            className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            variant="ghost"
+            size="sm"
+            leftIcon={X}
+            className="text-muted-foreground hover:text-foreground font-bold"
           >
-            <X className="w-3 h-3" /> Clear
-          </button>
+            Clear
+          </Button>
           <div className="ml-auto flex items-center gap-2">
             {exportFilename && (
-              <button
+              <Button
                 onClick={() => exportCSV(columns, selectedRows, exportFilename)}
-                className="flex items-center gap-2 px-3 py-2 text-xs font-bold bg-card border border-border rounded-lg text-muted-foreground hover:text-foreground transition-all"
+                variant="white"
+                size="sm"
+                leftIcon={Download}
+                className="font-bold border border-border"
               >
-                <Download className="w-3.5 h-3.5" />
                 Export Selected
-              </button>
+              </Button>
             )}
             {onBulkDelete && (
-              <button
+              <Button
                 onClick={handleBulkDelete}
-                disabled={bulkDeleting}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20 rounded-lg hover:bg-rose-500/20 transition-all disabled:opacity-50"
+                isLoading={bulkDeleting}
+                variant="danger"
+                size="sm"
+                leftIcon={Trash2}
+                className="font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                {bulkDeleting ? 'Deleting...' : 'Delete Selected'}
-              </button>
+                Delete Selected
+              </Button>
             )}
           </div>
         </div>
@@ -391,12 +413,11 @@ export default function DataTable<T>({
               <tr className="thead-row">
                 {selectable && (
                   <th className="th w-10">
-                    <input
-                      type="checkbox"
+                    <Checkbox 
+                      variant="simple"
                       checked={allPageSelected}
-                      ref={el => { if (el) el.indeterminate = somePageSelected && !allPageSelected; }}
+                      indeterminate={somePageSelected && !allPageSelected}
                       onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
                     />
                   </th>
                 )}
@@ -458,11 +479,10 @@ export default function DataTable<T>({
                     >
                       {selectable && (
                         <td className="td">
-                          <input
-                            type="checkbox"
+                          <Checkbox 
+                            variant="simple"
                             checked={selected.has(id)}
                             onChange={() => toggleRow(id)}
-                            className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
                           />
                         </td>
                       )}
@@ -475,52 +495,65 @@ export default function DataTable<T>({
                         <td className="td text-right">
                           <div className="flex items-center justify-end gap-0.5">
                             {actions!.custom?.map((action, i) => (
-                              <button
+                              <Button
                                 key={i}
                                 onClick={() => action.onClick(row)}
+                                variant="ghost"
+                                size="icon"
                                 title={action.label}
-                                className={`p-2 rounded-md transition-all ${action.className ?? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
+                                className={cn("text-muted-foreground hover:text-foreground hover:bg-muted/50", action.className)}
                               >
                                 <action.icon className="w-4 h-4" />
-                              </button>
+                              </Button>
                             ))}
                             {actions!.viewExternal && (
-                              <a
+                              <Button
+                                as="a"
                                 href={typeof actions!.viewExternal === 'function' ? actions!.viewExternal(row) : actions!.viewExternal}
                                 target="_blank"
                                 rel="noreferrer"
+                                variant="ghost"
+                                size="icon"
                                 title="View"
-                                className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/8 rounded-md transition-all"
+                                className="text-muted-foreground hover:text-primary hover:bg-primary/8"
                               >
                                 <Eye className="w-4 h-4" />
-                              </a>
+                              </Button>
                             )}
                             {actions!.view && (
-                              <Link
+                              <Button
+                                as={Link}
                                 to={typeof actions!.view === 'function' ? actions!.view(row) : actions!.view}
+                                variant="ghost"
+                                size="icon"
                                 title="View"
-                                className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/8 rounded-md transition-all"
+                                className="text-muted-foreground hover:text-primary hover:bg-primary/8"
                               >
                                 <Eye className="w-4 h-4" />
-                              </Link>
+                              </Button>
                             )}
                             {actions!.edit && (
-                              <Link
+                              <Button
+                                as={Link}
                                 to={typeof actions!.edit === 'function' ? actions!.edit(row) : actions!.edit}
+                                variant="ghost"
+                                size="icon"
                                 title="Edit"
-                                className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/8 rounded-md transition-all"
+                                className="text-muted-foreground hover:text-primary hover:bg-primary/8"
                               >
                                 <Edit2 className="w-4 h-4" />
-                              </Link>
+                              </Button>
                             )}
                             {actions!.onDelete && (
-                              <button
+                              <Button
                                 onClick={() => actions!.onDelete!(row)}
+                                variant="ghost"
+                                size="icon"
                                 title="Delete"
-                                className="p-2 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 rounded-md transition-all"
+                                className="text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10"
                               >
                                 <Trash2 className="w-4 h-4" />
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </td>
@@ -543,12 +576,14 @@ export default function DataTable<T>({
                       {search ? `No records match "${search}"` : emptyMessage}
                     </p>
                     {search && (
-                      <button
+                      <Button
                         onClick={() => setSearch('')}
-                        className="mt-3 text-xs font-bold text-primary hover:underline"
+                        variant="ghost"
+                        size="sm"
+                        className="mt-3 text-primary hover:underline font-bold"
                       >
                         Clear search
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>
@@ -569,22 +604,26 @@ export default function DataTable<T>({
           </p>
 
           <div className="flex items-center gap-1">
-            <button
+            <Button
               onClick={() => setPage(1)}
               disabled={page === 1}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              variant="ghost"
+              size="icon"
               title="First page"
+              className="text-muted-foreground"
             >
               <ChevronsLeft className="w-4 h-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              variant="ghost"
+              size="icon"
               title="Previous page"
+              className="text-muted-foreground"
             >
               <ChevronLeft className="w-4 h-4" />
-            </button>
+            </Button>
 
             {getPageNumbers(page, totalPages).map((p, i) =>
               p === '...' ? (
@@ -592,36 +631,41 @@ export default function DataTable<T>({
                   ···
                 </span>
               ) : (
-                <button
+                <Button
                   key={p}
                   onClick={() => setPage(p as number)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                    page === p
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
+                  variant={page === p ? 'primary' : 'ghost'}
+                  size="icon"
+                  className={cn(
+                    "w-8 h-8 font-bold",
+                    page === p ? "shadow-sm" : "text-muted-foreground"
+                  )}
                 >
                   {p}
-                </button>
+                </Button>
               )
             )}
 
-            <button
+            <Button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              variant="ghost"
+              size="icon"
               title="Next page"
+              className="text-muted-foreground"
             >
               <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setPage(totalPages)}
               disabled={page === totalPages}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              variant="ghost"
+              size="icon"
               title="Last page"
+              className="text-muted-foreground"
             >
               <ChevronsRight className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
       )}

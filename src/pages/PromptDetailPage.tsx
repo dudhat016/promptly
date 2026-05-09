@@ -18,6 +18,7 @@ import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
 import { Prompt, UserProfile } from '../types';
+import Button from '../components/ui/Button';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -283,13 +284,15 @@ export default function PromptDetailPage() {
           ]} 
         />
 
-        <button
+        <Button
           onClick={() => navigate('/explore')}
-          className="flex items-center gap-2 mb-8 transition-colors group text-sm font-semibold text-muted-foreground hover:text-primary"
+          variant="ghost"
+          size="sm"
+          leftIcon={ArrowLeft}
+          className="mb-8 font-bold"
         >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           Back to Library
-        </button>
+        </Button>
 
         <div className="grid lg:grid-cols-3 gap-12">
 
@@ -329,13 +332,15 @@ export default function PromptDetailPage() {
                 </div>
 
                 {/* Like button */}
-                <button
+                <Button
                   onClick={handleLikeClick}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border ${isLiked ? 'text-rose-500 border-rose-500/25 bg-rose-500/10' : 'text-muted-foreground border-border bg-muted hover:bg-muted/70'}`}
+                  variant={isLiked ? 'secondary' : 'ghost'}
+                  size="sm"
+                  leftIcon={Heart}
+                  className={isLiked ? 'text-rose-500 bg-rose-500/10 border-rose-500/25' : 'text-muted-foreground border-border'}
                 >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
                   {prompt!.likesCount || 0} saves
-                </button>
+                </Button>
               </div>
 
               {/* ── Title ── */}
@@ -396,14 +401,16 @@ export default function PromptDetailPage() {
                       </span>
                     )}
                   </div>
-                  {isUnlocked && (
-                    <button onClick={handleCopy}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all"
-                      style={{ background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.15)', color: copied ? 'rgb(52,211,153)' : 'rgb(167,139,250)', border: `1px solid ${copied ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.25)'}` }}>
-                      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copied ? 'Copied!' : 'Copy Formula'}
-                    </button>
-                  )}
+                   {isUnlocked && (
+                     <Button 
+                       onClick={handleCopy}
+                       variant={copied ? 'success' : 'secondary'}
+                       size="sm"
+                       leftIcon={copied ? Check : Copy}
+                     >
+                       {copied ? 'Copied!' : 'Copy Formula'}
+                     </Button>
+                   )}
                 </div>
 
                 {/* Formula content */}
@@ -482,20 +489,25 @@ export default function PromptDetailPage() {
 
                       <div className="space-y-2.5">
                         {!isCategoryLocked && !hasNoCredits && (
-                          <button onClick={handleUnlock}
-                            className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all"
-                            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-                            <Zap className="w-4 h-4 fill-current" />
+                          <Button 
+                            onClick={handleUnlock}
+                            variant="primary"
+                            fullWidth
+                            size="lg"
+                            leftIcon={Zap}
+                          >
                             Unlock for 1 Credit
-                          </button>
+                          </Button>
                         )}
-                        <button onClick={() => setIsUpgradeModalOpen(true)}
-                          className="w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
-                          style={{ background: hasNoCredits || isCategoryLocked ? 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' : 'hsl(var(--muted))', color: hasNoCredits || isCategoryLocked ? '#fff' : 'hsl(var(--foreground))', border: hasNoCredits || isCategoryLocked ? 'none' : '1px solid hsl(var(--border))' }}
+                        <Button 
+                          onClick={() => setIsUpgradeModalOpen(true)}
+                          variant={hasNoCredits || isCategoryLocked ? 'primary' : 'secondary'}
+                          fullWidth
+                          size="lg"
+                          leftIcon={Sparkles}
                         >
-                          <Sparkles className="w-4 h-4" />
                           {hasNoCredits || isCategoryLocked ? 'Go Pro — Unlimited Access' : 'Upgrade to Pro — Unlimited'}
-                        </button>
+                        </Button>
                       </div>
                     </motion.div>
                   </div>
@@ -537,17 +549,25 @@ export default function PromptDetailPage() {
 
               {/* ── Action bar ── */}
               <div className="flex flex-col sm:flex-row items-center gap-3 py-8 border-t border-border">
-                <button onClick={() => setIsShareModalOpen(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all bg-muted border border-border text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                <Button 
+                  onClick={() => setIsShareModalOpen(true)}
+                  variant="secondary"
+                  size="lg"
+                  leftIcon={Share2}
+                  className="w-full sm:w-auto"
                 >
-                  <Share2 className="w-4 h-4" /> Share & Earn
-                </button>
+                  Share & Earn
+                </Button>
                 {!isPro && (
-                  <button onClick={() => setIsUpgradeModalOpen(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all"
-                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-                    <Zap className="w-4 h-4" /> Go Pro — Unlimited Access
-                  </button>
+                  <Button 
+                    onClick={() => setIsUpgradeModalOpen(true)}
+                    variant="primary"
+                    size="lg"
+                    leftIcon={Zap}
+                    className="w-full sm:w-auto"
+                  >
+                    Go Pro — Unlimited Access
+                  </Button>
                 )}
               </div>
 
@@ -614,11 +634,15 @@ export default function PromptDetailPage() {
                       </li>
                     ))}
                   </ul>
-                  <button onClick={() => setIsUpgradeModalOpen(true)}
-                    className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all"
-                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 20px rgba(139,92,246,0.25)' }}>
-                    <Sparkles className="w-4 h-4" /> See Plans
-                  </button>
+                  <Button 
+                    onClick={() => setIsUpgradeModalOpen(true)}
+                    variant="primary"
+                    fullWidth
+                    size="lg"
+                    leftIcon={Sparkles}
+                  >
+                    See Plans
+                  </Button>
                 </div>
               </div>
             )}
@@ -642,11 +666,14 @@ export default function PromptDetailPage() {
                   />
                 </div>
                 {(profile?.credits || 0) === 0 && (
-                  <button onClick={() => setIsUpgradeModalOpen(true)}
-                    className="w-full mt-3 py-2 rounded-lg text-xs font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+                   <Button 
+                    onClick={() => setIsUpgradeModalOpen(true)}
+                    variant="primary"
+                    fullWidth
+                    size="sm"
+                  >
                     Upgrade for Unlimited
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

@@ -4,6 +4,10 @@ import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore'
 import { Layout, Save, Trash2, Globe, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { toast } from 'react-hot-toast';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
+import Button from '../../components/ui/Button';
+import { cn } from '../../lib/utils';
 
 interface SitePage {
   id: string; // home, explore, pricing, blog, contact
@@ -72,10 +76,15 @@ export default function AdminSitePages() {
         title="Site Pages SEO"
         subtitle="Manage dynamic SEO metadata for core site routes."
         actions={
-          <button onClick={() => setEditingPage({ id: '', path: '', title: '', description: '' })} className="btn-primary">
-            <Plus className="w-5 h-5" />
+          <Button
+            onClick={() => setEditingPage({ id: '', path: '', title: '', description: '' })}
+            variant="primary"
+            size="md"
+            leftIcon={Plus}
+            className="font-bold shadow-sm shadow-primary/20"
+          >
             Add Custom Page
-          </button>
+          </Button>
         }
       />
 
@@ -84,26 +93,29 @@ export default function AdminSitePages() {
           {defaultPages.map(dp => {
             const exists = pages.find(p => p.id === dp.id);
             return (
-              <button
+              <Button
                 key={dp.id}
                 onClick={() => setEditingPage(exists || dp)}
-                className={`w-full flex items-center justify-between p-6 rounded-md border transition-all text-left ${
+                variant={editingPage?.id === dp.id ? 'primary' : 'ghost'}
+                size="lg"
+                className={cn(
+                  "w-full flex items-center justify-between p-6 rounded-md border transition-all text-left h-auto",
                   editingPage?.id === dp.id 
-                    ? 'bg-primary border-primary/600 text-white shadow-xl shadow-primary/200 scale-[1.02]' 
-                    : 'bg-card border-border text-muted-foreground hover:border-primary/200'
-                }`}
+                    ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-[1.02] hover:bg-primary/90' 
+                    : 'bg-card border-border text-muted-foreground hover:border-primary/20 hover:bg-muted/10'
+                )}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-md ${editingPage?.id === dp.id ? 'bg-card/20' : 'bg-primary/8 text-primary'}`}>
+                  <div className={cn("p-3 rounded-md", editingPage?.id === dp.id ? 'bg-card/20' : 'bg-primary/8 text-primary')}>
                     <Globe className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="font-bold text-sm">{dp.id.toUpperCase()}</p>
-                    <p className={`text-xs font-bold ${editingPage?.id === dp.id ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{dp.path}</p>
+                    <p className={cn("text-xs font-bold", editingPage?.id === dp.id ? 'text-primary-foreground/80' : 'text-muted-foreground')}>{dp.path}</p>
                   </div>
                 </div>
                 {exists ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5 opacity-50" />}
-              </button>
+              </Button>
             );
           })}
           
@@ -111,25 +123,28 @@ export default function AdminSitePages() {
           
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-4">Custom Pages</h3>
           {pages.filter(p => !defaultPages.find(dp => dp.id === p.id)).map(p => (
-            <button
+            <Button
               key={p.id}
               onClick={() => setEditingPage(p)}
-              className={`w-full flex items-center justify-between p-6 rounded-md border transition-all text-left ${
+              variant={editingPage?.id === p.id ? 'primary' : 'ghost'}
+              size="lg"
+              className={cn(
+                "w-full flex items-center justify-between p-6 rounded-md border transition-all text-left h-auto",
                 editingPage?.id === p.id 
-                  ? 'bg-primary border-primary/600 text-white shadow-xl shadow-primary/200' 
-                  : 'bg-card border-border text-muted-foreground hover:border-primary/200'
-              }`}
+                  ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20 hover:bg-primary/90' 
+                  : 'bg-card border-border text-muted-foreground hover:border-primary/20 hover:bg-muted/10'
+              )}
             >
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-md ${editingPage?.id === p.id ? 'bg-card/20' : 'bg-primary/8 text-primary'}`}>
+                <div className={cn("p-3 rounded-md", editingPage?.id === p.id ? 'bg-card/20' : 'bg-primary/8 text-primary')}>
                   <Plus className="w-5 h-5" />
                 </div>
                 <div>
                   <p className="font-bold text-sm">{p.id}</p>
-                  <p className={`text-xs font-bold ${editingPage?.id === p.id ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{p.path}</p>
+                  <p className={cn("text-xs font-bold", editingPage?.id === p.id ? 'text-primary-foreground/80' : 'text-muted-foreground')}>{p.path}</p>
                 </div>
               </div>
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -146,113 +161,100 @@ export default function AdminSitePages() {
 
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="pageId" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Page ID (System)</label>
-                    <input 
-                      id="pageId"
-                      name="pageId"
-                      type="text" 
-                      value={editingPage.id || ''}
-                      onChange={e => setEditingPage({...editingPage, id: e.target.value})}
-                      placeholder="home, pricing, etc"
-                      className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="pagePath" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Path</label>
-                    <input 
-                      id="pagePath"
-                      name="pagePath"
-                      type="text" 
-                      value={editingPage.path || ''}
-                      onChange={e => setEditingPage({...editingPage, path: e.target.value})}
-                      placeholder="/example"
-                      className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="metaTitle" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Title</label>
-                  <input 
-                    id="metaTitle"
-                    name="metaTitle"
+                  <Input 
+                    label="Page ID (System)"
+                    id="pageId"
+                    name="pageId"
                     type="text" 
-                    value={editingPage.title || ''}
-                    onChange={e => setEditingPage({...editingPage, title: e.target.value})}
-                    placeholder="Page title for search engines"
-                    className="input"
+                    value={editingPage.id || ''}
+                    onChange={e => setEditingPage({...editingPage, id: e.target.value})}
+                    placeholder="home, pricing, etc"
+                    className="font-mono"
                   />
-                </div>
-
-                <div>
-                  <label htmlFor="metaDescription" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Description</label>
-                  <textarea 
-                    id="metaDescription"
-                    name="metaDescription"
-                    rows={3}
-                    value={editingPage.description || ''}
-                    onChange={e => setEditingPage({...editingPage, description: e.target.value})}
-                    placeholder="Brief summary for Google results (150-160 chars)"
-                    className="textarea"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="metaKeywords" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Keywords (Comma separated)</label>
-                  <input 
-                    id="metaKeywords"
-                    name="metaKeywords"
+                  <Input 
+                    label="Path"
+                    id="pagePath"
+                    name="pagePath"
                     type="text" 
-                    value={editingPage.keywords || ''}
-                    onChange={e => setEditingPage({...editingPage, keywords: e.target.value})}
-                    placeholder="ai, prompts, marketplace, gpt"
-                    className="input"
+                    value={editingPage.path || ''}
+                    onChange={e => setEditingPage({...editingPage, path: e.target.value})}
+                    placeholder="/example"
+                    className="font-mono"
                   />
                 </div>
+
+                <Input 
+                  label="Meta Title"
+                  id="metaTitle"
+                  name="metaTitle"
+                  type="text" 
+                  value={editingPage.title || ''}
+                  onChange={setEditingPage ? e => setEditingPage({...editingPage, title: e.target.value}) : undefined}
+                  placeholder="Page title for search engines"
+                />
+
+                <Textarea 
+                  label="Meta Description"
+                  id="metaDescription"
+                  name="metaDescription"
+                  rows={3}
+                  value={editingPage.description || ''}
+                  onChange={e => setEditingPage({...editingPage, description: e.target.value})}
+                  placeholder="Brief summary for Google results (150-160 chars)"
+                  variant="filled"
+                />
+
+                <Input 
+                  label="Keywords (Comma separated)"
+                  id="metaKeywords"
+                  name="metaKeywords"
+                  type="text" 
+                  value={editingPage.keywords || ''}
+                  onChange={e => setEditingPage({...editingPage, keywords: e.target.value})}
+                  placeholder="ai, prompts, marketplace, gpt"
+                />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="ogImage" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">OG Image URL</label>
-                    <input 
-                      id="ogImage"
-                      name="ogImage"
-                      type="text" 
-                      value={editingPage.ogImage || ''}
-                      onChange={e => setEditingPage({...editingPage, ogImage: e.target.value})}
-                      placeholder="https://site.com/image.png"
-                      className="input"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="canonicalUrl" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Canonical URL</label>
-                    <input 
-                      id="canonicalUrl"
-                      name="canonicalUrl"
-                      type="text" 
-                      value={editingPage.canonical || ''}
-                      onChange={e => setEditingPage({...editingPage, canonical: e.target.value})}
-                      placeholder="https://promptly.com/pricing"
-                      className="input"
-                    />
-                  </div>
+                  <Input 
+                    label="OG Image URL"
+                    id="ogImage"
+                    name="ogImage"
+                    type="text" 
+                    value={editingPage.ogImage || ''}
+                    onChange={e => setEditingPage({...editingPage, ogImage: e.target.value})}
+                    placeholder="https://site.com/image.png"
+                  />
+                  <Input 
+                    label="Canonical URL"
+                    id="canonicalUrl"
+                    name="canonicalUrl"
+                    type="text" 
+                    value={editingPage.canonical || ''}
+                    onChange={e => setEditingPage({...editingPage, canonical: e.target.value})}
+                    placeholder="https://promptly.com/pricing"
+                  />
                 </div>
 
                 <div className="pt-6 border-t border-border flex gap-4">
-                  <button
+                  <Button
                     onClick={handleSave}
-                    disabled={saving}
-                    className="flex-grow btn-primary btn-lg shadow-xl shadow-primary/100"
+                    isLoading={saving}
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    leftIcon={Save}
+                    className="font-bold shadow-xl shadow-primary/20"
                   >
-                    <Save className="w-5 h-5" />
                     {saving ? 'Saving...' : 'Save Meta Data'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setEditingPage(null)}
-                    className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all"
+                    variant="secondary"
+                    size="lg"
+                    className="px-8 font-bold"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

@@ -1,7 +1,8 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Mail, ArrowLeft, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import AuthInput from './AuthInput';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
 import { sendPasswordReset } from '../../lib/firebase';
 
 export default function ForgotPasswordForm() {
@@ -58,14 +59,15 @@ export default function ForgotPasswordForm() {
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <AuthInput
+        <Input
           label="Recovery Email"
-          icon={Mail}
+          leftIcon={Mail}
           type="email"
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          variant="filled"
         />
 
         {error && (
@@ -74,20 +76,17 @@ export default function ForgotPasswordForm() {
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
-          disabled={isLoading}
-          className="w-full bg-foreground text-white py-3 rounded-md font-semibold text-sm hover:bg-foreground/90 transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+          isLoading={isLoading}
+          variant="primary"
+          size="lg"
+          fullWidth
+          leftIcon={Send}
+          className="font-bold shadow-xl shadow-primary/20"
         >
-          {isLoading ? (
-            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Send className="w-4 h-4" />
-              Send Reset Link
-            </>
-          )}
-        </button>
+          {isLoading ? 'Sending Link...' : 'Send Reset Link'}
+        </Button>
       </form>
 
       <p className="text-center">

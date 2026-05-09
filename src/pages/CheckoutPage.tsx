@@ -10,7 +10,10 @@ import { AppConfig, PricingPlan } from '../types';
 import UnifiedAuth from '../components/auth/UnifiedAuth';
 import { PaymentService } from '../services/paymentService';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import Input from "../components/ui/Input";
+import Checkbox from "../components/ui/Checkbox";
 import { useCurrency } from '../context/CurrencyContext';
+import Button from '../components/ui/Button';
 
 const UNLOCK_BENEFITS = [
   '5,000+ expert-engineered AI prompts',
@@ -209,11 +212,16 @@ export default function CheckoutPage() {
     <div className="min-h-screen pt-24 pb-16 bg-background">
       <div className="container mx-auto px-4 max-w-5xl">
 
-        <Link to="/pricing"
-          className="inline-flex items-center gap-2 text-sm font-semibold mb-8 transition-colors text-muted-foreground hover:text-primary"
+        <Button
+          as={Link}
+          to="/pricing"
+          variant="ghost"
+          size="sm"
+          leftIcon={ArrowLeft}
+          className="mb-8 font-bold"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Pricing
-        </Link>
+          Back to Pricing
+        </Button>
 
         <div className="grid lg:grid-cols-12 gap-8 items-start">
 
@@ -249,14 +257,16 @@ export default function CheckoutPage() {
                   <p className="text-sm mb-8 max-w-md mx-auto text-muted-foreground">
                     This plan is 100% free. Click below to activate your account and start prompting.
                   </p>
-                  <button onClick={handleCheckout} disabled={processing}
-                    className="w-full py-4 rounded-xl font-bold text-white transition-all disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 24px rgba(139,92,246,0.25)' }}>
-                    {processing
-                      ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
-                      : (user ? 'Activate Free Plan' : 'Sign in to Activate')
-                    }
-                  </button>
+                   <Button
+                    onClick={handleCheckout}
+                    isLoading={processing}
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    className="shadow-xl shadow-primary/20"
+                  >
+                    {user ? 'Activate Free Plan' : 'Sign in to Activate'}
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -273,40 +283,29 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  {/* Terms checkbox */}
-                  <div className="rounded-xl p-5 bg-muted border border-border">
-                    <label htmlFor="termsCheckbox" className="flex items-start gap-4 cursor-pointer group">
-                      <div className="relative flex items-center mt-0.5">
-                        <input
-                          id="termsCheckbox"
-                          type="checkbox"
-                          checked={agreeToTerms}
-                          onChange={e => setAgreeToTerms(e.target.checked)}
-                          className="peer appearance-none w-5 h-5 rounded-md cursor-pointer transition-all border border-border bg-background checked:bg-primary checked:border-primary"
-                        />
-                        <CheckCircle2 className={`absolute w-3.5 h-3.5 text-white left-0.5 transition-opacity ${agreeToTerms ? 'opacity-100' : 'opacity-0'} pointer-events-none`} />
-                      </div>
-                      <span className="text-sm leading-relaxed text-muted-foreground">
-                        I have read and agree to the{' '}
-                        <Link to="/terms" className="text-primary hover:text-primary/80 font-semibold">Terms of Service</Link>
-                        {' '}and{' '}
-                        <Link to="/privacy" className="text-primary hover:text-primary/80 font-semibold">Refund Policy</Link>.
-                      </span>
-                    </label>
-                  </div>
+                  <Checkbox 
+                    id="termsCheckbox"
+                    checked={agreeToTerms}
+                    onChange={e => setAgreeToTerms(e.target.checked)}
+                    label="I have read and agree to the Terms of Service and Refund Policy."
+                    description="By checking this, you confirm that you have read our legal documentation."
+                    className="p-5"
+                  />
 
                   {/* Payment gateways */}
                   <div className="space-y-4">
                     {paymentConfig?.cashfree?.enabled && (
-                      <button onClick={handleCheckout} disabled={processing}
-                        className="w-full py-4 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-                        style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 24px rgba(139,92,246,0.25)' }}>
-                        {processing
-                          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          : <Zap className="w-5 h-5" />
-                        }
-                        {isTrial ? 'Start Trial with Cashfree' : `Pay ${symbol}${price} with Cashfree`}
-                      </button>
+                     <Button
+                      onClick={handleCheckout}
+                      isLoading={processing}
+                      variant="primary"
+                      size="lg"
+                      fullWidth
+                      leftIcon={Zap}
+                      className="shadow-xl shadow-primary/20"
+                    >
+                      {isTrial ? 'Start Trial with Cashfree' : `Pay ${symbol}${price} with Cashfree`}
+                    </Button>
                     )}
 
                     {paymentConfig?.paypal?.enabled && currency !== 'INR' && (
@@ -354,42 +353,64 @@ export default function CheckoutPage() {
 
                     {!paymentConfig?.cashfree?.enabled && !paymentConfig?.paypal?.enabled && (
                       <form onSubmit={handleCheckout} className="space-y-5">
-                        <div>
-                          <label htmlFor="cardName" className="block text-sm font-semibold mb-2 text-muted-foreground">Cardholder Name</label>
-                          <input id="cardName" type="text" required placeholder="Name on card" value={name} onChange={e => setName(e.target.value)}
-                            className={inputClass}
+                        <Input 
+                          label="Cardholder Name"
+                          id="cardName"
+                          name="cardName"
+                          type="text"
+                          required
+                          value={name}
+                          onChange={e => setName(e.target.value)}
+                          placeholder="Name on card"
+                        />
+
+                        <Input 
+                          label="Card Information"
+                          id="cardNumber"
+                          name="cardNumber"
+                          type="text"
+                          required
+                          value={cardNumber}
+                          onChange={handleCardNumber}
+                          placeholder="0000 0000 0000 0000"
+                          leftIcon={CreditCard}
+                          className="font-mono"
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input 
+                            label="Expiry Date"
+                            id="cardExpiry"
+                            name="cardExpiry"
+                            type="text"
+                            required
+                            value={expiry}
+                            onChange={handleExpiry}
+                            placeholder="MM/YY"
+                            className="font-mono"
+                          />
+                          <Input 
+                            label="CVC"
+                            id="cardCvc"
+                            name="cardCvc"
+                            type="text"
+                            required
+                            value={cvc}
+                            onChange={handleCvc}
+                            placeholder="123"
+                            className="font-mono"
                           />
                         </div>
-                        <div>
-                          <label htmlFor="cardNumber" className="block text-sm font-semibold mb-2 text-muted-foreground">Card Information</label>
-                          <div className="relative">
-                            <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                            <input id="cardNumber" type="text" required placeholder="0000 0000 0000 0000" value={cardNumber} onChange={handleCardNumber}
-                              className={`${inputClass} pl-12 font-mono`}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          {[
-                            { label: 'Expiry Date', placeholder: 'MM/YY', value: expiry, onChange: handleExpiry },
-                            { label: 'CVC', placeholder: '123', value: cvc, onChange: handleCvc },
-                          ].map(({ label, placeholder, value, onChange }) => (
-                            <div key={label}>
-                              <label htmlFor={`field-${label.toLowerCase().replace(/\s+/g, '-')}`} className="block text-sm font-semibold mb-2 text-muted-foreground">{label}</label>
-                              <input id={`field-${label.toLowerCase().replace(/\s+/g, '-')}`} type="text" required placeholder={placeholder} value={value} onChange={onChange}
-                                className={`${inputClass} font-mono`}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        <button type="submit" disabled={processing}
-                          className="w-full py-4 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                          style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 24px rgba(139,92,246,0.25)' }}>
-                          {processing
-                            ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            : (isTrial ? 'Start Free Trial' : `Pay ${symbol}${price}`)
-                          }
-                        </button>
+                         <Button
+                          type="submit"
+                          isLoading={processing}
+                          variant="primary"
+                          size="lg"
+                          fullWidth
+                          className="mt-2 shadow-xl shadow-primary/20"
+                        >
+                          {isTrial ? 'Start Free Trial' : `Pay ${symbol}${price}`}
+                        </Button>
                       </form>
                     )}
                   </div>

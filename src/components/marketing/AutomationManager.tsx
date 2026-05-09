@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import Button from '../ui/Button';
 import { GitBranch } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -56,9 +57,14 @@ export default function AutomationManager() {
                 </span>
               </td>
               <td className="p-8 text-right">
-                <Link to={`/admin/marketing/automations/edit/${flow.id}`} className="btn-secondary py-2 px-4 text-xs">
+                <Button
+                  as={Link}
+                  to={`/admin/marketing/automations/edit/${flow.id}`}
+                  variant="secondary"
+                  size="sm"
+                >
                   Edit
-                </Link>
+                </Button>
               </td>
             </tr>
           ))}

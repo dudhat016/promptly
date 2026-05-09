@@ -32,6 +32,8 @@ import {
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminBreadcrumb, AdminNotificationBell, AdminGlobalSearch, AdminShortcutsModal } from '../../components/admin';
+import Button from '../../components/ui/Button';
+import { cn } from '../../lib/utils';
 
 /* ── Types ─────────────────────────────────────────────── */
 interface NavItem {
@@ -89,20 +91,21 @@ function SidebarGroup({
 
   return (
     <div>
-      <button
+      <Button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-          isActive
-            ? 'text-primary bg-primary/10'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-        }`}
+        variant="ghost"
+        size="md"
+        fullWidth
+        leftIcon={Icon}
+        rightIcon={ChevronDown}
+        iconClassName={cn("transition-transform duration-200", open && "rotate-180")}
+        className={cn(
+          "justify-start px-3 font-medium",
+          isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+        )}
       >
-        <span className="flex items-center gap-3">
-          <Icon className="w-4 h-4 shrink-0" />
-          {label}
-        </span>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-      </button>
+        {label}
+      </Button>
 
       <AnimatePresence initial={false}>
         {open && (
@@ -166,9 +169,13 @@ function AdminProfileDropdown() {
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <Button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-md hover:bg-muted/60 transition-all group"
+        variant="ghost"
+        size="md"
+        rightIcon={ChevronDown}
+        iconClassName={cn("transition-transform duration-200", open && "rotate-180")}
+        className="pl-2 pr-3 py-1.5 hover:bg-muted/60 group"
       >
         {user?.photoURL ? (
           <img src={user.photoURL} className="w-7 h-7 rounded-md object-cover" alt="" />
@@ -177,7 +184,7 @@ function AdminProfileDropdown() {
             {initials}
           </div>
         )}
-        <div className="hidden md:block text-left">
+        <div className="hidden md:block text-left ml-2.5 mr-1">
           <p className="text-xs font-semibold text-foreground leading-tight max-w-[120px] truncate">
             {user?.displayName || 'Admin'}
           </p>
@@ -185,8 +192,7 @@ function AdminProfileDropdown() {
             {user?.email}
           </p>
         </div>
-        <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open && (
@@ -223,13 +229,16 @@ function AdminProfileDropdown() {
             </div>
 
             <div className="border-t border-border py-1">
-              <button
+              <Button
                 onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-500/10 transition-colors"
+                variant="ghost"
+                size="md"
+                fullWidth
+                leftIcon={LogOut}
+                className="justify-start px-4 py-2.5 text-rose-600 hover:bg-rose-500/10 font-medium"
               >
-                <LogOut className="w-4 h-4" />
                 Sign Out
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -294,12 +303,14 @@ export default function AdminLayout() {
       <AdminShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       {/* Mobile FAB */}
-      <button
+      <Button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed bottom-5 right-5 z-50 bg-primary text-primary-foreground p-3.5 rounded-md shadow-xl shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all"
+        variant="primary"
+        size="icon"
+        className="lg:hidden fixed bottom-5 right-5 z-50 w-12 h-12 rounded-xl shadow-xl shadow-primary/30"
       >
         <LayoutGrid className="w-5 h-5" />
-      </button>
+      </Button>
 
       {/* Mobile Backdrop */}
       <AnimatePresence>
@@ -331,12 +342,14 @@ export default function AdminLayout() {
               <p className="text-[9px] text-muted-foreground/60 uppercase tracking-widest font-medium leading-none mt-0.5">Admin Panel</p>
             </div>
           </Link>
-          <button
+          <Button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            variant="ghost"
+            size="icon"
+            className="lg:hidden text-muted-foreground hover:text-foreground"
           >
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Navigation */}
@@ -398,26 +411,30 @@ export default function AdminLayout() {
           </div>
 
           {/* Search trigger */}
-          <button
+          <Button
             onClick={() => setSearchOpen(true)}
-            className="relative hidden md:flex items-center gap-2 pl-9 pr-3 py-1.5 text-sm bg-muted/50 border border-border rounded-md w-48 hover:bg-muted/80 hover:border-border/80 transition-all text-muted-foreground cursor-pointer"
+            variant="ghost"
+            size="md"
+            leftIcon={Search}
+            className="relative hidden md:flex items-center gap-2 pl-9 pr-3 py-1.5 text-sm bg-muted/50 border border-border rounded-md w-48 hover:bg-muted/80 hover:border-border/80 transition-all text-muted-foreground cursor-pointer font-normal"
             aria-label="Open search"
           >
-            <Search className="absolute left-3 w-3.5 h-3.5 text-muted-foreground" />
             <span className="flex-1 text-left">Search...</span>
             <kbd className="hidden sm:flex items-center gap-0.5 text-[9px] font-bold bg-muted border border-border rounded px-1 py-0.5 shrink-0">
               ⌘K
             </kbd>
-          </button>
+          </Button>
 
           {/* Dark mode toggle */}
-          <button
+          <Button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted/60"
             aria-label="Toggle theme"
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+          </Button>
 
           {/* Notifications */}
           <AdminNotificationBell />

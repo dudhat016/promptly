@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Keyboard, X } from 'lucide-react';
+import Button from '../ui/Button';
 
 interface AdminShortcutsModalProps {
   open: boolean;
@@ -63,12 +64,14 @@ export default function AdminShortcutsModal({ open, onClose }: AdminShortcutsMod
                   </div>
                   <h2 className="text-sm font-bold text-foreground">Keyboard Shortcuts</h2>
                 </div>
-                <button
+                <Button
                   onClick={onClose}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground p-1"
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
 
               {/* Shortcuts */}

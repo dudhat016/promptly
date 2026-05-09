@@ -1,6 +1,7 @@
 import { Plus, Users, Tag as TagIcon, GitBranch, Filter, Send } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { AdminPageHeader } from '../../components/admin';
+import Button from '../../components/ui/Button';
 import ContactManager from '../../components/marketing/ContactManager';
 import TagManager from '../../components/marketing/TagManager';
 import SegmentManager from '../../components/marketing/SegmentManager';
@@ -32,10 +33,23 @@ export default function AdminMarketing() {
         title={modeTitle}
         subtitle={`Manage and organize your marketing ${activeMode}s and CRM data.`}
         actions={
-          activeMode === 'automation' ? <Link to="/admin/marketing/automations/new" className="btn-primary"><Plus className="w-5 h-5" />Create Automation</Link>
-          : activeMode === 'tag' ? <Link to="/admin/marketing/tags/new" className="btn-primary"><Plus className="w-5 h-5" />Create Tag</Link>
-          : activeMode === 'segment' ? <Link to="/admin/marketing/segments/new" className="btn-primary"><Plus className="w-5 h-5" />Create Segment</Link>
-          : <Link to="/admin/marketing/contacts/new" className="btn-primary"><Plus className="w-5 h-5" />Add Contact</Link>
+          activeMode === 'automation' ? (
+            <Button as={Link} to="/admin/marketing/automations/new" variant="primary" size="md" leftIcon={Plus} className="font-bold">
+              Create Automation
+            </Button>
+          ) : activeMode === 'tag' ? (
+            <Button as={Link} to="/admin/marketing/tags/new" variant="primary" size="md" leftIcon={Plus} className="font-bold">
+              Create Tag
+            </Button>
+          ) : activeMode === 'segment' ? (
+            <Button as={Link} to="/admin/marketing/segments/new" variant="primary" size="md" leftIcon={Plus} className="font-bold">
+              Create Segment
+            </Button>
+          ) : (
+            <Button as={Link} to="/admin/marketing/contacts/new" variant="primary" size="md" leftIcon={Plus} className="font-bold">
+              Add Contact
+            </Button>
+          )
         }
       />
 

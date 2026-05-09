@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { AccessConfig, PermissionGroup, PermissionSet } from '../../types';
@@ -6,6 +6,10 @@ import { Save, ShieldCheck, Plus, Trash2, Edit3, Settings2 } from 'lucide-react'
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
+import Button from '../../components/ui/Button';
+import { cn } from '../../lib/utils';
 
 const DEFAULT_PERMISSIONS: PermissionSet = {
   canViewPremium: false,
@@ -111,14 +115,25 @@ export default function AdminPermissions() {
         subtitle="Create reusable permission sets and link them to your pricing plans."
         actions={
           <>
-            <button onClick={addGroup} className="btn-secondary">
-              <Plus className="w-5 h-5" />
+            <Button
+              onClick={addGroup}
+              variant="secondary"
+              size="md"
+              leftIcon={Plus}
+              className="font-bold"
+            >
               Create Group
-            </button>
-            <button onClick={handleSave} disabled={isSaving} className="btn-primary disabled:opacity-50">
-              <Save className="w-5 h-5" />
+            </Button>
+            <Button
+              onClick={handleSave}
+              isLoading={isSaving}
+              variant="primary"
+              size="md"
+              leftIcon={Save}
+              className="font-bold shadow-sm shadow-primary/20"
+            >
               {isSaving ? 'Saving...' : 'Sync All Groups'}
-            </button>
+            </Button>
           </>
         }
       />
@@ -137,8 +152,22 @@ export default function AdminPermissions() {
                         <h4 className="font-bold text-foreground text-base">{group.name}</h4>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingGroup(group)} className="p-2 hover:bg-muted rounded-lg text-muted-foreground"><Edit3 className="w-4 h-4" /></button>
-                        <button onClick={() => deleteGroup(group.id)} className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                        <Button
+                          onClick={() => setEditingGroup(group)}
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:bg-muted"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => deleteGroup(group.id)}
+                          variant="ghost"
+                          size="icon"
+                          className="text-rose-500 hover:bg-rose-500/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   </th>
@@ -155,14 +184,19 @@ export default function AdminPermissions() {
                   {config.groups.map(group => (
                     <td key={group.id} className="px-6 py-3 text-center border-l border-border">
                       {typeof group.permissions[key] === 'boolean' ? (
-                        <button 
+                        <Button 
                           onClick={() => updateGroupPermissions(group.id, key)}
-                          className={`w-12 h-6 rounded-full transition-all relative ${group.permissions[key] ? 'bg-primary' : 'bg-muted'}`}
+                          variant={group.permissions[key] ? 'primary' : 'ghost'}
+                          size="sm"
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-all relative p-0 h-auto min-h-0",
+                            group.permissions[key] ? 'bg-primary' : 'bg-muted'
+                          )}
                         >
-                          <div className={`absolute top-1 w-4 h-4 bg-card rounded-full transition-all ${group.permissions[key] ? 'right-1' : 'left-1'}`} />
-                        </button>
+                          <div className={cn("absolute top-1 w-4 h-4 bg-card rounded-full transition-all", group.permissions[key] ? 'right-1' : 'left-1')} />
+                        </Button>
                       ) : (
-                        <input 
+                        <Input 
                           type="number" 
                           value={group.permissions[key]}
                           onChange={(e) => {
@@ -170,7 +204,9 @@ export default function AdminPermissions() {
                             const updatedGroups = config.groups.map(g => g.id === group.id ? { ...g, permissions: { ...g.permissions, [key]: val } } : g);
                             setConfig({ ...config, groups: updatedGroups });
                           }}
-                          className="w-20 text-center bg-muted/50 border border-border rounded-md p-2 text-xs font-bold focus:bg-card focus:border-primary/40 transition-all"
+                          className="w-20 text-center"
+                          variant="filled"
+                          inputSize="sm"
                         />
                       )}
                     </td>
@@ -198,41 +234,40 @@ export default function AdminPermissions() {
               </h3>
               
               <div className="space-y-6">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Group Name</label>
-                  <input 
-                    type="text"
-                    value={editingGroup.name}
-                    onChange={e => {
-                      const updated = { ...editingGroup, name: e.target.value };
-                      setEditingGroup(updated);
-                      setConfig(prev => prev ? { ...prev, groups: prev.groups.map(g => g.id === editingGroup.id ? updated : g) } : null);
-                    }}
-                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 font-bold transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Description</label>
-                  <textarea 
-                    rows={3}
-                    value={editingGroup.description}
-                    onChange={e => {
-                      const updated = { ...editingGroup, description: e.target.value };
-                      setEditingGroup(updated);
-                      setConfig(prev => prev ? { ...prev, groups: prev.groups.map(g => g.id === editingGroup.id ? updated : g) } : null);
-                    }}
-                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 font-medium transition-all"
-                  />
-                </div>
+                <Input 
+                  label="Group Name"
+                  type="text"
+                  value={editingGroup.name}
+                  onChange={e => {
+                    const updated = { ...editingGroup, name: e.target.value };
+                    setEditingGroup(updated);
+                    setConfig(prev => prev ? { ...prev, groups: prev.groups.map(g => g.id === editingGroup.id ? updated : g) } : null);
+                  }}
+                  variant="filled"
+                />
+                <Textarea 
+                  label="Description"
+                  rows={3}
+                  value={editingGroup.description}
+                  onChange={e => {
+                    const updated = { ...editingGroup, description: e.target.value };
+                    setEditingGroup(updated);
+                    setConfig(prev => prev ? { ...prev, groups: prev.groups.map(g => g.id === editingGroup.id ? updated : g) } : null);
+                  }}
+                  variant="filled"
+                />
               </div>
 
               <div className="mt-10 flex gap-4">
-                <button 
+                <Button 
                   onClick={() => setEditingGroup(null)}
-                  className="flex-grow bg-muted text-white font-bold py-4 rounded-md hover:bg-muted transition-all"
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  className="font-bold shadow-lg shadow-primary/20"
                 >
                   Confirm Changes
-                </button>
+                </Button>
               </div>
             </motion.div>
           </div>

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { Edit2, Trash2 } from 'lucide-react';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
+import Button from '../ui/Button';
 import { db } from '../../lib/firebase';
 import { Tag } from '../../types';
-import { toast } from 'react-hot-toast';
 
 export default function TagManager() {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -61,15 +62,23 @@ export default function TagManager() {
               </td>
               <td className="p-8 text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Link to={`/admin/marketing/tags/edit/${tag.id}`} className="p-2 text-muted-foreground hover:text-primary transition-colors">
+                  <Button
+                    as={Link}
+                    to={`/admin/marketing/tags/edit/${tag.id}`}
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-primary"
+                  >
                     <Edit2 className="w-4 h-4" />
-                  </Link>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => handleDeleteTag(tag.id)} 
-                    className="p-2 text-muted-foreground hover:text-rose-600 transition-colors"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-rose-600"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </td>
             </tr>

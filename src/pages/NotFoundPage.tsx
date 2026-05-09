@@ -1,6 +1,7 @@
-﻿import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Home, ArrowLeft, Search } from 'lucide-react';
 import { motion } from 'motion/react';
+import Button from '../components/ui/Button';
 
 export default function NotFoundPage() {
   return (
@@ -25,20 +26,23 @@ export default function NotFoundPage() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link 
+          <Button 
+            as={Link} 
             to="/" 
-            className="btn-primary btn-lg"
+            variant="primary" 
+            size="lg" 
+            leftIcon={Home}
           >
-            <Home className="w-5 h-5" />
             Go Home
-          </Link>
-          <button 
+          </Button>
+          <Button 
             onClick={() => window.history.back()}
-            className="flex items-center justify-center gap-2 bg-card text-foreground border border-border px-8 py-4 rounded-md font-bold hover:bg-muted/50 transition-all"
+            variant="secondary"
+            size="lg"
+            leftIcon={ArrowLeft}
           >
-            <ArrowLeft className="w-5 h-5" />
             Go Back
-          </button>
+          </Button>
         </div>
 
         <div className="mt-16 pt-8 border-t border-border">

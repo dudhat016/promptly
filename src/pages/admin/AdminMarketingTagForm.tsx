@@ -1,11 +1,14 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Tag } from '../../types';
 import { Save, Tag as TagIcon } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
+import Button from '../../components/ui/Button';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 
 export default function AdminMarketingTagForm() {
   const { id } = useParams();
@@ -60,53 +63,59 @@ export default function AdminMarketingTagForm() {
       <div className="bg-card rounded-lg border border-border shadow-sm p-8">
         
         <form onSubmit={handleSave} className="space-y-6">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Tag Name</label>
-            <input 
-              type="text" required
-              value={tag.name || ''}
-              onChange={e => setTag({...tag, name: e.target.value})}
-              placeholder="e.g. VIP Customer"
-              className="input"
-            />
-          </div>
+          <Input 
+            label="Tag Name"
+            id="tagName"
+            name="tagName"
+            type="text"
+            required
+            value={tag.name || ''}
+            onChange={e => setTag({...tag, name: e.target.value})}
+            placeholder="e.g. VIP Customer"
+            variant="filled"
+          />
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Description</label>
-            <textarea 
-              rows={3}
-              value={tag.description || ''}
-              onChange={e => setTag({...tag, description: e.target.value})}
-              placeholder="What does this tag mean?"
-              className="textarea"
-            />
-          </div>
+          <Textarea 
+            label="Description"
+            id="tagDescription"
+            name="tagDescription"
+            rows={3}
+            value={tag.description || ''}
+            onChange={e => setTag({...tag, description: e.target.value})}
+            placeholder="What does this tag mean?"
+            variant="filled"
+          />
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Color</label>
-            <input 
-              type="color"
-              value={tag.color || '#4f46e5'}
-              onChange={e => setTag({...tag, color: e.target.value})}
-              className="w-full h-12 rounded-md cursor-pointer"
-            />
-          </div>
+          <Input 
+            label="Color"
+            type="color"
+            value={tag.color || '#4f46e5'}
+            onChange={e => setTag({...tag, color: e.target.value})}
+            className="h-12 cursor-pointer"
+            variant="filled"
+          />
 
           <div className="pt-6 border-t border-border flex gap-4">
-            <button 
+            <Button 
               type="submit" 
-              disabled={saving}
-              className="flex-grow btn-primary btn-lg"
+              isLoading={saving}
+              variant="primary"
+              size="lg"
+              fullWidth
+              leftIcon={Save}
+              className="font-bold"
             >
-              <Save className="w-5 h-5" />
               {saving ? 'Saving...' : 'Save Tag'}
-            </button>
-            <Link 
+            </Button>
+            <Button 
+              as={Link}
               to="/admin/marketing?tab=tag"
-              className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all text-center"
+              variant="secondary"
+              size="lg"
+              className="px-8 font-bold"
             >
               Cancel
-            </Link>
+            </Button>
           </div>
         </form>
       </div>

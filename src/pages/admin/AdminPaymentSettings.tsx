@@ -1,8 +1,11 @@
-﻿import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { AlertCircle, CreditCard, ExternalLink, Globe, Lock, Save, ShieldCheck, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import { cn } from '../../lib/utils';
 
 export default function AdminPaymentSettings() {
   const [loading, setLoading] = useState(true);
@@ -79,14 +82,16 @@ export default function AdminPaymentSettings() {
           </h3>
           <p className="text-muted-foreground mt-1 font-medium">Configure global payment gateways for your SaaS revenue.</p>
         </div>
-        <button
+        <Button
           onClick={handleSave}
-          disabled={saving}
-          className="btn-primary"
+          isLoading={saving}
+          variant="primary"
+          size="md"
+          leftIcon={Save}
+          className="font-bold shadow-sm shadow-primary/20"
         >
-          <Save className="w-5 h-5" />
           {saving ? 'Syncing...' : 'Save Configuration'}
-        </button>
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -109,52 +114,62 @@ export default function AdminPaymentSettings() {
                   )}
                 </div>
               </div>
-              <button 
+              <Button 
                 onClick={() => setConfig({ ...config, cashfree: { ...config.cashfree, enabled: !config.cashfree.enabled }})}
-                className={`w-12 h-6 rounded-full relative transition-all ${config.cashfree.enabled ? 'bg-primary' : 'bg-muted'}`}
+                variant={config.cashfree.enabled ? 'primary' : 'ghost'}
+                size="sm"
+                className={cn(
+                  "w-12 h-6 rounded-full relative transition-all p-0",
+                  config.cashfree.enabled ? 'bg-primary' : 'bg-muted'
+                )}
               >
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full transition-all ${config.cashfree.enabled ? 'left-7' : 'left-1'}`} />
-              </button>
+                <div className={cn("absolute top-1 w-4 h-4 bg-card rounded-full transition-all", config.cashfree.enabled ? 'left-7' : 'left-1')} />
+              </Button>
             </div>
 
             <div className={`space-y-6 transition-all ${config.cashfree.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">App ID</label>
-                <input 
-                  type="text"
-                  value={config.cashfree.appId}
-                  readOnly={!!(process.env as any).CASHFREE_APP_ID}
-                  onChange={e => setConfig({ ...config, cashfree: { ...config.cashfree, appId: e.target.value }})}
-                  placeholder="CF_APP_ID"
-                  className={`w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm ${!!(process.env as any).CASHFREE_APP_ID ? 'cursor-not-allowed opacity-75' : ''}`}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Secret Key</label>
-                <input 
-                  type="password"
-                  value={config.cashfree.secretKey}
-                  readOnly={!!(process.env as any).CASHFREE_SECRET_KEY}
-                  onChange={e => setConfig({ ...config, cashfree: { ...config.cashfree, secretKey: e.target.value }})}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
-                  className={`w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm ${!!(process.env as any).CASHFREE_SECRET_KEY ? 'cursor-not-allowed opacity-75' : ''}`}
-                />
-              </div>
+              <Input
+                label="App ID"
+                id="cashfreeAppId"
+                name="cashfreeAppId"
+                type="text"
+                value={config.cashfree.appId}
+                readOnly={!!(process.env as any).CASHFREE_APP_ID}
+                onChange={e => setConfig({ ...config, cashfree: { ...config.cashfree, appId: e.target.value }})}
+                placeholder="CF_APP_ID"
+                className="font-mono"
+                variant="filled"
+              />
+              <Input
+                label="Secret Key"
+                id="cashfreeSecretKey"
+                name="cashfreeSecretKey"
+                type="password"
+                value={config.cashfree.secretKey}
+                readOnly={!!(process.env as any).CASHFREE_SECRET_KEY}
+                onChange={e => setConfig({ ...config, cashfree: { ...config.cashfree, secretKey: e.target.value }})}
+                placeholder="••••••••••••••••"
+                className="font-mono"
+                variant="filled"
+              />
               <div>
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Environment</label>
                 <div className="flex gap-2">
                   {['sandbox', 'production'].map(env => (
-                    <button
+                    <Button
                       key={env}
                       onClick={() => setConfig({ ...config, cashfree: { ...config.cashfree, environment: env as any }})}
-                      className={`flex-grow py-3 rounded-md text-xs font-bold uppercase tracking-widest border transition-all ${
+                      variant={config.cashfree.environment === env ? 'primary' : 'ghost'}
+                      size="md"
+                      className={cn(
+                        "flex-grow font-bold uppercase tracking-widest border transition-all h-auto py-3",
                         config.cashfree.environment === env 
-                          ? 'bg-primary text-white border-primary/600 shadow-lg shadow-primary/100' 
-                          : 'bg-card text-muted-foreground border-border hover:border-border'
-                      }`}
+                          ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
+                          : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                      )}
                     >
                       {env}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -181,52 +196,62 @@ export default function AdminPaymentSettings() {
                   )}
                 </div>
               </div>
-              <button 
+              <Button 
                 onClick={() => setConfig({ ...config, paypal: { ...config.paypal, enabled: !config.paypal.enabled }})}
-                className={`w-12 h-6 rounded-full relative transition-all ${config.paypal.enabled ? 'bg-blue-600' : 'bg-muted'}`}
+                variant={config.paypal.enabled ? 'primary' : 'ghost'}
+                size="sm"
+                className={cn(
+                  "w-12 h-6 rounded-full relative transition-all p-0",
+                  config.paypal.enabled ? 'bg-blue-600' : 'bg-muted'
+                )}
               >
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full transition-all ${config.paypal.enabled ? 'left-7' : 'left-1'}`} />
-              </button>
+                <div className={cn("absolute top-1 w-4 h-4 bg-card rounded-full transition-all", config.paypal.enabled ? 'left-7' : 'left-1')} />
+              </Button>
             </div>
 
             <div className={`space-y-6 transition-all ${config.paypal.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Client ID</label>
-                <input 
-                  type="text"
-                  value={config.paypal.clientId}
-                  readOnly={!!(process.env as any).PAYPAL_CLIENT_ID}
-                  onChange={e => setConfig({ ...config, paypal: { ...config.paypal, clientId: e.target.value }})}
-                  placeholder="PAYPAL_CLIENT_ID"
-                  className={`w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-blue-600 transition-all font-mono text-sm ${!!(process.env as any).PAYPAL_CLIENT_ID ? 'cursor-not-allowed opacity-75' : ''}`}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Secret Key</label>
-                <input 
-                  type="password"
-                  value={config.paypal.secretKey}
-                  readOnly={!!(process.env as any).PAYPAL_SECRET_KEY}
-                  onChange={e => setConfig({ ...config, paypal: { ...config.paypal, secretKey: e.target.value }})}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
-                  className={`w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-blue-600 transition-all font-mono text-sm ${!!(process.env as any).PAYPAL_SECRET_KEY ? 'cursor-not-allowed opacity-75' : ''}`}
-                />
-              </div>
+              <Input
+                label="Client ID"
+                id="paypalClientId"
+                name="paypalClientId"
+                type="text"
+                value={config.paypal.clientId}
+                readOnly={!!(process.env as any).PAYPAL_CLIENT_ID}
+                onChange={e => setConfig({ ...config, paypal: { ...config.paypal, clientId: e.target.value }})}
+                placeholder="PAYPAL_CLIENT_ID"
+                className="font-mono"
+                variant="filled"
+              />
+              <Input
+                label="Secret Key"
+                id="paypalSecretKey"
+                name="paypalSecretKey"
+                type="password"
+                value={config.paypal.secretKey}
+                readOnly={!!(process.env as any).PAYPAL_SECRET_KEY}
+                onChange={e => setConfig({ ...config, paypal: { ...config.paypal, secretKey: e.target.value }})}
+                placeholder="••••••••••••••••"
+                className="font-mono"
+                variant="filled"
+              />
               <div>
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Environment</label>
                 <div className="flex gap-2">
                   {['sandbox', 'live'].map(env => (
-                    <button
+                    <Button
                       key={env}
                       onClick={() => setConfig({ ...config, paypal: { ...config.paypal, environment: env as any }})}
-                      className={`flex-grow py-3 rounded-md text-xs font-bold uppercase tracking-widest border transition-all ${
+                      variant={config.paypal.environment === env ? 'primary' : 'ghost'}
+                      size="md"
+                      className={cn(
+                        "flex-grow font-bold uppercase tracking-widest border transition-all h-auto py-3",
                         config.paypal.environment === env 
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100' 
-                          : 'bg-card text-muted-foreground border-border hover:border-border'
-                      }`}
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200' 
+                          : 'bg-card text-muted-foreground border-border hover:border-blue-600/50'
+                      )}
                     >
                       {env}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -269,9 +294,16 @@ export default function AdminPaymentSettings() {
           <p className="text-primary text-sm font-medium leading-relaxed mb-6">
             Webhook integration is required to automate user subscription activation after successful payment.
           </p>
-          <a href="#" className="text-primary font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:underline">
-            View Docs <ExternalLink className="w-3 h-3" />
-          </a>
+          <Button
+            as="a"
+            href="#"
+            variant="ghost"
+            size="sm"
+            rightIcon={ExternalLink}
+            className="text-primary font-bold uppercase tracking-widest h-auto p-0 hover:bg-transparent hover:underline justify-start"
+          >
+            View Docs
+          </Button>
         </div>
       </div>
     </div>

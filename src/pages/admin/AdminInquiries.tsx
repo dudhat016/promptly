@@ -4,6 +4,9 @@ import { db } from '../../lib/firebase';
 import { Mail, CheckCircle, Clock, Trash2, ChevronDown, ChevronUp, Search, Inbox } from 'lucide-react';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import toast from 'react-hot-toast';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import { cn } from '../../lib/utils';
 
 interface ContactMessage {
   id: string;
@@ -122,37 +125,40 @@ export default function AdminInquiries() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-md">
           {tabs.map(tab => (
-            <button
+            <Button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
-                filter === tab.id
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              variant={filter === tab.id ? 'secondary' : 'ghost'}
+              size="sm"
+              className={cn(
+                "px-3 py-1.5 h-auto font-medium gap-1.5",
+                filter === tab.id ? 'bg-card text-foreground shadow-sm border-border' : 'text-muted-foreground hover:text-foreground'
+              )}
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded-full font-semibold",
                   filter === tab.id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                }`}>
+                )}>
                   {tab.count}
                 </span>
               )}
-            </button>
+            </Button>
           ))}
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
+          <Input
+            id="inquirySearch"
+            name="inquirySearch"
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, email, subject..."
-            className="input pl-9 w-72"
+            leftIcon={Search}
+            className="w-72"
+            variant="filled"
           />
-        </div>
       </div>
 
       {/* List */}
@@ -227,41 +233,50 @@ export default function AdminInquiries() {
                     </div>
 
                     <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {message.status !== 'resolved' && (
-                          <button
+                          <Button
                             onClick={() => handleUpdateStatus(message.id, 'resolved')}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                            variant="secondary"
+                            size="sm"
+                            leftIcon={CheckCircle}
+                            className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
                           >
-                            <CheckCircle className="w-4 h-4" />
                             Mark Resolved
-                          </button>
+                          </Button>
                         )}
                         {message.status !== 'unread' && (
-                          <button
+                          <Button
                             onClick={() => handleUpdateStatus(message.id, 'unread')}
-                            className="btn-secondary"
+                            variant="secondary"
+                            size="sm"
+                            leftIcon={Clock}
                           >
-                            <Clock className="w-4 h-4" />
                             Mark Unread
-                          </button>
+                          </Button>
                         )}
-                        <a
+                        <Button
+                          as="a"
                           href={`mailto:${message.email}?subject=Re: ${encodeURIComponent(message.subject)}`}
-                          className="btn-primary"
+                          variant="primary"
+                          size="sm"
+                          leftIcon={Mail}
                         >
-                          <Mail className="w-4 h-4" />
                           Reply via Email
-                        </a>
+                        </Button>
                       </div>
 
-                      <button
+                      <Button
                         onClick={() => handleDelete(message.id)}
-                        className="p-2 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 rounded-md transition-colors"
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10"
                         title="Delete message"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </Button>
+                    </div>
                     </div>
                   </div>
                 )}

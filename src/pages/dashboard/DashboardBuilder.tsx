@@ -9,6 +9,8 @@ import { useConfig } from '../../hooks/useConfig';
 import { usePermissions } from '../../hooks/usePermissions';
 import { db } from '../../lib/firebase';
 import { generateAIPrompt } from '../../services/geminiService';
+import Textarea from '../../components/ui/Textarea';
+import Button from '../../components/ui/Button';
 
 export default function DashboardBuilder() {
   const { user, profile, isAdmin } = useAuth();
@@ -130,51 +132,48 @@ export default function DashboardBuilder() {
               </div>
               <div className="flex gap-3 flex-wrap">
                 {models.map(m => (
-                  <button
+                  <Button
                     key={m.id}
                     onClick={() => setTargetModel(m.id)}
-                    className={`px-6 py-3 rounded-md font-bold text-sm transition-all border-2 ${
-                      targetModel === m.id
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'bg-muted border-transparent text-muted-foreground/60 hover:bg-muted/80'
-                    }`}
+                    variant={targetModel === m.id ? 'primary' : 'secondary'}
+                    size="sm"
                   >
                     {m.name}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
 
             {/* Input Area */}
-            <div>
-              <label htmlFor="builderVision" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6 ml-1 text-center md:text-left">Describe your vision</label>
-              <div className="relative group">
-                <textarea
-                  id="builderVision"
-                  rows={4}
-                  value={idea}
-                  onChange={(e) => setIdea(e.target.value)}
-                  placeholder="e.g. Generate an SEO optimized blog post about React performance tips with a friendly tone."
-                  className="w-full bg-muted/50 border-2 border-transparent rounded-lg p-8 md:p-10 focus:outline-none focus:bg-card focus:border-primary/30 transition-all text-xl md:text-2xl font-bold placeholder:text-muted-foreground/30 text-foreground resize-none"
-                />
-                <div className="absolute right-6 bottom-6 hidden md:block">
-                  <Sparkles className="w-8 h-8 text-primary/10 group-focus-within:text-primary transition-colors" />
-                </div>
+            <div className="relative group">
+              <Textarea
+                label="Describe your vision"
+                id="builderVision"
+                name="builderVision"
+                rows={4}
+                value={idea}
+                onChange={(e) => setIdea(e.target.value)}
+                placeholder="e.g. Generate an SEO optimized blog post about React performance tips with a friendly tone."
+                variant="filled"
+                className="p-8 md:p-10 text-xl md:text-2xl font-bold resize-none"
+              />
+              <div className="absolute right-6 bottom-6 hidden md:block">
+                <Sparkles className="w-8 h-8 text-primary/10 group-focus-within:text-primary transition-colors" />
               </div>
             </div>
 
             {/* Action Button */}
-            <button
+            <Button
               onClick={handleGenerate}
-              disabled={isGenerating || !idea.trim()}
-              className="w-full btn-primary btn-lg"
+              isLoading={isGenerating}
+              disabled={!idea.trim()}
+              variant="primary"
+              size="lg"
+              fullWidth
+              rightIcon={Send}
             >
-              {isGenerating ? (
-                <div className="w-6 h-6 border-4 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-              ) : (
-                <>Engineer Blueprint <Send className="w-6 h-6" /></>
-              )}
-            </button>
+              Engineer Blueprint
+            </Button>
           </div>
 
           {/* Result Section */}
@@ -196,30 +195,34 @@ export default function DashboardBuilder() {
                 </div>
                 <div className="bg-foreground text-background rounded-lg p-6 font-mono text-sm leading-relaxed mb-8 border border-border whitespace-pre-wrap shadow-2xl relative group">
                   {generatedPrompt}
-                  <button
+                  <Button
                     onClick={() => {
                       navigator.clipboard.writeText(generatedPrompt);
                       toast.success("Copied to clipboard!");
                     }}
-                    className="absolute top-4 right-4 p-3 bg-background/10 rounded-md hover:bg-background/20 transition-all opacity-0 group-hover:opacity-100"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-4 right-4 text-background/50 hover:text-background hover:bg-background/10 opacity-0 group-hover:opacity-100"
                   >
                     <Plus className="w-4 h-4 rotate-45" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="flex flex-col md:flex-row gap-4">
-                  <button
+                  <Button
                     onClick={handleSavePrompt}
-                    className="flex-grow bg-foreground text-background font-semibold py-3 rounded-md hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg"
+                    variant="primary"
+                    className="flex-grow"
+                    leftIcon={Plus}
                   >
-                    <Plus className="w-5 h-5" />
                     Add to My Vault
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setGeneratedPrompt('')}
-                    className="px-10 bg-muted text-muted-foreground font-semibold py-3 rounded-md hover:bg-muted/80 transition-all"
+                    variant="secondary"
+                    className="px-10"
                   >
                     Discard
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             )}

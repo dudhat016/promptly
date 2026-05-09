@@ -6,6 +6,7 @@ import { CreditCard, Zap, Shield, ChevronRight, Check, Clock, FileText, DollarSi
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import Button from '../../components/ui/Button';
 
 export default function BillingSettings() {
   const { isPro, profile, user } = useAuth();
@@ -66,9 +67,9 @@ export default function BillingSettings() {
                 </div>
                 <h3 className="text-4xl font-bold mb-4 tracking-tighter">Go Pro. Be Expert.</h3>
                 <p className="opacity-60 text-sm mb-10 leading-relaxed font-medium">Unlock priority AI model access, unlimited library storage, and advanced prompt engineering tools.</p>
-                <Link to="/pricing" className="btn-primary inline-block">
+                <Button as={Link} to="/pricing" variant="primary" size="lg">
                   View Pricing Plans
-                </Link>
+                </Button>
               </div>
           </div>
         ) : (
@@ -82,10 +83,19 @@ export default function BillingSettings() {
                 <p className="text-white/60 text-sm mb-10 leading-relaxed max-w-md font-medium">Your subscription is active. You have full access to all professional prompt engineering tools.</p>
                 
                 <div className="flex flex-wrap gap-4">
-                  <Link to="/pricing" className="bg-card/10 text-white font-bold px-8 py-4 rounded-md hover:bg-card/20 transition-all flex items-center gap-3 border border-white/5 backdrop-blur-sm">
+                  <Button 
+                    as={Link} 
+                    to="/pricing" 
+                    variant="secondary" 
+                    size="lg" 
+                    className="bg-card/10 text-white hover:bg-card/20 border-white/5 backdrop-blur-sm"
+                  >
                     Upgrade/Downgrade
-                  </Link>
-                  <button 
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-white/40 hover:text-white/80 uppercase tracking-widest font-bold"
                     onClick={async () => {
                       if (window.confirm("Are you sure you want to cancel? You will lose Pro access immediately.")) {
                         try {
@@ -102,10 +112,9 @@ export default function BillingSettings() {
                         }
                       }
                     }}
-                    className="text-white/40 hover:text-white/80 transition-colors text-xs font-bold uppercase tracking-widest px-4"
                   >
                     Cancel Subscription
-                  </button>
+                  </Button>
                 </div>
               </div>
           </div>

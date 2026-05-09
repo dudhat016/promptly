@@ -6,6 +6,7 @@ import { UserCheck, Shield, Users } from 'lucide-react';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { toast } from 'react-hot-toast';
+import Button from '../../components/ui/Button';
 
 const formatDate = (date: any): string => {
   if (!date) return 'N/A';
@@ -148,20 +149,24 @@ export default function AdminUsers() {
       className: 'text-right',
       render: u => (
         <div className="flex items-center justify-end gap-1">
-          <button
+          <Button
             onClick={() => handleUpdateUser(u.uid, { subscriptionStatus: u.subscriptionStatus === 'pro' ? 'free' : 'pro' })}
             title={u.subscriptionStatus === 'pro' ? 'Downgrade to Free' : 'Upgrade to Pro'}
-            className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/8 rounded-md transition-all"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-primary hover:bg-primary/8"
           >
             <UserCheck className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => handleUpdateUser(u.uid, { role: u.role === 'admin' ? 'user' : 'admin' })}
             title={u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-            className="p-2 text-muted-foreground hover:text-purple-600 hover:bg-purple-500/10 rounded-md transition-all"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-purple-600 hover:bg-purple-500/10"
           >
             <Shield className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       ),
     },

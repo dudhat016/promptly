@@ -8,10 +8,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { Save, ArrowLeft, Upload, Loader2, FileText } from 'lucide-react';
 import { AdminPageHeader, ImageUpload } from '../../components/admin';
+import Button from '../../components/ui/Button';
 import MDEditor from '@uiw/react-md-editor';
 import TagInput from '../../components/TagInput';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import Select from '../../components/ui/Select';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 
 export default function AdminBlogForm() {
   const { id } = useParams<{ id: string }>();
@@ -139,41 +142,45 @@ export default function AdminBlogForm() {
         title={isNew ? 'Create Blog Post' : 'Edit Blog Post'}
         subtitle="Write and publish platform blog content and announcements."
         actions={
-          <button onClick={() => navigate('/admin/blog')} className="btn-secondary">
-            <ArrowLeft className="w-4 h-4" />
+          <Button
+            onClick={() => navigate('/admin/blog')}
+            variant="secondary"
+            size="md"
+            leftIcon={ArrowLeft}
+            className="font-bold"
+          >
             Back to Blog
-          </button>
+          </Button>
         }
       />
 
       <form onSubmit={handleSave} className="bg-card rounded-2xl border border-border p-6 md:p-8 space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-4 md:col-span-2">
-            <div>
-              <label className="block text-sm font-semibold text-muted-foreground mb-1">Title</label>
-              <input
-                type="text"
-                required
-                value={post.title || ''}
-                onChange={handleTitleChange}
-                className={inputCls}
-                placeholder="The Future of AI Prompts..."
-              />
-            </div>
+            <Input 
+              label="Title"
+              id="blogTitle"
+              name="blogTitle"
+              type="text"
+              required
+              value={post.title || ''}
+              onChange={handleTitleChange}
+              placeholder="The Future of AI Prompts..."
+            />
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-muted-foreground mb-1">Slug (URL)</label>
-              <input
-                type="text"
-                required
-                value={post.slug || ''}
-                onChange={e => setPost({ ...post, slug: e.target.value })}
-                className={inputCls}
-                placeholder="the-future-of-ai-prompts"
-              />
-            </div>
+            <Input 
+              label="Slug (URL)"
+              id="blogSlug"
+              name="blogSlug"
+              type="text"
+              required
+              value={post.slug || ''}
+              onChange={e => setPost({ ...post, slug: e.target.value })}
+              placeholder="the-future-of-ai-prompts"
+              className="font-mono"
+            />
 
             <div>
               <label className="block text-sm font-semibold text-muted-foreground mb-1">Status</label>
@@ -215,69 +222,69 @@ export default function AdminBlogForm() {
                 placeholder="Search or create tags..."
               />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-muted-foreground mb-1">Meta Keywords (SEO)</label>
-              <input
-                type="text"
-                value={post.metaKeywords || ''}
-                onChange={e => {
-                  setPost({ ...post, metaKeywords: e.target.value });
-                  setIsManualSEO(prev => ({ ...prev, metaKeywords: true }));
-                }}
-                className={inputCls}
-                placeholder="ai, blog, tech, tutorial..."
-              />
-            </div>
+            <Input 
+              label="Meta Keywords (SEO)"
+              id="metaKeywords"
+              name="metaKeywords"
+              type="text"
+              value={post.metaKeywords || ''}
+              onChange={e => {
+                setPost({ ...post, metaKeywords: e.target.value });
+                setIsManualSEO(prev => ({ ...prev, metaKeywords: true }));
+              }}
+              placeholder="ai, blog, tech, tutorial..."
+            />
           </div>
 
           <div className="space-y-4 md:col-span-2 grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-muted-foreground mb-1">Meta Title (SEO)</label>
-              <input
-                type="text"
-                value={post.metaTitle || ''}
-                onChange={e => {
-                  setPost({ ...post, metaTitle: e.target.value });
-                  setIsManualSEO(prev => ({ ...prev, metaTitle: true }));
-                }}
-                className={inputCls}
-                placeholder="Google search title..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-muted-foreground mb-1">Meta Description (SEO)</label>
-              <textarea
-                value={post.metaDescription || ''}
-                onChange={e => {
-                  setPost({ ...post, metaDescription: e.target.value });
-                  setIsManualSEO(prev => ({ ...prev, metaDescription: true }));
-                }}
-                className={inputCls}
-                rows={1}
-                placeholder="SEO meta description..."
-              />
-            </div>
+            <Input 
+              label="Meta Title (SEO)"
+              id="metaTitle"
+              name="metaTitle"
+              type="text"
+              value={post.metaTitle || ''}
+              onChange={e => {
+                setPost({ ...post, metaTitle: e.target.value });
+                setIsManualSEO(prev => ({ ...prev, metaTitle: true }));
+              }}
+              placeholder="Google search title..."
+            />
+            <Textarea 
+              label="Meta Description (SEO)"
+              id="metaDescription"
+              name="metaDescription"
+              value={post.metaDescription || ''}
+              onChange={e => {
+                setPost({ ...post, metaDescription: e.target.value });
+                setIsManualSEO(prev => ({ ...prev, metaDescription: true }));
+              }}
+              rows={1}
+              placeholder="SEO meta description..."
+              className="min-h-[50px]"
+              variant="filled"
+            />
           </div>
 
           <div className="space-y-4 md:col-span-2">
-            <div>
-              <label className="block text-sm font-semibold text-muted-foreground mb-1">Excerpt</label>
-              <textarea
-                required
-                value={post.excerpt || ''}
-                onChange={e => {
-                  const excerpt = e.target.value;
-                  setPost(prev => ({
-                    ...prev,
-                    excerpt,
-                    metaDescription: isManualSEO.metaDescription ? prev.metaDescription : excerpt
-                  }));
-                }}
-                className={inputCls}
-                rows={2}
-                placeholder="A short summary of the blog post..."
-              />
-            </div>
+            <Textarea 
+              label="Excerpt"
+              id="blogExcerpt"
+              name="blogExcerpt"
+              required
+              value={post.excerpt || ''}
+              onChange={e => {
+                const excerpt = e.target.value;
+                setPost(prev => ({
+                  ...prev,
+                  excerpt,
+                  metaDescription: isManualSEO.metaDescription ? prev.metaDescription : excerpt
+                }));
+              }}
+              rows={2}
+              placeholder="A short summary of the blog post..."
+              className="min-h-[80px]"
+              variant="filled"
+            />
 
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -298,15 +305,16 @@ export default function AdminBlogForm() {
         </div>
 
         <div className="flex justify-end pt-6 border-t border-border">
-          <button
+          <Button
             type="submit"
-            disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm text-white transition-all disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
+            isLoading={saving}
+            variant="primary"
+            size="lg"
+            leftIcon={Save}
+            className="font-bold shadow-lg shadow-primary/20 px-8"
           >
-            <Save className="w-5 h-5" />
             {saving ? 'Saving...' : 'Save Post'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

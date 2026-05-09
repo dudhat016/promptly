@@ -1,6 +1,7 @@
-﻿import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, Home, RefreshCcw, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
+import Button from './ui/Button';
 
 interface Props {
   children?: ReactNode;
@@ -63,20 +64,25 @@ class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button 
+              <Button 
                 onClick={() => window.location.reload()}
-                className="flex items-center justify-center gap-3 bg-primary text-primary-foreground font-semibold py-3 rounded-md hover:opacity-90 transition-all shadow-xl shadow-primary/10"
+                variant="primary"
+                size="lg"
+                leftIcon={RefreshCcw}
+                className="font-bold shadow-xl shadow-primary/20"
               >
-                <RefreshCcw className="w-5 h-5" />
                 Reboot System
-              </button>
-              <a 
+              </Button>
+              <Button 
+                as="a"
                 href="/"
-                className="flex items-center justify-center gap-3 bg-card border-2 border-border text-foreground font-semibold py-3 rounded-md hover:bg-muted transition-all"
+                variant="outline"
+                size="lg"
+                leftIcon={Home}
+                className="font-bold border-2"
               >
-                <Home className="w-5 h-5 text-muted-foreground" />
                 Return Home
-              </a>
+              </Button>
             </div>
 
             <p className="mt-12 text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground/40">

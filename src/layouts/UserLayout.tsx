@@ -25,6 +25,9 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAuth } from '../hooks/useAuth';
 import { auth } from '../lib/firebase';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import { cn } from '../lib/utils';
 
 const NAV_ITEMS = [
   { label: 'Marketplace',  icon: Search,      path: '/explore' },
@@ -69,12 +72,16 @@ export default function UserLayout() {
             >
               <Mail className="w-4 h-4" /> Contact Support
             </a>
-            <button
+            <Button
               onClick={() => auth.signOut().then(() => navigate('/'))}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-muted text-foreground rounded-lg font-semibold text-sm hover:bg-muted/80 transition-all"
+              variant="secondary"
+              size="md"
+              leftIcon={LogOut}
+              fullWidth
+              className="font-semibold"
             >
-              <LogOut className="w-4 h-4" /> Sign Out
-            </button>
+              Sign Out
+            </Button>
           </div>
         </div>
       </div>
@@ -139,20 +146,21 @@ export default function UserLayout() {
               Account
             </p>
 
-            <button
+            <Button
               onClick={() => setSettingsOpen(!isSettingsOpen)}
-              className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isSettingsActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
+              variant={isSettingsActive ? 'primary' : 'ghost'}
+              size="md"
+              fullWidth
+              leftIcon={Settings}
+              rightIcon={ChevronDown}
+              iconClassName={cn("transition-transform duration-200", isSettingsOpen && "rotate-180")}
+              className={cn(
+                "justify-start px-3 font-medium",
+                !isSettingsActive && "text-muted-foreground hover:text-foreground"
+              )}
             >
-              <span className="flex items-center gap-2.5">
-                <Settings className="w-4 h-4 shrink-0" />
-                Settings
-              </span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isSettingsOpen ? 'rotate-180' : ''}`} />
-            </button>
+              Settings
+            </Button>
 
             <AnimatePresence initial={false}>
               {isSettingsOpen && (
@@ -237,13 +245,15 @@ export default function UserLayout() {
                 {profile?.subscriptionStatus || 'free'}
               </p>
             </div>
-            <button
+            <Button
               onClick={handleSignOut}
+              variant="ghost"
+              size="icon"
               className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
               title="Sign out"
             >
               <LogOut className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
         </div>
       </aside>
@@ -255,28 +265,28 @@ export default function UserLayout() {
         <header className="h-16 glass sticky top-0 z-40 flex items-center justify-between px-4 md:px-6 shrink-0">
           {/* Mobile: burger + logo */}
           <div className="flex items-center gap-3 lg:hidden">
-            <button
+            <Button
               onClick={() => setMobileOpen(true)}
-              className="p-2 rounded bg-muted text-foreground hover:bg-border transition-colors"
+              variant="secondary"
+              size="icon"
+              className="rounded bg-muted text-foreground hover:bg-border transition-colors h-9 w-9"
             >
               <Menu className="w-5 h-5" />
-            </button>
+            </Button>
             <Link to="/" className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-primary fill-primary" />
               <span className="font-bold text-sm font-display">promptly</span>
             </Link>
           </div>
 
-          {/* Desktop: search */}
           <div className="hidden lg:flex items-center flex-1 max-w-sm">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search blueprintsâ€¦"
-                className="w-full bg-muted/60 border border-transparent focus:border-primary/30 focus:bg-background rounded-md pl-9 pr-4 py-2 text-sm transition-all placeholder:text-muted-foreground/50 focus:outline-none focus:ring-0"
-              />
-            </div>
+            <Input 
+              type="text"
+              placeholder="Search blueprints..."
+              leftIcon={Search}
+              variant="filled"
+              inputSize="sm"
+            />
           </div>
 
           {/* Right actions */}
@@ -290,9 +300,13 @@ export default function UserLayout() {
 
             {/* Avatar + dropdown */}
             <div className="relative">
-              <button
+              <Button
                 onClick={() => setUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-2 p-1.5 rounded hover:bg-muted transition-colors"
+                variant="ghost"
+                size="md"
+                rightIcon={ChevronDown}
+                iconClassName={cn("transition-transform duration-200", isUserMenuOpen && "rotate-180")}
+                className="flex items-center gap-2 p-1.5 rounded hover:bg-muted transition-colors h-auto"
               >
                 {profile?.photoURL ? (
                   <img
@@ -305,8 +319,7 @@ export default function UserLayout() {
                     {profile?.displayName?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                 )}
-                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
+              </Button>
 
               <AnimatePresence>
                 {isUserMenuOpen && (
@@ -326,13 +339,16 @@ export default function UserLayout() {
                       <DropdownItem to="/settings/profile" icon={UserIcon} onClick={() => setUserMenuOpen(false)}>Profile</DropdownItem>
                       <DropdownItem to="/settings/billing" icon={CreditCard} onClick={() => setUserMenuOpen(false)}>Billing</DropdownItem>
                       <div className="h-px bg-border my-1" />
-                      <button
+                      <Button
                         onClick={() => { setUserMenuOpen(false); handleSignOut(); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium text-destructive hover:bg-destructive/8 transition-colors"
+                        variant="ghost"
+                        size="md"
+                        fullWidth
+                        leftIcon={LogOut}
+                        className="justify-start px-3 py-2 text-destructive hover:bg-destructive/8 font-medium"
                       >
-                        <LogOut className="w-4 h-4" />
                         Sign out
-                      </button>
+                      </Button>
                     </motion.div>
                   </>
                 )}
@@ -389,12 +405,14 @@ export default function UserLayout() {
                   </div>
                   <span className="font-bold font-display">promptly</span>
                 </Link>
-                <button
+                <Button
                   onClick={() => setMobileOpen(false)}
-                  className="p-1.5 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  variant="secondary"
+                  size="icon"
+                  className="rounded bg-muted text-muted-foreground hover:text-foreground transition-colors h-9 w-9"
                 >
                   <X className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
 
               <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -429,13 +447,16 @@ export default function UserLayout() {
               </nav>
 
               <div className="p-3 border-t border-border shrink-0">
-                <button
+                <Button
                   onClick={() => { setMobileOpen(false); handleSignOut(); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-sm font-medium text-destructive hover:bg-destructive/8 transition-colors"
+                  variant="ghost"
+                  size="md"
+                  fullWidth
+                  leftIcon={LogOut}
+                  className="justify-start px-3 py-2.5 text-destructive hover:bg-destructive/8 font-medium"
                 >
-                  <LogOut className="w-4 h-4" />
                   Sign out
-                </button>
+                </Button>
               </div>
             </motion.aside>
           </>

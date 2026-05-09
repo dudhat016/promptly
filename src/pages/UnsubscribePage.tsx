@@ -1,9 +1,10 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { Mail, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
+import Button from '../components/ui/Button';
 
 export default function UnsubscribePage() {
   const [searchParams] = useSearchParams();
@@ -69,9 +70,9 @@ export default function UnsubscribePage() {
             <p className="text-muted-foreground mb-8">
               We've removed <strong>{email}</strong> from our marketing list. You will no longer receive promotional emails.
             </p>
-            <Link to="/" className="flex items-center justify-center gap-2 text-primary font-bold hover:gap-3 transition-all">
-              <ArrowLeft className="w-4 h-4" /> Back to Promptly
-            </Link>
+            <Button as={Link} to="/" variant="ghost" size="md" leftIcon={ArrowLeft} className="font-bold">
+              Back to Promptly
+            </Button>
           </div>
         )}
 
@@ -84,9 +85,9 @@ export default function UnsubscribePage() {
             <p className="text-muted-foreground mb-8">
               The email address <strong>{email}</strong> is not in our marketing database.
             </p>
-            <Link to="/" className="inline-block bg-foreground text-white px-8 py-2.5 rounded-md font-semibold">
+            <Button as={Link} to="/" variant="primary" size="md">
               Return Home
-            </Link>
+            </Button>
           </div>
         )}
 
@@ -97,9 +98,9 @@ export default function UnsubscribePage() {
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-2">Oops!</h2>
             <p className="text-muted-foreground mb-8">Something went wrong. Please try again later or contact support.</p>
-            <button onClick={() => window.location.reload()} className="btn-primary">
+            <Button onClick={() => window.location.reload()} variant="primary" size="md">
               Try Again
-            </button>
+            </Button>
           </div>
         )}
       </motion.div>

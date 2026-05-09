@@ -1,4 +1,4 @@
-﻿import { limit } from 'firebase/firestore';
+import { limit } from 'firebase/firestore';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Search, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { toTitleCase } from '../lib/utils';
 import { firestoreService } from '../services/firestoreService';
 import { Prompt } from '../types';
 import NeuralAdBanner from '../components/NeuralAdBanner';
+import Button from '../components/ui/Button';
 
 export default function ExplorePage() {
   const { isPro, isAdmin, profile } = useAuth();
@@ -225,36 +226,37 @@ export default function ExplorePage() {
                   {filteredPrompts.length} {filteredPrompts.length === 1 ? 'Prompt' : 'Prompts'}
                 </h2>
                 <div className="relative">
-                  <button
+                  <Button
                     onClick={() => setIsSortOpen(!isSortOpen)}
-                    className="flex items-center gap-2 bg-card border border-border rounded-md px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    variant="white"
+                    size="md"
+                    className="border border-border font-bold"
                   >
-                    <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+                    <SlidersHorizontal className="w-4 h-4 text-muted-foreground mr-1" />
                     <span>{sortOptions.find(o => o.id === sortBy)?.label}</span>
-                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isSortOpen ? 'rotate-180' : ''}`} />
-                  </button>
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ml-1 ${isSortOpen ? 'rotate-180' : ''}`} />
+                  </Button>
 
                   {isSortOpen && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setIsSortOpen(false)} />
                       <div className="absolute right-0 top-full mt-2 w-full min-w-[200px] bg-card border border-border rounded-md shadow-xl z-20 py-2 overflow-hidden">
-                        {sortOptions.map(option => (
-                          <button
-                            key={option.id}
-                            onClick={() => {
-                              setSortBy(option.id as any);
-                              setIsSortOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors flex items-center justify-between ${
-                              sortBy === option.id
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-muted-foreground hover:bg-muted'
-                            }`}
-                          >
-                            {option.label}
-                            {sortBy === option.id && <Check className="w-4 h-4 text-primary" />}
-                          </button>
-                        ))}
+                         {sortOptions.map(option => (
+                           <Button
+                             key={option.id}
+                             onClick={() => {
+                               setSortBy(option.id as any);
+                               setIsSortOpen(false);
+                             }}
+                             variant={sortBy === option.id ? 'primary' : 'ghost'}
+                             size="sm"
+                             fullWidth
+                             className="justify-between px-4 py-2.5 h-auto font-bold rounded-none border-b border-border last:border-0"
+                           >
+                             {option.label}
+                             {sortBy === option.id && <Check className="w-4 h-4" />}
+                           </Button>
+                         ))}
                       </div>
                     </>
                   )}
@@ -268,12 +270,13 @@ export default function ExplorePage() {
                   </div>
                   <h3 className="text-xl font-bold text-foreground mb-1">No prompts found</h3>
                   <p className="text-muted-foreground max-w-xs mx-auto">Try adjusting your search or filters to find what you're looking for.</p>
-                  <button
+                   <Button
                     onClick={() => { setSearchTerm(''); navigate('/explore'); }}
-                    className="mt-6 text-primary font-bold hover:underline"
+                    variant="ghost"
+                    className="mt-6 text-primary font-bold h-auto py-1"
                   >
                     Clear all filters
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -299,11 +302,15 @@ export default function ExplorePage() {
                           <p className="text-xs text-muted-foreground">Pro members get unlimited access, copies, and new prompts every week.</p>
                         </div>
                       </div>
-                      <button onClick={() => navigate('/pricing')}
-                        className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-all relative z-10"
-                        style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-                        <Zap className="w-4 h-4" /> Go Pro
-                      </button>
+                       <Button 
+                        onClick={() => navigate('/pricing')}
+                        variant="primary"
+                        size="md"
+                        leftIcon={Zap}
+                        className="relative z-10"
+                      >
+                        Go Pro
+                      </Button>
                     </div>
                   )}
 
@@ -320,36 +327,36 @@ export default function ExplorePage() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-12">
-                  <button
+                  <Button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="p-2 rounded-md border border-border disabled:opacity-30 hover:bg-muted transition-colors text-foreground"
+                    variant="secondary"
+                    size="icon"
                   >
                     <ChevronLeft className="w-5 h-5" />
-                  </button>
+                  </Button>
                   <div className="flex items-center gap-1">
                     {[...Array(Math.min(totalPages, 7))].map((_, i) => (
-                      <button
+                      <Button
                         key={i}
                         onClick={() => setCurrentPage(i + 1)}
-                        className={`w-10 h-10 rounded-md text-sm font-bold transition-all ${
-                          currentPage === i + 1
-                            ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-110'
-                            : 'text-muted-foreground hover:bg-muted'
-                        }`}
+                        variant={currentPage === i + 1 ? 'primary' : 'ghost'}
+                        size="icon"
+                        className={currentPage === i + 1 ? 'scale-110 shadow-lg shadow-primary/20' : ''}
                       >
                         {i + 1}
-                      </button>
+                      </Button>
                     ))}
-                    {totalPages > 7 && <span className="text-muted-foreground text-sm px-1">…{totalPages}</span>}
+                    {totalPages > 7 && <span className="text-muted-foreground text-sm px-1 font-bold">…{totalPages}</span>}
                   </div>
-                  <button
+                  <Button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-md border border-border disabled:opacity-30 hover:bg-muted transition-colors text-foreground"
+                    variant="secondary"
+                    size="icon"
                   >
                     <ChevronRight className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
               )}
 

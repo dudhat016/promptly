@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/firebase';
+import { cn } from '../lib/utils';
+import Input from '../components/ui/Input';
+import Textarea from '../components/ui/Textarea';
 import Select from '../components/ui/Select';
+import Button from '../components/ui/Button';
 
 interface Message {
   senderId: string;
@@ -129,14 +133,15 @@ export default function SupportPage() {
           <h1 className="text-2xl font-bold text-foreground">Support Hub</h1>
           <p className="text-sm text-muted-foreground mt-1">Submit a ticket and we'll get back to you within 24 hours.</p>
         </div>
-        <button
+        <Button
           onClick={() => { setIsCreating(!isCreating); setSelectedTicket(null); }}
-          className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
-          style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
+          variant={isCreating ? 'secondary' : 'primary'}
+          size="md"
+          leftIcon={isCreating ? X : MessageSquare}
+          className="shrink-0"
         >
-          {isCreating ? <X className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
           {isCreating ? 'Cancel' : 'Open New Ticket'}
-        </button>
+        </Button>
       </div>
 
       {isCreating ? (
@@ -144,38 +149,48 @@ export default function SupportPage() {
         <div className="max-w-2xl bg-card border border-border rounded-2xl p-8">
           <h2 className="text-lg font-bold text-foreground mb-6">Describe your issue</h2>
           <form onSubmit={handleCreateTicket} className="space-y-5">
-            <div>
-              <label htmlFor="subject" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Subject</label>
-              <input id="subject" type="text" value={subject} onChange={e => setSubject(e.target.value)}
-                className={inputClass} placeholder="What can we help you with?" required />
-            </div>
-            <div>
-              <label htmlFor="priority" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Priority</label>
-              <Select
-                id="priority"
-                value={priority}
-                onChange={val => setPriority(val)}
-                options={[
-                  { label: 'Low', value: 'low', description: 'General question' },
-                  { label: 'Medium', value: 'medium', description: 'Feature or account issue' },
-                  { label: 'High', value: 'high', description: 'Billing or access problem' }
-                ]}
-                isSearchable={false}
-              />
-            </div>
-            <div>
-              <label htmlFor="message" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Message</label>
-              <textarea id="message" value={message} onChange={e => setMessage(e.target.value)}
-                rows={6} className={inputClass} placeholder="Describe your issue in detail..." required />
-            </div>
-            <button type="submit" disabled={submitting}
-              className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-60 transition-all"
-              style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-              {submitting
-                ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                : <Send className="w-4 h-4" />}
+            <Input 
+              label="Subject"
+              id="subject"
+              name="subject"
+              type="text" 
+              value={subject} 
+              onChange={e => setSubject(e.target.value)}
+              placeholder="What can we help you with?" 
+              required 
+            />
+            <Select
+              label="Priority"
+              id="priority"
+              value={priority}
+              onChange={val => setPriority(val)}
+              options={[
+                { label: 'Low', value: 'low', description: 'General question' },
+                { label: 'Medium', value: 'medium', description: 'Feature or account issue' },
+                { label: 'High', value: 'high', description: 'Billing or access problem' }
+              ]}
+              isSearchable={false}
+            />
+            <Textarea 
+              label="Message"
+              id="message" 
+              name="message"
+              value={message} 
+              onChange={e => setMessage(e.target.value)}
+              rows={6} 
+              placeholder="Describe your issue in detail..." 
+              required 
+            />
+            <Button 
+              type="submit" 
+              isLoading={submitting}
+              variant="primary"
+              size="lg"
+              fullWidth
+              leftIcon={Send}
+            >
               Submit Ticket
-            </button>
+            </Button>
           </form>
         </div>
       ) : (
@@ -197,22 +212,31 @@ export default function SupportPage() {
               const Icon = cfg.icon;
               const isSelected = selectedTicket?.id === ticket.id;
               return (
-                <button key={ticket.id} onClick={() => setSelectedTicket(ticket)}
-                  className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected ? 'border-primary/30 bg-primary/5' : 'border-border bg-card hover:border-border/60 hover:bg-muted/30'}`}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className={`flex items-center gap-1.5 text-xs font-bold ${cfg.color}`}>
-                      <Icon className="w-3.5 h-3.5" />
-                      {cfg.label}
-                    </div>
-                    <span className={`text-xs font-bold uppercase tracking-wider ${PRIORITY_COLOR[ticket.priority]}`}>
-                      {ticket.priority}
-                    </span>
-                  </div>
-                  <p className="text-sm font-semibold text-foreground truncate">{ticket.subject}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {ticket.messages?.length || 0} message{(ticket.messages?.length || 0) !== 1 ? 's' : ''}
-                  </p>
-                </button>
+                 <Button 
+                   key={ticket.id} 
+                   onClick={() => setSelectedTicket(ticket)}
+                   variant={isSelected ? 'primary' : 'secondary'}
+                   size="lg"
+                   fullWidth
+                   className={cn(
+                     "flex-col items-start h-auto p-4 transition-all",
+                     isSelected ? "bg-primary/5 border-primary/30" : "bg-card border-border hover:bg-muted/30"
+                   )}
+                 >
+                   <div className="flex items-center justify-between w-full mb-1.5">
+                     <div className={cn("flex items-center gap-1.5 text-xs font-bold", cfg.color)}>
+                       <Icon className="w-3.5 h-3.5" />
+                       {cfg.label}
+                     </div>
+                     <span className={cn("text-xs font-bold uppercase tracking-wider", PRIORITY_COLOR[ticket.priority])}>
+                       {ticket.priority}
+                     </span>
+                   </div>
+                   <p className="text-sm font-semibold text-foreground truncate w-full">{ticket.subject}</p>
+                   <p className="text-xs text-muted-foreground mt-0.5">
+                     {ticket.messages?.length || 0} message{(ticket.messages?.length || 0) !== 1 ? 's' : ''}
+                   </p>
+                 </Button>
               );
             })}
           </div>
@@ -232,9 +256,14 @@ export default function SupportPage() {
                       <span className={`uppercase tracking-wider ${PRIORITY_COLOR[selectedTicket.priority]}`}>{selectedTicket.priority} priority</span>
                     </div>
                   </div>
-                  <button onClick={() => setSelectedTicket(null)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
+                   <Button 
+                    onClick={() => setSelectedTicket(null)} 
+                    variant="ghost" 
+                    size="icon" 
+                    className="shrink-0"
+                  >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Messages */}
@@ -268,16 +297,28 @@ export default function SupportPage() {
                       rows={2}
                       className={`${inputClass} resize-none flex-grow`}
                     />
-                    <button onClick={handleSendReply} disabled={sending || !reply.trim()}
-                      className="self-end px-4 py-3 rounded-xl font-bold text-sm text-white flex items-center gap-2 disabled:opacity-50 transition-all"
-                      style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-                      {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="w-4 h-4" />}
-                    </button>
+                     <Button 
+                      onClick={handleSendReply} 
+                      isLoading={sending}
+                      disabled={!reply.trim()}
+                      variant="primary"
+                      size="md"
+                      className="self-end px-4 h-12"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
                   </div>
                 )}
                 {selectedTicket.status === 'resolved' && (
                   <div className="p-4 border-t border-border text-center text-xs text-muted-foreground font-semibold">
-                    This ticket has been resolved. <button onClick={() => setIsCreating(true)} className="text-primary hover:underline ml-1">Open a new ticket</button>
+                     This ticket has been resolved. 
+                    <Button 
+                      onClick={() => setIsCreating(true)} 
+                      variant="ghost" 
+                      className="text-primary hover:underline ml-1 h-auto py-1 inline-flex"
+                    >
+                      Open a new ticket
+                    </Button>
                   </div>
                 )}
               </div>

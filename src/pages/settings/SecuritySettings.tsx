@@ -1,5 +1,6 @@
-﻿import { Shield, Mail, Lock, LogOut, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Shield, Mail, Lock, LogOut, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
+import Button from '../../components/ui/Button';
 
 export default function SecuritySettings() {
   return (
@@ -72,9 +73,13 @@ function SecurityItem({ icon: Icon, title, desc, action, actionType = 'button' }
           <span className="text-xs font-bold uppercase tracking-[0.2em]">{action}</span>
         </div>
       ) : (
-        <button className="text-xs font-bold uppercase tracking-[0.2em] text-foreground bg-card hover:bg-muted border border-border px-6 py-3 rounded-md transition-all shrink-0 shadow-sm">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="font-bold uppercase tracking-[0.2em] shadow-sm shrink-0"
+        >
           {action}
-        </button>
+        </Button>
       )}
     </div>
   );

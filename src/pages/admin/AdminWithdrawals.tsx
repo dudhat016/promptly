@@ -7,6 +7,7 @@ import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn } from '../../components/admin';
 import { logAuditEvent } from '../../lib/auditLog';
 import { useAuth } from '../../hooks/useAuth';
+import Button from '../../components/ui/Button';
 
 type PayoutStatus = 'all' | 'pending' | 'completed' | 'rejected';
 
@@ -179,20 +180,26 @@ export default function AdminWithdrawals() {
       hideable: false,
       render: p => p.status === 'pending' ? (
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={() => handleStatusUpdate(p, 'completed')}
             title="Approve"
-            className="p-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-500/20"
+            variant="success"
+            size="icon"
+            rounded="lg"
+            className="shadow-sm shadow-emerald-500/20"
           >
             <Check className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => handleStatusUpdate(p, 'rejected')}
             title="Reject"
-            className="p-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-all shadow-sm shadow-rose-500/20"
+            variant="danger"
+            size="icon"
+            rounded="lg"
+            className="shadow-sm shadow-rose-500/20"
           >
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       ) : null,
     },
@@ -224,14 +231,12 @@ export default function AdminWithdrawals() {
       {/* Status filter tabs */}
       <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg w-fit">
         {STATUS_TABS.map(tab => (
-          <button
+          <Button
             key={tab.id}
             onClick={() => setStatusFilter(tab.id)}
-            className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-              statusFilter === tab.id
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            variant={statusFilter === tab.id ? 'white' : 'ghost'}
+            size="sm"
+            className={statusFilter === tab.id ? "shadow-sm" : ""}
           >
             {tab.label}
             {tab.id !== 'all' && (
@@ -239,7 +244,7 @@ export default function AdminWithdrawals() {
                 ({payouts.filter(p => p.status === tab.id).length})
               </span>
             )}
-          </button>
+          </Button>
         ))}
       </div>
 

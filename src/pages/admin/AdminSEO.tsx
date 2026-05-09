@@ -5,6 +5,7 @@ import { Prompt } from '../../types';
 import { AlertCircle, CheckCircle2, Search, Edit, Download, Globe, FileText } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { Link } from 'react-router-dom';
+import Button from '../../components/ui/Button';
 
 export default function AdminSEO() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -133,14 +134,25 @@ export default function AdminSEO() {
         subtitle="Identify and fix content gaps to rank higher on search engines."
         actions={
           <>
-            <Link to="/admin/site-pages" className="flex items-center gap-2 bg-card border border-border text-muted-foreground px-5 py-2.5 rounded-md font-bold hover:bg-muted transition-all text-sm">
-              <Globe className="w-4 h-4" />
+            <Button
+              as={Link}
+              to="/admin/site-pages"
+              variant="secondary"
+              size="md"
+              leftIcon={Globe}
+              className="font-bold"
+            >
               Site Pages
-            </Link>
-            <button onClick={handleDownloadSitemap} className="flex items-center gap-2 bg-foreground text-background px-5 py-2.5 rounded-md font-bold hover:bg-foreground/90 transition-all shadow-lg text-sm">
-              <Download className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={handleDownloadSitemap}
+              variant="primary"
+              size="md"
+              leftIcon={Download}
+              className="font-bold shadow-lg shadow-primary/20"
+            >
               Sitemap.xml
-            </button>
+            </Button>
           </>
         }
       />
@@ -173,7 +185,15 @@ export default function AdminSEO() {
             <Search className="w-5 h-5 text-primary" />
             Core Site Meta Audit
           </h3>
-          <Link to="/admin/site-pages" className="text-xs font-black text-primary hover:underline uppercase tracking-widest">Update Meta</Link>
+          <Button
+            as={Link}
+            to="/admin/site-pages"
+            variant="ghost"
+            size="sm"
+            className="text-xs font-black text-primary hover:underline hover:bg-transparent uppercase tracking-widest p-0 h-auto"
+          >
+            Update Meta
+          </Button>
         </div>
         <div className="divide-y divide-border">
           {sitePages.length === 0 ? (
@@ -271,13 +291,16 @@ export default function AdminSEO() {
                   )}
                 </td>
                 <td className="px-8 py-6 text-right">
-                  <Link
+                  <Button
+                    as={Link}
                     to={`/admin/prompts/edit/${p.id}`}
-                    className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-xl text-xs font-black hover:bg-primary hover:text-primary-foreground transition-all"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={Edit}
+                    className="rounded-xl text-xs font-black"
                   >
-                    <Edit className="w-3 h-3" />
                     Fix Now
-                  </Link>
+                  </Button>
                 </td>
               </tr>
             ))}

@@ -1,10 +1,13 @@
-﻿import { CheckSquare, Coins, Cpu, LayoutGrid, Search, ShieldCheck, Square, Tag as TagIcon, Zap } from 'lucide-react';
+import { CheckSquare, Coins, Cpu, LayoutGrid, Search, ShieldCheck, Square, Tag as TagIcon, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useConfig } from '../hooks/useConfig';
 import { recordPromptInteraction } from '../lib/affinity';
 import { cn } from '../lib/utils';
-import { Tag } from '../types';
+import { Tag as TagType } from '../types';
+import Input from './ui/Input';
+import Checkbox from './ui/Checkbox';
+import Button from './ui/Button';
 
 
 interface ExploreSidebarProps {
@@ -21,7 +24,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
   const { config, loading: configLoading } = useConfig();
   const categories = config.categories;
   const models = config.models;
-  const [tags, setTags] = useState<Tag[]>([]);
+  const [tags, setTags] = useState<TagType[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -141,12 +144,13 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           <Search className="w-5 h-5 text-primary" />
           Search
         </h3>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
+          <Input
+            id="exploreSearch"
+            name="exploreSearch"
             type="text"
             placeholder="Keywords, tasks..."
-            className="w-full bg-muted border border-border rounded-md py-2.5 pl-10 pr-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            leftIcon={Search}
+            variant="filled"
             value={searchTerm}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
@@ -156,25 +160,27 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute top-full mt-2 w-full bg-card border border-border rounded-md shadow-xl z-50 overflow-hidden">
               {suggestions.map((s, i) => (
-                <button
+                <Button
                   key={i}
                   onClick={() => {
                     if (s.type === 'category') handleToggle('category', s.id);
                     else handleModelToggle(s.id);
                     setSearchTerm('');
                   }}
-                  className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors flex items-center justify-between group"
+                  variant="ghost"
+                  size="lg"
+                  fullWidth
+                  className="h-auto px-4 py-3 justify-between font-normal hover:bg-muted"
                 >
                   <span className="text-foreground font-medium">{s.name}</span>
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted px-2 py-1 rounded-md group-hover:bg-background">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted px-2 py-1 rounded-md">
                     {s.type}
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
         </div>
-      </div>
 
       {/* AI Models */}
       <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
@@ -191,28 +197,34 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            <button
+            <Button
               onClick={() => handleModelToggle(modelSlug || '')}
+              variant={!modelSlug ? 'primary' : 'ghost'}
+              size="md"
+              fullWidth
               className={cn(
-                "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center justify-between",
-                !modelSlug ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+                "justify-start font-bold",
+                !modelSlug && "bg-primary/10 text-primary border-none shadow-none"
               )}
             >
               All Models
-            </button>
+            </Button>
             {models.map(model => {
               const isActive = modelSlug === model.id;
               return (
-                <button
+                <Button
                   key={model.id}
                   onClick={() => handleModelToggle(model.id)}
+                  variant={isActive ? 'primary' : 'ghost'}
+                  size="md"
+                  fullWidth
                   className={cn(
-                    "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center justify-between group",
-                    isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+                    "justify-start font-bold",
+                    isActive && "bg-primary/10 text-primary border-none shadow-none"
                   )}
                 >
                   {model.name}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -226,34 +238,20 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           Pricing
         </h3>
         <div className="flex flex-col gap-1.5">
-          <button
-            onClick={() => handleToggle('pricing', 'free')}
-            className={cn(
-              "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
-              activePricing.has('free') ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
-            )}
-          >
-            {activePricing.has('free') ? (
-              <CheckSquare className="w-4 h-4 text-primary shrink-0" />
-            ) : (
-              <Square className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/50 shrink-0" />
-            )}
-            <span className="truncate">Free Prompts</span>
-          </button>
-          <button
-            onClick={() => handleToggle('pricing', 'paid')}
-            className={cn(
-              "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
-              activePricing.has('paid') ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
-            )}
-          >
-            {activePricing.has('paid') ? (
-              <CheckSquare className="w-4 h-4 text-primary shrink-0" />
-            ) : (
-              <Square className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/50 shrink-0" />
-            )}
-            <span className="truncate">Premium Prompts</span>
-          </button>
+          <Checkbox 
+            variant="simple"
+            checked={activePricing.has('free')}
+            onChange={() => handleToggle('pricing', 'free')}
+            label="Free Prompts"
+            className="px-4 py-2.5 rounded-md w-full"
+          />
+          <Checkbox 
+            variant="simple"
+            checked={activePricing.has('paid')}
+            onChange={() => handleToggle('pricing', 'paid')}
+            label="Premium Prompts"
+            className="px-4 py-2.5 rounded-md w-full"
+          />
         </div>
       </div>
 
@@ -273,39 +271,34 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
         ) : (
           <div className="flex flex-col gap-1.5">
             {(activeCategories.size > 0 || activeTags.size > 0) && (
-              <button
+              <Button
                 onClick={handleClear}
-                className="px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center justify-between text-muted-foreground hover:text-destructive hover:bg-destructive/10 mb-2"
+                variant="ghost"
+                size="sm"
+                fullWidth
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 mb-2 font-bold"
               >
                 Clear all filters
-              </button>
+              </Button>
             )}
             {categories.map(category => {
               const catId = category.id.toLowerCase();
               const isActive = activeCategories.has(catId) || activeCategories.has(category.slug);
               return (
-                <button
-                  key={category.id}
-                  onClick={() => handleToggle('category', catId)}
-                  className={cn(
-                    "px-4 py-2.5 rounded-md text-sm font-semibold transition-all flex items-center gap-3 group w-full text-left",
-                    isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  <div className="flex items-center gap-3 flex-grow">
-                    {isActive ? (
-                      <CheckSquare className="w-4 h-4 text-primary shrink-0" />
-                    ) : (
-                      <Square className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/50 shrink-0" />
-                    )}
-                    <span className="truncate">{category.name}</span>
-                  </div>
+                <div key={category.id} className="flex items-center justify-between group px-4 py-2.5 rounded-md transition-all hover:bg-muted">
+                  <Checkbox 
+                    variant="simple"
+                    checked={isActive}
+                    onChange={() => handleToggle('category', catId)}
+                    label={category.name}
+                    className="flex-grow"
+                  />
                   {category.isPremium && (
                     <div title="Premium Category">
                       <Zap className="w-3.5 h-3.5 text-amber-500 fill-current shrink-0" />
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -331,19 +324,19 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
               const tagId = toSlug(tag.name);
               const isActive = activeTags.has(tagId);
               return (
-                <button
+                <Button
                   key={tag.id}
                   onClick={() => handleToggle('tag', tagId)}
+                  variant={isActive ? 'primary' : 'outline'}
+                  size="sm"
+                  leftIcon={isActive ? CheckSquare : undefined}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-bold rounded-lg transition-colors border flex items-center gap-1",
-                    isActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary border-border"
+                    "text-[11px] font-black h-8 px-3 tracking-tighter",
+                    isActive ? "shadow-sm" : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary border-border"
                   )}
                 >
-                  {isActive && <CheckSquare className="w-3.5 h-3.5" />}
                   #{tag.name}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -363,13 +356,17 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           <p className="opacity-70 text-sm mb-8 leading-relaxed font-medium">
             Unlock elite formulas, advanced neural models, and unlimited assets to dominate the AI landscape.
           </p>
-          <Link
+          <Button
+            as={Link}
             to="/pricing"
-            className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground font-bold px-6 py-4 rounded-md hover:opacity-90 transition-all shadow-lg group/btn"
+            variant="primary"
+            size="lg"
+            fullWidth
+            leftIcon={Zap}
+            className="shadow-xl shadow-primary/20"
           >
-            <Zap className="w-4 h-4 fill-current group-hover/btn:scale-110 transition-transform" />
             Upgrade Now
-          </Link>
+          </Button>
         </div>
       </div>
     </aside>

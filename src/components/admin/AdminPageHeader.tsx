@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 
 interface AdminPageHeaderProps {
   label?: string;
-  labelIcon?: LucideIcon;
+  labelIcon?: React.ElementType;
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;

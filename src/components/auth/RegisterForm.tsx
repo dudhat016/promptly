@@ -1,10 +1,11 @@
-﻿import { useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-hot-toast';
 import { Mail, Lock, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import AuthInput from './AuthInput';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
 import { signUpWithEmail, signInWithGoogle } from '../../lib/firebase';
 
 const registerSchema = z.object({
@@ -40,37 +41,36 @@ export default function RegisterForm() {
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <AuthInput
+        <Input
           label="Email Address"
-          icon={Mail}
+          leftIcon={Mail}
           type="email"
           placeholder="name@example.com"
           {...register('email')}
           error={errors.email?.message}
+          variant="filled"
         />
-        <AuthInput
+        <Input
           label="Choose Password"
-          icon={Lock}
+          leftIcon={Lock}
           type="password"
-          placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+          placeholder="••••••••"
           {...register('password')}
           error={errors.password?.message}
+          variant="filled"
         />
 
-        <button
+        <Button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-primary text-primary-foreground py-3 rounded-md font-semibold text-sm hover:bg-primary/90 transition-all shadow-sm shadow-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
+          isLoading={isSubmitting}
+          variant="primary"
+          size="lg"
+          fullWidth
+          leftIcon={UserPlus}
+          className="font-bold shadow-xl shadow-primary/20"
         >
-          {isSubmitting ? (
-            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <UserPlus className="w-4 h-4" />
-              Create Expert Account
-            </>
-          )}
-        </button>
+          {isSubmitting ? 'Creating account...' : 'Create Expert Account'}
+        </Button>
       </form>
 
       <div className="relative flex items-center py-2">
@@ -79,14 +79,17 @@ export default function RegisterForm() {
         <div className="flex-grow border-t border-border"></div>
       </div>
 
-      <button
+      <Button
         onClick={handleGoogleLogin}
-        disabled={isSubmitting}
-        className="w-full flex items-center justify-center gap-3 bg-card border border-border py-3 px-6 rounded-md font-semibold text-sm text-foreground hover:border-primary/30 hover:bg-muted/50 transition-all shadow-sm disabled:opacity-50"
+        isLoading={isSubmitting}
+        variant="white"
+        size="lg"
+        fullWidth
+        className="font-bold border border-border"
       >
-        <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+        <img src="https://www.google.com/favicon.ico" className="w-5 h-5 mr-1" alt="Google" />
         Google Account
-      </button>
+      </Button>
 
       <p className="text-center text-sm font-medium text-muted-foreground">
         Already have an account?{' '}

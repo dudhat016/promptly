@@ -1,4 +1,4 @@
-﻿import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { Mail, Search, Sparkles, Tag as TagIcon, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -6,6 +6,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { BlogPost } from '../types';
+import Input from './ui/Input';
 
 export default function BlogSidebar() {
   const [tags, setTags] = useState<string[]>([]);
@@ -104,15 +105,17 @@ export default function BlogSidebar() {
           <Search className="w-5 h-5 text-primary" />
           Search Blog
         </h3>
-        <form onSubmit={handleSearch} className="relative">
-          <input
+        <form onSubmit={handleSearch}>
+          <Input 
+            id="blogSearch"
+            name="blogSearch"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search articles..."
-            className="w-full bg-muted/50 border border-border rounded-md pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-indigo-500 transition-all"
+            leftIcon={Search}
+            variant="filled"
           />
-          <Search className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
         </form>
       </div>
 
@@ -218,13 +221,13 @@ export default function BlogSidebar() {
           Get the latest prompt engineering guides and AI news delivered directly to your inbox.
         </p>
         <form className="space-y-3" onSubmit={handleSubscribe}>
-          <input
+          <Input 
             type="email"
             placeholder="Enter your email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-card/10 border border-white/20 rounded-md px-4 py-3 text-sm text-white placeholder-indigo-200 focus:outline-none focus:ring-2 focus:ring-white/50"
+            className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:ring-white/30"
           />
           <button
             type="submit"

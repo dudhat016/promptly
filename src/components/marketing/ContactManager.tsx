@@ -11,6 +11,10 @@ import { Contact, Tag, Segment, EmailTemplate } from '../../types';
 import { EmailService } from '../../services/emailService';
 import { CRMService } from '../../services/crmService';
 import { toast } from 'react-hot-toast';
+import Input from '../ui/Input';
+import Checkbox from '../ui/Checkbox';
+import Button from '../ui/Button';
+import { cn } from '../../lib/utils';
 
 export default function ContactManager() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -188,45 +192,63 @@ export default function ContactManager() {
     <div className="space-y-8 pb-20">
       {/* Search and Filters */}
       <div className="bg-card rounded-lg border border-border p-6 flex flex-wrap items-center gap-6 shadow-sm">
-        <div className="flex-1 min-w-[300px] relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input 
-            type="text"
-            placeholder="Search contacts by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-muted/50 border-none rounded-md py-4 pl-12 pr-4 text-sm font-bold focus:ring-1 focus:ring-primary/20 transition-all"
-          />
-        </div>
+        <Input 
+          placeholder="Search contacts by name or email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          leftIcon={Search}
+          variant="filled"
+          className="flex-1 min-w-[300px]"
+        />
         
         <div className="flex bg-muted/50 p-1 rounded-md">
           {(['all', 'active', 'unsubscribed', 'at_risk'] as const).map(filter => (
-            <button 
+            <Button 
               key={filter}
               onClick={() => setActiveFilter(filter)}
-              className={`px-6 py-2 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${activeFilter === filter ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              variant={activeFilter === filter ? 'white' : 'ghost'}
+              size="sm"
+              className={cn(
+                "px-6 font-bold uppercase tracking-widest",
+                activeFilter === filter ? "text-foreground shadow-sm" : "text-muted-foreground"
+              )}
             >
               {filter.replace('_', ' ')}
-            </button>
+            </Button>
           ))}
         </div>
 
         <div className="relative group">
-          <button className="flex items-center gap-2 bg-muted/50 px-6 py-3 rounded-md text-xs font-bold uppercase tracking-widest text-muted-foreground border border-transparent hover:border-border">
-            <Filter className="w-4 h-4" />
+          <Button 
+            variant="ghost" 
+            size="md" 
+            leftIcon={Filter} 
+            rightIcon={ChevronDown}
+            className="bg-muted/50 px-6 font-bold uppercase tracking-widest text-muted-foreground border-transparent hover:border-border"
+          >
             {selectedSegment ? segments.find(s => s.id === selectedSegment)?.name : 'Segments'}
-            <ChevronDown className="w-4 h-4" />
-          </button>
+          </Button>
           <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 p-4">
-             <button onClick={() => setSelectedSegment(null)} className="w-full text-left p-3 rounded-md hover:bg-muted/50 text-xs font-bold text-muted-foreground">All Contacts</button>
+             <Button 
+               onClick={() => setSelectedSegment(null)} 
+               variant="ghost" 
+               size="sm" 
+               fullWidth 
+               className="justify-start px-3 font-bold text-muted-foreground"
+             >
+               All Contacts
+             </Button>
              {segments.map(s => (
-               <button 
+               <Button 
                 key={s.id} 
                 onClick={() => setSelectedSegment(s.id)}
-                className="w-full text-left p-3 rounded-md hover:bg-primary/8 text-xs font-bold text-foreground"
+                variant="ghost"
+                size="sm"
+                fullWidth
+                className="justify-start px-3 font-bold text-foreground hover:bg-primary/8"
                >
                  {s.name}
-               </button>
+               </Button>
              ))}
           </div>
         </div>
@@ -239,11 +261,10 @@ export default function ContactManager() {
             <thead>
               <tr className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground border-b border-border">
                 <th className="p-8 w-12">
-                  <input 
-                    type="checkbox" 
+                  <Checkbox 
+                    variant="simple"
                     checked={selectedIds.length === filteredContacts.length && filteredContacts.length > 0}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
                   />
                 </th>
                 <th className="p-8">Contact</th>
@@ -266,11 +287,10 @@ export default function ContactManager() {
                     className={`tr group ${selectedIds.includes(contact.id) ? 'bg-primary/5' : ''}`}
                   >
                     <td className="p-8">
-                      <input 
-                        type="checkbox" 
+                      <Checkbox 
+                        variant="simple"
                         checked={selectedIds.includes(contact.id)}
                         onChange={() => toggleSelectContact(contact.id)}
-                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
                       />
                     </td>
                     <td className="p-8">
@@ -339,19 +359,32 @@ export default function ContactManager() {
                     </td>
                     <td className="p-8 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button 
+                        <Button 
                           onClick={() => setSendingEmailTo(contact)}
-                          className="p-3 text-muted-foreground hover:text-primary transition-colors"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-primary"
                           title="Send Email"
                         >
                           <Mail className="w-4 h-4" />
-                        </button>
-                        <Link to={`/admin/marketing/contacts/edit/${contact.id}`} className="p-3 text-muted-foreground hover:text-primary transition-colors">
+                        </Button>
+                        <Button
+                          as={Link}
+                          to={`/admin/marketing/contacts/edit/${contact.id}`}
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-primary"
+                        >
                           <Edit2 className="w-4 h-4" />
-                        </Link>
-                        <button onClick={() => handleDeleteContact(contact.id)} className="p-3 text-muted-foreground hover:text-rose-600 transition-colors">
+                        </Button>
+                        <Button 
+                          onClick={() => handleDeleteContact(contact.id)} 
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-rose-600"
+                        >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </motion.tr>
@@ -389,34 +422,42 @@ export default function ContactManager() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button 
+              <Button 
                 onClick={() => setIsBulkTagging(!isBulkTagging)}
-                className="flex items-center gap-2 px-4 py-2 hover:bg-background/10 rounded-md text-xs font-bold uppercase tracking-widest transition-all"
+                variant="ghost"
+                size="sm"
+                leftIcon={TagIcon}
+                className="text-white hover:bg-white/10 font-bold uppercase tracking-widest"
               >
-                <TagIcon className="w-4 h-4" />
                 Add Tags
-              </button>
-              <button 
-                className="flex items-center gap-2 px-4 py-2 hover:bg-background/10 rounded-md text-xs font-bold uppercase tracking-widest transition-all"
+              </Button>
+              <Button 
+                variant="ghost"
+                size="sm"
+                leftIcon={Send}
+                className="text-white hover:bg-white/10 font-bold uppercase tracking-widest"
               >
-                <Send className="w-4 h-4" />
                 Bulk Email
-              </button>
-              <button 
+              </Button>
+              <Button 
                 onClick={handleBulkDelete}
-                className="flex items-center gap-2 px-4 py-2 hover:bg-rose-500/20 text-rose-400 rounded-md text-xs font-bold uppercase tracking-widest transition-all"
+                variant="ghost"
+                size="sm"
+                leftIcon={Trash2}
+                className="text-rose-400 hover:bg-rose-500/20 font-bold uppercase tracking-widest"
               >
-                <Trash2 className="w-4 h-4" />
                 Delete
-              </button>
+              </Button>
             </div>
 
-            <button 
+            <Button 
               onClick={() => setSelectedIds([])}
-              className="ml-auto p-2 hover:bg-background/10 rounded-full transition-all"
+              variant="ghost"
+              size="icon"
+              className="ml-auto text-white hover:bg-white/10 rounded-full"
             >
               <X className="w-5 h-5" />
-            </button>
+            </Button>
 
             {/* Sub-menu for Bulk Tagging */}
             {isBulkTagging && (
@@ -424,14 +465,17 @@ export default function ContactManager() {
                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 px-2">Select Tag to Apply</div>
                 <div className="max-h-[200px] overflow-y-auto space-y-1">
                   {tags.map(tag => (
-                    <button 
+                    <Button 
                       key={tag.id}
                       onClick={() => handleBulkTag(tag.id)}
-                      className="w-full text-left p-2 rounded-md hover:bg-primary/5 flex items-center gap-3 transition-all"
+                      variant="ghost"
+                      size="sm"
+                      fullWidth
+                      className="justify-start gap-3 hover:bg-primary/5"
                     >
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
                       <span className="text-sm font-medium text-foreground">{tag.name}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -444,10 +488,14 @@ export default function ContactManager() {
 
       {contacts.length > 0 && selectedIds.length === 0 && (
         <div className="flex justify-center">
-           <button className="flex items-center gap-2 px-8 py-4 bg-card border border-border rounded-md font-bold text-xs uppercase tracking-widest text-muted-foreground hover:bg-muted/50 transition-all shadow-sm">
-             <Download className="w-4 h-4" />
+           <Button 
+             variant="outline" 
+             size="lg" 
+             leftIcon={Download} 
+             className="px-8 bg-card font-bold uppercase tracking-widest text-muted-foreground shadow-sm"
+           >
              Export Contacts (CSV)
-           </button>
+           </Button>
         </div>
       )}
 
@@ -466,9 +514,14 @@ export default function ContactManager() {
                   <h3 className="text-2xl font-bold text-foreground">Send Campaign</h3>
                   <p className="text-muted-foreground font-medium">To: {sendingEmailTo.email}</p>
                 </div>
-                <button onClick={() => setSendingEmailTo(null)} className="p-2 hover:bg-muted rounded-full transition-colors">
+                <Button 
+                  onClick={() => setSendingEmailTo(null)} 
+                  variant="ghost" 
+                  size="icon" 
+                  className="rounded-full"
+                >
                   <X className="w-6 h-6" />
-                </button>
+                </Button>
               </div>
               
               <div className="p-8 space-y-6">
@@ -476,37 +529,49 @@ export default function ContactManager() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Select Template</label>
                   <div className="grid gap-3 max-h-[300px] overflow-y-auto pr-2">
                     {templates.map(t => (
-                      <button 
+                      <Button 
                         key={t.id}
                         onClick={() => setSelectedTemplate(t.id)}
-                        className={`w-full text-left p-4 rounded-md border-2 transition-all flex items-center justify-between group ${selectedTemplate === t.id ? 'border-primary bg-primary/10' : 'border-border hover:border-border bg-muted/20'}`}
+                        variant="outline"
+                        size="lg"
+                        fullWidth
+                        className={cn(
+                          "justify-between h-auto p-4 border-2 font-normal",
+                          selectedTemplate === t.id ? 'border-primary bg-primary/10' : 'border-border bg-muted/20'
+                        )}
                       >
-                        <div className="overflow-hidden">
+                        <div className="text-left overflow-hidden">
                           <p className="font-bold text-foreground truncate">{t.name}</p>
                           <p className="text-xs text-muted-foreground truncate">{t.subject}</p>
                         </div>
                         {selectedTemplate === t.id && <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />}
-                      </button>
+                      </Button>
                     ))}
                     {templates.length === 0 && <p className="text-center text-muted-foreground py-8 text-xs font-bold uppercase">No templates found</p>}
                   </div>
                 </div>
 
                 <div className="pt-4 flex gap-4">
-                  <button 
+                  <Button 
                     onClick={handleSendEmail}
-                    disabled={!selectedTemplate || isSending}
-                    className="flex-grow btn-primary py-4"
+                    isLoading={isSending}
+                    disabled={!selectedTemplate}
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    leftIcon={Send}
+                    className="py-4 font-bold uppercase tracking-widest"
                   >
-                    <Send className="w-5 h-5" />
                     {isSending ? 'Sending...' : 'Send Now'}
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => setSendingEmailTo(null)}
-                    className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all"
+                    variant="secondary"
+                    size="lg"
+                    className="px-8 font-bold uppercase tracking-widest"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>

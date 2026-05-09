@@ -1,6 +1,7 @@
 import { createContext, useContext, useRef, useState } from 'react';
 import { AlertTriangle, Trash2, HelpCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import Button from '../ui/Button';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -84,22 +85,22 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 justify-end px-6 py-4 bg-muted/30 border-t border-border">
-                  <button
+                  <Button
                     onClick={handleCancel}
-                    className="btn-secondary"
+                    variant="ghost"
+                    size="sm"
+                    className="font-bold uppercase tracking-widest text-xs"
                   >
                     {options.cancelLabel ?? 'Cancel'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleConfirm}
-                    className={
-                      options.destructive
-                        ? 'px-4 py-2.5 bg-rose-500 text-white rounded-lg text-sm font-bold hover:bg-rose-600 transition-all'
-                        : 'btn-primary'
-                    }
+                    variant={options.destructive ? 'danger' : 'primary'}
+                    size="sm"
+                    className="font-bold uppercase tracking-widest text-xs"
                   >
                     {options.confirmLabel ?? 'Confirm'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>

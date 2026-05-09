@@ -9,6 +9,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import TagInput from '../../components/TagInput';
 import Select from '../../components/ui/Select';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import Textarea from '../../components/ui/Textarea';
+import Checkbox from '../../components/ui/Checkbox';
 
 export default function AdminPromptForm() {
   const { id } = useParams();
@@ -163,83 +167,71 @@ export default function AdminPromptForm() {
         
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="promptTitle" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Title</label>
-              <input 
-                id="promptTitle"
-                name="promptTitle"
-                type="text" required
-                value={prompt.title || ''}
-                onChange={e => handleTitleChange(e.target.value)}
-                placeholder="e.g. Expert Python Architect"
-                className="input"
-              />
-            </div>
-            <div>
-              <label htmlFor="promptSlug" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">SEO Slug</label>
-              <input 
-                id="promptSlug"
-                name="promptSlug"
-                type="text" required
-                value={prompt.slug || ''}
-                onChange={e => {
-                  setPrompt({...prompt, slug: slugify(e.target.value)});
-                  setIsManualSEO(prev => ({ ...prev, slug: true }));
-                }}
-                placeholder="expert-python-architect"
-                className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 focus:outline-none transition-all font-mono"
-              />
-            </div>
+            <Input 
+              label="Title"
+              id="promptTitle"
+              name="promptTitle"
+              type="text" required
+              value={prompt.title || ''}
+              onChange={e => handleTitleChange(e.target.value)}
+              placeholder="e.g. Expert Python Architect"
+            />
+            <Input 
+              label="SEO Slug"
+              id="promptSlug"
+              name="promptSlug"
+              type="text" required
+              value={prompt.slug || ''}
+              onChange={e => {
+                setPrompt({...prompt, slug: slugify(e.target.value)});
+                setIsManualSEO(prev => ({ ...prev, slug: true }));
+              }}
+              placeholder="expert-python-architect"
+              className="font-mono"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="metaTitle" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Title (SEO)</label>
-              <input 
-                id="metaTitle"
-                name="metaTitle"
-                type="text"
-                value={prompt.metaTitle || ''}
-                onChange={e => {
-                  setPrompt({...prompt, metaTitle: e.target.value});
-                  setIsManualSEO(prev => ({ ...prev, metaTitle: true }));
-                }}
-                placeholder="Google search title..."
-                className="input"
-              />
-            </div>
-            <div>
-              <label htmlFor="metaKeywords" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Keywords (SEO)</label>
-              <input 
-                id="metaKeywords"
-                name="metaKeywords"
-                type="text"
-                value={prompt.metaKeywords || ''}
-                onChange={e => {
-                  setPrompt({...prompt, metaKeywords: e.target.value});
-                  setIsManualSEO(prev => ({ ...prev, metaKeywords: true }));
-                }}
-                placeholder="ai, prompt, gpt4, seo..."
-                className="input"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="metaDescription" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Meta Description (SEO)</label>
-            <textarea 
-              id="metaDescription"
-              name="metaDescription"
-              rows={2}
-              value={prompt.metaDescription || ''}
+            <Input 
+              label="Meta Title (SEO)"
+              id="metaTitle"
+              name="metaTitle"
+              type="text"
+              value={prompt.metaTitle || ''}
               onChange={e => {
-                setPrompt({...prompt, metaDescription: e.target.value});
-                setIsManualSEO(prev => ({ ...prev, metaDescription: true }));
+                setPrompt({...prompt, metaTitle: e.target.value});
+                setIsManualSEO(prev => ({ ...prev, metaTitle: true }));
               }}
-              placeholder="SEO meta description for Google search results..."
-              className="textarea"
+              placeholder="Google search title..."
+            />
+            <Input 
+              label="Meta Keywords (SEO)"
+              id="metaKeywords"
+              name="metaKeywords"
+              type="text"
+              value={prompt.metaKeywords || ''}
+              onChange={e => {
+                setPrompt({...prompt, metaKeywords: e.target.value});
+                setIsManualSEO(prev => ({ ...prev, metaKeywords: true }));
+              }}
+              placeholder="ai, prompt, gpt4, seo..."
             />
           </div>
+
+          <Textarea 
+            label="Meta Description (SEO)"
+            id="metaDescription"
+            name="metaDescription"
+            rows={2}
+            value={prompt.metaDescription || ''}
+            onChange={e => {
+              setPrompt({...prompt, metaDescription: e.target.value});
+              setIsManualSEO(prev => ({ ...prev, metaDescription: true }));
+            }}
+            placeholder="SEO meta description for Google search results..."
+            className="min-h-[80px]"
+            variant="filled"
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -296,58 +288,52 @@ export default function AdminPromptForm() {
             />
           </div>
 
-          <div>
-            <label htmlFor="description" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Short Description</label>
-            <textarea 
-              id="description"
-              name="description"
-              required rows={2}
-              value={prompt.description || ''}
-              onChange={e => handleDescriptionChange(e.target.value)}
-              placeholder="Describe what this prompt does in a few sentences..."
-              className="textarea"
-            />
-          </div>
+          <Textarea 
+            label="Short Description"
+            id="description"
+            name="description"
+            required rows={2}
+            value={prompt.description || ''}
+            onChange={e => handleDescriptionChange(e.target.value)}
+            placeholder="Describe what this prompt does in a few sentences..."
+            className="min-h-[80px]"
+            variant="filled"
+          />
 
-          <div>
-            <label htmlFor="content" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Full Prompt Template</label>
-            <textarea
-              id="content"
-              name="content"
-              required rows={8}
-              value={prompt.content || ''}
-              onChange={e => setPrompt({...prompt, content: e.target.value})}
-              placeholder="Paste the expert prompt content here. Use [VARIABLE], {{variable}}, or <variable> syntax for placeholders..."
-              className="input font-mono"
-            />
-            <p className="text-xs text-muted-foreground/60 mt-1.5">Wrap placeholders in <code className="bg-muted px-1 rounded">[brackets]</code>, <code className="bg-muted px-1 rounded">{"{{braces}}"}</code>, or <code className="bg-muted px-1 rounded">&lt;tags&gt;</code> — they'll be highlighted on the detail page.</p>
-          </div>
+          <Textarea 
+            label="Full Prompt Template"
+            id="content"
+            name="content"
+            required rows={8}
+            value={prompt.content || ''}
+            onChange={e => setPrompt({...prompt, content: e.target.value})}
+            placeholder="Paste the expert prompt content here. Use [VARIABLE], {{variable}}, or <variable> syntax for placeholders..."
+            className="font-mono min-h-[200px]"
+            variant="filled"
+            helperText="Wrap placeholders in [brackets], {{braces}}, or <tags> — they'll be highlighted on the detail page."
+          />
 
-          <div>
-            <label htmlFor="sampleOutput" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Sample Output <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">optional</span></label>
-            <textarea
-              id="sampleOutput"
-              name="sampleOutput"
-              rows={5}
-              value={prompt.sampleOutput || ''}
-              onChange={e => setPrompt({...prompt, sampleOutput: e.target.value})}
-              placeholder="Paste an example AI response generated by this prompt. Shown to unlocked users as proof of quality."
-              className="textarea"
-            />
-          </div>
+          <Textarea 
+            label="Sample Output (optional)"
+            id="sampleOutput"
+            name="sampleOutput"
+            rows={5}
+            value={prompt.sampleOutput || ''}
+            onChange={e => setPrompt({...prompt, sampleOutput: e.target.value})}
+            placeholder="Paste an example AI response generated by this prompt. Shown to unlocked users as proof of quality."
+            variant="filled"
+          />
 
-          <div>
-            <label htmlFor="usageGuide" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Usage Guide <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">optional</span></label>
-            <textarea
-              id="usageGuide"
-              name="usageGuide"
-              rows={4}
-              value={prompt.usageGuide || ''}
-              onChange={e => setPrompt({...prompt, usageGuide: e.target.value})}
-              placeholder="Step-by-step tips on how to use this prompt. Shown as a 'How to Use' section after unlock. Plain text or use line breaks for steps."
-              className="textarea"
-            />
-          </div>
+          <Textarea 
+            label="Usage Guide (optional)"
+            id="usageGuide"
+            name="usageGuide"
+            rows={4}
+            value={prompt.usageGuide || ''}
+            onChange={e => setPrompt({...prompt, usageGuide: e.target.value})}
+            placeholder="Step-by-step tips on how to use this prompt. Shown as a 'How to Use' section after unlock. Plain text or use line breaks for steps."
+            variant="filled"
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -366,38 +352,38 @@ export default function AdminPromptForm() {
                 isSearchable={false}
               />
             </div>
-            <div className="flex items-end pb-1">
-              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-md border border-border w-full">
-                <input
-                  type="checkbox" 
-                  id="isPaid"
-                  name="isPaid"
-                  checked={prompt.isPaid || false}
-                  onChange={e => setPrompt({...prompt, isPaid: e.target.checked})}
-                  className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
-                />
-                <label htmlFor="isPaid" className="text-sm font-bold text-foreground select-none">
-                  Premium (PRO Only)
-                </label>
-              </div>
-            </div>
+            <Checkbox 
+              label="Premium (PRO Only)"
+              description="Users will need a PRO subscription to view this prompt content."
+              id="isPaid"
+              name="isPaid"
+              checked={prompt.isPaid || false}
+              onChange={e => setPrompt({...prompt, isPaid: e.target.checked})}
+              className="flex-1"
+            />
           </div>
 
           <div className="pt-6 border-t border-border flex gap-4">
-            <button 
+            <Button 
               type="submit" 
-              disabled={saving}
-              className="flex-grow btn-primary btn-lg"
+              isLoading={saving}
+              variant="primary"
+              size="lg"
+              fullWidth
+              leftIcon={Save}
+              className="font-bold"
             >
-              <Save className="w-5 h-5" />
               {saving ? 'Saving...' : 'Save Prompt'}
-            </button>
-            <Link 
+            </Button>
+            <Button 
+              as={Link}
               to="/admin/prompts"
-              className="px-8 bg-muted text-muted-foreground font-bold py-4 rounded-md hover:bg-muted transition-all text-center"
+              variant="secondary"
+              size="lg"
+              className="px-8 font-bold"
             >
               Cancel
-            </Link>
+            </Button>
           </div>
         </form>
       </div>

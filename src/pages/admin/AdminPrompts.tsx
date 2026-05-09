@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { logAuditEvent } from '../../lib/auditLog';
+import Button from '../../components/ui/Button';
 
 export default function AdminPrompts() {
   const confirm = useConfirm();
@@ -127,10 +128,15 @@ export default function AdminPrompts() {
         title="Prompts Library"
         subtitle="Manage all system prompts and templates."
         actions={
-          <Link to="/admin/prompts/new" className="btn-primary">
-            <Plus className="w-4 h-4" />
+          <Button 
+            as={Link} 
+            to="/admin/prompts/new" 
+            variant="primary"
+            leftIcon={Plus}
+            size="sm"
+          >
             Add Prompt
-          </Link>
+          </Button>
         }
       />
       <DataTable

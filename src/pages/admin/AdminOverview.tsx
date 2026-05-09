@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { AdminPageHeader } from '../../components/admin';
+import Button from '../../components/ui/Button';
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -206,9 +207,16 @@ export default function AdminOverview() {
               <h3 className="font-bold text-foreground">Top Prompts</h3>
               <p className="text-xs text-muted-foreground mt-0.5">By views and copies</p>
             </div>
-            <Link to="/admin/prompts" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-              Manage <ArrowUpRight className="w-3 h-3" />
-            </Link>
+            <Button
+              as={Link}
+              to="/admin/prompts"
+              variant="ghost"
+              size="sm"
+              rightIcon={ArrowUpRight}
+              className="text-primary hover:underline font-bold"
+            >
+              Manage
+            </Button>
           </div>
           {topPromptsChart.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
@@ -239,9 +247,16 @@ export default function AdminOverview() {
           <div className="bg-card border border-border rounded-xl p-6 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-foreground">Revenue</h3>
-              <Link to="/admin/revenue" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                Details <ArrowUpRight className="w-3 h-3" />
-              </Link>
+              <Button
+                as={Link}
+                to="/admin/revenue"
+                variant="ghost"
+                size="sm"
+                rightIcon={ArrowUpRight}
+                className="text-primary hover:underline font-bold"
+              >
+                Details
+              </Button>
             </div>
             <div className="space-y-1">
               {[
@@ -316,9 +331,16 @@ export default function AdminOverview() {
         <div className="lg:col-span-2 bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <h3 className="font-bold text-foreground">Recent Signups</h3>
-            <Link to="/admin/users" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-              View all <ArrowUpRight className="w-3 h-3" />
-            </Link>
+            <Button
+              as={Link}
+              to="/admin/users"
+              variant="ghost"
+              size="sm"
+              rightIcon={ArrowUpRight}
+              className="text-primary hover:underline font-bold"
+            >
+              View all
+            </Button>
           </div>
           <div className="divide-y divide-border">
             {recentUsers.map(u => (

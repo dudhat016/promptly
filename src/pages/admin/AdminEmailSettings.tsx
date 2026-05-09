@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import Select from '../../components/ui/Select';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
 
 export default function AdminEmailSettings() {
   const [loading, setLoading] = useState(true);
@@ -90,14 +92,16 @@ export default function AdminEmailSettings() {
           </h3>
           <p className="text-muted-foreground mt-1 font-medium">Configure your custom SMTP server for reliable transactional email delivery.</p>
         </div>
-        <button
+        <Button
           onClick={handleSave}
-          disabled={saving}
-          className="btn-primary"
+          isLoading={saving}
+          variant="primary"
+          size="md"
+          leftIcon={Save}
+          className="font-bold shadow-sm shadow-primary/20"
         >
-          <Save className="w-5 h-5" />
           {saving ? 'Saving...' : 'Save Configuration'}
-        </button>
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
@@ -112,22 +116,28 @@ export default function AdminEmailSettings() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">SMTP Host</label>
-                  <input
+                  <Input
+                    label="SMTP Host"
+                    id="smtpHost"
+                    name="smtpHost"
                     type="text"
                     value={config.smtpHost}
                     onChange={e => setConfig({ ...config, smtpHost: e.target.value })}
-                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm"
+                    variant="filled"
+                    className="font-mono"
                     placeholder="smtp.hostinger.com"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Port</label>
-                  <input
+                  <Input
+                    label="Port"
+                    id="smtpPort"
+                    name="smtpPort"
                     type="text"
                     value={config.smtpPort}
                     onChange={e => setConfig({ ...config, smtpPort: e.target.value })}
-                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm"
+                    variant="filled"
+                    className="font-mono"
                     placeholder="587"
                   />
                 </div>
@@ -154,33 +164,41 @@ export default function AdminEmailSettings() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Username</label>
-                  <input
+                  <Input
+                    label="Username"
+                    id="smtpUser"
+                    name="smtpUser"
                     type="text"
                     value={config.smtpUser}
                     onChange={e => setConfig({ ...config, smtpUser: e.target.value })}
-                    className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm"
+                    variant="filled"
+                    className="font-mono"
                     placeholder="support@techworldproduct.com"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Password</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={config.smtpPass}
-                      onChange={e => setConfig({ ...config, smtpPass: e.target.value })}
-                      className="w-full bg-muted/50 border border-border rounded-md p-4 pr-12 focus:bg-card focus:border-primary/40 transition-all font-mono text-sm"
-                      placeholder="••••••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
+                  <Input
+                    label="Password"
+                    id="smtpPass"
+                    name="smtpPass"
+                    type={showPassword ? "text" : "password"}
+                    value={config.smtpPass}
+                    onChange={e => setConfig({ ...config, smtpPass: e.target.value })}
+                    variant="filled"
+                    className="font-mono"
+                    placeholder="••••••••••••"
+                    rightAction={
+                      <Button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-primary"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
 
@@ -188,14 +206,17 @@ export default function AdminEmailSettings() {
                 <p className="text-xs text-muted-foreground max-w-md italic">
                   Note: You must use an App Password if using Gmail or Outlook with 2FA enabled.
                 </p>
-                <button
+                <Button
                   onClick={handleTestConnection}
-                  disabled={testing || saving}
-                  className="px-6 py-3 rounded-md border-2 border-primary/20 text-primary font-bold text-sm hover:bg-primary/5 transition-all flex items-center gap-2 disabled:opacity-50"
+                  isLoading={testing}
+                  disabled={saving}
+                  variant="outline"
+                  size="md"
+                  leftIcon={Mail}
+                  className="px-6 py-3 border-2 border-primary/20 text-primary font-bold hover:bg-primary/5"
                 >
-                  <Mail className="w-4 h-4" />
                   {testing ? 'Sending Test...' : 'Send Test Email'}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -207,24 +228,24 @@ export default function AdminEmailSettings() {
               Sender Details
             </h4>
             <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">From Name</label>
-                <input
-                  type="text"
-                  value={config.fromName}
-                  onChange={e => setConfig({ ...config, fromName: e.target.value })}
-                  className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">From Email</label>
-                <input
-                  type="email"
-                  value={config.fromEmail}
-                  onChange={e => setConfig({ ...config, fromEmail: e.target.value })}
-                  className="w-full bg-muted/50 border border-border rounded-md p-4 focus:bg-card focus:border-primary/40 transition-all text-sm"
-                />
-              </div>
+              <Input
+                label="From Name"
+                id="fromName"
+                name="fromName"
+                type="text"
+                value={config.fromName}
+                onChange={e => setConfig({ ...config, fromName: e.target.value })}
+                variant="filled"
+              />
+              <Input
+                label="From Email"
+                id="fromEmail"
+                name="fromEmail"
+                type="email"
+                value={config.fromEmail}
+                onChange={e => setConfig({ ...config, fromEmail: e.target.value })}
+                variant="filled"
+              />
             </div>
           </div>
         </div>

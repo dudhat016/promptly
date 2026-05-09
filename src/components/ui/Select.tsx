@@ -28,6 +28,7 @@ interface SelectProps {
   disabled?: boolean;
   id?: string;
   name?: string;
+  label?: string;
 }
 
 /**
@@ -47,11 +48,14 @@ export default function Select({
   className,
   disabled = false,
   id,
-  name
+  name,
+  label
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectId = id || name || `select-${Math.random().toString(36).substr(2, 9)}`;
 
   // Close when clicking outside
   useEffect(() => {
@@ -98,7 +102,15 @@ export default function Select({
   };
 
   return (
-    <div className={cn("relative w-full", className)} ref={containerRef}>
+    <div className={cn("relative w-full space-y-1.5", className)} ref={containerRef}>
+      {label && (
+        <label 
+          htmlFor={selectId} 
+          className="block text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground px-1"
+        >
+          {label}
+        </label>
+      )}
       <input
         type="hidden"
         name={name || id}
@@ -107,12 +119,12 @@ export default function Select({
       />
       {/* Trigger Area */}
       <div
-        id={id}
+        id={selectId}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
-          "flex min-h-[45px] w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-2 text-sm transition-all cursor-pointer hover:border-primary/30",
+          "flex min-h-[48px] w-full items-center justify-between rounded-md border-2 border-border bg-card px-4 py-2 text-sm transition-all cursor-pointer hover:border-primary/40",
           isOpen && "ring-4 ring-primary/10 border-primary shadow-sm",
-          disabled && "opacity-50 cursor-not-allowed bg-muted/50"
+          disabled && "opacity-50 cursor-not-allowed grayscale pointer-events-none"
         )}
       >
         <div className="flex flex-wrap gap-1.5 flex-grow">

@@ -4,6 +4,7 @@ import {
   X, Mail, Tag as TagIcon, Clock, TrendingUp, AlertTriangle, 
   CheckCircle2, Database, ExternalLink, Activity
 } from 'lucide-react';
+import Button from '../ui/Button';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Contact, Tag, ActivityItem } from '../../types';
@@ -56,9 +57,14 @@ export default function ContactProfile({ contact, tags, onClose }: Props) {
               <p className="text-muted-foreground font-medium">{contact.email}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-muted rounded-full transition-all">
+          <Button 
+            onClick={onClose} 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full text-muted-foreground"
+          >
             <X className="w-6 h-6" />
-          </button>
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-10">
@@ -149,13 +155,22 @@ export default function ContactProfile({ contact, tags, onClose }: Props) {
 
         {/* Footer Actions */}
         <div className="p-8 border-t border-border bg-muted/10 flex gap-4">
-          <button className="flex-1 btn-primary py-4">
-            <Mail className="w-5 h-5" />
+          <Button 
+            variant="primary" 
+            size="lg" 
+            fullWidth 
+            leftIcon={Mail} 
+            className="py-4 font-bold uppercase tracking-widest"
+          >
             Send Direct Email
-          </button>
-          <button className="btn-secondary px-8">
+          </Button>
+          <Button 
+            variant="secondary" 
+            size="lg" 
+            className="px-8 font-bold uppercase tracking-widest"
+          >
             Manage Subscription
-          </button>
+          </Button>
         </div>
       </motion.div>
     </div>

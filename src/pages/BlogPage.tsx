@@ -9,6 +9,7 @@ import { motion } from 'motion/react';
 import BlogSidebar from '../components/BlogSidebar';
 import { cn } from '../lib/utils';
 import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
+import Button from '../components/ui/Button';
 
 function readTime(content: string) {
   return Math.max(1, Math.ceil((content || '').split(/\s+/).length / 200));
@@ -146,12 +147,15 @@ export default function BlogPage() {
                   {tagFilter ? `Posts tagged "${displayTag}"` : 'All Posts'}
                 </h2>
                 {tagFilter && (
-                  <button
+                  <Button
                     onClick={() => navigate('/blog')}
-                    className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-all text-muted-foreground bg-muted border border-border hover:text-foreground hover:bg-muted/80"
+                    variant="secondary"
+                    size="sm"
+                    rightIcon={X}
+                    className="h-7 px-2 font-semibold bg-muted border border-border text-muted-foreground hover:text-foreground"
                   >
-                    Clear <X className="w-3 h-3" />
-                  </button>
+                    Clear
+                  </Button>
                 )}
               </div>
               <div className="flex items-center gap-3">
@@ -170,13 +174,18 @@ export default function BlogPage() {
                 )}
                 <div className="flex items-center p-1 rounded-lg gap-0.5 bg-muted border border-border">
                   {([['grid', LayoutGrid], ['list', ListIcon]] as const).map(([mode, Icon]) => (
-                    <button
+                    <Button
                       key={mode}
                       onClick={() => setViewMode(mode)}
-                      className={`p-2 rounded-md transition-all ${viewMode === mode ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                      variant={viewMode === mode ? 'primary' : 'ghost'}
+                      size="icon"
+                      className={cn(
+                        "h-8 w-8 rounded-md transition-all",
+                        viewMode === mode ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      )}
                     >
                       <Icon className="w-4 h-4" />
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>

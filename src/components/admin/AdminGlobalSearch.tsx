@@ -4,6 +4,9 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
+import { cn } from '../../lib/utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -168,30 +171,35 @@ export default function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchPr
           >
             <div className="bg-card border border-border rounded-2xl shadow-2xl shadow-black/25 overflow-hidden">
 
-              {/* Input */}
-              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border">
-                {loading
-                  ? <Loader2 className="w-4 h-4 text-muted-foreground shrink-0 animate-spin" />
-                  : <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+              <Input 
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Search users, prompts, blog, categories..."
+                variant="ghost"
+                leftIcon={loading ? Loader2 : Search}
+                isLoading={loading}
+                className="flex-1"
+                rightAction={
+                  <div className="flex items-center gap-2">
+                    {query && (
+                      <Button
+                        onClick={() => setQuery('')}
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-foreground h-7 w-7"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border">
+                      ESC
+                    </kbd>
+                  </div>
                 }
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Search users, prompts, blog, categories..."
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                />
-                {query && (
-                  <button onClick={() => setQuery('')} className="text-muted-foreground hover:text-foreground transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-                <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border">
-                  ESC
-                </kbd>
-              </div>
+              />
 
               {/* Results */}
               <div ref={listRef} className="max-h-[60vh] overflow-y-auto">
@@ -231,19 +239,23 @@ export default function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchPr
                         const globalIdx = flat.indexOf(item);
                         const isActive = globalIdx === activeIdx;
                         return (
-                          <button
+                          <Button
                             key={item.id}
                             data-active={isActive}
                             onClick={() => go(item)}
                             onMouseEnter={() => setActiveIdx(globalIdx)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                            variant="ghost"
+                            size="md"
+                            fullWidth
+                            className={cn(
+                              "justify-start gap-3 px-4 py-3 h-auto rounded-none border-none",
                               isActive ? 'bg-primary/8' : 'hover:bg-muted/40'
-                            }`}
+                            )}
                           >
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${group.color}`}>
                               <GroupIcon className="w-3.5 h-3.5" />
                             </div>
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 text-left">
                               <p className={`text-sm font-semibold truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
                                 {item.label}
                               </p>
@@ -252,7 +264,7 @@ export default function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchPr
                               )}
                             </div>
                             {isActive && <ArrowRight className="w-3.5 h-3.5 text-primary shrink-0" />}
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>

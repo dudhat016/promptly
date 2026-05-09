@@ -1,14 +1,17 @@
 import { Moon, Sun } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTheme } from '../hooks/useTheme';
+import Button from './ui/Button';
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <button
+    <Button
       onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-      className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors relative w-8 h-8 flex items-center justify-center"
+      variant="ghost"
+      size="icon"
+      className="text-muted-foreground hover:text-foreground w-8 h-8"
       aria-label="Toggle theme"
     >
       <AnimatePresence mode="wait" initial={false}>
@@ -36,6 +39,6 @@ export function ThemeToggle() {
           </motion.div>
         )}
       </AnimatePresence>
-    </button>
+    </Button>
   );
 }

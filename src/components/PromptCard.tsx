@@ -9,6 +9,7 @@ import { doc, updateDoc, increment, collection, addDoc } from 'firebase/firestor
 import { db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
 import { useState } from 'react';
+import Button from './ui/Button';
 
 const DIFFICULTY_DOT: Record<string, string> = {
   beginner:     'bg-emerald-500',
@@ -123,17 +124,17 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
         </div>
 
         {/* Favorite */}
-        <button
+        <Button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); prompt.id && toggleFavorite(prompt.id); }}
+          variant={favorited ? 'primary' : 'ghost'}
+          size="icon"
           className={cn(
-            'absolute top-3 right-3 w-7 h-7 rounded-md flex items-center justify-center backdrop-blur-sm border transition-all',
-            favorited
-              ? 'bg-rose-500 border-rose-500 text-white shadow-sm shadow-rose-500/30'
-              : 'bg-black/40 border-white/10 text-white/60 hover:bg-black/60'
+            'absolute top-3 right-3 w-8 h-8 backdrop-blur-md border border-white/10 shadow-lg',
+            favorited ? 'bg-rose-500 hover:bg-rose-600 border-rose-500 shadow-rose-500/30' : 'bg-black/40 text-white/60 hover:bg-black/60'
           )}
         >
-          <Heart className={cn('w-3.5 h-3.5', favorited && 'fill-current')} />
-        </button>
+          <Heart className={cn('w-4 h-4', favorited && 'fill-current')} />
+        </Button>
       </Link>
 
       {/* Body */}
@@ -181,21 +182,26 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
 
           <div className="flex items-center gap-2">
             {isLocked && !isCategoryLocked && (
-              <button
+              <Button
                 onClick={handleQuickUnlock}
-                disabled={isUnlocking}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all shadow-sm shadow-primary/25 disabled:opacity-50"
+                isLoading={isUnlocking}
+                variant="primary"
+                size="sm"
+                leftIcon={Zap}
+                className="px-3 shadow-sm shadow-primary/25"
               >
-                <Zap className="w-3 h-3 fill-current" />
                 {isUnlocking ? '…' : 'Unlock'}
-              </button>
+              </Button>
             )}
-            <Link
+            <Button
+              as={Link}
               to={`/prompt/${prompt.slug || prompt.id}`}
-              className="w-7 h-7 flex items-center justify-center rounded-md bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+              variant="secondary"
+              size="icon"
+              className="w-8 h-8 hover:bg-primary hover:text-primary-foreground"
             >
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </div>
@@ -209,13 +215,15 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
           </div>
           <p className="text-sm font-bold text-foreground mb-0.5">Pro Members Only</p>
           <p className="text-xs text-muted-foreground mb-4 text-center">This collection is reserved for Pro subscribers.</p>
-          <button
+          <Button
             onClick={(e) => { e.preventDefault(); navigate('/pricing'); }}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all w-full text-center"
-            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
+            variant="primary"
+            size="sm"
+            fullWidth
+            className="shadow-lg shadow-primary/20"
           >
             Upgrade to Pro
-          </button>
+          </Button>
         </div>
       )}
     </motion.div>

@@ -7,6 +7,7 @@ import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import Button from '../../components/ui/Button';
 
 export default function AdminTemplates() {
   const confirm = useConfirm();
@@ -88,10 +89,16 @@ export default function AdminTemplates() {
         title="Email Templates"
         subtitle="Manage automated email structures and marketing copy."
         actions={
-          <Link to="/admin/templates/new" className="btn-primary">
-            <Plus className="w-4 h-4" />
+          <Button
+            as={Link}
+            to="/admin/templates/new"
+            variant="primary"
+            size="md"
+            leftIcon={Plus}
+            className="font-bold shadow-sm shadow-primary/20"
+          >
             Add Template
-          </Link>
+          </Button>
         }
       />
       <DataTable

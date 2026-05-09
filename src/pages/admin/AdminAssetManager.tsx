@@ -1,4 +1,4 @@
-﻿import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -20,6 +20,9 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import { cn } from '../../lib/utils';
 
 interface Asset {
   id: string;
@@ -190,12 +193,17 @@ export default function AdminAssetManager() {
                 <p className="text-xs text-muted-foreground">When enabled, all uploads go to Hostinger.</p>
               </div>
             </div>
-            <button
+            <Button
               onClick={() => setConfig({ ...config, enabled: !config.enabled })}
-              className={`w-12 h-6 rounded-full transition-all relative ${config.enabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+              variant={config.enabled ? 'primary' : 'ghost'}
+              size="sm"
+              className={cn(
+                "w-12 h-6 rounded-full transition-all relative p-0",
+                config.enabled ? 'bg-primary' : 'bg-muted-foreground/30'
+              )}
             >
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${config.enabled ? 'left-7' : 'left-1'}`} />
-            </button>
+              <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm", config.enabled ? 'left-7' : 'left-1')} />
+            </Button>
           </div>
 
           {/* Grid Fields */}
@@ -209,18 +217,26 @@ export default function AdminAssetManager() {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <button
+            <Button
               onClick={testConnection}
-              disabled={testing}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-all shadow-sm disabled:opacity-50"
+              isLoading={testing}
+              variant="outline"
+              size="md"
+              leftIcon={Zap}
+              className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20 font-semibold"
             >
-              {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
               Test Connection
-            </button>
-            <button onClick={saveConfig} disabled={savingConfig} className="btn-primary">
-              {savingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            </Button>
+            <Button
+              onClick={saveConfig}
+              isLoading={savingConfig}
+              variant="primary"
+              size="md"
+              leftIcon={CheckCircle2}
+              className="font-semibold"
+            >
               Save Changes
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -251,25 +267,31 @@ export default function AdminAssetManager() {
 
             <div className="flex flex-wrap justify-center gap-2 mb-6">
               {['assets', 'blog', 'banners', 'icons'].map(folder => (
-                <button
+                <Button
                   key={folder}
                   onClick={() => setSelectedFolder(folder)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${
-                    selectedFolder === folder
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
+                  variant={selectedFolder === folder ? 'primary' : 'ghost'}
+                  size="sm"
+                  className={cn(
+                    "capitalize font-semibold",
+                    selectedFolder !== folder && "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
                 >
                   {folder}
-                </button>
+                </Button>
               ))}
             </div>
 
-            <label className="btn-primary cursor-pointer">
-              <Upload className="w-4 h-4" />
+            <Button
+              as="label"
+              variant="primary"
+              size="lg"
+              leftIcon={Upload}
+              className="cursor-pointer font-semibold"
+            >
               Select Image
               <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={isUploading} />
-            </label>
+            </Button>
           </div>
 
           {isUploading && (
@@ -305,29 +327,36 @@ export default function AdminAssetManager() {
               <div className="aspect-square rounded-md overflow-hidden bg-muted/50 mb-3 relative">
                 <img src={asset.url} alt={asset.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 backdrop-blur-sm">
-                  <button
+                  <Button
                     onClick={() => copyUrl(asset.url)}
-                    className="p-2 bg-card/90 rounded-md hover:bg-primary hover:text-primary-foreground transition-all"
+                    variant="ghost"
+                    size="icon"
+                    className="bg-card/90 hover:bg-primary hover:text-primary-foreground"
                     title="Copy URL"
                   >
                     <Copy className="w-4 h-4" />
-                  </button>
-                  <a
+                  </Button>
+                  <Button
+                    as="a"
                     href={asset.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2 bg-card/90 rounded-md hover:bg-primary hover:text-primary-foreground transition-all"
+                    variant="ghost"
+                    size="icon"
+                    className="bg-card/90 hover:bg-primary hover:text-primary-foreground"
                     title="Open Original"
                   >
                     <ExternalLink className="w-4 h-4" />
-                  </a>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => deleteAsset(asset.id)}
-                    className="p-2 bg-card/90 rounded-md hover:bg-rose-600 hover:text-white transition-all"
+                    variant="ghost"
+                    size="icon"
+                    className="bg-card/90 hover:bg-rose-600 hover:text-white"
                     title="Delete Record"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="px-1 pb-1">
@@ -348,18 +377,14 @@ export default function AdminAssetManager() {
 
 function ConfigField({ label, icon: Icon, value, onChange, type = 'text', placeholder }: any) {
   return (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-        <Icon className="w-3 h-3 text-primary" />
-        {label}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="input"
-      />
-    </div>
+    <Input
+      label={label}
+      leftIcon={Icon}
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      variant="filled"
+    />
   );
 }

@@ -1,13 +1,35 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Zap, Mail, Clock, GitBranch, Plus, X, Save, Play, 
-  Settings, Trash2, MousePointer2, ChevronRight, Sliders,
-  Database, Send, Bell, Users, Filter, Layers, Info, Tag as TagIcon,
-  Sparkles, Activity, Split, Globe, Share2, AlertCircle, Award
+import { cn } from '@/src/lib/utils';
+import {
+  Activity,
+  AlertCircle, Award,
+  Bell,
+  Clock,
+  Filter,
+  GitBranch,
+  Globe,
+  Info,
+  Layers,
+  Mail,
+  MousePointer2,
+  Play,
+  Plus,
+  Save,
+  Settings,
+  Sparkles,
+  Split,
+  Tag as TagIcon,
+  Trash2,
+  Users,
+  X,
+  Zap
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { AutomationFlow, EmailTemplate, Tag as TagType } from '../../types';
+import Button from '../ui/Button';
+import Input from '../ui/Input';
 import Select from '../ui/Select';
-import { AutomationFlow, Tag as TagType, EmailTemplate } from '../../types';
+import Textarea from '../ui/Textarea';
 
 interface Props {
   flow: Partial<AutomationFlow> | null;
@@ -36,9 +58,9 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
     const newStep = {
       id: Math.random().toString(36).substr(2, 9),
       type,
-      params: type === 'wait' ? { duration: 1, unit: 'days' } : 
-               type === 'recommend_prompt' ? { category: 'all' } : 
-               type === 'ab_test' ? { variants: ['A', 'B'], weight: 50 } : 
+      params: type === 'wait' ? { duration: 1, unit: 'days' } :
+               type === 'recommend_prompt' ? { category: 'all' } :
+               type === 'ab_test' ? { variants: ['A', 'B'], weight: 50 } :
                type === 'condition' ? { field: 'subscriptionStatus', operator: 'equals', value: '' } :
                type === 'send_email' ? { templateId: '', customSubject: '', customContent: '' } :
                type === 'notify_user' ? { message: 'New activity detected' } : {}
@@ -79,12 +101,13 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
             <Zap className="w-6 h-6 fill-current" />
           </div>
           <div>
-            <input 
-              type="text" 
+            <Input
+              type="text"
               value={activeFlow.name}
               onChange={e => setActiveFlow({...activeFlow, name: e.target.value})}
-              className="text-xl font-bold text-foreground bg-transparent border-none focus:ring-0 p-0"
+              variant="ghost"
               placeholder="Automation Name"
+              className="text-xl font-bold p-0 focus:ring-0"
             />
             <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
               <Play className="w-3 h-3 fill-current" />
@@ -94,32 +117,44 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
         </div>
         <div className="flex items-center gap-3">
           <div className="flex bg-muted p-1 rounded-md mr-4">
-            <button 
+            <Button
               onClick={() => setViewMode('editor')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${viewMode === 'editor' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-muted-foreground'}`}
+              variant={viewMode === 'editor' ? 'white' : 'ghost'}
+              size="sm"
+              className={cn(
+                "px-4 font-bold uppercase",
+                viewMode === 'editor' ? "text-foreground shadow-sm border border-border" : "text-muted-foreground"
+              )}
             >
               Editor
-            </button>
-            <button 
+            </Button>
+            <Button
               onClick={() => setViewMode('stats')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${viewMode === 'stats' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-muted-foreground'}`}
+              variant={viewMode === 'stats' ? 'white' : 'ghost'}
+              size="sm"
+              className={cn(
+                "px-4 font-bold uppercase",
+                viewMode === 'stats' ? "text-foreground shadow-sm border border-border" : "text-muted-foreground"
+              )}
             >
               Stats
-            </button>
+            </Button>
           </div>
-          <button 
+          <Button
             onClick={onCancel}
-            className="px-6 py-3 rounded-md font-bold text-xs uppercase tracking-widest text-muted-foreground hover:text-muted-foreground transition-all"
+            variant="ghost"
+            size="sm"
           >
             Back
-          </button>
-          <button 
+          </Button>
+          <Button
             onClick={() => onSave(activeFlow)}
-            className="px-8 py-3 bg-primary text-white rounded-md font-bold text-xs uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/10 flex items-center gap-2"
+            variant="primary"
+            leftIcon={Save}
+            size="sm"
           >
-            <Save className="w-4 h-4" />
             Save
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -128,44 +163,47 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
           <>
         <div className="flex-1 overflow-auto p-12 relative bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] cursor-grab active:cursor-grabbing">
            {/* Navigation Controls */}
-           <div className="absolute left-8 bottom-8 flex flex-col items-center gap-4 bg-card border border-border p-2 rounded-md shadow-xl z-20">
-              <button 
+           <div className="absolute left-8 bottom-8 flex flex-col items-center gap-4 bg-card border border-border p-2 rounded-xl shadow-xl z-20">
+              <Button
                 onClick={() => handleZoom(0.1)}
-                className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                variant="ghost"
+                size="icon"
                 title="Zoom In"
               >
                 <Plus className="w-5 h-5" />
-              </button>
-              <button 
+              </Button>
+              <Button
                 onClick={() => setZoomLevel(1)}
-                className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                variant="ghost"
+                size="icon"
                 title="Reset Zoom"
               >
                 <X className="w-5 h-5 rotate-45" />
-              </button>
-              <button 
+              </Button>
+              <Button
                 onClick={() => handleZoom(-0.1)}
-                className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                variant="ghost"
+                size="icon"
                 title="Zoom Out"
               >
-                <div className="w-5 h-0.5 bg-current rounded-full" />
-              </button>
+                <div className="w-5 h-px bg-current" />
+              </Button>
               <div className="h-px w-6 bg-muted" />
               <div className="text-[8px] font-bold text-muted-foreground p-1">{Math.round(zoomLevel * 100)}%</div>
            </div>
 
-          <motion.div 
+          <motion.div
             style={{ scale: zoomLevel, transformOrigin: 'top center' }}
             className="max-w-2xl mx-auto flex flex-col items-center min-h-full pb-32 transition-transform duration-200"
           >
             {/* Trigger Node */}
             {/* ... trigger code ... */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="relative z-10 w-full max-w-sm"
             >
-              <div 
+              <div
                 className={`bg-card border-2 rounded-lg p-6 shadow-sm group cursor-pointer hover:shadow-xl transition-all ${selectedStepId === 'trigger' ? 'border-primary ring-4 ring-indigo-50' : 'border-border'}`}
                 onClick={() => setSelectedStepId('trigger')}
               >
@@ -176,10 +214,10 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                   <div>
                     <h4 className="text-sm font-bold text-foreground uppercase tracking-tight">Flow Trigger</h4>
                     <p className="text-xs text-muted-foreground font-medium">
-                      {activeFlow.trigger?.type === 'user_signup' ? 'When a user signs up' : 
+                      {activeFlow.trigger?.type === 'user_signup' ? 'When a user signs up' :
                        activeFlow.trigger?.type === 'user_login' ? 'When a user logs in' :
-                       activeFlow.trigger?.type === 'tag_added' ? `When tag ${activeFlow.trigger?.value ? `"${tags.find(t => t.id === activeFlow.trigger?.value)?.name || activeFlow.trigger.value}"` : ''} is applied` : 
-                       activeFlow.trigger?.type === 'tag_remove' ? `When tag ${activeFlow.trigger?.value ? `"${tags.find(t => t.id === activeFlow.trigger?.value)?.name || activeFlow.trigger.value}"` : ''} is removed` : 
+                       activeFlow.trigger?.type === 'tag_added' ? `When tag ${activeFlow.trigger?.value ? `"${tags.find(t => t.id === activeFlow.trigger?.value)?.name || activeFlow.trigger.value}"` : ''} is applied` :
+                       activeFlow.trigger?.type === 'tag_remove' ? `When tag ${activeFlow.trigger?.value ? `"${tags.find(t => t.id === activeFlow.trigger?.value)?.name || activeFlow.trigger.value}"` : ''} is removed` :
                        activeFlow.trigger?.type === 'list_applied' ? `When added to list ${activeFlow.trigger?.value ? `"${activeFlow.trigger.value}"` : ''}` :
                        activeFlow.trigger?.type === 'list_removed' ? `When removed from list ${activeFlow.trigger?.value ? `"${activeFlow.trigger.value}"` : ''}` :
                        activeFlow.trigger?.type === 'form_submited' ? `When form ${activeFlow.trigger?.value ? `"${activeFlow.trigger.value}"` : ''} submitted` :
@@ -205,7 +243,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
             <div className="w-full flex flex-col items-center gap-0">
               <AnimatePresence mode="popLayout">
                 {activeFlow.steps?.map((step, idx) => (
-                  <motion.div 
+                  <motion.div
                     key={step.id}
                     layout
                     initial={{ opacity: 0, scale: 0.9, y: 10 }}
@@ -214,7 +252,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                     className="flex flex-col items-center w-full max-w-sm"
                   >
                     <div className="relative group w-full">
-                      <div 
+                      <div
                         onClick={() => setSelectedStepId(step.id)}
                         className={`bg-card border-2 rounded-lg p-6 shadow-md transition-all cursor-pointer hover:shadow-xl ${selectedStepId === step.id ? 'border-primary ring-4 ring-primary/10' : 'border-border'}`}
                       >
@@ -247,14 +285,16 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                               }</p>
                             </div>
                           </div>
-                          <button 
+                          <Button
                             onClick={(e) => { e.stopPropagation(); removeStep(step.id); }}
-                            className="p-2 text-muted-foreground/40 hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100"
                           >
                             <Trash2 className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </div>
-                        
+
                         {step.type === 'condition' && (
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
@@ -317,12 +357,14 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
 
               {/* Add Step Button */}
               <div className="relative pt-4">
-                <button 
-                  className="w-12 h-12 bg-card border-2 border-border rounded-full flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary hover:shadow-xl transition-all group"
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="w-12 h-12 rounded-full text-muted-foreground hover:border-primary hover:text-primary hover:shadow-xl"
                 >
                   <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform" />
-                </button>
-                
+                </Button>
+
                 {/* Floating Action Menu */}
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-card border border-border p-2 rounded-md shadow-2xl flex gap-1 z-50 whitespace-nowrap">
                   <ActionButton icon={Mail} label="Email" onClick={() => addStep('send_email')} color="text-blue-600" />
@@ -340,24 +382,36 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
         <div className="w-96 bg-card border-l border-border overflow-hidden flex flex-col shadow-2xl">
           {/* Tabs */}
           <div className="flex border-b border-border">
-            <button 
+            <Button
               onClick={() => setSidebarTab('nodes')}
-              className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${sidebarTab === 'nodes' ? 'border-primary text-foreground bg-muted/20' : 'border-transparent text-muted-foreground hover:text-muted-foreground'}`}
+              variant={sidebarTab === 'nodes' ? 'ghost' : 'ghost'}
+              size="lg"
+              fullWidth
+              className={cn(
+                "py-4 font-bold uppercase tracking-widest rounded-none border-b-2",
+                sidebarTab === 'nodes' ? "border-primary text-foreground bg-muted/20" : "border-transparent text-muted-foreground"
+              )}
             >
               Nodes
-            </button>
-            <button 
+            </Button>
+            <Button
               onClick={() => setSidebarTab('settings')}
-              className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${sidebarTab === 'settings' ? 'border-primary text-foreground bg-muted/20' : 'border-transparent text-muted-foreground hover:text-muted-foreground'}`}
+              variant={sidebarTab === 'settings' ? 'ghost' : 'ghost'}
+              size="lg"
+              fullWidth
+              className={cn(
+                "py-4 font-bold uppercase tracking-widest rounded-none border-b-2",
+                sidebarTab === 'settings' ? "border-primary text-foreground bg-muted/20" : "border-transparent text-muted-foreground"
+              )}
             >
               Settings
-            </button>
+            </Button>
           </div>
 
           <div className="flex-1 overflow-auto p-8">
             <AnimatePresence mode="wait">
               {sidebarTab === 'nodes' ? (
-                <motion.div 
+                <motion.div
                   key="nodes"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -368,7 +422,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                     <Layers className="w-3 h-3" />
                     Available Steps
                   </h3>
-                  
+
                   <div className="space-y-6">
                     <section>
                       <h4 className="text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest pl-2">Logic</h4>
@@ -397,13 +451,13 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                       </div>
                     </section>
                   </div>
-                  
+
                   <div className="pt-8 text-center">
                     <p className="text-xs font-bold text-muted-foreground/40 uppercase tracking-widest">More steps coming soon</p>
                   </div>
                 </motion.div>
               ) : selectedStepId ? (
-                <motion.div 
+                <motion.div
                   key="settings"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -411,9 +465,14 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                 >
                   <div className="flex items-center justify-between mb-8">
                     <h3 className="text-sm font-bold text-foreground uppercase">Step Details</h3>
-                    <button onClick={() => setSelectedStepId(null)} className="p-2 text-muted-foreground hover:bg-muted rounded-full">
+                    <Button
+                      onClick={() => setSelectedStepId(null)}
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                    >
                       <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
 
                   {selectedStepId === 'trigger' && (
@@ -441,7 +500,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                           ]}
                         />
                       </div>
-                      
+
                       {['tag_added', 'tag_remove'].includes(activeFlow.trigger?.type || '') && (
                         <div className="bg-muted/50 p-6 rounded-lg border border-border">
                           <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">Select Tag</label>
@@ -455,18 +514,16 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                           />
                         </div>
                       )}
-                      
+
                       {['list_applied', 'list_removed', 'form_submited'].includes(activeFlow.trigger?.type || '') && (
                         <div className="bg-muted/50 p-6 rounded-lg border border-border">
-                          <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">
-                            {activeFlow.trigger?.type === 'form_submited' ? 'Form Name' : 'List Name'}
-                          </label>
-                          <input 
+                          <Input
+                            label={activeFlow.trigger?.type === 'form_submited' ? 'Form Name' : 'List Name'}
                             type="text"
                             placeholder={activeFlow.trigger?.type === 'form_submited' ? 'e.g. Lead Gen Form' : 'e.g. Newsletter Subscribers'}
-                            className="w-full bg-card border border-border rounded-md p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
                             value={activeFlow.trigger?.value || ''}
                             onChange={e => setActiveFlow({ ...activeFlow, trigger: { ...activeFlow.trigger!, value: e.target.value } })}
+                            variant="filled"
                           />
                         </div>
                       )}
@@ -474,17 +531,18 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                   )}
 
                   {activeFlow.steps?.find(s => s.id === selectedStepId)?.type === 'wait' && (
-                     <div className="space-y-6">
-                      <div className="bg-muted/50 p-6 rounded-lg border border-border">
-                        <label className="block text-xs font-bold uppercase text-muted-foreground mb-4">Wait Duration</label>
-                        <div className="flex gap-2">
-                          <input 
+                      <div className="space-y-6">
+                        <div className="bg-muted/50 p-6 rounded-lg border border-border">
+                          <div className="flex items-end gap-2">
+                            <Input
+                            label="Wait Duration"
                             type="number"
-                            className="w-20 bg-card border border-border rounded-md p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-600"
                             value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.duration || 1}
                             onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, duration: parseInt(e.target.value) })}
+                            variant="filled"
+                            className="w-24"
                           />
-                             <Select
+                          <Select
                               value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.unit || 'days'}
                               onChange={val => updateStep(selectedStepId as string, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, unit: val })}
                               options={[
@@ -495,8 +553,8 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                               ]}
                               isSearchable={false}
                             />
+                          </div>
                         </div>
-                      </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground px-2 italic">
                         <Info className="w-3 h-3" />
                         <span>Flow will pause for this duration before continuing.</span>
@@ -512,8 +570,8 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.templateId || ''}
                           onChange={val => {
                             const template = templates.find(t => t.id === val);
-                            updateStep(selectedStepId as string, { 
-                              ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, 
+                            updateStep(selectedStepId as string, {
+                              ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params,
                               templateId: val,
                               templateName: template?.type || 'Custom Email'
                             });
@@ -527,46 +585,55 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                       </div>
 
                       {activeFlow.steps?.find(s => s.id === selectedStepId)?.params.templateId === 'custom' && (
-                        <motion.div 
+                        <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           className="space-y-4"
                         >
                           <div className="bg-muted/50 p-6 rounded-lg border border-border">
-                            <label className="block text-xs font-bold uppercase text-muted-foreground mb-2">Subject Line</label>
-                            <input 
-                              type="text"
-                              className="w-full bg-card border border-border rounded-md p-3 text-xs font-bold"
-                              placeholder="Email subject..."
-                              value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.customSubject || ''}
-                              onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, customSubject: e.target.value })}
-                            />
+                          <Input
+                            label="Subject Line"
+                            type="text"
+                            placeholder="Email subject..."
+                            value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.customSubject || ''}
+                            onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, customSubject: e.target.value })}
+                            variant="filled"
+                          />
                           </div>
                           <div className="bg-muted/50 p-6 rounded-lg border border-border">
-                            <label className="block text-xs font-bold uppercase text-muted-foreground mb-2">Email Content (HTML)</label>
-                            <textarea 
-                              className="w-full bg-card border border-border rounded-md p-3 text-xs font-bold h-32"
+                            <Textarea
+                              label="Email Content (HTML)"
                               placeholder="Write your custom email content here..."
                               value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.customContent || ''}
                               onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, customContent: e.target.value })}
+                              variant="filled"
+                              rows={5}
                             />
                           </div>
                         </motion.div>
                       )}
-                      
-                      <button className="w-full bg-foreground text-white py-3 rounded-md text-xs font-bold uppercase tracking-widest hover:bg-foreground/90 transition-all">Preview Template</button>
+
+                      <Button
+                        variant="primary"
+                        size="md"
+                        fullWidth
+                        className="py-3 font-bold uppercase tracking-widest"
+                      >
+                        Preview Template
+                      </Button>
                     </div>
                   )}
 
                   {activeFlow.steps?.find(s => s.id === selectedStepId)?.type === 'notify_user' && (
                      <div className="space-y-6">
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
-                        <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">Notification Message</label>
-                        <textarea 
-                          className="w-full bg-card border border-border rounded-md p-4 text-xs font-bold h-32 focus:ring-2 focus:ring-indigo-600"
+                        <Textarea
+                          label="Notification Message"
                           placeholder="What message should the user see?"
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.message || ''}
                           onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, message: e.target.value })}
+                          variant="filled"
+                          rows={4}
                         />
                       </div>
                     </div>
@@ -608,8 +675,8 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                      <div className="space-y-6">
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-4 tracking-widest">Traffic Split %</label>
-                        <input 
-                          type="range" 
+                        <input
+                          type="range"
                           min="0" max="100" step="5"
                           className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-indigo-600"
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.weight || 50}
@@ -626,13 +693,13 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                   {activeFlow.steps?.find(s => s.id === selectedStepId)?.type === 'webhook' && (
                      <div className="space-y-6">
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
-                        <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Target URL</label>
-                        <input 
+                        <Input
+                          label="Target URL"
                           type="url"
-                          className="w-full bg-card border border-border rounded-md p-3 text-xs font-bold"
                           placeholder="https://api.your-system.com/webhook"
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.url || ''}
                           onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, url: e.target.value })}
+                          variant="filled"
                         />
                       </div>
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
@@ -684,13 +751,13 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                         />
                       </div>
                       <div className="bg-muted/50 p-6 rounded-lg border border-border">
-                        <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Compare Value</label>
-                        <input 
+                        <Input
+                          label="Compare Value"
                           type="text"
-                          className="w-full bg-card border border-border rounded-md p-3 text-xs font-bold"
                           placeholder="Value to compare..."
                           value={activeFlow.steps?.find(s => s.id === selectedStepId)?.params.value || ''}
                           onChange={e => updateStep(selectedStepId, { ...activeFlow.steps?.find(s => s.id === selectedStepId)?.params, value: e.target.value })}
+                          variant="filled"
                         />
                       </div>
                     </div>
@@ -722,21 +789,24 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                       <p className="text-muted-foreground font-bold uppercase text-xs tracking-widest">No settings for this step</p>
                     </div>
                   )}
-                  
+
                   {selectedStepId !== 'trigger' && (
                   <div className="mt-12 pt-8 border-t border-border">
-                    <button 
+                    <Button
                       onClick={() => removeStep(selectedStepId as string)}
-                      className="w-full py-4 rounded-md border border-rose-500/20 text-rose-600 hover:bg-rose-500/10 transition-all text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2"
+                      variant="outline"
+                      size="lg"
+                      fullWidth
+                      leftIcon={Trash2}
+                      className="py-4 border-rose-500/20 text-rose-600 hover:bg-rose-500/10 font-bold uppercase tracking-widest"
                     >
-                      <Trash2 className="w-4 h-4" />
                       Remove Step
-                    </button>
+                    </Button>
                   </div>
                   )}
                 </motion.div>
               ) : (
-                <motion.div 
+                <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -788,10 +858,10 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                  </div>
                  <div className="space-y-6">
                     {activeFlow.steps?.map((step, i) => (
-                       <PerformanceItem 
-                         key={step.id} 
-                         label={`${i+1}. ${step.type.replace('_', ' ')}`} 
-                         rate={String(Math.max(10, 100 - (i * 12) - Math.floor(Math.random() * 10))) + '%'} 
+                       <PerformanceItem
+                         key={step.id}
+                         label={`${i+1}. ${step.type.replace('_', ' ')}`}
+                         rate={String(Math.max(10, 100 - (i * 12) - Math.floor(Math.random() * 10))) + '%'}
                          color={i === 0 ? 'bg-primary' : 'bg-muted-foreground/40'}
                        />
                     ))}
@@ -810,8 +880,8 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                           <div className="text-center">
                              <div className="text-xl font-bold text-foreground">72%</div>
                              <div className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Mobile</div>
-                          </div>
-                       </div>
+                         </div>
+                      </div>
                     </div>
                   </div>
                   <div className="bg-card rounded-lg border border-border p-8 shadow-sm">
@@ -874,9 +944,12 @@ function ActivityLog({ user, action, time }: { user: string, action: string, tim
 
 function NodeCard({ icon: Icon, label, sub, onClick, color, bg }: { icon: any, label: string, sub: string, onClick: () => void, color: string, bg: string }) {
   return (
-    <button 
+    <Button
       onClick={onClick}
-      className="w-full bg-card border border-border p-4 rounded-md flex items-center gap-4 hover:border-primary hover:shadow-lg transition-all group text-left"
+      variant="ghost"
+      size="lg"
+      fullWidth
+      className="bg-card border border-border p-4 h-auto hover:border-primary hover:shadow-lg transition-all group text-left justify-start"
     >
       <div className={`w-12 h-12 ${bg} ${color} rounded-md flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
         <Icon className="w-6 h-6" />
@@ -885,21 +958,22 @@ function NodeCard({ icon: Icon, label, sub, onClick, color, bg }: { icon: any, l
         <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors uppercase tracking-tight">{label}</h4>
         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{sub}</p>
       </div>
-    </button>
+    </Button>
   );
 }
 
 function ActionButton({ icon: Icon, label, onClick, color }: { icon: any, label: string, onClick: () => void, color: string }) {
   return (
-    <button 
+    <Button
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 p-3 rounded-md hover:bg-muted/50 transition-all min-w-[70px]"
+      variant="ghost"
+      size="md"
+      className="flex-col gap-1.5 p-3 h-auto min-w-[70px] hover:bg-muted/50 transition-all"
     >
       <div className={`w-10 h-10 bg-card border border-border rounded-md flex items-center justify-center shadow-sm ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
       <span className="text-xs font-bold uppercase text-muted-foreground">{label}</span>
-    </button>
+    </Button>
   );
 }
-

@@ -1,4 +1,4 @@
-﻿import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { FolderLock, Lock, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -8,6 +8,8 @@ import PromptCardSkeleton from '../../components/PromptCardSkeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../lib/firebase';
 import { Prompt } from '../../types';
+import Input from '../../components/ui/Input';
+import { X } from 'lucide-react';
 
 export default function MyVaultPage() {
   const { user, profile, isPro, isAdmin } = useAuth();
@@ -74,16 +76,19 @@ export default function MyVaultPage() {
           </p>
         </div>
 
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search your vault..."
-            className="w-full bg-card border border-border rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-primary/50 transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <Input
+          placeholder="Search your vault..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          leftIcon={Search}
+          variant="filled"
+          className="md:w-80"
+          rightAction={searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="p-1 hover:bg-muted rounded-md transition-colors">
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+        />
       </div>
 
       {loading ? (

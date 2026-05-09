@@ -1,5 +1,6 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Search, Plus, Tag as TagIcon } from 'lucide-react';
+import Button from './ui/Button';
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Tag } from '../types';
@@ -108,16 +109,18 @@ export default function TagInput({ value, onChange, placeholder = "Search or add
           >
             <TagIcon className="w-3 h-3" />
             {tag}
-            <button
+            <Button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleRemoveTag(tag);
               }}
-              className="hover:bg-primary/20 rounded-full p-0.5 ml-1 transition-colors"
+              variant="ghost"
+              size="icon"
+              className="w-5 h-5 ml-1 hover:bg-primary/20 rounded-full"
             >
               <X className="w-3 h-3" />
-            </button>
+            </Button>
           </span>
         ))}
         
@@ -148,26 +151,32 @@ export default function TagInput({ value, onChange, placeholder = "Search or add
             ) : (
               <>
                 {filteredTags.map(tag => (
-                  <button
+                  <Button
                     key={tag.id}
                     type="button"
                     onClick={() => handleAddTag(tag.name)}
-                    className="flex items-center gap-2 w-full text-left px-3 py-2.5 rounded-md hover:bg-muted/50 text-sm font-medium text-foreground transition-colors"
+                    variant="ghost"
+                    size="md"
+                    fullWidth
+                    leftIcon={TagIcon}
+                    className="justify-start font-medium text-foreground hover:bg-muted/50"
                   >
-                    <TagIcon className="w-4 h-4 text-muted-foreground" />
                     {tag.name}
-                  </button>
+                  </Button>
                 ))}
                 
                 {searchTerm.trim() && !exactMatch && !value.includes(searchTerm.trim().toLowerCase()) && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => handleAddTag(searchTerm)}
-                    className="flex items-center gap-2 w-full text-left px-3 py-2.5 rounded-md bg-primary/8 hover:bg-primary/15 text-primary text-sm font-bold transition-colors mt-1"
+                    variant="primary"
+                    size="md"
+                    fullWidth
+                    leftIcon={Plus}
+                    className="bg-primary/10 hover:bg-primary/20 text-primary border-none shadow-none mt-1 font-bold"
                   >
-                    <Plus className="w-4 h-4" />
                     Create tag "{searchTerm.trim()}"
-                  </button>
+                  </Button>
                 )}
                 
                 {filteredTags.length === 0 && !searchTerm.trim() && (

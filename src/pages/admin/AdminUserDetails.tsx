@@ -1,21 +1,41 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Mail, Clock, Shield, Activity, ArrowLeft,
-  CreditCard, Lock, Unlock, Award, MapPin,
-  Users, Plus, Minus, AlertTriangle, Send,
-} from 'lucide-react';
-import { AdminPageHeader, useConfirm } from '../../components/admin';
-import {
-  collection, query, where, getDocs, orderBy,
-  doc, getDoc, updateDoc, serverTimestamp, addDoc,
-} from 'firebase/firestore';
+import { cn } from '@/src/lib/utils';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { db, auth } from '../../lib/firebase';
-import { useAuth } from '../../hooks/useAuth';
-import { UserProfile, ActivityItem } from '../../types';
-import { logAuditEvent } from '../../lib/auditLog';
+import {
+  addDoc,
+  collection,
+  doc, getDoc,
+  getDocs, orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  Award,
+  Clock,
+  CreditCard, Lock,
+  Mail,
+  MapPin,
+  Minus,
+  Plus,
+  Send,
+  Shield,
+  Unlock,
+  Users,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AdminPageHeader, useConfirm } from '../../components/admin';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import { useAuth } from '../../hooks/useAuth';
+import { logAuditEvent } from '../../lib/auditLog';
+import { auth, db } from '../../lib/firebase';
+import { ActivityItem, UserProfile } from '../../types';
 
 export default function AdminUserDetails() {
   const confirm = useConfirm();
@@ -180,17 +200,31 @@ export default function AdminUserDetails() {
         subtitle="Manage subscription, role, and activity for this user."
         actions={
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/admin/users')} className="btn-secondary">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-            <button onClick={handleToggleStatus} className="btn-secondary">
-              <CreditCard className="w-4 h-4" />
+            <Button
+              onClick={() => navigate('/admin/users')}
+              variant="secondary"
+              leftIcon={ArrowLeft}
+              size="sm"
+            >
+              Back
+            </Button>
+            <Button
+              onClick={handleToggleStatus}
+              variant="secondary"
+              leftIcon={CreditCard}
+              size="sm"
+            >
               {user.subscriptionStatus === 'pro' ? 'Downgrade to Free' : 'Upgrade to Pro'}
-            </button>
-            <button onClick={handleToggleRole} className="btn-secondary border-purple-500/20 text-purple-600 hover:bg-purple-500/10">
-              <Shield className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={handleToggleRole}
+              variant="secondary"
+              leftIcon={Shield}
+              size="sm"
+              className="border-purple-500/20 text-purple-600 hover:bg-purple-500/10"
+            >
               {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-            </button>
+            </Button>
           </div>
         }
       />
@@ -250,19 +284,20 @@ export default function AdminUserDetails() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-t border-border bg-muted/20">
+        <div className="flex border-t border-border bg-muted/10 p-1">
           {(['overview', 'activity', 'security'] as const).map(tab => (
-            <button
+            <Button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-8 py-4 text-xs font-black uppercase tracking-[0.2em] transition-all border-b-2 ${
-                activeTab === tab
-                  ? 'border-primary text-primary bg-background'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+              variant={activeTab === tab ? 'primary' : 'ghost'}
+              size="sm"
+              className={cn(
+                "px-8 rounded-lg font-bold transition-all",
+                activeTab === tab ? "shadow-md shadow-primary/20" : "text-muted-foreground"
+              )}
             >
-              {tab}
-            </button>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </Button>
           ))}
         </div>
       </div>
@@ -364,16 +399,14 @@ export default function AdminUserDetails() {
                     </p>
                   </div>
                 </div>
-                <button
+                <Button
                   onClick={handleSuspend}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-bold border transition-all ${
-                    isSuspended
-                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20'
-                      : 'bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20'
-                  }`}
+                  variant={isSuspended ? 'success' : 'danger'}
+                  leftIcon={isSuspended ? Unlock : Lock}
+                  size="sm"
                 >
                   {isSuspended ? 'Restore Access' : 'Suspend User'}
-                </button>
+                </Button>
               </div>
 
               {/* Reset password */}
@@ -387,9 +420,14 @@ export default function AdminUserDetails() {
                     <p className="text-sm text-muted-foreground">Send a password reset email to {user.email}.</p>
                   </div>
                 </div>
-                <button onClick={handleSendResetEmail} className="btn-primary">
+                <Button
+                  onClick={handleSendResetEmail}
+                  variant="primary"
+                  leftIcon={Send}
+                  size="sm"
+                >
                   Send Reset Link
-                </button>
+                </Button>
               </div>
 
               {/* Danger: role */}
@@ -405,12 +443,15 @@ export default function AdminUserDetails() {
                     </p>
                   </div>
                 </div>
-                <button
+                <Button
                   onClick={handleToggleRole}
-                  className="px-5 py-2.5 rounded-lg text-sm font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
+                  variant="outline"
+                  leftIcon={AlertTriangle}
+                  size="sm"
+                  className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"
                 >
                   {user.role === 'admin' ? 'Remove Admin' : 'Grant Admin'}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -453,69 +494,68 @@ export default function AdminUserDetails() {
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Amount</p>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     onClick={() => setAdjustAmount(v => v - 10)}
-                    className="w-9 h-9 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center hover:bg-rose-500/20 transition-all font-bold"
+                    variant="ghost"
+                    size="icon"
+                    className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20"
                   >
                     <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <input
+                  </Button>
+                  <Input
+                    id="adjustAmount"
+                    name="adjustAmount"
                     type="number"
                     value={adjustAmount}
                     onChange={e => setAdjustAmount(Number(e.target.value))}
-                    className="flex-1 text-center font-bold text-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="flex-1 text-center"
+                    variant="filled"
                   />
-                  <button
+                  <Button
                     onClick={() => setAdjustAmount(v => v + 10)}
-                    className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center hover:bg-emerald-500/20 transition-all font-bold"
+                    variant="ghost"
+                    size="icon"
+                    className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="flex gap-1.5 mt-2">
                   {[10, 50, 100, 500].map(n => (
-                    <button
+                    <Button
                       key={n}
                       onClick={() => setAdjustAmount(n)}
-                      className="flex-1 py-1 text-[10px] font-bold bg-muted hover:bg-muted/80 rounded-md text-muted-foreground transition-all"
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1 h-7 text-[10px]"
                     >
                       +{n}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
 
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Reason</p>
-                <input
-                  type="text"
-                  value={adjustReason}
-                  onChange={e => setAdjustReason(e.target.value)}
-                  placeholder="e.g. Compensation, bonus..."
-                  className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
+              <Input
+                label="Reason"
+                id="adjustReason"
+                name="adjustReason"
+                type="text"
+                value={adjustReason}
+                onChange={e => setAdjustReason(e.target.value)}
+                placeholder="e.g. Compensation, bonus..."
+                variant="filled"
+              />
 
-              <button
+              <Button
                 onClick={handleCreditAdjustment}
-                disabled={adjusting || adjustAmount === 0}
-                className={`w-full py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                  adjustAmount > 0
-                    ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20'
-                    : adjustAmount < 0
-                    ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20'
-                    : 'bg-muted text-muted-foreground border border-border opacity-50 cursor-not-allowed'
-                }`}
+                isLoading={adjusting}
+                variant={adjustAmount > 0 ? 'success' : adjustAmount < 0 ? 'danger' : 'outline'}
+                fullWidth
+                disabled={adjustAmount === 0}
+                leftIcon={adjustAmount > 0 ? Plus : adjustAmount < 0 ? Minus : undefined}
               >
-                {adjusting ? (
-                  <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                ) : adjustAmount > 0 ? (
-                  <Plus className="w-3.5 h-3.5" />
-                ) : (
-                  <Minus className="w-3.5 h-3.5" />
-                )}
                 {adjustAmount > 0 ? `Add ${adjustAmount} credits` : adjustAmount < 0 ? `Deduct ${Math.abs(adjustAmount)} credits` : 'Enter amount'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

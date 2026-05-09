@@ -1,17 +1,26 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { useImageUpload } from '../hooks/useImageUpload';
-import { db } from '../lib/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { useSearchParams } from 'react-router-dom';
-import { User, Shield, CreditCard, Settings, Gift, 
-  Check, Mail, Camera, Bell, Lock, LogOut,
-  ChevronRight, ExternalLink, Zap, Clock, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { auth } from '../lib/firebase';
-import { useNavigate, Link } from 'react-router-dom';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import {
+  Bell,
+  ChevronRight,
+  CreditCard,
+  ExternalLink,
+  Lock, LogOut,
+  Mail,
+  Shield,
+  User,
+  Zap
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import Button from '../components/ui/Button';
+import ImageUpload from '../components/ui/ImageUpload';
+import Input from '../components/ui/Input';
+import { useAuth } from '../hooks/useAuth';
+import { db } from '../lib/firebase';
+import { cn } from '../lib/utils';
 
 type ProfileTab = 'account' | 'billing' | 'security' | 'notifications';
 
@@ -21,32 +30,8 @@ export default function ProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ProfileTab>((searchParams.get('tab') as ProfileTab) || 'account');
   const [isSaving, setIsSaving] = useState(false);
-  const { uploadImage, isUploading } = useImageUpload();
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    const data = await uploadImage(file, 'users');
-    
-    if (data?.success) {
-      try {
-        await updateDoc(doc(db, 'users', user.uid), {
-          photoURL: data.url,
-          updatedAt: serverTimestamp()
-        });
-
-        // Sync with Auth profile for instant header update
-        await updateProfile(user, { photoURL: data.url });
-
-        toast.success('Profile photo updated!');
-      } catch (err) {
-        console.error('Firestore Update Error:', err);
-        toast.error('Failed to update profile record');
-      }
-    }
-  };
 
   useEffect(() => {
     const tab = searchParams.get('tab') as ProfileTab;
@@ -110,69 +95,62 @@ export default function ProfilePage() {
                     </div>
                     Account Details
                   </h2>
-                  
-                  <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-12 pb-12 border-b border-border">
-                    <div className="relative group">
-                      <div className="w-28 h-28 rounded-md bg-muted overflow-hidden shadow-xl shadow-black/5 border-4 border-white relative">
-                        <img src={profile?.photoURL || undefined} className="w-full h-full object-cover" alt="" />
-                        {isUploading && (
-                          <div className="absolute inset-0 bg-card/60 backdrop-blur-sm flex items-center justify-center">
-                            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                          </div>
-                        )}
-                      </div>
-                      <label className="absolute -bottom-2 -right-2 p-3 bg-foreground text-white rounded-md shadow-xl border-4 border-white hover:scale-110 transition-transform cursor-pointer">
-                        <Camera className="w-4 h-4" />
-                        <input id="photo-upload-1" name="photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
-                      </label>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground mb-1">{profile?.displayName || 'Your Profile'}</h3>
-                      <p className="text-muted-foreground text-sm font-medium mb-4">Your avatar is used for community comments and your public profile.</p>
-                      <div className="flex gap-3">
-                        <label className="text-xs font-bold uppercase tracking-widest text-primary px-4 py-2 bg-primary/8 rounded-md hover:bg-primary/15 transition-all cursor-pointer">
-                          {isUploading ? 'Uploading...' : 'Upload New'}
-                          <input id="photo-upload-2" name="photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
-                        </label>
-                        <button 
-                          onClick={() => updateDoc(doc(db, 'users', user.uid), { photoURL: null })}
-                          className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-4 py-2 hover:bg-muted/50 rounded-md transition-all"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
+
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-12 mb-12 pb-12 border-b border-border">
+                    <ImageUpload
+                      value={profile?.photoURL || undefined}
+                      onChange={async (url) => {
+                        if (!user) return;
+                        try {
+                          await updateDoc(doc(db, 'users', user.uid), {
+                            photoURL: url || null,
+                            updatedAt: serverTimestamp()
+                          });
+                          if (user) await updateProfile(user, { photoURL: url || null });
+                          toast.success(url ? 'Profile photo updated!' : 'Profile photo removed');
+                        } catch (err) {
+                          toast.error('Failed to update profile');
+                        }
+                      }}
+                      variant="circle"
+                      label={profile?.displayName || 'Your Profile'}
+                      description="Your avatar is used for community comments and your public profile."
+                      folder="users"
+                    />
                   </div>
 
                   <form onSubmit={handleUpdateProfile} className="space-y-8">
                     <div className="grid md:grid-cols-2 gap-8">
-                      <div className="space-y-2">
-                        <label htmlFor="profileDisplayName" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Display Name</label>
-                        <input 
-                          id="profileDisplayName"
-                          name="displayName"
-                          type="text" 
-                          value={displayName}
-                          onChange={(e) => setDisplayName(e.target.value)}
-                          className="w-full bg-muted/50 border-2 border-transparent rounded-md p-5 focus:bg-card focus:border-primary focus:outline-none transition-all font-bold text-foreground"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Account Email</label>
-                        <div className="w-full bg-muted border-2 border-transparent rounded-md p-5 text-muted-foreground font-bold flex items-center justify-between group cursor-not-allowed">
-                          <span className="truncate">{profile?.email}</span>
-                          <Lock className="w-4 h-4 opacity-40" />
-                        </div>
-                      </div>
+                      <Input
+                        label="Display Name"
+                        id="profileDisplayName"
+                        name="displayName"
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        variant="filled"
+                        placeholder="Your Name"
+                      />
+                      <Input
+                        label="Account Email"
+                        id="accountEmail"
+                        name="accountEmail"
+                        type="email"
+                        value={profile?.email || ''}
+                        readOnly
+                        variant="filled"
+                        rightAction={<Lock className="w-4 h-4 opacity-40" />}
+                      />
                     </div>
 
                     <div className="pt-6 flex items-center gap-6">
-                      <button 
-                        disabled={isSaving}
-                        className="btn-primary"
+                      <Button
+                        type="submit"
+                        isLoading={isSaving}
+                        variant="primary"
                       >
-                        {isSaving ? 'Syncing...' : 'Save Changes'}
-                      </button>
+                        Save Changes
+                      </Button>
                     </div>
                   </form>
                 </div>
@@ -200,9 +178,12 @@ export default function ProfilePage() {
                        <div className="relative z-10 max-w-md">
                          <h3 className="text-3xl font-bold mb-4">Go Pro. Be Expert.</h3>
                          <p className="text-muted-foreground text-sm mb-10 leading-relaxed font-medium">Unlock priority AI model access, unlimited library storage, and advanced prompt engineering tools.</p>
-                         <button onClick={() => window.location.href = '/pricing'} className="btn-primary">
-                           Upgrade for $25/mo
-                         </button>
+                          <Button
+                            onClick={() => window.location.href = '/pricing'}
+                            variant="white"
+                          >
+                            Upgrade for $25/mo
+                          </Button>
                        </div>
                     </div>
                   ) : (
@@ -211,16 +192,22 @@ export default function ProfilePage() {
                        <div className="relative z-10">
                          <h3 className="text-3xl font-bold mb-4 text-amber-400">PRO Member</h3>
                          <p className="text-muted-foreground text-sm mb-10 leading-relaxed max-w-md font-medium">Your subscription is active. You have full access to all professional prompt engineering tools.</p>
-                         
-                         <div className="flex flex-wrap gap-4">
-                           <button className="bg-card/10 text-white font-bold px-8 py-4 rounded-md hover:bg-card/20 transition-all flex items-center gap-3 border border-white/5 backdrop-blur-sm">
-                             <ExternalLink className="w-5 h-5" />
-                             Stripe Billing Portal
-                           </button>
-                           <button className="text-rose-400 font-bold px-8 py-4 rounded-md hover:bg-rose-500/10 transition-all text-sm">
-                             Cancel Subscription
-                           </button>
-                         </div>
+
+                          <div className="flex flex-wrap gap-4">
+                            <Button
+                              variant="outline"
+                              leftIcon={ExternalLink}
+                              className="bg-white/10 text-white border-white/5 backdrop-blur-sm"
+                            >
+                              Stripe Billing Portal
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="text-rose-400 hover:bg-rose-500/10"
+                            >
+                              Cancel Subscription
+                            </Button>
+                          </div>
                        </div>
                     </div>
                   )}
@@ -228,7 +215,13 @@ export default function ProfilePage() {
                   <div className="pt-4">
                     <div className="flex items-center justify-between mb-8">
                        <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Default Payment Method</h4>
-                       <button className="text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/8 px-3 py-1.5 rounded-lg transition-all">Add New</button>
+                       <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary font-bold uppercase tracking-widest px-3 py-1.5"
+                       >
+                         Add New
+                       </Button>
                     </div>
                     <div className="group flex items-center justify-between p-8 bg-muted/50 rounded-lg border-2 border-transparent hover:border-indigo-100 hover:bg-card hover:shadow-xl transition-all duration-500">
                       <div className="flex items-center gap-8">
@@ -243,7 +236,13 @@ export default function ProfilePage() {
                           </div>
                         </div>
                       </div>
-                      <button className="p-3 text-muted-foreground/40 hover:text-foreground transition-colors"><ChevronRight className="w-6 h-6" /></button>
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground/40 hover:text-foreground shrink-0"
+                       >
+                         <ChevronRight className="w-6 h-6" />
+                       </Button>
                     </div>
                   </div>
                 </div>
@@ -259,24 +258,24 @@ export default function ProfilePage() {
                        </div>
                        Security & Authentication
                     </h2>
-                    
+
                     <div className="space-y-4">
-                      <SecurityItem 
-                        icon={Mail} 
-                        title="Google Authentication" 
+                      <SecurityItem
+                        icon={Mail}
+                        title="Google Authentication"
                         desc="Your account is secured via your Google account."
                         action="Connected"
                         actionType="status"
                       />
-                       <SecurityItem 
-                        icon={Lock} 
-                        title="Two-Factor Auth" 
+                       <SecurityItem
+                        icon={Lock}
+                        title="Two-Factor Auth"
                         desc="Enhanced security for your prompt library and earnings."
                         action="Enable 2FA"
                       />
-                       <SecurityItem 
-                        icon={LogOut} 
-                        title="Session Management" 
+                       <SecurityItem
+                        icon={LogOut}
+                        title="Session Management"
                         desc="Review and manage your active login sessions."
                         action="Manage All"
                       />
@@ -294,7 +293,7 @@ export default function ProfilePage() {
                        </div>
                        Email Preferences
                     </h2>
-                    
+
                     <div className="space-y-10">
                       <NotificationToggle title="Product Updates" desc="New features, AI model releases, and performance improvements." />
                       <NotificationToggle title="Promotional Offers" desc="Special discounts, partner deals, and affiliate news." />
@@ -313,13 +312,19 @@ export default function ProfilePage() {
 
 function TabLink({ children, icon: Icon, active, onClick }: any) {
   return (
-    <button 
+    <Button
       onClick={onClick}
-      className={`flex-shrink-0 lg:w-full flex items-center gap-3 px-6 py-4 rounded-md font-bold text-sm transition-all ${active ? 'bg-primary text-white shadow-md shadow-primary/20' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+      variant={active ? 'primary' : 'ghost'}
+      size="lg"
+      fullWidth
+      leftIcon={Icon}
+      className={cn(
+        "justify-start px-6 h-14",
+        active ? "shadow-md shadow-primary/20" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
     >
-      <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-muted-foreground group-hover:text-foreground'}`} />
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -338,7 +343,13 @@ function SecurityItem({ icon: Icon, title, desc, action, actionType = 'button' }
       {actionType === 'status' ? (
         <span className="text-xs font-bold uppercase tracking-widest text-green-600 bg-green-50 px-4 py-2 rounded-md">{action}</span>
       ) : (
-        <button className="text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/8 px-4 py-2 rounded-md transition-all border border-indigo-100">{action}</button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-bold uppercase tracking-widest border-indigo-100"
+        >
+          {action}
+        </Button>
       )}
     </div>
   );
@@ -352,18 +363,17 @@ function NotificationToggle({ title, desc, defaultEnabled = false }: any) {
         <p className="font-bold text-foreground mb-1">{title}</p>
         <p className="text-sm font-medium text-muted-foreground leading-relaxed">{desc}</p>
       </div>
-      <button 
+      <button
         onClick={() => setEnabled(!enabled)}
         aria-label={`Toggle ${title}`}
         className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 ${enabled ? 'bg-primary shadow-lg shadow-primary/10' : 'bg-muted'}`}
       >
-        <motion.div 
+        <motion.div
           animate={{ x: enabled ? 26 : 2 }}
           transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className="absolute top-1 w-6 h-6 bg-card rounded-full shadow-sm" 
+          className="absolute top-1 w-6 h-6 bg-card rounded-full shadow-sm"
         />
       </button>
     </div>
   );
 }
-

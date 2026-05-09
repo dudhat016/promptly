@@ -1,7 +1,8 @@
-﻿import { CheckCircle2, Copy, Home, Layout, Rocket, Sparkles } from 'lucide-react';
+import { CheckCircle2, Copy, Home, Layout, Rocket, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import Button from '../components/ui/Button';
 import { toast } from 'react-hot-toast';
 import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../hooks/useAuth';
@@ -80,39 +81,54 @@ export default function CheckoutSuccessPage() {
                 {orderId || 'TXN_PROMPTLY_001'}
               </p>
             </div>
-            <button 
+             <Button 
               onClick={copyOrderId}
-              className="flex items-center gap-2 px-6 py-3 bg-card border border-border rounded-md text-xs font-bold uppercase tracking-widest text-muted-foreground hover:bg-muted transition-all active:scale-95 shadow-sm"
+              variant="secondary"
+              size="sm"
+              leftIcon={Copy}
+              className="font-bold uppercase tracking-widest"
             >
-              <Copy className="w-3 h-3" />
               Copy Order ID
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link 
+           <Button 
+            as={Link} 
             to="/dashboard"
-            className="flex items-center justify-center gap-3 bg-foreground text-background font-bold py-5 rounded-md hover:opacity-90 transition-all shadow-xl shadow-foreground/10"
+            variant="primary"
+            size="lg"
+            fullWidth
+            leftIcon={Layout}
+            className="bg-foreground text-background hover:bg-foreground/90 shadow-xl shadow-foreground/10"
           >
-            <Layout className="w-5 h-5" />
             Access Dashboard
-          </Link>
-          <Link 
+          </Button>
+          <Button 
+            as={Link} 
             to="/explore"
-            className="btn-primary btn-lg w-full"
+            variant="primary"
+            size="lg"
+            fullWidth
+            leftIcon={Rocket}
           >
-            <Rocket className="w-5 h-5" />
             Explore Premium
-          </Link>
+          </Button>
         </div>
 
         <div className="mt-12">
-          <Link to="/" className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground/40 hover:text-primary transition-colors flex items-center justify-center gap-2">
-            <Home className="w-3 h-3" />
+           <Button 
+            as={Link} 
+            to="/" 
+            variant="ghost" 
+            size="sm" 
+            leftIcon={Home}
+            className="text-muted-foreground/40 hover:text-primary uppercase tracking-[0.3em] font-bold"
+          >
             Back to Home
-          </Link>
+          </Button>
         </div>
       </motion.div>
 

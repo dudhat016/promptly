@@ -1,7 +1,8 @@
-﻿import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Twitter, Linkedin, Facebook, Link as LinkIcon, Check, Mail, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import Button from './ui/Button';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -74,9 +75,14 @@ export default function ShareModal({ isOpen, onClose, title, url, referralCode }
                 <Share2 className="w-6 h-6 text-primary" />
                 Share
               </h3>
-              <button onClick={onClose} className="p-2 text-muted-foreground hover:text-muted-foreground transition-colors">
+              <Button 
+                onClick={onClose} 
+                variant="ghost" 
+                size="icon" 
+                className="text-muted-foreground"
+              >
                 <X className="w-6 h-6" />
-              </button>
+              </Button>
             </div>
 
             <p className="text-muted-foreground font-medium mb-8">
@@ -105,13 +111,15 @@ export default function ShareModal({ isOpen, onClose, title, url, referralCode }
               <div className="flex-grow px-3 text-xs font-mono text-muted-foreground truncate">
                 {finalUrl}
               </div>
-              <button
+              <Button
                 onClick={handleCopy}
-                className={`px-4 py-3 rounded-md font-bold text-xs transition-all flex items-center gap-2 whitespace-nowrap ${copied ? 'bg-green-500 text-white' : 'bg-foreground text-background hover:bg-foreground/80'}`}
+                variant={copied ? 'success' : 'primary'}
+                size="md"
+                leftIcon={copied ? Check : LinkIcon}
+                className="font-bold"
               >
-                {copied ? <Check className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
                 {copied ? 'Copied' : 'Copy Link'}
-              </button>
+              </Button>
             </div>
           </motion.div>
         </div>

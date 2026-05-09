@@ -10,6 +10,9 @@ import { logAuditEvent } from '../../lib/auditLog';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import Select from '../../components/ui/Select';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import Textarea from '../../components/ui/Textarea';
 import AdminEmailSettings from './AdminEmailSettings';
 import AdminAssetManager from './AdminAssetManager';
 import AdminPaymentSettings from './AdminPaymentSettings';
@@ -91,10 +94,15 @@ export default function AdminSettings() {
         subtitle="Configure your platform's core engine and delivery systems."
         actions={
           activeTab === 'general' ? (
-            <button onClick={handleSaveGeneral} disabled={saving} className="btn-primary">
-              <Save className="w-4 h-4" />
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
+            <Button 
+              onClick={handleSaveGeneral} 
+              isLoading={saving} 
+              variant="primary"
+              leftIcon={Save}
+              size="sm"
+            >
+              Save Changes
+            </Button>
           ) : undefined
         }
       />
@@ -106,18 +114,17 @@ export default function AdminSettings() {
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
-                <button
+                <Button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
+                  variant={activeTab === tab.id ? 'primary' : 'ghost'}
+                  size="sm"
+                  fullWidth
+                  leftIcon={Icon}
+                  className="justify-start normal-case"
                 >
-                  <Icon className="w-5 h-5" />
                   {tab.label}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -141,38 +148,35 @@ export default function AdminSettings() {
                   </h3>
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-5">
-                      <div>
-                        <label htmlFor="siteName" className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Platform Name</label>
-                        <input 
-                          id="siteName"
-                          name="siteName"
-                          type="text"
-                          value={generalConfig.siteName}
-                          onChange={e => setGeneralConfig({ ...generalConfig, siteName: e.target.value })}
-                          className="select"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="supportEmail" className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Support Email</label>
-                        <input 
-                          id="supportEmail"
-                          name="supportEmail"
-                          type="email"
-                          value={generalConfig.supportEmail}
-                          onChange={e => setGeneralConfig({ ...generalConfig, supportEmail: e.target.value })}
-                          className="select"
-                        />
-                      </div>
+                      <Input 
+                        label="Platform Name"
+                        id="siteName"
+                        name="siteName"
+                        type="text"
+                        value={generalConfig.siteName}
+                        onChange={e => setGeneralConfig({ ...generalConfig, siteName: e.target.value })}
+                        variant="filled"
+                      />
+                      <Input 
+                        label="Support Email"
+                        id="supportEmail"
+                        name="supportEmail"
+                        type="email"
+                        value={generalConfig.supportEmail}
+                        onChange={e => setGeneralConfig({ ...generalConfig, supportEmail: e.target.value })}
+                        variant="filled"
+                      />
                     </div>
                     <div>
-                      <label htmlFor="siteTagline" className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Platform Tagline</label>
-                      <textarea 
-                        id="siteTagline"
-                        name="siteTagline"
-                        value={generalConfig.siteTagline}
-                        onChange={e => setGeneralConfig({ ...generalConfig, siteTagline: e.target.value })}
-                        className="w-full bg-muted/50 border border-border rounded-md px-3 py-2.5 focus:bg-card focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all text-sm h-[148px] resize-none"
-                      />
+                    <Textarea 
+                      label="Platform Tagline"
+                      id="siteTagline"
+                      name="siteTagline"
+                      value={generalConfig.siteTagline}
+                      onChange={e => setGeneralConfig({ ...generalConfig, siteTagline: e.target.value })}
+                      className="h-[148px]"
+                      variant="filled"
+                    />
                     </div>
                   </div>
                 </div>
@@ -200,29 +204,28 @@ export default function AdminSettings() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="taxRate" className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Base Tax Rate (%)</label>
-                      <input 
+                      <Input 
+                        label="Base Tax Rate (%)"
                         id="taxRate"
                         name="taxRate"
                         type="number"
                         value={generalConfig.taxRate}
                         onChange={e => setGeneralConfig({ ...generalConfig, taxRate: Number(e.target.value) })}
-                        className="select"
+                        variant="filled"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Maintenance Mode</label>
-                      <button
+                      <Button
                         onClick={() => setGeneralConfig({ ...generalConfig, maintenanceMode: !generalConfig.maintenanceMode })}
-                        className={`w-full p-4 rounded-md border transition-all font-bold flex items-center justify-center gap-2 ${
-                          generalConfig.maintenanceMode 
-                            ? 'bg-amber-50 border-amber-200 text-amber-700' 
-                            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                        }`}
+                        variant={generalConfig.maintenanceMode ? 'danger' : 'success'}
+                        fullWidth
+                        size="lg"
+                        className="h-[52px]"
                       >
-                        <div className={`w-2 h-2 rounded-full animate-pulse ${generalConfig.maintenanceMode ? 'bg-amber-600' : 'bg-emerald-600'}`} />
+                        <div className={`w-2 h-2 rounded-full animate-pulse mr-2 ${generalConfig.maintenanceMode ? 'bg-white' : 'bg-white'}`} />
                         {generalConfig.maintenanceMode ? 'System Offline' : 'System Online'}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -322,16 +325,21 @@ export default function AdminSettings() {
                       <p className="font-bold text-foreground">Clear System Cache</p>
                       <p className="text-xs text-muted-foreground font-medium">Force clear all CDN and local interest profiles.</p>
                     </div>
-                    <button className="px-4 py-2 bg-card border border-border rounded-md text-xs font-bold hover:bg-muted transition-all">Execute</button>
+                    <Button variant="outline" size="sm">Execute</Button>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-muted/50 rounded-md border border-border opacity-50">
                     <div>
                       <p className="font-bold text-foreground">Developer Mode</p>
                       <p className="text-xs text-muted-foreground font-medium">Enable verbose logging and React DevTools in production.</p>
                     </div>
-                    <div className="w-12 h-6 bg-muted-foreground/30 rounded-full relative cursor-not-allowed">
-                      <div className="absolute left-1 top-1 w-4 h-4 bg-card rounded-full" />
-                    </div>
+                    <Button
+                      onClick={() => toast.error('Developer mode is restricted to root administrators.')}
+                      variant="secondary"
+                      size="sm"
+                      className="opacity-50 cursor-not-allowed"
+                    >
+                      Enable
+                    </Button>
                   </div>
                 </div>
               </motion.div>

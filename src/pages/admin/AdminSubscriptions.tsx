@@ -1,12 +1,14 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, query, getDocs, getDoc, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PricingPlan, AppConfig } from '../../types';
-import { Plus, Check, X, Shield, Zap } from 'lucide-react';
+import { Check, CreditCard, DollarSign, Edit2, Plus, Sparkles, Trash2, Zap, Shield, X } from 'lucide-react';
+import Input from '../../components/ui/Input';
 import { AdminPageHeader, DataTable } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import Button from '../../components/ui/Button';
 
 export default function AdminSubscriptions() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
@@ -75,10 +77,15 @@ export default function AdminSubscriptions() {
         title="Plans & Offers"
         subtitle="Select one active promotion strategy for your platform."
         actions={
-          <Link to="/admin/subscriptions/new" className="btn-primary">
-            <Plus className="w-5 h-5" />
+          <Button 
+            as={Link} 
+            to="/admin/subscriptions/new" 
+            variant="primary"
+            leftIcon={Plus}
+            size="sm"
+          >
             Add Pricing Plan
-          </Link>
+          </Button>
         }
       />
 
@@ -112,7 +119,7 @@ export default function AdminSubscriptions() {
             <div className={`space-y-4 pt-6 border-t transition-all ${config?.activePromotion === 'trial' ? 'border-primary/100 opacity-100' : 'border-border opacity-50 grayscale pointer-events-none'}`}>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Duration (Days)</span>
-                <input 
+                <Input 
                   type="number"
                   value={config?.freeTrialDays ?? 7}
                   onClick={(e) => e.stopPropagation()}
@@ -121,7 +128,9 @@ export default function AdminSubscriptions() {
                     await setDoc(doc(db, 'configs', 'global'), { freeTrialDays: val }, { merge: true });
                     setConfig(prev => prev ? { ...prev, freeTrialDays: val } : null);
                   }}
-                  className="w-20 text-center bg-muted/50 border border-border rounded-md p-3 font-bold text-foreground focus:bg-card focus:border-primary/40 transition-all"
+                  className="w-20 text-center"
+                  variant="filled"
+                  inputSize="sm"
                 />
               </div>
             </div>
@@ -156,16 +165,24 @@ export default function AdminSubscriptions() {
 
             <div className={`space-y-6 pt-6 border-t transition-all ${config?.activePromotion === 'yearly_bonus' ? 'border-emerald-100 opacity-100' : 'border-border opacity-50 grayscale pointer-events-none'}`}>
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between bg-muted/50 p-2 rounded-md">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setDoc(doc(db, 'configs', 'global'), { yearlyIncentiveType: 'months' }, { merge: true }); setConfig(prev => prev ? {...prev, yearlyIncentiveType: 'months'} : null); }}
-                    className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${config?.yearlyIncentiveType === 'months' ? 'bg-card text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
-                  >Months</button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setDoc(doc(db, 'configs', 'global'), { yearlyIncentiveType: 'percent' }, { merge: true }); setConfig(prev => prev ? {...prev, yearlyIncentiveType: 'percent'} : null); }}
-                    className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${config?.yearlyIncentiveType === 'percent' ? 'bg-card text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
-                  >Percentage</button>
-                </div>
+                 <div className="flex items-center justify-between bg-muted/50 p-1 rounded-lg">
+                   <Button 
+                     onClick={(e) => { e.stopPropagation(); setDoc(doc(db, 'configs', 'global'), { yearlyIncentiveType: 'months' }, { merge: true }); setConfig(prev => prev ? {...prev, yearlyIncentiveType: 'months'} : null); }}
+                     variant={config?.yearlyIncentiveType === 'months' ? 'white' : 'ghost'}
+                     size="sm"
+                     className="flex-1"
+                   >
+                     Months
+                   </Button>
+                   <Button 
+                     onClick={(e) => { e.stopPropagation(); setDoc(doc(db, 'configs', 'global'), { yearlyIncentiveType: 'percent' }, { merge: true }); setConfig(prev => prev ? {...prev, yearlyIncentiveType: 'percent'} : null); }}
+                     variant={config?.yearlyIncentiveType === 'percent' ? 'white' : 'ghost'}
+                     size="sm"
+                     className="flex-1"
+                   >
+                     Percentage
+                   </Button>
+                 </div>
 
                 <div className="flex items-center justify-between px-2">
                   <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">
@@ -173,7 +190,7 @@ export default function AdminSubscriptions() {
                   </span>
                   {config?.yearlyIncentiveType === 'months' ? (
                     <div className="flex items-center gap-3">
-                      <input 
+                      <Input 
                         type="number"
                         value={config?.yearlyIncentiveValue ?? 2}
                         onClick={(e) => e.stopPropagation()}
@@ -182,7 +199,9 @@ export default function AdminSubscriptions() {
                           await setDoc(doc(db, 'configs', 'global'), { yearlyIncentiveValue: val }, { merge: true });
                           setConfig(prev => prev ? { ...prev, yearlyIncentiveValue: val } : null);
                         }}
-                        className="w-20 text-center bg-emerald-500/10 border border-emerald-500/30 rounded-md p-3 font-bold text-emerald-600 focus:bg-card focus:border-emerald-500 transition-all"
+                        className="w-20 text-center text-emerald-600"
+                        variant="filled"
+                        inputSize="sm"
                       />
                     </div>
                   ) : (

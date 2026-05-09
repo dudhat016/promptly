@@ -6,7 +6,10 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { useConfig } from '../hooks/useConfig';
 import { Link } from 'react-router-dom';
+import Input from '../components/ui/Input';
+import Textarea from '../components/ui/Textarea';
 import Select from '../components/ui/Select';
+import Button from '../components/ui/Button';
 
 export default function ContactPage() {
   const { config } = useConfig();
@@ -164,78 +167,79 @@ export default function ContactPage() {
                 <p className="text-muted-foreground text-sm max-w-xs">
                   Thanks for reaching out. We'll get back to you within a few hours.
                 </p>
-                <button
+                <Button
                   onClick={() => setSent(false)}
-                  className="mt-6 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-6 text-primary font-bold"
                 >
                   Send another message →
-                </button>
+                </Button>
               </div>
             ) : (
               <>
                 <h2 className="text-xl font-bold text-foreground mb-6">Send a Message</h2>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="grid md:grid-cols-2 gap-5">
-                    {[
-                      { label: 'Your Name', key: 'name', type: 'text', placeholder: 'John Doe' },
-                      { label: 'Email Address', key: 'email', type: 'email', placeholder: 'john@example.com' },
-                    ].map(({ label, key, type, placeholder }) => (
-                      <div key={key}>
-                        <label htmlFor={key} className="block text-sm font-semibold text-muted-foreground mb-2">{label}</label>
-                        <input
-                          id={key}
-                          type={type}
-                          required
-                          value={formData[key as keyof typeof formData]}
-                          onChange={e => setFormData({ ...formData, [key]: e.target.value })}
-                          placeholder={placeholder}
-                          className="w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground/50 outline-none transition-all bg-background border border-border focus:border-primary/50"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div>
-                    <label htmlFor="subject" className="block text-sm font-semibold text-muted-foreground mb-2">Subject</label>
-                    <Select
-                      id="subject"
-                      value={formData.subject}
-                      onChange={val => setFormData({ ...formData, subject: val })}
-                      options={[
-                        { label: 'General Inquiry', value: 'general', description: 'General questions about our platform' },
-                        { label: 'Technical Support', value: 'support', description: 'Help with technical issues' },
-                        { label: 'Billing Question', value: 'billing', description: 'Help with payments and subscriptions' },
-                        { label: 'Partnership', value: 'partnership', description: 'Collaborate with us' }
-                      ]}
-                      placeholder="Select a topic..."
-                      isSearchable={false}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="message" className="block text-sm font-semibold text-muted-foreground mb-2">Message</label>
-                    <textarea
-                      id="message"
+                    <Input 
+                      label="Your Name"
+                      id="name"
+                      name="name"
+                      type="text"
                       required
-                      rows={5}
-                      value={formData.message}
-                      onChange={e => setFormData({ ...formData, message: e.target.value })}
-                      placeholder="How can we help you?"
-                      className="w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground/50 outline-none transition-all resize-none bg-background border border-border focus:border-primary/50"
+                      value={formData.name}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="John Doe"
+                    />
+                    <Input 
+                      label="Email Address"
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="john@example.com"
                     />
                   </div>
 
-                  <button
+                  <Select
+                    label="Subject"
+                    id="subject"
+                    value={formData.subject}
+                    onChange={val => setFormData({ ...formData, subject: val })}
+                    options={[
+                      { label: 'General Inquiry', value: 'general', description: 'General questions about our platform' },
+                      { label: 'Technical Support', value: 'support', description: 'Help with technical issues' },
+                      { label: 'Billing Question', value: 'billing', description: 'Help with payments and subscriptions' },
+                      { label: 'Partnership', value: 'partnership', description: 'Collaborate with us' }
+                    ]}
+                    placeholder="Select a topic..."
+                    isSearchable={false}
+                  />
+
+                  <Textarea 
+                    label="Message"
+                    id="message"
+                    name="message"
+                    required
+                    rows={5}
+                    value={formData.message}
+                    onChange={e => setFormData({ ...formData, message: e.target.value })}
+                    placeholder="How can we help you?"
+                  />
+
+                  <Button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 24px rgba(139,92,246,0.25)' }}
+                    isLoading={isSubmitting}
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    leftIcon={Send}
+                    className="shadow-xl shadow-primary/20"
                   >
-                    {isSubmitting
-                      ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      : <><Send className="w-4 h-4" /> Send Message</>
-                    }
-                  </button>
+                    Send Message
+                  </Button>
                 </form>
               </>
             )}

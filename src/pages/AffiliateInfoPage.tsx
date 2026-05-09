@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ArrowRight, Check, ChevronDown, DollarSign, Gift, Shield, Sparkles, TrendingUp, Users, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
+import Button from '../components/ui/Button';
+import { cn } from '../lib/utils';
 
 const FAQS = [
   { q: 'How much can I realistically earn?', a: 'With 50 active Pro subscribers ($15/mo each), you earn $187.50/month — $2,250/year — on complete autopilot. Top affiliates with audiences of 5k+ earn $1,000–$3,000/month.' },
@@ -253,11 +255,14 @@ export default function AffiliateInfoPage() {
                     <span className={`font-bold text-lg ${valueClass}`}>{value}</span>
                   </div>
                 ))}
-                <button
-                  className="w-full py-3 rounded-xl font-semibold text-sm text-white mt-2"
-                  style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  size="lg"
+                  className="mt-2 font-bold shadow-xl shadow-primary/20"
+                >
                   Withdraw Funds →
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -274,13 +279,19 @@ export default function AffiliateInfoPage() {
           <div className="space-y-3">
             {FAQS.map((faq, i) => (
               <div key={i} className="rounded-xl overflow-hidden border border-border">
-                <button
+                <Button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className={`w-full flex items-center justify-between px-6 py-5 text-left transition-colors ${openFaq === i ? 'bg-primary/5' : 'bg-card hover:bg-muted/50'}`}
+                  variant="ghost"
+                  fullWidth
+                  rightIcon={ChevronDown}
+                  iconClassName={cn("transition-transform duration-200", openFaq === i && "rotate-180")}
+                  className={cn(
+                    "flex items-center justify-between px-6 py-5 text-left h-auto",
+                    openFaq === i ? "bg-primary/5 text-primary" : "bg-card hover:bg-muted/50 text-foreground"
+                  )}
                 >
-                  <span className="font-semibold text-foreground text-sm pr-4">{faq.q}</span>
-                  <ChevronDown className={`w-4 h-4 shrink-0 transition-transform text-primary ${openFaq === i ? 'rotate-180' : ''}`} />
-                </button>
+                  <span className="font-semibold text-sm pr-4 whitespace-normal">{faq.q}</span>
+                </Button>
                 {openFaq === i && (
                   <div className="px-6 pb-5 text-sm leading-relaxed text-muted-foreground bg-primary/[0.02]">
                     {faq.a}

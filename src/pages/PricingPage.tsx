@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { PricingPlan } from '../types';
 import { useConfig } from '../hooks/useConfig';
 import { useCurrency } from '../context/CurrencyContext';
+import Button from '../components/ui/Button';
 
 export default function PricingPage() {
   const navigate = useNavigate();
@@ -51,16 +52,18 @@ export default function PricingPage() {
           </p>
 
           {/* Billing toggle */}
-          <div className="inline-flex items-center p-1.5 rounded-xl gap-1 bg-muted border border-border">
+          <div className="inline-flex items-center p-1 rounded-xl gap-1 bg-muted border border-border">
             {(['monthly', 'yearly'] as const).map(cycle => (
-              <button
+              <Button
                 key={cycle}
                 onClick={() => setBillingCycle(cycle)}
-                className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${billingCycle === cycle ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                variant={billingCycle === cycle ? 'white' : 'ghost'}
+                size="md"
+                className="px-8"
               >
                 {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
                 {cycle === 'yearly' && plans.length > 0 && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md ml-2"
                     style={{
                       background: config?.activePromotion === 'yearly_bonus' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.2)',
                       color: config?.activePromotion === 'yearly_bonus' ? 'rgb(52,211,153)' : 'rgb(167,139,250)',
@@ -71,7 +74,7 @@ export default function PricingPage() {
                       : 'Save 20%'}
                   </span>
                 )}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -207,22 +210,20 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                <button
+                <Button
                   onClick={() => handleSubscribe(plan)}
                   disabled={loading || isCurrent}
-                  className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={plan.isPopular && !isCurrent
-                    ? { background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', color: '#fff', boxShadow: '0 0 24px rgba(139,92,246,0.3)' }
-                    : { background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }
-                  }
+                  variant={plan.isPopular && !isCurrent ? 'primary' : 'secondary'}
+                  size="lg"
+                  fullWidth
+                  rightIcon={!isCurrent ? ArrowRight : undefined}
                 >
                   {isCurrent ? 'Current Plan' : (
                     config?.activePromotion === 'trial' && !profile?.trialUsed && plan.monthlyPrice > 0
                       ? 'Start Free Trial'
                       : 'Get Started'
                   )}
-                  {!isCurrent && <ArrowRight className="w-4 h-4" />}
-                </button>
+                </Button>
               </motion.div>
             );
           })}

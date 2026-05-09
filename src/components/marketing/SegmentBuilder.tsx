@@ -4,8 +4,11 @@ import {
   Plus, X, Filter, Sliders, ChevronDown, 
   Trash2, Database, Info, Save, Search, Check
 } from 'lucide-react';
-import Select from '../ui/Select';
 import { Segment, Contact } from '../../types';
+import Input from '../ui/Input';
+import Select from '../ui/Select';
+import Button from '../ui/Button';
+import { cn } from '../../lib/utils';
 
 interface Props {
   segment: Partial<Segment> | null;
@@ -83,48 +86,63 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
           <h3 className="text-2xl font-bold text-foreground uppercase tracking-tight">Segment Rules</h3>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1 italic">Define automated filters for your contacts</p>
         </div>
-        <button onClick={onCancel} className="p-2 hover:bg-muted/50 rounded-full text-muted-foreground transition-colors"><X className="w-6 h-6" /></button>
+        <Button 
+          onClick={onCancel} 
+          variant="ghost" 
+          size="icon" 
+          className="rounded-full text-muted-foreground"
+        >
+          <X className="w-6 h-6" />
+        </Button>
       </div>
 
       <div className="flex-1 overflow-auto p-10 space-y-10">
         <div className="grid md:grid-cols-3 gap-8">
-          <div className="space-y-4">
-            <label className="block text-xs font-bold uppercase text-muted-foreground tracking-widest ml-2">Segment Name</label>
-            <input 
+            <Input 
+              label="Segment Name"
               type="text"
               value={activeSeg.name}
               onChange={e => setActiveSeg({...activeSeg, name: e.target.value})}
-              className="w-full bg-muted/50 border-none rounded-md p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600 transition-all shadow-inner"
+              variant="filled"
               placeholder="e.g. Pro Users in New York"
             />
-          </div>
           <div className="space-y-4 md:col-span-1">
             <label className="block text-xs font-bold uppercase text-muted-foreground tracking-widest ml-2">Match Logic</label>
             <div className="flex bg-muted/50 p-1 rounded-md shadow-inner">
-              <button 
+              <Button 
                 onClick={() => setActiveSeg({...activeSeg, matchType: 'and'})}
-                className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${activeSeg.matchType === 'and' ? 'bg-card text-primary shadow-md' : 'text-muted-foreground hover:text-muted-foreground'}`}
+                variant={activeSeg.matchType === 'and' ? 'white' : 'ghost'}
+                size="md"
+                fullWidth
+                className={cn(
+                  "py-3 font-bold uppercase tracking-widest",
+                  activeSeg.matchType === 'and' ? "text-primary shadow-md" : "text-muted-foreground"
+                )}
               >
                 Match ALL (AND)
-              </button>
-              <button 
+              </Button>
+              <Button 
                 onClick={() => setActiveSeg({...activeSeg, matchType: 'or'})}
-                className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${activeSeg.matchType === 'or' ? 'bg-card text-primary shadow-md' : 'text-muted-foreground hover:text-muted-foreground'}`}
+                variant={activeSeg.matchType === 'or' ? 'white' : 'ghost'}
+                size="md"
+                fullWidth
+                className={cn(
+                  "py-3 font-bold uppercase tracking-widest",
+                  activeSeg.matchType === 'or' ? "text-primary shadow-md" : "text-muted-foreground"
+                )}
               >
                 Match ANY (OR)
-              </button>
+              </Button>
             </div>
           </div>
-          <div className="space-y-4">
-            <label className="block text-xs font-bold uppercase text-muted-foreground tracking-widest ml-2">Description</label>
-            <input 
-              type="text"
-              value={activeSeg.description}
-              onChange={e => setActiveSeg({...activeSeg, description: e.target.value})}
-              className="w-full bg-muted/50 border-none rounded-md p-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600 transition-all shadow-inner"
-              placeholder="Who does this segment include?"
-            />
-          </div>
+          <Input 
+            label="Description"
+            type="text"
+            value={activeSeg.description}
+            onChange={e => setActiveSeg({...activeSeg, description: e.target.value})}
+            variant="filled"
+            placeholder="Who does this segment include?"
+          />
         </div>
 
         <div className="space-y-6">
@@ -201,45 +219,50 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
                             className="absolute top-full left-0 right-0 mt-2 bg-card rounded-lg shadow-2xl border border-border z-50 overflow-hidden"
                           >
                             <div className="p-4 border-b border-border">
-                              <div className="bg-muted/50 rounded-md p-2 flex items-center gap-2">
-                                <Search className="w-3 h-3 text-muted-foreground" />
-                                <input 
+                                <Input 
                                   type="text"
                                   autoFocus
                                   value={searchValue[idx] || ''}
                                   onChange={e => setSearchValue({...searchValue, [idx]: e.target.value})}
                                   placeholder="Search values..."
-                                  className="w-full bg-transparent border-none text-xs font-bold focus:ring-0 p-1"
+                                  variant="ghost"
+                                  inputSize="sm"
+                                  leftIcon={Search}
                                 />
-                              </div>
                             </div>
                             <div className="max-h-48 overflow-auto py-2">
                               {/* Custom Option */}
-                              <button 
+                              <Button 
                                 onClick={() => {
                                   const custom = prompt('Enter custom value:');
                                   if (custom !== null) updateFilter(idx, { value: custom });
                                   setIsDropdownOpen({...isDropdownOpen, [idx]: false});
                                 }}
-                                className="w-full text-left px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/8 border-b border-border transition-colors"
+                                variant="ghost"
+                                size="md"
+                                fullWidth
+                                className="justify-start px-5 py-6 font-bold uppercase tracking-widest text-primary hover:bg-primary/8 border-b border-border"
                               >
                                 + Custom Value
-                              </button>
+                              </Button>
 
                               {getUniqueValues(filter.field)
                                 .filter(v => v.toLowerCase().includes((searchValue[idx] || '').toLowerCase()))
                                 .map(val => (
-                                  <button 
+                                  <Button 
                                     key={val}
                                     onClick={() => {
                                       updateFilter(idx, { value: val });
                                       setIsDropdownOpen({...isDropdownOpen, [idx]: false});
                                     }}
-                                    className="w-full text-left px-5 py-3 text-xs font-bold text-muted-foreground hover:bg-muted/50 flex items-center justify-between group transition-colors"
+                                    variant="ghost"
+                                    size="md"
+                                    fullWidth
+                                    className="justify-between px-5 py-6 font-bold text-muted-foreground hover:bg-muted/50"
                                   >
                                     {val}
                                     {filter.value === val && <Check className="w-3 h-3 text-primary" />}
-                                  </button>
+                                  </Button>
                                 ))}
                               
                               {getUniqueValues(filter.field).length === 0 && (
@@ -252,25 +275,30 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
                     </div>
                   </div>
 
-                  <button 
+                  <Button 
                     onClick={() => removeFilter(idx)}
-                    className="p-4 text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-all border border-transparent hover:border-rose-500/20"
+                    variant="ghost"
+                    size="icon"
+                    className="p-6 text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20"
                   >
                     <Trash2 className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </motion.div>
               ))}
             </AnimatePresence>
 
-            <button 
+            <Button 
               onClick={addFilter}
-              className="w-full py-10 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-indigo-400 hover:text-primary hover:bg-primary/8/20 transition-all font-bold text-xs uppercase tracking-widest flex flex-col items-center justify-center gap-3"
+              variant="outline"
+              size="lg"
+              fullWidth
+              className="py-16 border-2 border-dashed border-border hover:border-indigo-400 hover:bg-primary/5 flex-col gap-3 h-auto"
             >
-              <div className="w-12 h-12 bg-card rounded-md flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
+              <div className="w-12 h-12 bg-card border border-border rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
                 <Plus className="w-6 h-6" />
               </div>
-              Add Condition
-            </button>
+              <span className="font-bold text-xs uppercase tracking-[0.2em]">Add Condition</span>
+            </Button>
           </div>
         </div>
       </div>
@@ -283,14 +311,18 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
            <p className="text-xs font-bold uppercase tracking-widest max-w-xs leading-relaxed">Contacts are dynamically synchronized with this segment based on the active rule set.</p>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={onCancel} className="px-8 py-4 rounded-md font-bold text-xs uppercase tracking-widest text-muted-foreground hover:text-muted-foreground transition-all hover:bg-muted">Discard</button>
-          <button 
+          <Button onClick={onCancel} variant="ghost" size="lg" className="px-8 font-bold uppercase tracking-widest">
+            Discard
+          </Button>
+          <Button 
             onClick={() => onSave(activeSeg)}
-            className="px-12 py-4 bg-primary text-white rounded-md font-bold text-xs uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 flex items-center gap-3"
+            variant="primary"
+            size="lg"
+            leftIcon={Save}
+            className="px-12 shadow-xl shadow-primary/20 font-bold uppercase tracking-widest"
           >
-            <Save className="w-4 h-4" />
             Save Segment
-          </button>
+          </Button>
         </div>
       </div>
     </div>

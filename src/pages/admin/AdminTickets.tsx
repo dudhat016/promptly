@@ -6,6 +6,10 @@ import { db } from '../../lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
 import Select from '../../components/ui/Select';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
+import Button from '../../components/ui/Button';
+import { cn } from '../../lib/utils';
 
 interface Ticket {
   id: string;
@@ -109,16 +113,16 @@ export default function AdminTickets() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Ticket List */}
         <div className="lg:col-span-1 space-y-3">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search tickets..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all placeholder:text-muted-foreground"
-            />
-          </div>
+          <Input
+            id="ticketSearch"
+            name="ticketSearch"
+            type="text"
+            placeholder="Search tickets..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            leftIcon={Search}
+            variant="filled"
+          />
 
           <div className="space-y-2 overflow-y-auto max-h-[70vh]">
             {loading ? (
@@ -126,22 +130,26 @@ export default function AdminTickets() {
             ) : filteredTickets.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">No tickets found.</div>
             ) : filteredTickets.map(ticket => (
-              <button
+              <Button
                 key={ticket.id}
                 onClick={() => setSelectedTicket(ticket)}
-                className={`w-full text-left p-4 rounded-md border transition-all ${
+                variant={selectedTicket?.id === ticket.id ? 'primary' : 'outline'}
+                size="lg"
+                fullWidth
+                className={cn(
+                  "text-left h-auto p-4 flex-col items-start gap-0",
                   selectedTicket?.id === ticket.id
-                    ? 'bg-primary border-primary text-primary-foreground shadow-sm'
-                    : 'bg-card border-border text-foreground hover:border-primary/30'
-                }`}
+                    ? "border-primary text-primary-foreground shadow-sm"
+                    : "bg-card border-border text-foreground hover:border-primary/30"
+                )}
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                <div className="flex items-center justify-between mb-1.5 w-full">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
                     selectedTicket?.id === ticket.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'
                   }`}>
                     {ticket.status}
                   </span>
-                  <span className={`text-xs font-medium uppercase tracking-wider ${
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${
                     ticket.priority === 'high'
                       ? selectedTicket?.id === ticket.id ? 'text-primary-foreground/80' : 'text-rose-500'
                       : selectedTicket?.id === ticket.id ? 'text-primary-foreground/60' : 'text-muted-foreground'
@@ -149,11 +157,11 @@ export default function AdminTickets() {
                     {ticket.priority}
                   </span>
                 </div>
-                <h3 className="text-sm font-semibold truncate mb-0.5">{ticket.subject}</h3>
-                <p className={`text-xs truncate ${selectedTicket?.id === ticket.id ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                <h3 className="text-sm font-bold truncate mb-0.5 w-full">{ticket.subject}</h3>
+                <p className={`text-[11px] truncate w-full ${selectedTicket?.id === ticket.id ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                   {ticket.userEmail}
                 </p>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -207,21 +215,26 @@ export default function AdminTickets() {
               {/* Reply Area */}
               <div className="p-4 border-t border-border">
                 <div className="flex gap-3">
-                  <textarea
+                  <Textarea
+                    id="ticketReply"
+                    name="ticketReply"
                     value={reply}
                     onChange={e => setReply(e.target.value)}
                     placeholder="Type your response..."
-                    className="flex-grow resize-none px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all placeholder:text-muted-foreground"
+                    className="flex-grow min-h-[60px]"
                     rows={2}
+                    variant="filled"
                   />
-                  <button
+                  <Button
                     onClick={handleSendReply}
                     disabled={!reply.trim()}
-                    className="self-end flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-all"
+                    variant="primary"
+                    size="md"
+                    leftIcon={Send}
+                    className="self-end px-6 font-bold"
                   >
-                    <Send className="w-4 h-4" />
                     Send
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

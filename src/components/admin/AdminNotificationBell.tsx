@@ -4,6 +4,7 @@ import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/f
 import { db } from '../../lib/firebase';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
+import Button from '../ui/Button';
 
 interface NotifGroup {
   key: string;
@@ -124,9 +125,11 @@ export default function AdminNotificationBell() {
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <Button
         onClick={() => setOpen(v => !v)}
-        className="relative p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-md transition-all"
+        variant="ghost"
+        size="icon"
+        className="relative text-muted-foreground hover:text-foreground hover:bg-muted/60"
         title="Notifications"
       >
         <Bell className="w-4 h-4" />
@@ -135,7 +138,7 @@ export default function AdminNotificationBell() {
             {totalCount > 99 ? '99+' : totalCount}
           </span>
         )}
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open && (
@@ -198,14 +201,18 @@ export default function AdminNotificationBell() {
                   ))}
 
                   {/* View all link */}
-                  <Link
+                  <Button
+                    as={Link}
                     to={group.href}
                     onClick={() => setOpen(false)}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-primary hover:bg-primary/5 transition-colors border-t border-border/50"
+                    variant="ghost"
+                    size="sm"
+                    fullWidth
+                    rightIcon={ArrowRight}
+                    className="justify-start px-4 py-2 text-primary hover:bg-primary/5 border-t border-border/50 rounded-none h-auto font-bold"
                   >
                     View all {group.label.toLowerCase()}
-                    <ArrowRight className="w-3 h-3" />
-                  </Link>
+                  </Button>
                 </div>
               ))}
             </div>
