@@ -4,7 +4,6 @@ import path from "path";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import { initFirebase } from "../lib/firebase";
-import { getFirestore } from "firebase-admin/firestore";
 
 export class GeneralService {
   /**
@@ -32,8 +31,7 @@ export class GeneralService {
     const firebase = await initFirebase();
     if (!firebase) throw new Error("Firebase not connected");
 
-    const db = getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)');
-    const configSnap = await db.collection('configs').doc('ftp').get();
+    const configSnap = await firebase.db.collection('configs').doc('ftp').get();
     const config = configSnap.exists ? configSnap.data() : null;
 
     if (config && !config.enabled) {
@@ -99,8 +97,7 @@ export class GeneralService {
     const firebase = await initFirebase();
     if (!firebase) throw new Error("Firebase not connected");
 
-    const db = getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)');
-    const configSnap = await db.collection("configs").doc("email").get();
+    const configSnap = await firebase.db.collection("configs").doc("email").get();
     const config = configSnap.exists ? configSnap.data() : null;
 
     const smtpHost = config?.smtpHost || process.env.SMTP_HOST;

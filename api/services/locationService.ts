@@ -1,5 +1,3 @@
-import { getFirestore } from "firebase-admin/firestore";
-
 export class LocationService {
   /**
    * Detects user location and currency based on IP
