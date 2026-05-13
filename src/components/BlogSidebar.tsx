@@ -1,12 +1,13 @@
-import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { Mail, Search, Sparkles, Tag as TagIcon, TrendingUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { usePath } from '../hooks/usePath';
 import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { BlogPost } from '../types';
-import Input from './ui/Input';
+import Input from './primitives/Input';
 
 export default function BlogSidebar() {
   const [tags, setTags] = useState<string[]>([]);
@@ -14,6 +15,8 @@ export default function BlogSidebar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
+  const profile = useMemo(() => getAffinityProfile(), []);
 
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +51,7 @@ export default function BlogSidebar() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) navigate(`/explore?q=${encodeURIComponent(searchQuery.trim())}`);
+    if (searchQuery.trim()) navigate(prefix(`/blog?q=${encodeURIComponent(searchQuery.trim())}`));
   };
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -56,10 +59,6 @@ export default function BlogSidebar() {
     if (!email) return;
     setIsSubmitting(true);
     try {
-      // Import addDoc and serverTimestamp from firebase/firestore at the top
-      // (Wait, we already imported what we need, let's just use them directly if not, we need to import)
-      // Actually let's assume we import them properly. Let's do dynamic import or just standard.
-      const { addDoc, getDocs, updateDoc, query, where, serverTimestamp } = await import('firebase/firestore');
 
       const contactRef = collection(db, 'marketing_contacts');
       const q = query(contactRef, where('email', '==', email));
@@ -97,6 +96,14 @@ export default function BlogSidebar() {
     }
   };
 
+  const trendingPosts = useMemo(() =>
+    [...posts].sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 3)
+  , [posts]);
+
+  const recommendedPosts = useMemo(() =>
+    [...posts].sort((a, b) => calculateBlogScore(b, profile) - calculateBlogScore(a, profile)).slice(0, 3)
+  , [posts, profile]);
+
   return (
     <aside className="lg:w-1/3 space-y-8">
       {/* Search Box */}
@@ -106,7 +113,7 @@ export default function BlogSidebar() {
           Search Blog
         </h3>
         <form onSubmit={handleSearch}>
-          <Input 
+          <Input
             id="blogSearch"
             name="blogSearch"
             type="text"
@@ -127,10 +134,10 @@ export default function BlogSidebar() {
             Trending Now
           </h3>
           <div className="space-y-4">
-            {[...posts].sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 3).map(post => (
+            {trendingPosts.map(post => (
               <Link
                 key={`trending-${post.id}`}
-                to={`/blog/${post.slug}`}
+                to={prefix(`/blog/${post.slug}`)}
                 className="group flex gap-3 items-center"
               >
                 {post.coverImage ? (
@@ -163,10 +170,10 @@ export default function BlogSidebar() {
             Recommended
           </h3>
           <div className="space-y-4">
-            {[...posts].sort((a, b) => calculateBlogScore(b, getAffinityProfile()) - calculateBlogScore(a, getAffinityProfile())).slice(0, 3).map(post => (
+            {recommendedPosts.map(post => (
               <Link
                 key={`rec-${post.id}`}
-                to={`/blog/${post.slug}`}
+                to={prefix(`/blog/${post.slug}`)}
                 className="group flex gap-3 items-center"
               >
                 {post.coverImage ? (
@@ -189,7 +196,7 @@ export default function BlogSidebar() {
 
       {/* Popular Tags */}
       <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
-        <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
           <TagIcon className="w-5 h-5 text-primary" />
           Popular Tags
         </h3>
@@ -197,7 +204,7 @@ export default function BlogSidebar() {
           {tags.length > 0 ? tags.map(tag => (
             <Link
               key={tag}
-              to={`/blog/tag/${tagToSlug(tag)}`}
+              to={prefix(`/blog/tag/${tagToSlug(tag)}`)}
               className="px-3 py-1.5 bg-muted/50 text-muted-foreground hover:bg-primary/8 hover:text-primary text-sm font-semibold rounded-lg transition-colors border border-border"
             >
               {tag}
@@ -221,7 +228,7 @@ export default function BlogSidebar() {
           Get the latest prompt engineering guides and AI news delivered directly to your inbox.
         </p>
         <form className="space-y-3" onSubmit={handleSubscribe}>
-          <Input 
+          <Input
             type="email"
             placeholder="Enter your email"
             required

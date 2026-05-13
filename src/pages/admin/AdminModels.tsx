@@ -7,10 +7,12 @@ import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import Button from '../../components/ui/Button';
+import { usePath } from '../../hooks/usePath';
+import Button from '../../components/primitives/Button';
 
 export default function AdminModels() {
   const confirm = useConfirm();
+  const { prefix } = usePath();
   const [models, setModels] = useState<AIModel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -94,7 +96,7 @@ export default function AdminModels() {
   ];
 
   const actions: DataTableActions<AIModel> = {
-    edit: m => `/admin/models/edit/${m.id}`,
+    edit: m => prefix(`/admin/models/${m.id}/edit`),
     onDelete: handleDelete,
   };
 
@@ -108,7 +110,7 @@ export default function AdminModels() {
         actions={
           <Button
             as={Link}
-            to="/admin/models/new"
+            to={prefix("/admin/models/new")}
             variant="primary"
             size="md"
             leftIcon={Plus}

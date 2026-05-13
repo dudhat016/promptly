@@ -17,7 +17,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useMarketing } from '../hooks/useMarketing';
 import { db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
-import Button from '../components/ui/Button';
+import Button from '../components/primitives/Button';
+import Progress from '../components/feedback/Progress';
 import { cn } from '../lib/utils';
 
 const formatDate = (date: any) => {
@@ -290,13 +291,12 @@ export default function AffiliatePage() {
                  <h3 className="text-2xl font-bold mb-4 tracking-tighter">Growth Accelerator</h3>
                  <p className="opacity-60 text-sm mb-8 leading-relaxed font-medium">Refer 10 Pro users to unlock a <span className="text-primary font-bold">$100 instant bonus</span> and lifetime platform access.</p>
 
-                 <div className="bg-background/10 h-2.5 rounded-full overflow-hidden border border-background/5">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, (referrals.filter(r => r.subscriptionStatus === 'pro').length / 10) * 100)}%` }}
-                      className="bg-primary h-full shadow-[0_0_15px_rgba(var(--primary),0.5)]"
-                    />
-                 </div>
+                 <Progress 
+                    value={referrals.filter(r => r.subscriptionStatus === 'pro').length}
+                    max={10}
+                    size="md"
+                    trackClassName="bg-background/10 border border-background/5"
+                 />
                  <div className="flex justify-between items-center mt-4">
                    <p className="text-xs uppercase font-bold tracking-widest opacity-40">{referrals.filter(r => r.subscriptionStatus === 'pro').length} / 10 Referrals</p>
                    <p className="text-xs uppercase font-bold tracking-widest text-primary">

@@ -1,18 +1,26 @@
 import {
   ChevronDown, Coins, FileText, Gift, Heart, LayoutGrid,
   LogOut, Mail, Menu, Moon, Search, Settings, ShieldCheck,
-  Sparkles, Sun, User, X,
+  Sparkles, Sun, User, X, HelpCircle
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '../hooks/useTheme';
-import { useConfig } from '../hooks/useConfig';
-import { auth, signInWithGoogle } from '../lib/firebase';
+import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useCurrency } from '../context/CurrencyContext';
-import Button from './ui/Button';
+import { useAuth } from '../hooks/useAuth';
+import { useConfig } from '../hooks/useConfig';
+import { useTheme } from '../hooks/useTheme';
+import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../i18n';
+import { usePath } from '../hooks/usePath';
+import { useUI } from '../contexts/UIProvider';
+import { auth, signInWithGoogle } from '../lib/firebase';
 import { cn } from '../lib/utils';
+import Button from './primitives/Button';
+import NotificationBell from './notifications/NotificationBell';
+import AnnouncementBanner from './AnnouncementBanner';
+import PageContainer from './layout/PageContainer';
+import UserDropdown from './layout/UserDropdown';
 
 function CurrencyDropdown() {
   const { currency, setCurrency, symbol } = useCurrency();
@@ -79,299 +87,328 @@ function ThemeToggle() {
   );
 }
 
+function LanguageSwitcher() {
+  const { lng } = useParams();
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === lng) || SUPPORTED_LANGUAGES[0];
+
+  const changeLang = (code: string) => {
+    const newPath = location.pathname.replace(`/${lng}`, `/${code}`);
+    navigate(newPath + location.search, { replace: true });
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        onClick={() => setOpen(!open)}
+        variant="ghost"
+        size="sm"
+        className="gap-2 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground font-semibold"
+      >
+        <span className="text-lg">{currentLang.flag}</span>
+        <span className="hidden lg:inline uppercase">{currentLang.code}</span>
+      </Button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 4, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.97 }}
+              transition={{ duration: 0.12 }}
+              className="absolute right-0 mt-1.5 w-40 rounded-xl p-1.5 z-50 bg-card border border-border shadow-xl"
+            >
+              {SUPPORTED_LANGUAGES.map((l) => (
+                <Button
+                  key={l.code}
+                  onClick={() => changeLang(l.code)}
+                  variant={lng === l.code ? 'primary' : 'ghost'}
+                  size="sm"
+                  fullWidth
+                  className="justify-start gap-3 px-2.5 py-1.5 font-semibold"
+                >
+                  <span className="text-lg">{l.flag}</span>
+                  <span>{l.label}</span>
+                </Button>
+              ))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Header() {
+  const { config: uiConfig } = useUI();
   const { config } = useConfig();
+  const { theme } = useTheme();
   const { user, profile, isPro, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { prefix, lng } = usePath();
 
   const handleSignOut = async () => {
     await auth.signOut();
-    navigate('/');
+    navigate(prefix('/'));
   };
 
   const NAV_LINKS = [
-    { to: '/explore', label: 'Explore' },
-    { to: '/pricing', label: 'Pricing' },
-    { to: '/blog',    label: 'Blog'    },
-    { to: '/contact', label: 'Contact' },
+    { to: prefix('/explore'), label: 'Explore' },
+    { to: prefix('/pricing'), label: 'Pricing' },
+    { to: prefix('/blog'),    label: 'Blog'    },
+    { to: prefix('/affiliate'), label: 'Partner' },
+    { to: prefix('/contact'), label: 'Support' },
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-background/90 border-b border-border">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
-
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0 group">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center group-hover:scale-95 transition-transform"
-            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 14px rgba(139,92,246,0.35)' }}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="font-bold text-base font-display text-foreground">{config.siteName}</span>
-        </Link>
-
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-0.5">
-          {NAV_LINKS.map(({ to, label }) => (
-            <Link
-              key={to}
-              to={to}
-              className="px-3 py-1.5 text-sm font-medium rounded-md transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Right actions */}
-        <div className="flex items-center gap-1.5">
-          <CurrencyDropdown />
-          <ThemeToggle />
-
-          {!loading && (
-            user ? (
-              <div className="relative">
-                <Button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  variant="ghost"
-                  size="md"
-                  rightIcon={ChevronDown}
-                  className={cn(
-                    "pl-2 pr-2.5 py-1.5 border border-transparent hover:bg-muted hover:border-border",
-                    userMenuOpen && "bg-muted border-border"
-                  )}
-                  iconClassName={cn("w-3.5 h-3.5 text-muted-foreground transition-transform duration-200", userMenuOpen && "rotate-180")}
-                >
-                  <div className="w-7 h-7 rounded-lg overflow-hidden border border-border shrink-0">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white"
-                        style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-                        {user.displayName?.charAt(0)?.toUpperCase() || <User className="w-3.5 h-3.5" />}
-                      </div>
-                    )}
-                  </div>
-                  <div className="hidden sm:block text-left ml-2 mr-1">
-                    <p className="text-xs font-semibold text-foreground leading-none">{user.displayName?.split(' ')[0] || 'User'}</p>
-                    <p className="text-xs text-muted-foreground leading-none mt-0.5 flex items-center gap-1">
-                      <Coins className="w-2.5 h-2.5" />
-                      {isPro ? '∞' : profile?.credits ?? 0}
-                    </p>
-                  </div>
-                </Button>
-
-                <AnimatePresence>
-                  {userMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                        transition={{ duration: 0.12 }}
-                        className="absolute right-0 mt-2 w-56 rounded-xl p-1.5 z-50 bg-card border border-border shadow-2xl"
-                      >
-                        <div className="px-3 py-2.5 mb-1 border-b border-border">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <p className="text-sm font-semibold text-foreground truncate">{user.displayName || 'User'}</p>
-                            {isPro && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 bg-primary/20 text-primary">Pro</span>}
-                            {isAdmin && <span className="text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">Admin</span>}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                        </div>
-
-                        <DMenuItem to="/dashboard/vault"     icon={LayoutGrid} onClick={() => setUserMenuOpen(false)}>My Vault</DMenuItem>
-                        <DMenuItem to="/dashboard/favorites"  icon={Heart}      onClick={() => setUserMenuOpen(false)}>Favorites</DMenuItem>
-                        <DMenuItem to="/dashboard/credits"    icon={Coins}      onClick={() => setUserMenuOpen(false)}>Credits</DMenuItem>
-                        <DMenuItem to="/dashboard/affiliate"  icon={Gift}       onClick={() => setUserMenuOpen(false)}>Partner Program</DMenuItem>
-                        {isAdmin && (
-                          <DMenuItem to="/admin" icon={ShieldCheck} onClick={() => setUserMenuOpen(false)} accent>Admin Panel</DMenuItem>
-                        )}
-                        <DMenuItem to="/settings/profile" icon={Settings} onClick={() => setUserMenuOpen(false)}>Settings</DMenuItem>
-
-                        <div className="h-px my-1 bg-border" />
-                        <Button
-                          onClick={() => { setUserMenuOpen(false); handleSignOut(); }}
-                          variant="ghost"
-                          size="md"
-                          fullWidth
-                          leftIcon={LogOut}
-                          className="justify-start px-3 py-2 text-destructive hover:bg-destructive/10 font-medium"
-                        >
-                          Sign out
-                        </Button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
+    <>
+      <AnnouncementBanner />
+      <header className={cn(
+        "z-50 flex items-center transition-all duration-300",
+        (uiConfig.navbarStyle === 'fixed' || uiConfig.navbarStyle === 'floating') ? "sticky top-0" : "static",
+        uiConfig.navbarStyle === 'floating'
+          ? "m-4 rounded-2xl glass border border-border shadow-xl w-[calc(100%-2rem)]"
+          : "w-full glass border-b border-border h-16"
+      )}>
+        <PageContainer className="px-4 md:px-6 h-16 flex items-center justify-between gap-4" ignoreCustomizer>
+  
+          {/* Logo */}
+          <Link to={prefix('/')} className="flex items-center gap-2.5 shrink-0 group">
+            {theme === 'dark' && config.logoLight ? (
+              <img src={config.logoLight} alt={config.siteName} className="h-8 w-auto" />
+            ) : theme === 'light' && config.logoDark ? (
+              <img src={config.logoDark} alt={config.siteName} className="h-8 w-auto" />
             ) : (
-              <div className="flex items-center gap-2">
-                <Button
-                  as={Link}
-                  to="/login"
-                  variant="ghost"
-                  size="sm"
-                  className="hidden sm:block px-3 font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+              <>
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center group-hover:scale-95 transition-transform gradient-cta shadow-lg shadow-primary/25"
                 >
-                  Sign in
-                </Button>
-                <Button
-                  onClick={signInWithGoogle}
-                  variant="primary"
-                  size="md"
-                  className="px-6 font-semibold shadow-xl shadow-primary/30"
-                  style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
-                >
-                  Get started
-                </Button>
-              </div>
-            )
-          )}
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden text-muted-foreground hover:bg-muted hover:text-foreground"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden overflow-hidden bg-background border-t border-border"
-          >
-            <div className="px-4 py-5 space-y-1">
-              {user && (
-                <div className="mb-4 p-3 rounded-xl flex items-center gap-3 bg-muted border border-border">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0">
-                    {user.photoURL
-                      ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
-                          style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-                          {user.displayName?.charAt(0) || 'U'}
-                        </div>
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-foreground truncate">{user.displayName || 'User'}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Coins className="w-3 h-3" />
-                        {isPro ? 'Unlimited' : `${profile?.credits ?? 0} credits`}
-                      </span>
-                      {isPro && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-primary/20 text-primary">Pro</span>}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <MobileLink to="/explore"   icon={Search}    onClick={() => setMobileOpen(false)}>Explore</MobileLink>
-              <MobileLink to="/pricing"   icon={Sparkles}  onClick={() => setMobileOpen(false)}>Pricing</MobileLink>
-              <MobileLink to="/blog"      icon={FileText}  onClick={() => setMobileOpen(false)}>Blog</MobileLink>
-              <MobileLink to="/contact"   icon={Mail}      onClick={() => setMobileOpen(false)}>Contact</MobileLink>
-              <MobileLink to="/affiliate" icon={Gift}      onClick={() => setMobileOpen(false)}>Partner Program</MobileLink>
-
-              {user && (
-                <>
-                  <div className="h-px my-3 bg-border" />
-                  <MobileLink to="/dashboard/vault"     icon={LayoutGrid} onClick={() => setMobileOpen(false)}>My Vault</MobileLink>
-                  <MobileLink to="/dashboard/favorites" icon={Heart}     onClick={() => setMobileOpen(false)}>Favorites</MobileLink>
-                  <MobileLink to="/settings/profile"    icon={Settings}  onClick={() => setMobileOpen(false)}>Settings</MobileLink>
-                  {isAdmin && (
-                    <MobileLink to="/admin" icon={ShieldCheck} onClick={() => setMobileOpen(false)} accent>Admin Panel</MobileLink>
+                  {config.projectIcon ? (
+                    <img src={config.projectIcon} alt="" className="w-full h-full object-cover rounded-xl" />
+                  ) : (
+                    <Sparkles className="w-4.5 h-4.5 text-white" />
                   )}
-                  <div className="h-px my-3 bg-border" />
-                  <Button
-                    onClick={() => { setMobileOpen(false); handleSignOut(); }}
-                    variant="ghost"
-                    size="md"
-                    fullWidth
-                    leftIcon={LogOut}
-                    className="justify-start px-3 py-2.5 text-destructive hover:bg-destructive/10 font-medium"
-                  >
-                    Sign out
-                  </Button>
-                </>
-              )}
-
-              {!user && (
-                <div className="mt-4 flex gap-2">
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-black text-foreground leading-none tracking-tight uppercase">
+                    {config.siteName}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.2em] font-black leading-none mt-1">
+                    {config.siteTagline.split(' ')[0] || 'Marketplace'}
+                  </p>
+                </div>
+              </>
+            )}
+          </Link>
+  
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-1">
+            {NAV_LINKS.map(({ to, label }) => {
+              const isActive = location.pathname === to;
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  className={cn(
+                    "px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all",
+                    isActive 
+                      ? "text-primary bg-primary/8" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        {/* Right actions */}
+        <div className="flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1 pr-2 border-r border-border/50">
+            <CurrencyDropdown />
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
+          
+          <div className="flex items-center gap-1 ml-1">
+            {user && <NotificationBell />}
+  
+            {!loading && (
+              user ? (
+                <UserDropdown isAdmin={isAdmin} />
+              ) : (
+                <div className="flex items-center gap-2">
                   <Button
                     as={Link}
-                    to="/login"
-                    onClick={() => setMobileOpen(false)}
-                    variant="outline"
-                    size="lg"
-                    fullWidth
-                    className="font-medium text-muted-foreground hover:text-foreground hover:bg-muted border-border"
+                    to={prefix('/login')}
+                    variant="ghost"
+                    size="sm"
+                    className="hidden sm:inline-flex px-4 font-bold text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted"
                   >
                     Sign in
                   </Button>
                   <Button
-                    onClick={() => { setMobileOpen(false); signInWithGoogle(); }}
+                    onClick={signInWithGoogle}
                     variant="primary"
-                    size="lg"
-                    fullWidth
-                    className="font-semibold"
-                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
+                    size="md"
+                    className="px-6 font-black text-xs uppercase tracking-[0.1em] shadow-lg shadow-primary/25 gradient-cta"
                   >
                     Get started
                   </Button>
                 </div>
-              )}
-            </div>
-          </motion.div>
+              )
+            )}
+          </div>
+        </div>
+
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="md:hidden rounded bg-muted text-foreground hover:bg-border transition-colors h-9 w-9"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
+        </PageContainer>
+      </header>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 top-16 bg-background/60 backdrop-blur-sm z-[45] md:hidden"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="md:hidden absolute top-16 left-0 right-0 z-50 glass border-t border-border shadow-2xl overflow-hidden"
+            >
+              <div className="px-4 py-6 space-y-1">
+                {user && (
+                  <div className="mb-6 p-4 rounded-2xl flex items-center gap-4 bg-muted/50 border border-border/50">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-border shrink-0 shadow-md">
+                      {user.photoURL
+                        ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-lg font-bold bg-primary text-primary-foreground">
+                            {user.displayName?.charAt(0) || 'U'}
+                          </div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-sm text-foreground truncate uppercase tracking-tight">{user.displayName || 'User'}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                          <Coins className="w-3 h-3 text-primary" />
+                          {isPro ? 'Unlimited Access' : `${profile?.credits ?? 0} Credits Remaining`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+  
+                <div className="grid grid-cols-1 gap-1">
+                  <MobileLink to={prefix('/explore')}   icon={Search}    onClick={() => setMobileOpen(false)}>Explore Library</MobileLink>
+                  <MobileLink to={prefix('/pricing')}   icon={Sparkles}  onClick={() => setMobileOpen(false)}>Upgrade to Pro</MobileLink>
+                  <MobileLink to={prefix('/blog')}      icon={FileText}  onClick={() => setMobileOpen(false)}>Resources & Blog</MobileLink>
+                  <MobileLink to={prefix('/contact')}   icon={Mail}      onClick={() => setMobileOpen(false)}>Help & Support</MobileLink>
+                  <MobileLink to={prefix('/faq')}       icon={HelpCircle} onClick={() => setMobileOpen(false)}>Common FAQs</MobileLink>
+                  <MobileLink to={prefix('/affiliate')} icon={Gift}      onClick={() => setMobileOpen(false)}>Partner Ecosystem</MobileLink>
+                </div>
+  
+                {user && (
+                  <>
+                    <div className="h-px my-4 bg-border/50" />
+                    <div className="grid grid-cols-1 gap-1">
+                      <MobileLink to={prefix('/dashboard/vault')}     icon={LayoutGrid} onClick={() => setMobileOpen(false)}>My Private Vault</MobileLink>
+                      <MobileLink to={prefix('/dashboard/favorites')} icon={Heart}     onClick={() => setMobileOpen(false)}>Saved Formulas</MobileLink>
+                      <MobileLink to={prefix('/settings/profile')}    icon={Settings}  onClick={() => setMobileOpen(false)}>Account Settings</MobileLink>
+                      {isAdmin && (
+                        <MobileLink to={prefix('/admin')} icon={ShieldCheck} onClick={() => setMobileOpen(false)} accent>Admin Control Tower</MobileLink>
+                      )}
+                    </div>
+                    <div className="h-px my-4 bg-border/50" />
+                    <Button
+                      onClick={() => { setMobileOpen(false); handleSignOut(); }}
+                      variant="ghost"
+                      size="lg"
+                      fullWidth
+                      leftIcon={LogOut}
+                      className="justify-start px-3 py-3 text-destructive hover:bg-destructive/10 font-bold text-xs uppercase tracking-[0.2em]"
+                    >
+                      Terminate Session
+                    </Button>
+                  </>
+                )}
+  
+                {!user && (
+                  <div className="mt-6 flex flex-col gap-3">
+                    <Button
+                      as={Link}
+                      to={prefix('/login')}
+                      onClick={() => setMobileOpen(false)}
+                      variant="outline"
+                      size="xl"
+                      fullWidth
+                      className="font-bold text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted border-border"
+                    >
+                      Sign in to Account
+                    </Button>
+                    <Button
+                      onClick={() => { setMobileOpen(false); signInWithGoogle(); }}
+                      variant="primary"
+                      size="xl"
+                      fullWidth
+                      className="font-black text-xs uppercase tracking-[0.15em] gradient-cta shadow-xl shadow-primary/20"
+                    >
+                      Initialize Account
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
-    </header>
+    </>
   );
 }
 
-function DMenuItem({ to, icon: Icon, children, onClick, accent = false }: {
-  to: string; icon: React.ElementType; children: React.ReactNode;
-  onClick?: () => void; accent?: boolean;
-}) {
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-        accent ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-      }`}
-    >
-      <Icon className="w-4 h-4 shrink-0" />
-      {children}
-    </Link>
-  );
-}
+
 
 function MobileLink({ to, icon: Icon, children, onClick, accent = false }: {
   to: string; icon: React.ElementType; children: React.ReactNode;
   onClick?: () => void; accent?: boolean;
 }) {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+
   return (
     <Link
       to={to}
       onClick={onClick}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-        accent ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-      }`}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+        isActive 
+          ? "bg-primary/10 text-primary" 
+          : accent 
+            ? "text-primary hover:bg-primary/10" 
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
     >
-      <Icon className="w-4 h-4 shrink-0 text-muted-foreground/60" />
+      <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-primary" : "text-muted-foreground/60")} />
       {children}
     </Link>
   );

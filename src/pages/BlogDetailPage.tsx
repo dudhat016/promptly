@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { usePath } from '../hooks/usePath';
 import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { BlogPost, UserProfile } from '../types';
@@ -9,14 +10,16 @@ import BlogSidebar from '../components/BlogSidebar';
 import ShareModal from '../components/ShareModal';
 import { useAuth } from '../hooks/useAuth';
 import { useSEO } from '../hooks/useSEO';
-import { recordBlogInteraction } from '../lib/affinity';
+import { INTERACTION_WEIGHTS, recordBlogInteraction } from '../lib/affinity';
 import Schema from '../components/SEO/Schema';
-import Breadcrumbs from '../components/ui/Breadcrumbs';
+import Breadcrumbs from '../components/navigation/Breadcrumbs';
 import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
-import Button from '../components/ui/Button';
+import Button from '../components/primitives/Button';
+import PageContainer from '../components/layout/PageContainer';
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { prefix } = usePath();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [author, setAuthor] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +54,7 @@ export default function BlogDetailPage() {
           import('firebase/firestore').then(({ updateDoc, increment }) => {
             updateDoc(docSnap.ref, { viewsCount: increment(1) }).catch(() => {});
           });
-          recordBlogInteraction(postData, 1);
+          recordBlogInteraction(postData, INTERACTION_WEIGHTS.VIEW);
           if (postData.authorId) {
             const authorDoc = await getDoc(doc(db, 'users', postData.authorId)).catch(() => null);
             if (authorDoc?.exists()) setAuthor({ uid: authorDoc.id, ...authorDoc.data() } as UserProfile);
@@ -71,7 +74,7 @@ export default function BlogDetailPage() {
   useEffect(() => {
     if (!post) return;
     const interval = setInterval(() => {
-      if (!document.hidden) recordBlogInteraction(post, 1, false);
+      if (!document.hidden) recordBlogInteraction(post, INTERACTION_WEIGHTS.VIEW, false);
     }, 10000);
     return () => clearInterval(interval);
   }, [post]);
@@ -81,7 +84,7 @@ export default function BlogDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen pt-24 pb-16 bg-background">
-        <div className="container mx-auto px-4 max-w-7xl">
+      <PageContainer className="max-w-7xl" ignoreCustomizer>
           <div className="flex flex-col lg:flex-row gap-10">
             <div className="flex-grow lg:w-2/3 max-w-3xl animate-pulse">
               <div className="h-6 w-24 rounded-full mb-8 bg-muted" />
@@ -93,7 +96,7 @@ export default function BlogDetailPage() {
               ))}
             </div>
           </div>
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -124,7 +127,7 @@ export default function BlogDetailPage() {
           ]}
         />
       )}
-      <div className="container mx-auto px-4 max-w-7xl">
+      <PageContainer className="max-w-7xl" ignoreCustomizer>
         <div className="flex flex-col lg:flex-row gap-10">
 
           {/* ── Article ── */}
@@ -136,7 +139,7 @@ export default function BlogDetailPage() {
           ]} 
         />
 
-        <Link to="/blog"
+        <Link to={prefix('/blog')}
               className="inline-flex items-center gap-2 text-sm font-semibold mb-8 transition-colors text-muted-foreground hover:text-primary"
             >
               <ArrowLeft className="w-4 h-4" /> Back to all posts
@@ -148,7 +151,7 @@ export default function BlogDetailPage() {
                   {post.tags.map(tag => (
                     <Link
                       key={tag}
-                      to={`/blog/tag/${tagToSlug(tag)}`}
+                      to={prefix(`/blog/tag/${tagToSlug(tag)}`)}
                       className="px-3 py-1 text-xs font-bold rounded-full transition-colors bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
                     >
                       {tag}
@@ -240,8 +243,7 @@ export default function BlogDetailPage() {
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link to="/explore"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all"
-                    style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm gradient-cta transition-all">
                     Explore Prompts <ArrowRight className="w-4 h-4" />
                   </Link>
                   <Link to="/pricing"
@@ -278,7 +280,7 @@ export default function BlogDetailPage() {
           {/* ── Sidebar ── */}
           <BlogSidebar />
         </div>
-      </div>
+      </PageContainer>
 
       {post && (
         <ShareModal

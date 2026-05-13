@@ -4,7 +4,7 @@ import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { Mail, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
-import Button from '../components/ui/Button';
+import Button from '../components/primitives/Button';
 
 export default function UnsubscribePage() {
   const [searchParams] = useSearchParams();

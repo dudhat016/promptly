@@ -1,6 +1,6 @@
 import { Shield, Mail, Lock, LogOut, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
-import Button from '../../components/ui/Button';
+import Button from '../../components/primitives/Button';
 
 export default function SecuritySettings() {
   return (

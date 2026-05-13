@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
-import { db } from '../../lib/firebase';
-import { collection, query, getDocs, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { UserProfile } from '../../types';
-import { UserCheck, Shield, Users } from 'lucide-react';
-import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
-import type { DataTableColumn, DataTableActions } from '../../components/admin';
+import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore';
+import { Shield, UserCheck, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import Button from '../../components/ui/Button';
+import type { DataTableActions, DataTableColumn } from '../../components/admin';
+import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
+import Button from '../../components/primitives/Button';
+import { db } from '../../lib/firebase';
+import { UserProfile } from '../../types';
+import { usePath } from '../../hooks/usePath';
+import { Link } from 'react-router-dom';
+import Badge from '../../components/primitives/Badge';
 
 const formatDate = (date: any): string => {
   if (!date) return 'N/A';
@@ -33,6 +36,7 @@ const sortableDate = (date: any): number => {
 
 export default function AdminUsers() {
   const confirm = useConfirm();
+  const { prefix } = usePath();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -108,19 +112,38 @@ export default function AdminUsers() {
       sortValue: u => u.subscriptionStatus ?? '',
       render: u => (
         <div className="flex flex-col gap-1.5 items-start">
-          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-            u.subscriptionStatus === 'pro'
-              ? 'bg-primary/10 text-primary'
-              : 'bg-muted text-muted-foreground'
-          }`}>
+          <Badge variant={u.subscriptionStatus === 'pro' ? 'soft' : 'outline'} size="sm">
             {u.subscriptionStatus === 'pro' ? 'Pro' : 'Free'}
-          </span>
+          </Badge>
           {u.role === 'admin' && (
-            <span className="badge-red">Admin</span>
+            <Badge variant="error" size="sm" dot pulse>Admin</Badge>
           )}
         </div>
       ),
       csvValue: u => u.subscriptionStatus ?? 'free',
+    },
+    {
+      key: 'interests',
+      header: 'Interests',
+      searchValue: u => (u.interests || []).join(' '),
+      render: u => (
+        <div className="flex flex-wrap gap-1 max-w-[150px]">
+          {(u.interests || []).slice(0, 3).map(interest => (
+            <Badge key={interest} variant="outline" size="sm" className="bg-muted/50 border-border/50 lowercase font-medium">
+              {interest}
+            </Badge>
+          ))}
+          {(u.interests || []).length > 3 && (
+            <span className="text-[9px] font-bold text-muted-foreground/60">
+              +{(u.interests || []).length - 3}
+            </span>
+          )}
+          {(!u.interests || u.interests.length === 0) && (
+            <span className="text-[10px] text-muted-foreground/40 italic">No interests</span>
+          )}
+        </div>
+      ),
+      csvValue: u => (u.interests || []).join(', '),
     },
     {
       key: 'credits',
@@ -173,7 +196,7 @@ export default function AdminUsers() {
   ];
 
   const actions: DataTableActions<UserProfile> = {
-    view: u => `/admin/users/${u.uid}`,
+    view: u => prefix(`/admin/users/${u.uid}`),
     onDelete: handleDelete,
   };
 

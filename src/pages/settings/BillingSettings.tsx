@@ -6,7 +6,7 @@ import { CreditCard, Zap, Shield, ChevronRight, Check, Clock, FileText, DollarSi
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import Button from '../../components/ui/Button';
+import Button from '../../components/primitives/Button';
 
 export default function BillingSettings() {
   const { isPro, profile, user } = useAuth();

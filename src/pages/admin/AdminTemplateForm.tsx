@@ -1,24 +1,27 @@
-import { useState, useEffect } from 'react';
-import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { EmailTemplate } from '../../types';
-import { Save, Edit2, Eye, X, Mail, Send, Settings } from 'lucide-react';
-import { AdminPageHeader } from '../../components/admin';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Eye, Mail, Save, Send, Settings, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import Input from '../../components/ui/Input';
-import Textarea from '../../components/ui/Textarea';
-import { motion, AnimatePresence } from 'motion/react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AdminPageHeader, PageContainer as AdminPageContainer } from '../../components/admin';
+import Button from '../../components/primitives/Button';
+import Input from '../../components/primitives/Input';
+import Textarea from '../../components/primitives/Textarea';
+import { usePath } from '../../hooks/usePath';
+import { db } from '../../lib/firebase';
 import { EmailService } from '../../services/emailService';
-import Button from '../../components/ui/Button';
+import { EmailTemplate } from '../../types';
 
 export default function AdminTemplateForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+  const { prefix } = usePath();
+
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [template, setTemplate] = useState<Partial<EmailTemplate>>({
     name: '', subject: '', body: '', type: '', variables: []
   });
@@ -35,13 +38,26 @@ export default function AdminTemplateForm() {
     loadData();
   }, [id]);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!template.name?.trim()) newErrors.name = "Template name is required";
+    if (!template.type?.trim()) newErrors.type = "Internal type is required";
+    if (!template.subject?.trim()) newErrors.subject = "Subject line is required";
+    if (!template.body?.trim()) newErrors.body = "Email body is required";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setSaving(true);
     try {
       const vars = template.body?.match(/{{(.*?)}}/g)?.map(v => v.replace(/[{}]/g, '')) || [];
       const templateData = { ...template, variables: [...new Set(vars)] };
-      
+
       // Use the type as the document ID for EmailService lookup
       const docId = template.type || id;
 
@@ -51,7 +67,7 @@ export default function AdminTemplateForm() {
         await setDoc(doc(db, 'templates', docId!), { ...templateData, id: docId });
       }
       toast.success("Template saved successfully!");
-      navigate('/admin/templates');
+      navigate(prefix('/admin/templates'));
     } catch (err) {
       console.error(err);
       toast.error("Failed to save template");
@@ -97,7 +113,7 @@ export default function AdminTemplateForm() {
     });
 
     const unsubscribeUrl = `${window.location.origin}/unsubscribe?email=john@example.com`;
-    
+
     return `
       <div style="background: #f8fafc; padding: 20px; font-family: sans-serif; border-radius: 20px;">
         <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">
@@ -119,7 +135,7 @@ export default function AdminTemplateForm() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <>
       <AdminPageHeader
         label="Content"
         labelIcon={Mail}
@@ -130,55 +146,67 @@ export default function AdminTemplateForm() {
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-card rounded-lg border border-border shadow-sm p-8">
-            
+
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <Input 
+                <Input
                   label="Template Name"
                   id="templateName"
                   name="templateName"
                   type="text"
-                  required
+                  error={errors.name}
                   value={template.name || ''}
-                  onChange={e => setTemplate({...template, name: e.target.value})}
+                  onChange={e => {
+                    setTemplate({...template, name: e.target.value});
+                    if (errors.name) setErrors({...errors, name: ''});
+                  }}
                   placeholder="e.g. Welcome Email"
                   variant="filled"
                 />
-                <Input 
+                <Input
                   label="Internal Type (ID)"
                   id="templateType"
                   name="templateType"
                   type="text"
-                  required
+                  error={errors.type}
                   disabled={id !== 'new'}
                   value={template.type || ''}
-                  onChange={e => setTemplate({...template, type: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
+                  onChange={e => {
+                    setTemplate({...template, type: e.target.value.toLowerCase().replace(/\s+/g, '_')});
+                    if (errors.type) setErrors({...errors, type: ''});
+                  }}
                   placeholder="e.g. welcome"
                   variant="filled"
                   className="font-mono"
                 />
               </div>
 
-              <Input 
+              <Input
                 label="Subject Line"
                 id="templateSubject"
                 name="templateSubject"
                 type="text"
-                required
+                error={errors.subject}
                 value={template.subject || ''}
-                onChange={e => setTemplate({...template, subject: e.target.value})}
+                onChange={e => {
+                  setTemplate({...template, subject: e.target.value});
+                  if (errors.subject) setErrors({...errors, subject: ''});
+                }}
                 placeholder="e.g. Welcome to Promptly!"
                 variant="filled"
               />
 
-              <Textarea 
+              <Textarea
                 label="Email Body (Markdown/Text)"
                 id="templateBody"
                 name="templateBody"
-                required
                 rows={12}
+                error={errors.body}
                 value={template.body || ''}
-                onChange={e => setTemplate({...template, body: e.target.value})}
+                onChange={e => {
+                  setTemplate({...template, body: e.target.value});
+                  if (errors.body) setErrors({...errors, body: ''});
+                }}
                 placeholder="Hi {{name}}, welcome to Promptly..."
                 variant="filled"
                 className="font-mono min-h-[300px]"
@@ -186,8 +214,8 @@ export default function AdminTemplateForm() {
               />
 
               <div className="pt-6 border-t border-border flex flex-wrap gap-4">
-                 <Button 
-                   type="submit" 
+                 <Button
+                   type="submit"
                    isLoading={saving}
                    variant="primary"
                    size="lg"
@@ -196,7 +224,7 @@ export default function AdminTemplateForm() {
                  >
                    Save Template
                  </Button>
-                 <Button 
+                 <Button
                    type="button"
                    onClick={() => setShowPreview(true)}
                    variant="secondary"
@@ -205,7 +233,7 @@ export default function AdminTemplateForm() {
                  >
                    Preview
                  </Button>
-                 <Button 
+                 <Button
                    type="button"
                    isLoading={isTesting}
                    onClick={handleSendTest}
@@ -216,9 +244,9 @@ export default function AdminTemplateForm() {
                  >
                    Send Test
                  </Button>
-                 <Button 
+                 <Button
                    as={Link}
-                   to="/admin/emails/settings"
+                   to={prefix("/admin/emails/settings")}
                    variant="ghost"
                    size="lg"
                    className="bg-muted text-muted-foreground"
@@ -226,9 +254,9 @@ export default function AdminTemplateForm() {
                  >
                    <Settings className="w-6 h-6" />
                  </Button>
-                 <Button 
+                 <Button
                    as={Link}
-                   to="/admin/templates"
+                   to={prefix("/admin/templates")}
                    variant="ghost"
                    size="lg"
                    className="px-8 bg-muted text-muted-foreground"
@@ -276,7 +304,7 @@ export default function AdminTemplateForm() {
       <AnimatePresence>
         {showPreview && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-muted/60 backdrop-blur-sm">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -292,31 +320,31 @@ export default function AdminTemplateForm() {
                     <p className="text-xs text-muted-foreground font-medium">Testing with mock data</p>
                   </div>
                 </div>
-                <Button 
-                  onClick={() => setShowPreview(false)} 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  onClick={() => setShowPreview(false)}
+                  variant="ghost"
+                  size="icon"
                   className="p-3 hover:bg-muted rounded-md transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </Button>
               </div>
-              
+
               <div className="p-8 overflow-y-auto bg-muted/50 flex-grow">
                 <div className="max-w-xl mx-auto">
                   <div className="bg-card border border-border rounded-lg shadow-sm p-6 mb-4">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Subject</p>
                     <p className="font-bold text-foreground">{template.subject || 'No Subject'}</p>
                   </div>
-                  <div 
+                  <div
                     className="prose prose-slate max-w-none shadow-xl rounded-md overflow-hidden"
-                    dangerouslySetInnerHTML={{ __html: renderPreview() }} 
+                    dangerouslySetInnerHTML={{ __html: renderPreview() }}
                   />
                 </div>
               </div>
 
               <div className="p-8 bg-card border-t border-border text-center shrink-0">
-                <Button 
+                <Button
                   onClick={() => setShowPreview(false)}
                   variant="white"
                   size="lg"
@@ -329,6 +357,6 @@ export default function AdminTemplateForm() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

@@ -1,0 +1,53 @@
+{
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Guardar Cambios",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "loading": "Cargando...",
+    "search": "Buscar...",
+    "noResults": "No se encontraron resultados",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "submit": "Enviar",
+    "confirm": "Confirmar",
+    "close": "Cerrar",
+    "retry": "Reintentar",
+    "viewAll": "Ver Todo",
+    "learnMore": "Más Información",
+    "getStarted": "Comenzar",
+    "signUp": "Registro Gratis",
+    "logIn": "Iniciar Sesión",
+    "logOut": "Cerrar Sesión"
+  },
+  "auth": {
+    "login": {
+      "title": "Bienvenido de Nuevo",
+      "subtitle": "Inicia sesión en tu cuenta de Promptly",
+      "email": "Correo Electrónico",
+      "password": "Contraseña",
+      "submit": "Iniciar Sesión",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "noAccount": "¿No tienes cuenta?",
+      "register": "Crear Cuenta"
+    }
+  },
+  "nav": {
+    "home": "Inicio",
+    "explore": "Explorar",
+    "pricing": "Precios",
+    "blog": "Blog",
+    "dashboard": "Panel",
+    "settings": "Configuración",
+    "support": "Soporte",
+    "admin": "Panel de Admin"
+  },
+  "errors": {
+    "generic": "Algo salió mal",
+    "network": "Error de red. Verifica tu conexión.",
+    "unauthorized": "Inicia sesión para continuar",
+    "forbidden": "No tienes permiso para acceder",
+    "notFound": "Página no encontrada",
+    "offline": "Estás sin conexión — los cambios se sincronizarán al reconectarte."
+  }
+}

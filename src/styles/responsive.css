@@ -1,0 +1,112 @@
+/**
+ * Mobile-first responsive utility classes.
+ * Import into index.css or use as reference for page-level responsive audits.
+ *
+ * Breakpoint reference (Tailwind v4):
+ *   sm:  640px   — Large phones landscape
+ *   md:  768px   — Tablets
+ *   lg:  1024px  — Small desktops / tablets landscape
+ *   xl:  1280px  — Standard desktops
+ *   2xl: 1536px  — Wide desktops
+ */
+
+/* ─── Container ──────────────────────────────────────────── */
+.responsive-container {
+  width: 100%;
+  max-width: 100%;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-container { padding-inline: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .responsive-container { padding-inline: 2rem; max-width: 1440px; margin-inline: auto; }
+}
+
+/* ─── Grid Utilities ─────────────────────────────────────── */
+.responsive-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid { grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid { grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+}
+
+@media (min-width: 1280px) {
+  .responsive-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ─── Stat Grid (Dashboard) ──────────────────────────────── */
+.stat-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ─── Sidebar Layout ─────────────────────────────────────── */
+.sidebar-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-layout {
+    flex-direction: row;
+    gap: 1.5rem;
+  }
+  .sidebar-layout > aside {
+    width: var(--sidebar-width, 260px);
+    flex-shrink: 0;
+  }
+  .sidebar-layout > main {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ─── Typography Scale ───────────────────────────────────── */
+.heading-hero {
+  font-size: 2rem;
+  line-height: 1.15;
+}
+
+@media (min-width: 640px) {
+  .heading-hero { font-size: 2.75rem; }
+}
+
+@media (min-width: 1024px) {
+  .heading-hero { font-size: 3.5rem; }
+}
+
+/* ─── Mobile Utilities ───────────────────────────────────── */
+.mobile-only { display: block; }
+.desktop-only { display: none; }
+
+@media (min-width: 1024px) {
+  .mobile-only { display: none; }
+  .desktop-only { display: block; }
+}
+
+/* ─── Touch Targets ──────────────────────────────────────── */
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

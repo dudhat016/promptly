@@ -2,7 +2,7 @@ import { CheckCircle2, Copy, Home, Layout, Rocket, Sparkles } from 'lucide-react
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import Button from '../components/ui/Button';
+import Button from '../components/primitives/Button';
 import { toast } from 'react-hot-toast';
 import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../hooks/useAuth';

@@ -175,6 +175,41 @@ export const EmailService = {
     });
   },
 
+  async sendOnboardingCompleteEmail(userId: string, email: string, name: string, interests: string[]) {
+    const template = await this.getTemplate('onboarding_complete');
+    const subject = template.subject || `Your personalized Promptly feed is ready, ${name}!`;
+    const interestList = interests
+      .map(i => `• ${i.charAt(0).toUpperCase() + i.slice(1)}`)
+      .join('\n');
+    const defaultBody = [
+      `Hi {{name}},`,
+      ``,
+      `Your Promptly profile is set up and your "For You" feed is now personalised based on your interests:`,
+      ``,
+      `{{interests}}`,
+      ``,
+      `Every prompt you view, copy, or unlock teaches the feed more about what you need — just like your favourite social app.`,
+      `Head to your dashboard to see what we've already lined up for you.`,
+      ``,
+      `— The Promptly Team`
+    ].join('\n');
+
+    const content = this.replaceVariables(template.body || defaultBody, {
+      name,
+      email,
+      interests: interestList
+    });
+
+    await this.logEmail({
+      type: 'onboarding_complete' as any,
+      recipientEmail: email,
+      recipientId: userId,
+      subject,
+      content,
+      data: { interests: interests.join(','), name }
+    });
+  },
+
   async sendEmailWithTemplate(userId: string, email: string, templateId: string, variables: Record<string, string>) {
     const template = await this.getTemplate(templateId);
     if (!template.body) {

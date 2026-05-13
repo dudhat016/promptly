@@ -1,7 +1,7 @@
 import { createContext, useContext, useRef, useState } from 'react';
 import { AlertTriangle, Trash2, HelpCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import Button from '../ui/Button';
+import Button from '../primitives/Button';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

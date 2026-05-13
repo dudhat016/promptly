@@ -26,10 +26,10 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { AutomationFlow, EmailTemplate, Tag as TagType } from '../../types';
-import Button from '../ui/Button';
-import Input from '../ui/Input';
-import Select from '../ui/Select';
-import Textarea from '../ui/Textarea';
+import Button from '../primitives/Button';
+import Input from '../primitives/Input';
+import Select from '../primitives/Select';
+import Textarea from '../primitives/Textarea';
 
 interface Props {
   flow: Partial<AutomationFlow> | null;
@@ -97,7 +97,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
     <div className="flex flex-col h-[85vh] bg-muted/50 rounded-lg overflow-hidden border border-border shadow-2xl">
       <div className="bg-card px-8 py-6 border-b border-border flex items-center justify-between z-10">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-primary rounded-md flex items-center justify-center text-white shadow-lg shadow-primary/10">
+          <div className="w-12 h-12 bg-primary rounded-md flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/10">
             <Zap className="w-6 h-6 fill-current" />
           </div>
           <div>

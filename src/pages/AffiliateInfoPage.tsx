@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { ArrowRight, Check, ChevronDown, DollarSign, Gift, Shield, Sparkles, TrendingUp, Users, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import Button from '../components/ui/Button';
+import { usePath } from '../hooks/usePath';
+import Button from '../components/primitives/Button';
 import { cn } from '../lib/utils';
+import PageContainer from '../components/layout/PageContainer';
 
 const FAQS = [
   { q: 'How much can I realistically earn?', a: 'With 50 active Pro subscribers ($15/mo each), you earn $187.50/month — $2,250/year — on complete autopilot. Top affiliates with audiences of 5k+ earn $1,000–$3,000/month.' },
@@ -21,6 +23,7 @@ const EARNINGS = [
 
 export default function AffiliateInfoPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { prefix } = usePath();
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,7 +34,7 @@ export default function AffiliateInfoPage() {
           style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.14) 0%, transparent 70%)' }} />
         <div className="absolute inset-0 pointer-events-none opacity-30"
           style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--muted-foreground)/0.2) 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
-        <div className="container mx-auto px-4 max-w-4xl relative z-10">
+        <PageContainer ignoreCustomizer>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 bg-primary/10 border border-primary/25 text-primary">
               <Gift className="w-3.5 h-3.5" />
@@ -39,7 +42,7 @@ export default function AffiliateInfoPage() {
             </div>
             <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 tracking-tight leading-[1.05]">
               Earn{' '}
-              <span style={{ background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              <span className="gradient-text">
                 25% Recurring
               </span>
               <br />Commission — Forever
@@ -48,9 +51,9 @@ export default function AffiliateInfoPage() {
               Share Promptly with your audience. Earn every month for as long as they stay subscribed. No cap. No expiry. Just passive income.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/login"
-                className="inline-flex items-center gap-2 px-7 py-4 rounded-xl font-bold text-white text-base transition-all"
-                style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 30px rgba(139,92,246,0.35)' }}
+              <Link to={prefix('/login')}
+                className="inline-flex items-center gap-2 px-7 py-4 rounded-xl font-bold gradient-cta text-base transition-all"
+                style={{ boxShadow: '0 0 30px rgba(139,92,246,0.35)' }}
               >
                 Join Free — Get My Link <ArrowRight className="w-5 h-5" />
               </Link>
@@ -76,12 +79,12 @@ export default function AffiliateInfoPage() {
               </div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── Problem ── */}
       <div className="py-20 border-t border-border">
-        <div className="container mx-auto px-4 max-w-5xl">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-14">
             <p className="text-xs font-bold uppercase tracking-widest mb-3 text-primary">The Problem</p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Most "side income" opportunities are broken</h2>
@@ -102,12 +105,12 @@ export default function AffiliateInfoPage() {
               </motion.div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── Solution bridge ── */}
       <div className="py-20 border-t border-border border-b bg-primary/[0.02]">
-        <div className="container mx-auto px-4 max-w-3xl text-center">
+        <PageContainer className="text-center" ignoreCustomizer>
           <p className="text-xs font-bold uppercase tracking-widest mb-3 text-primary">The Solution</p>
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5 leading-tight">
             A product your audience <em className="not-italic text-primary">already wants</em> — and a commission structure that rewards loyalty
@@ -115,12 +118,12 @@ export default function AffiliateInfoPage() {
           <p className="text-muted-foreground text-lg leading-relaxed">
             Promptly converts because it solves a real problem for a fast-growing audience. When your referrals upgrade, you earn 25% every single month — not once. Refer 50 paying users and collect $187/month without lifting a finger.
           </p>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── Earnings Calculator ── */}
       <div id="calculator" className="py-24">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-14">
             <p className="text-xs font-bold uppercase tracking-widest mb-3 text-primary">Earnings Calculator</p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">See what your audience is worth</h2>
@@ -161,12 +164,12 @@ export default function AffiliateInfoPage() {
               <p className="text-xs text-muted-foreground">Commission compounds as referrals stay subscribed. No cap on earnings.</p>
             </div>
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── How it works ── */}
       <div className="py-20 border-t border-border">
-        <div className="container mx-auto px-4 max-w-5xl">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-14">
             <p className="text-xs font-bold uppercase tracking-widest mb-3 text-primary">Simple Process</p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Three steps to passive income</h2>
@@ -185,12 +188,12 @@ export default function AffiliateInfoPage() {
               </motion.div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── Why partner ── */}
       <div className="py-20 border-t border-border">
-        <div className="container mx-auto px-4 max-w-5xl">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-14">
             <p className="text-xs font-bold uppercase tracking-widest mb-3 text-primary">Your Advantage</p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Why top creators choose Promptly</h2>
@@ -212,12 +215,12 @@ export default function AffiliateInfoPage() {
               </motion.div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── Mock Dashboard Preview ── */}
       <div className="py-20 border-t border-border">
-        <div className="container mx-auto px-4 max-w-5xl">
+        <PageContainer ignoreCustomizer>
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest mb-3 text-primary">Your Dashboard</p>
@@ -266,12 +269,12 @@ export default function AffiliateInfoPage() {
               </div>
             </div>
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── FAQ ── */}
       <div className="py-20 border-t border-border">
-        <div className="container mx-auto px-4 max-w-3xl">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-14">
             <p className="text-xs font-bold uppercase tracking-widest mb-3 text-primary">FAQ</p>
             <h2 className="text-3xl font-bold text-foreground">Common questions</h2>
@@ -300,29 +303,28 @@ export default function AffiliateInfoPage() {
               </div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── Final CTA ── */}
       <div className="py-24 border-t border-border">
-        <div className="container mx-auto px-4 max-w-3xl text-center">
+        <PageContainer className="text-center" ignoreCustomizer>
           <div className="rounded-2xl px-8 py-16 relative overflow-hidden"
             style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)' }}>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] pointer-events-none"
               style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.2) 0%, transparent 70%)' }} />
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-6"
-                style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-                <Sparkles className="w-7 h-7 text-white" />
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-6 gradient-cta">
+                <Sparkles className="w-7 h-7" />
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Ready to start earning?</h2>
               <p className="text-muted-foreground text-lg mb-8 max-w-md mx-auto">
                 Hundreds of creators are already earning recurring commissions with Promptly. Your link is waiting.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/login"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-white transition-all"
-                  style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 30px rgba(139,92,246,0.35)' }}
+                <Link to={prefix('/login')}
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold gradient-cta transition-all"
+                  style={{ boxShadow: '0 0 30px rgba(139,92,246,0.35)' }}
                 >
                   Become a Partner <ArrowRight className="w-5 h-5" />
                 </Link>
@@ -341,7 +343,7 @@ export default function AffiliateInfoPage() {
               </div>
             </div>
           </div>
-        </div>
+        </PageContainer>
       </div>
 
     </div>

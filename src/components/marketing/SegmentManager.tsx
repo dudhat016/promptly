@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import Button from '../ui/Button';
-import { Filter, Trash2 } from 'lucide-react';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { Filter } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
 import { Segment } from '../../types';
-import { toast } from 'react-hot-toast';
+import DataTable, { DataTableColumn } from '../admin/DataTable';
+import Badge from '../primitives/Badge';
 
 export default function SegmentManager() {
+  const { prefix } = usePath();
   const [segments, setSegments] = useState<Segment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,72 +27,68 @@ export default function SegmentManager() {
     fetchSegments();
   }, []);
 
-  const handleDeleteSegment = async (id: string) => {
+  const handleDeleteSegment = async (segment: Segment) => {
     if (!confirm('Delete this segment?')) return;
     try {
-      await deleteDoc(doc(db, 'marketing_segments', id));
-      setSegments(prev => prev.filter(s => s.id !== id));
+      await deleteDoc(doc(db, 'marketing_segments', segment.id));
+      setSegments(prev => prev.filter(s => s.id !== segment.id));
       toast.success('Segment deleted');
     } catch (err) {
       toast.error('Failed to delete segment');
     }
   };
 
-  if (loading) return <div className="p-20 text-center text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Loading Segments...</div>;
+  const columns: DataTableColumn<Segment>[] = [
+    {
+      key: 'name',
+      header: 'Segment Identity',
+      sortable: true,
+      sortValue: s => s.name,
+      searchValue: s => s.name,
+      render: s => (
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-primary/5 text-primary rounded-xl flex items-center justify-center border border-primary/10 shadow-sm group-hover:scale-105 transition-transform">
+            <Filter className="w-5 h-5" />
+          </div>
+          <span className="font-semibold text-foreground text-md">{s.name}</span>
+        </div>
+      ),
+      csvValue: s => s.name,
+    },
+    {
+      key: 'rules',
+      header: 'Logic Engine',
+      sortable: true,
+      sortValue: s => s.filters?.length || 0,
+      render: s => (
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" size="sm" className="bg-muted/10">
+            {s.filters?.length || 0} Filters
+          </Badge>
+          <Badge variant="soft" size="sm" className="bg-primary/5 border-primary/10">
+            {s.matchType === 'or' ? 'ANY MATCH' : 'ALL MATCH'}
+          </Badge>
+        </div>
+      ),
+      csvValue: s => `${s.filters?.length || 0} rules (${s.matchType})`,
+    }
+  ];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground border-b border-border">
-            <th className="p-8">Segment Name</th>
-            <th className="p-8">Rules</th>
-            <th className="p-8 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {segments.map(segment => (
-            <tr key={segment.id} className="tr group">
-              <td className="p-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-md flex items-center justify-center">
-                    <Filter className="w-5 h-5" />
-                  </div>
-                  <span className="font-bold text-foreground">{segment.name}</span>
-                </div>
-              </td>
-              <td className="p-8">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{segment.filters?.length || 0} Rules Defined</span>
-              </td>
-              <td className="p-8 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    as={Link}
-                    to={`/admin/marketing/segments/edit/${segment.id}`}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    Edit
-                  </Button>
-                  <Button 
-                    onClick={() => handleDeleteSegment(segment.id)} 
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-rose-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {segments.length === 0 && (
-            <tr>
-              <td colSpan={3} className="p-20 text-center text-muted-foreground font-medium italic">No audience segments found.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={segments}
+      rowKey={s => s.id}
+      loading={loading}
+      emptyIcon={Filter}
+      emptyTitle="No Active Segments"
+      emptyMessage="Create segments to filter your audience by custom rules."
+      actions={{
+        edit: s => prefix(`/admin/marketing/segments/${s.id}/edit`),
+        onDelete: handleDeleteSegment,
+      }}
+      searchPlaceholder="Search segments..."
+      exportFilename="marketing_segments"
+    />
   );
 }

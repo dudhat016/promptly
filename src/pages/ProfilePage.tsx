@@ -15,12 +15,13 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import Button from '../components/ui/Button';
-import ImageUpload from '../components/ui/ImageUpload';
-import Input from '../components/ui/Input';
+import Button from '../components/primitives/Button';
+import ImageUpload from '../components/forms/ImageUpload';
+import Input from '../components/primitives/Input';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
+import PageContainer from '../components/layout/PageContainer';
 
 type ProfileTab = 'account' | 'billing' | 'security' | 'notifications';
 
@@ -31,6 +32,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>((searchParams.get('tab') as ProfileTab) || 'account');
   const [isSaving, setIsSaving] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
 
   useEffect(() => {
@@ -43,13 +45,22 @@ export default function ProfilePage() {
   const handleTabChange = (tab: ProfileTab) => {
     setActiveTab(tab);
     setSearchParams({ tab });
+    setErrors({});
   };
 
   if (loading) return <div className="flex items-center justify-center py-20">Loading...</div>;
   if (!user) return null;
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!displayName.trim()) newErrors.displayName = "Display name is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setIsSaving(true);
     try {
       await updateDoc(doc(db, 'users', user.uid), {
@@ -57,6 +68,7 @@ export default function ProfilePage() {
         updatedAt: serverTimestamp()
       });
       toast.success('Settings updated successfully!');
+      setErrors({});
     } catch (err) {
       toast.error('Failed to update profile');
     } finally {
@@ -65,7 +77,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <PageContainer>
       {/* Settings Header */}
       <header className="mb-12">
         <h1 className="text-4xl font-bold text-foreground mb-2">Settings</h1>
@@ -126,8 +138,12 @@ export default function ProfilePage() {
                         id="profileDisplayName"
                         name="displayName"
                         type="text"
+                        error={errors.displayName}
                         value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
+                        onChange={(e) => {
+                          setDisplayName(e.target.value);
+                          if (errors.displayName) setErrors({...errors, displayName: ''});
+                        }}
                         variant="filled"
                         placeholder="Your Name"
                       />
@@ -306,7 +322,7 @@ export default function ProfilePage() {
           </AnimatePresence>
         </main>
       </div>
-    </div>
+    </PageContainer>
   );
 }
 

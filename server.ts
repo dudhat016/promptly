@@ -1,17 +1,19 @@
+import * as ftp from "basic-ftp";
 import dotenv from "dotenv";
 import express from "express";
-import path from "path";
 import fs from "fs";
-import * as ftp from "basic-ftp";
 import multiparty from "multiparty";
+import path from "path";
 import { initFirebase } from "./api/lib/firebase";
 
 // Import Modular Routes
-import locationRouter from "./api/routes/location";
-import paymentsRouter from "./api/routes/payments";
 import authRouter from "./api/routes/auth";
+import dataRouter from "./api/routes/data";
+import locationRouter from "./api/routes/location";
 import marketingRouter from "./api/routes/marketing";
+import paymentsRouter from "./api/routes/payments";
 import supportRouter from "./api/routes/support";
+import aiRouter from "./api/routes/aiRouter";
 
 dotenv.config();
 
@@ -37,7 +39,9 @@ app.use("/api/location", locationRouter);
 app.use("/api/payments", paymentsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/support", supportRouter);
-
+app.use("/api/data", dataRouter);
+app.use("/api/marketing", marketingRouter);
+app.use("/api/ai", aiRouter);
 app.use("/", marketingRouter); // Handles /sitemap.xml and /api/test-email
 
 app.get("/api/health", async (req, res) => {
@@ -48,7 +52,28 @@ app.get("/api/health", async (req, res) => {
   });
 });
 
-// --- Legacy FTP Vault Logic (To be modularized later) ---
+// --- Storage & Upload Logic ---
+app.post("/api/upload-ftp", (req, res) => {
+  const form = new multiparty.Form();
+  form.parse(req, async (err, fields, files) => {
+    if (err) return res.status(500).json({ error: "Failed to parse upload" });
+    
+    const folder = fields.folder?.[0] || "uploads";
+    const file = files.file?.[0];
+
+    if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+    try {
+      const { GeneralService } = await import("./api/services/generalService");
+      const result = await GeneralService.uploadFtp(file, folder);
+      res.json(result);
+    } catch (ftpErr: any) {
+      console.error("FTP Upload Error:", ftpErr);
+      res.status(500).json({ error: ftpErr.message });
+    }
+  });
+});
+
 app.post("/api/vault/upload", (req, res) => {
   const form = new multiparty.Form();
   form.parse(req, async (err, fields, files) => {

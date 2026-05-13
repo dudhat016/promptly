@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import Button from '../ui/Button';
+import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { GitBranch } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
 import { AutomationFlow } from '../../types';
+import DataTable, { DataTableColumn } from '../admin/DataTable';
+import Badge from '../primitives/Badge';
 
 export default function AutomationManager() {
+  const { prefix } = usePath();
   const [automations, setAutomations] = useState<AutomationFlow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,57 +27,84 @@ export default function AutomationManager() {
     fetchAutomations();
   }, []);
 
-  if (loading) return <div className="p-20 text-center text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Loading Automations...</div>;
+  const handleDelete = async (flow: AutomationFlow) => {
+    if (!confirm('Delete this automation?')) return;
+    try {
+      await deleteDoc(doc(db, 'marketing_automations', flow.id));
+      setAutomations(prev => prev.filter(f => f.id !== flow.id));
+      toast.success('Automation deleted');
+    } catch (err) {
+      toast.error('Failed to delete automation');
+    }
+  };
+
+  const columns: DataTableColumn<AutomationFlow>[] = [
+    {
+      key: 'name',
+      header: 'Automation Identity',
+      sortable: true,
+      sortValue: f => f.name,
+      searchValue: f => f.name,
+      render: f => (
+        <div className="flex items-center gap-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all group-hover:scale-105 shadow-sm ${
+            f.active
+              ? 'bg-primary/5 text-primary border-primary/10 shadow-primary/10'
+              : 'bg-muted/50 text-muted-foreground border-border'
+          }`}>
+            <GitBranch className="w-5 h-5" />
+          </div>
+          <span className="font-semibold text-foreground text-md">{f.name}</span>
+        </div>
+      ),
+      csvValue: f => f.name,
+    },
+    {
+      key: 'steps',
+      header: 'Structure',
+      sortable: true,
+      sortValue: f => f.steps?.length || 0,
+      render: f => (
+        <Badge variant="outline" size="sm" className="bg-muted/10">
+          {f.steps?.length || 0} Stages
+        </Badge>
+      ),
+      csvValue: f => f.steps?.length || 0,
+    },
+    {
+      key: 'status',
+      header: 'Operating State',
+      sortable: true,
+      sortValue: f => f.active ? 1 : 0,
+      render: f => (
+        <Badge 
+          variant={f.active ? 'success' : 'outline'} 
+          dot 
+          pulse={f.active}
+          className={!f.active ? "bg-muted text-muted-foreground opacity-60" : ""}
+        >
+          {f.active ? 'Running' : 'Inactive'}
+        </Badge>
+      ),
+      csvValue: f => f.active ? 'Active' : 'Inactive',
+    }
+  ];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground border-b border-border">
-            <th className="p-8">Automation Name</th>
-            <th className="p-8">Steps</th>
-            <th className="p-8">Status</th>
-            <th className="p-8 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {automations.map(flow => (
-            <tr key={flow.id} className="tr group">
-              <td className="p-8">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-md flex items-center justify-center ${flow.active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                    <GitBranch className="w-5 h-5" />
-                  </div>
-                  <span className="font-bold text-foreground">{flow.name}</span>
-                </div>
-              </td>
-              <td className="p-8">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{flow.steps?.length || 0} Steps</span>
-              </td>
-              <td className="p-8">
-                <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${flow.active ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                  {flow.active ? 'Active' : 'Draft'}
-                </span>
-              </td>
-              <td className="p-8 text-right">
-                <Button
-                  as={Link}
-                  to={`/admin/marketing/automations/edit/${flow.id}`}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Edit
-                </Button>
-              </td>
-            </tr>
-          ))}
-          {automations.length === 0 && (
-            <tr>
-              <td colSpan={4} className="p-20 text-center text-muted-foreground font-medium italic">No automations found. Create your first campaign flow.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={automations}
+      rowKey={f => f.id}
+      loading={loading}
+      emptyIcon={GitBranch}
+      emptyTitle="No Active Workflows"
+      emptyMessage="Create your first campaign flow to get started."
+      actions={{
+        edit: f => prefix(`/admin/marketing/automations/${f.id}/edit`),
+        onDelete: handleDelete,
+      }}
+      searchPlaceholder="Search automations..."
+      exportFilename="marketing_automations"
+    />
   );
 }

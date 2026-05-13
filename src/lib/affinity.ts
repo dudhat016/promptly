@@ -2,6 +2,15 @@ import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/fire
 import { BlogPost, Prompt } from '../types';
 import { auth, db } from './firebase';
 
+export const INTERACTION_WEIGHTS = {
+  VIEW: 1,
+  LIKE: 5,
+  COPY: 10,
+  UNLOCK: 8,
+  VAULT_ADD: 3,
+  ONBOARDING_SEED: 5,
+} as const;
+
 const AFFINITY_KEY = 'user_affinity_profile';
 const LAST_VISITED_KEY = 'user_affinity_last_visited';
 
@@ -181,6 +190,31 @@ export const mergeCloudAffinity = (cloudProfile: AffinityProfile) => {
   if (changed) {
     localStorage.setItem(AFFINITY_KEY, JSON.stringify(localProfile));
   }
+};
+
+// Seed the affinity profile from onboarding interest IDs — cold-start fix.
+// Only raises scores, never lowers existing behavioral scores.
+export const seedAffinityFromInterests = (interests: string[], score = INTERACTION_WEIGHTS.ONBOARDING_SEED) => {
+  if (!interests || interests.length === 0) return;
+  const profile = getAffinityProfile();
+  interests.forEach(id => {
+    const key = id.toLowerCase().replace(/\s+/g, '-');
+    if (!profile[key] || profile[key] < score) {
+      profile[key] = score;
+    }
+  });
+  localStorage.setItem(AFFINITY_KEY, JSON.stringify(profile));
+  if (auth.currentUser) syncAffinityToCloud(auth.currentUser.uid);
+};
+
+// Return the top N affinity keys sorted by score — used for email personalisation and UI labels.
+export const getTopInterests = (n = 3): string[] => {
+  const profile = getAffinityProfile();
+  return Object.entries(profile)
+    .filter(([, v]) => v >= 1)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([key]) => key);
 };
 
 // Sync local profile to the cloud and dynamically update CRM Tags

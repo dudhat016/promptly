@@ -4,8 +4,9 @@ import { db } from '../../lib/firebase';
 import { Mail, CheckCircle, Clock, Trash2, ChevronDown, ChevronUp, Search, Inbox } from 'lucide-react';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import toast from 'react-hot-toast';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
+import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
+import Badge from '../../components/primitives/Badge';
 import { cn } from '../../lib/utils';
 
 interface ContactMessage {
@@ -105,18 +106,16 @@ export default function AdminInquiries() {
         title="Contact Inquiries"
         subtitle="Manage and respond to messages from your contact page."
         actions={
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-primary" />
-              <span><span className="font-semibold text-foreground">{unreadCount}</span> unread</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span><span className="font-semibold text-foreground">{resolvedCount}</span> resolved</span>
-            </div>
-            <div className="text-muted-foreground">
-              <span className="font-semibold text-foreground">{messages.length}</span> total
-            </div>
+          <div className="flex items-center gap-3">
+            <Badge variant="error" size="sm" dot>
+              {unreadCount} unread
+            </Badge>
+            <Badge variant="success" size="sm" dot>
+              {resolvedCount} resolved
+            </Badge>
+            <Badge variant="soft" size="sm" className="bg-muted text-muted-foreground">
+              {messages.length} total
+            </Badge>
           </div>
         }
       />
@@ -201,10 +200,10 @@ export default function AdminInquiries() {
                           {message.subject || 'No Subject'}
                         </h3>
                         {message.status === 'unread' && (
-                          <span className="badge-primary shrink-0">New</span>
+                          <Badge variant="error" size="sm">New</Badge>
                         )}
                         {message.status === 'resolved' && (
-                          <span className="badge-green shrink-0">Resolved</span>
+                          <Badge variant="success" size="sm">Resolved</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">

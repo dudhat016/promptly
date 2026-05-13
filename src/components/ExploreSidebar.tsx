@@ -1,13 +1,14 @@
-import { CheckSquare, Coins, Cpu, LayoutGrid, Search, ShieldCheck, Square, Tag as TagIcon, Zap } from 'lucide-react';
+import { CheckSquare, Coins, Cpu, LayoutGrid, Search, ShieldCheck, Tag as TagIcon, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useConfig } from '../hooks/useConfig';
+import { usePath } from '../hooks/usePath';
 import { recordPromptInteraction } from '../lib/affinity';
 import { cn } from '../lib/utils';
 import { Tag as TagType } from '../types';
-import Input from './ui/Input';
-import Checkbox from './ui/Checkbox';
-import Button from './ui/Button';
+import Button from './primitives/Button';
+import Checkbox from './primitives/Checkbox';
+import Input from './primitives/Input';
 
 
 interface ExploreSidebarProps {
@@ -19,6 +20,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
   const { categorySlug, tagSlug, modelSlug } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   const location = useLocation();
 
   const { config, loading: configLoading } = useConfig();
@@ -82,7 +84,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
     if (tagArray.length > 0) path += `/tags/${tagArray.join('+')}`;
     if (pricingArray.length > 0) path += `/pricing/${pricingArray.join('+')}`;
 
-    navigate(`${path}${params.toString() ? '?' + params.toString() : ''}`);
+    navigate(`${prefix(path)}${params.toString() ? '?' + params.toString() : ''}`);
   };
 
   const handleModelToggle = (selectedModelId: string) => {
@@ -101,7 +103,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
     params.delete('categories');
     params.delete('tags');
     params.delete('pricing');
-    navigate(`${path}${params.toString() ? '?' + params.toString() : ''}`);
+    navigate(`${prefix(path)}${params.toString() ? '?' + params.toString() : ''}`);
   };
 
   const handleClear = () => {
@@ -109,7 +111,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
     params.delete('categories');
     params.delete('tags');
     params.delete('pricing');
-    navigate(`/explore${params.toString() ? '?' + params.toString() : ''}`);
+    navigate(prefix(`/explore${params.toString() ? '?' + params.toString() : ''}`));
   };
 
   useEffect(() => {
@@ -173,7 +175,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
                   className="h-auto px-4 py-3 justify-between font-normal hover:bg-muted"
                 >
                   <span className="text-foreground font-medium">{s.name}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                  <span className="text-[10px] font-semibold tracking-widest text-muted-foreground bg-muted px-2 py-1 rounded-md">
                     {s.type}
                   </span>
                 </Button>
@@ -238,14 +240,14 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           Pricing
         </h3>
         <div className="flex flex-col gap-1.5">
-          <Checkbox 
+          <Checkbox
             variant="simple"
             checked={activePricing.has('free')}
             onChange={() => handleToggle('pricing', 'free')}
             label="Free Prompts"
             className="px-4 py-2.5 rounded-md w-full"
           />
-          <Checkbox 
+          <Checkbox
             variant="simple"
             checked={activePricing.has('paid')}
             onChange={() => handleToggle('pricing', 'paid')}
@@ -286,7 +288,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
               const isActive = activeCategories.has(catId) || activeCategories.has(category.slug);
               return (
                 <div key={category.id} className="flex items-center justify-between group px-4 py-2.5 rounded-md transition-all hover:bg-muted">
-                  <Checkbox 
+                  <Checkbox
                     variant="simple"
                     checked={isActive}
                     onChange={() => handleToggle('category', catId)}
@@ -358,7 +360,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
           </p>
           <Button
             as={Link}
-            to="/pricing"
+            to={prefix('/pricing')}
             variant="primary"
             size="lg"
             fullWidth

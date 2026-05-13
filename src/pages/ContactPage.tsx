@@ -6,19 +6,39 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { useConfig } from '../hooks/useConfig';
 import { Link } from 'react-router-dom';
-import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea';
-import Select from '../components/ui/Select';
-import Button from '../components/ui/Button';
+import Input from '../components/primitives/Input';
+import Textarea from '../components/primitives/Textarea';
+import Select from '../components/primitives/Select';
+import Button from '../components/primitives/Button';
+
+import PageContainer from '../components/layout/PageContainer';
 
 export default function ContactPage() {
   const { config } = useConfig();
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) newErrors.name = "Your name is required";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email address is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Invalid email format";
+    }
+    if (!formData.subject) newErrors.subject = "Subject is required";
+    if (!formData.message.trim()) newErrors.message = "Message is required";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+    
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, 'contact_messages'), {
@@ -51,6 +71,7 @@ export default function ContactPage() {
       setSent(true);
       toast.success("Message sent! We'll get back to you soon.");
       setFormData({ name: '', email: '', subject: '', message: '' });
+      setErrors({});
     } catch {
       toast.error('Failed to send message. Please try again.');
     } finally {
@@ -72,7 +93,7 @@ export default function ContactPage() {
             backgroundSize: '32px 32px',
           }}
         />
-        <div className="container mx-auto px-4 relative z-10">
+        <PageContainer className="relative z-10" ignoreCustomizer>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 bg-primary/10 border border-primary/25 text-primary">
               <Sparkles className="w-3.5 h-3.5" />
@@ -85,10 +106,10 @@ export default function ContactPage() {
               Have a question, idea, or just want to say hi? We'd love to hear from you.
             </p>
           </motion.div>
-        </div>
+        </PageContainer>
       </div>
 
-      <div className="container mx-auto px-4 max-w-5xl pb-24">
+      <PageContainer className="pb-24" ignoreCustomizer>
         <div className="grid lg:grid-cols-5 gap-8">
 
           {/* ── Info sidebar ── */}
@@ -187,8 +208,12 @@ export default function ContactPage() {
                       name="name"
                       type="text"
                       required
+                      error={errors.name}
                       value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      onChange={e => {
+                        setFormData({ ...formData, name: e.target.value });
+                        if (errors.name) setErrors({ ...errors, name: '' });
+                      }}
                       placeholder="John Doe"
                     />
                     <Input 
@@ -197,8 +222,12 @@ export default function ContactPage() {
                       name="email"
                       type="email"
                       required
+                      error={errors.email}
                       value={formData.email}
-                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      onChange={e => {
+                        setFormData({ ...formData, email: e.target.value });
+                        if (errors.email) setErrors({ ...errors, email: '' });
+                      }}
                       placeholder="john@example.com"
                     />
                   </div>
@@ -206,8 +235,13 @@ export default function ContactPage() {
                   <Select
                     label="Subject"
                     id="subject"
+                    required
                     value={formData.subject}
-                    onChange={val => setFormData({ ...formData, subject: val })}
+                    error={errors.subject}
+                    onChange={val => {
+                      setFormData({ ...formData, subject: val });
+                      if (errors.subject) setErrors({ ...errors, subject: '' });
+                    }}
                     options={[
                       { label: 'General Inquiry', value: 'general', description: 'General questions about our platform' },
                       { label: 'Technical Support', value: 'support', description: 'Help with technical issues' },
@@ -222,10 +256,14 @@ export default function ContactPage() {
                     label="Message"
                     id="message"
                     name="message"
-                    required
                     rows={5}
+                    required
+                    error={errors.message}
                     value={formData.message}
-                    onChange={e => setFormData({ ...formData, message: e.target.value })}
+                    onChange={e => {
+                      setFormData({ ...formData, message: e.target.value });
+                      if (errors.message) setErrors({ ...errors, message: '' });
+                    }}
                     placeholder="How can we help you?"
                   />
 
@@ -245,7 +283,7 @@ export default function ContactPage() {
             )}
           </motion.div>
         </div>
-      </div>
+      </PageContainer>
     </div>
   );
 }

@@ -1,0 +1,53 @@
+{
+  "common": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "loading": "Chargement...",
+    "search": "Rechercher...",
+    "noResults": "Aucun résultat trouvé",
+    "back": "Retour",
+    "next": "Suivant",
+    "submit": "Envoyer",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "retry": "Réessayer",
+    "viewAll": "Voir Tout",
+    "learnMore": "En Savoir Plus",
+    "getStarted": "Commencer",
+    "signUp": "Inscription Gratuite",
+    "logIn": "Connexion",
+    "logOut": "Déconnexion"
+  },
+  "auth": {
+    "login": {
+      "title": "Bon Retour",
+      "subtitle": "Connectez-vous à votre compte Promptly",
+      "email": "Adresse E-mail",
+      "password": "Mot de Passe",
+      "submit": "Se Connecter",
+      "forgotPassword": "Mot de passe oublié ?",
+      "noAccount": "Pas encore de compte ?",
+      "register": "Créer un Compte"
+    }
+  },
+  "nav": {
+    "home": "Accueil",
+    "explore": "Explorer",
+    "pricing": "Tarifs",
+    "blog": "Blog",
+    "dashboard": "Tableau de Bord",
+    "settings": "Paramètres",
+    "support": "Support",
+    "admin": "Panneau Admin"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite",
+    "network": "Erreur réseau. Vérifiez votre connexion.",
+    "unauthorized": "Connectez-vous pour continuer",
+    "forbidden": "Vous n'avez pas la permission d'accéder à ceci",
+    "notFound": "Page non trouvée",
+    "offline": "Vous êtes hors ligne — les modifications seront synchronisées à la reconnexion."
+  }
+}

@@ -3,17 +3,19 @@ import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/fi
 import { Link } from 'react-router-dom';
 import { FileText, Plus } from 'lucide-react';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
-import Button from '../../components/ui/Button';
+import Button from '../../components/primitives/Button';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { db } from '../../lib/firebase';
 import { BlogPost } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { logAuditEvent } from '../../lib/auditLog';
+import { usePath } from '../../hooks/usePath';
 
 export default function AdminBlog() {
   const confirm = useConfirm();
   const { user } = useAuth();
+  const { prefix } = usePath();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -103,8 +105,8 @@ export default function AdminBlog() {
   ];
 
   const actions: DataTableActions<BlogPost> = {
-    viewExternal: p => `/blog/${p.slug}`,
-    edit: p => `/admin/blog/${p.id}`,
+    viewExternal: p => prefix(`/blog/${p.slug}`),
+    edit: p => prefix(`/admin/blog/${p.id}`),
     onDelete: handleDelete,
   };
 
@@ -118,7 +120,7 @@ export default function AdminBlog() {
         actions={
           <Button
             as={Link}
-            to="/admin/blog/new"
+            to={prefix("/admin/blog/new")}
             variant="primary"
             size="md"
             leftIcon={Plus}

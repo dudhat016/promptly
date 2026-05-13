@@ -2,10 +2,10 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { AlertCircle, Eye, EyeOff, Globe, Mail, Save, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { db } from '../../lib/firebase';
-import Select from '../../components/ui/Select';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
+import { db, auth } from '../../lib/firebase';
+import Select from '../../components/primitives/Select';
+import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
 
 export default function AdminEmailSettings() {
   const [loading, setLoading] = useState(true);
@@ -28,9 +28,13 @@ export default function AdminEmailSettings() {
   const handleTestConnection = async () => {
     setTesting(true);
     try {
+      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/test-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken && { 'Authorization': `Bearer ${idToken}` }),
+        },
       });
 
       const data = await response.json();
@@ -142,8 +146,8 @@ export default function AdminEmailSettings() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Encryption</label>
                   <Select
+                    label="Encryption"
                     value={config.smtpSecure ? 'ssl' : 'tls'}
                     onChange={val => {
                       const isSSL = val === 'ssl';

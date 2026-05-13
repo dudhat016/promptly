@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { BlogPost } from '../../types';
@@ -8,17 +9,19 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { Save, ArrowLeft, Upload, Loader2, FileText } from 'lucide-react';
 import { AdminPageHeader, ImageUpload } from '../../components/admin';
-import Button from '../../components/ui/Button';
-import MDEditor from '@uiw/react-md-editor';
+import Button from '../../components/primitives/Button';
+import Editor from '../../components/primitives/Editor';
 import TagInput from '../../components/TagInput';
 import { useImageUpload } from '../../hooks/useImageUpload';
-import Select from '../../components/ui/Select';
-import Input from '../../components/ui/Input';
-import Textarea from '../../components/ui/Textarea';
+import Select from '../../components/primitives/Select';
+import { cn } from '../../lib/utils';
+import Input from '../../components/primitives/Input';
+import Textarea from '../../components/primitives/Textarea';
 
 export default function AdminBlogForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   const { user } = useAuth();
   const { theme } = useTheme();
   const isNew = !id || id === 'new';
@@ -30,6 +33,7 @@ export default function AdminBlogForm() {
   const { uploadImage, isUploading } = useImageUpload();
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [post, setPost] = useState<Partial<BlogPost>>({
     title: '',
     slug: '',
@@ -71,7 +75,7 @@ export default function AdminBlogForm() {
           });
         } else {
           toast.error("Blog post not found");
-          navigate('/admin/blog');
+          navigate(prefix('/admin/blog'));
         }
       } catch (error) {
         console.error("Error fetching post:", error);
@@ -93,11 +97,28 @@ export default function AdminBlogForm() {
       slug: isManualSEO.slug ? prev.slug : slug,
       metaTitle: isManualSEO.metaTitle ? prev.metaTitle : title
     }));
+    if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
+  };
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!post.title?.trim()) newErrors.title = "Title is required";
+    if (!post.slug?.trim()) newErrors.slug = "URL slug is required";
+    if (!post.excerpt?.trim()) newErrors.excerpt = "Excerpt is required";
+    if (!post.content?.trim()) newErrors.content = "Content is required";
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error("Please fill in all required fields");
+      return false;
+    }
+    return true;
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!validate()) return;
 
     setSaving(true);
     const toastId = toast.loading('Saving blog post...');
@@ -121,7 +142,7 @@ export default function AdminBlogForm() {
       await setDoc(doc(db, 'blog_posts', docId), postData, { merge: true });
 
       toast.success("Blog post saved successfully!", { id: toastId });
-      navigate('/admin/blog');
+      navigate(prefix('/admin/blog'));
     } catch (error) {
       console.error("Error saving post:", error);
       toast.error("Failed to save blog post", { id: toastId });
@@ -132,10 +153,10 @@ export default function AdminBlogForm() {
 
   if (loading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
 
-  const inputCls = "w-full bg-card border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors";
+  const inputCls = "w-full bg-card border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary transition-colors";
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <AdminPageHeader
         label="Content"
         labelIcon={FileText}
@@ -143,7 +164,7 @@ export default function AdminBlogForm() {
         subtitle="Write and publish platform blog content and announcements."
         actions={
           <Button
-            onClick={() => navigate('/admin/blog')}
+            onClick={() => navigate(prefix('/admin/blog'))}
             variant="secondary"
             size="md"
             leftIcon={ArrowLeft}
@@ -162,7 +183,7 @@ export default function AdminBlogForm() {
               id="blogTitle"
               name="blogTitle"
               type="text"
-              required
+              error={errors.title}
               value={post.title || ''}
               onChange={handleTitleChange}
               placeholder="The Future of AI Prompts..."
@@ -175,9 +196,12 @@ export default function AdminBlogForm() {
               id="blogSlug"
               name="blogSlug"
               type="text"
-              required
+              error={errors.slug}
               value={post.slug || ''}
-              onChange={e => setPost({ ...post, slug: e.target.value })}
+              onChange={e => {
+                setPost({ ...post, slug: e.target.value });
+                if (errors.slug) setErrors(prev => ({ ...prev, slug: '' }));
+              }}
               placeholder="the-future-of-ai-prompts"
               className="font-mono"
             />
@@ -270,7 +294,7 @@ export default function AdminBlogForm() {
               label="Excerpt"
               id="blogExcerpt"
               name="blogExcerpt"
-              required
+              error={errors.excerpt}
               value={post.excerpt || ''}
               onChange={e => {
                 const excerpt = e.target.value;
@@ -279,6 +303,7 @@ export default function AdminBlogForm() {
                   excerpt,
                   metaDescription: isManualSEO.metaDescription ? prev.metaDescription : excerpt
                 }));
+                if (errors.excerpt) setErrors(prev => ({ ...prev, excerpt: '' }));
               }}
               rows={2}
               placeholder="A short summary of the blog post..."
@@ -288,18 +313,21 @@ export default function AdminBlogForm() {
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-semibold text-muted-foreground">Content (Markdown supported)</label>
+                <label className="block text-sm font-semibold text-muted-foreground">Content</label>
               </div>
-              <div data-color-mode={isDark ? 'dark' : 'light'} className="border border-border rounded-lg overflow-hidden">
-                <MDEditor
-                  value={post.content || ''}
-                  onChange={(val) => setPost({ ...post, content: val || '' })}
-                  height={450}
-                  previewOptions={{
-                    className: "prose prose-sm max-w-none"
-                  }}
-                />
-              </div>
+              <Editor
+                value={post.content || ''}
+                onChange={(val) => {
+                  setPost({ ...post, content: val || '' });
+                  if (errors.content) setErrors(prev => ({ ...prev, content: '' }));
+                }}
+                placeholder="Start writing your masterpiece..."
+              />
+              {errors.content && (
+                <p className="text-[11px] font-bold text-destructive mt-1.5 animate-in fade-in slide-in-from-top-1">
+                  {errors.content}
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -5,29 +5,31 @@ import { Prompt, Category, AIModel } from '../../types';
 import { Save, LayoutGrid, ChevronDown } from 'lucide-react';
 import { AdminPageHeader, ImageUpload } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import TagInput from '../../components/TagInput';
-import Select from '../../components/ui/Select';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
-import Textarea from '../../components/ui/Textarea';
-import Checkbox from '../../components/ui/Checkbox';
+import Select from '../../components/primitives/Select';
+import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
+import Textarea from '../../components/primitives/Textarea';
+import Checkbox from '../../components/primitives/Checkbox';
 
 export default function AdminPromptForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   const { user } = useAuth();
   
   const [categories, setCategories] = useState<Category[]>([]);
   const [models, setModels] = useState<AIModel[]>([]);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [prompt, setPrompt] = useState<Partial<Prompt>>({
     title: '', slug: '', description: '', metaTitle: '', metaDescription: '', metaKeywords: '',
     content: '', imageUrl: '', model: '', isPaid: false, tags: [],
     sampleOutput: '', usageGuide: '', difficulty: undefined
   });
-
 
   const [isManualSEO, setIsManualSEO] = useState({
     slug: false,
@@ -53,6 +55,7 @@ export default function AdminPromptForm() {
       slug: isManualSEO.slug ? prev.slug : slug,
       metaTitle: isManualSEO.metaTitle ? prev.metaTitle : val
     }));
+    if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
   };
 
   const handleDescriptionChange = (val: string) => {
@@ -61,6 +64,7 @@ export default function AdminPromptForm() {
       description: val,
       metaDescription: isManualSEO.metaDescription ? prev.metaDescription : val
     }));
+    if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
   };
 
   useEffect(() => {
@@ -91,7 +95,7 @@ export default function AdminPromptForm() {
           const qSnap = await getDocs(q);
           if (!qSnap.empty) {
             const d = qSnap.docs[0];
-            const data = { id: d.id, ...d.data() } as Prompt;
+            const data = { ...d.data(), id: d.id } as Prompt;
             setPrompt(data);
             setIsManualSEO({
               slug: !!data.slug,
@@ -106,8 +110,27 @@ export default function AdminPromptForm() {
     loadData();
   }, [id]);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!prompt.title?.trim()) newErrors.title = "Title is required";
+    if (!prompt.slug?.trim()) newErrors.slug = "SEO slug is required";
+    if (!prompt.model) newErrors.model = "AI Model is required";
+    if (!prompt.categoryId) newErrors.categoryId = "Category is required";
+    if (!prompt.description?.trim()) newErrors.description = "Short description is required";
+    if (!prompt.content?.trim()) newErrors.content = "Prompt template content is required";
+    
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error("Please fill in all required fields");
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+    
     setSaving(true);
     try {
       if (id && id !== 'new') {
@@ -145,7 +168,7 @@ export default function AdminPromptForm() {
         });
       }
       toast.success(id && id !== 'new' ? "Prompt updated!" : "New prompt created!");
-      navigate('/admin/prompts');
+      navigate(prefix('/admin/prompts'));
     } catch (err) {
       console.error(err);
       toast.error("Failed to save prompt");
@@ -155,7 +178,7 @@ export default function AdminPromptForm() {
   };
 
   return (
-    <div className="max-w-3xl">
+    <>
       <AdminPageHeader
         label="Content"
         labelIcon={LayoutGrid}
@@ -167,24 +190,30 @@ export default function AdminPromptForm() {
         
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <Input 
+            <Input
               label="Title"
               id="promptTitle"
               name="promptTitle"
-              type="text" required
+              type="text"
+              required
+              error={errors.title}
               value={prompt.title || ''}
               onChange={e => handleTitleChange(e.target.value)}
               placeholder="e.g. Expert Python Architect"
             />
-            <Input 
+            <Input
               label="SEO Slug"
               id="promptSlug"
               name="promptSlug"
-              type="text" required
+              type="text"
+              required
+              error={errors.slug}
               value={prompt.slug || ''}
               onChange={e => {
-                setPrompt({...prompt, slug: slugify(e.target.value)});
+                const slug = slugify(e.target.value);
+                setPrompt({...prompt, slug});
                 setIsManualSEO(prev => ({ ...prev, slug: true }));
+                if (errors.slug) setErrors(prev => ({ ...prev, slug: '' }));
               }}
               placeholder="expert-python-architect"
               className="font-mono"
@@ -235,12 +264,16 @@ export default function AdminPromptForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Model</label>
               <Select
                 id="promptModel"
                 name="promptModel"
+                label="Model"
                 value={prompt.model || ''}
-                onChange={val => setPrompt({...prompt, model: val})}
+                error={errors.model}
+                onChange={val => {
+                  setPrompt({...prompt, model: val});
+                  if (errors.model) setErrors(prev => ({ ...prev, model: '' }));
+                }}
                 options={models.map(m => ({ label: m.name, value: m.id, description: m.provider }))}
                 placeholder="Select Model"
                 isSearchable={true}
@@ -248,12 +281,16 @@ export default function AdminPromptForm() {
               {models.length === 0 && <p className="text-xs text-amber-600 mt-1 font-bold">No models found in database.</p>}
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Category</label>
               <Select
                 id="promptCategory"
                 name="promptCategory"
+                label="Category"
                 value={prompt.categoryId || ''}
-                onChange={val => setPrompt({...prompt, categoryId: val})}
+                error={errors.categoryId}
+                onChange={val => {
+                  setPrompt({...prompt, categoryId: val});
+                  if (errors.categoryId) setErrors(prev => ({ ...prev, categoryId: '' }));
+                }}
                 options={categories.map(c => ({ label: c.name, value: c.id }))}
                 placeholder="Select Category"
                 isSearchable={true}
@@ -288,11 +325,13 @@ export default function AdminPromptForm() {
             />
           </div>
 
-          <Textarea 
+          <Textarea
             label="Short Description"
             id="description"
             name="description"
-            required rows={2}
+            rows={2}
+            required
+            error={errors.description}
             value={prompt.description || ''}
             onChange={e => handleDescriptionChange(e.target.value)}
             placeholder="Describe what this prompt does in a few sentences..."
@@ -300,13 +339,18 @@ export default function AdminPromptForm() {
             variant="filled"
           />
 
-          <Textarea 
+          <Textarea
             label="Full Prompt Template"
             id="content"
             name="content"
-            required rows={8}
+            rows={8}
+            required
+            error={errors.content}
             value={prompt.content || ''}
-            onChange={e => setPrompt({...prompt, content: e.target.value})}
+            onChange={e => {
+              setPrompt({...prompt, content: e.target.value});
+              if (errors.content) setErrors(prev => ({ ...prev, content: '' }));
+            }}
             placeholder="Paste the expert prompt content here. Use [VARIABLE], {{variable}}, or <variable> syntax for placeholders..."
             className="font-mono min-h-[200px]"
             variant="filled"
@@ -337,10 +381,10 @@ export default function AdminPromptForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Difficulty Level <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">optional</span></label>
               <Select
                 id="promptDifficulty"
                 name="promptDifficulty"
+                label="Difficulty Level (optional)"
                 value={prompt.difficulty || ''}
                 onChange={val => setPrompt({...prompt, difficulty: (val as Prompt['difficulty']) || undefined})}
                 options={[
@@ -377,7 +421,7 @@ export default function AdminPromptForm() {
             </Button>
             <Button 
               as={Link}
-              to="/admin/prompts"
+              to={prefix("/admin/prompts")}
               variant="secondary"
               size="lg"
               className="px-8 font-bold"
@@ -387,6 +431,6 @@ export default function AdminPromptForm() {
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }

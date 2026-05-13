@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { History, User, FileText, CreditCard, Shield, Settings, Trash2, Edit, LogIn } from 'lucide-react';
-import { AdminPageHeader, DataTable } from '../../components/admin';
-import type { DataTableColumn } from '../../components/admin';
+import { LucideIcon, History, User, FileText, CreditCard, Shield, Settings, Trash2, Edit, LogIn } from 'lucide-react';
+import { AdminPageHeader } from '../../components/admin';
+import { Timeline, type TimelineItem } from '../../components/data';
+import Badge from '../../components/primitives/Badge';
+import { Card } from '../../components/primitives';
 
 interface AuditLog {
   id: string;
@@ -15,7 +17,7 @@ interface AuditLog {
   createdAt?: any;
 }
 
-const ACTION_META: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+const ACTION_META: Record<string, { icon: LucideIcon; color: string; label: string }> = {
   'user.role_changed':    { icon: Shield,   color: 'text-primary bg-primary/10',       label: 'Role Change' },
   'user.deleted':         { icon: Trash2,   color: 'text-rose-600 bg-rose-500/10',     label: 'User Deleted' },
   'payout.processed':     { icon: CreditCard, color: 'text-emerald-600 bg-emerald-500/10', label: 'Payout' },
@@ -50,7 +52,7 @@ export default function AdminActivityLog() {
     const q = query(
       collection(db, 'audit_logs'),
       orderBy('createdAt', 'desc'),
-      limit(500),
+      limit(100),
     );
     const unsub = onSnapshot(q, snap => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as AuditLog)));
@@ -59,89 +61,45 @@ export default function AdminActivityLog() {
     return unsub;
   }, []);
 
-  const columns: DataTableColumn<AuditLog>[] = [
-    {
-      key: 'action',
-      header: 'Action',
-      searchValue: l => l.action,
-      sortable: true,
-      sortValue: l => l.action,
-      render: l => {
-        const meta = getActionMeta(l.action);
-        const Icon = meta.icon;
-        return (
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${meta.color}`}>
-              <Icon className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">{meta.label}</p>
-              <p className="text-xs text-muted-foreground font-mono">{l.action}</p>
-            </div>
+  const timelineItems: TimelineItem[] = logs.map(l => {
+    const meta = getActionMeta(l.action);
+    return {
+      id: l.id,
+      title: meta.label,
+      description: (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-foreground">{l.actorEmail || 'System'}</span>
+            <span className="text-xs text-muted-foreground">performed</span>
+            <Badge variant="soft" size="sm" className="font-mono lowercase px-1.5">
+              {l.action}
+            </Badge>
+            {l.entityType && (
+              <>
+                <span className="text-xs text-muted-foreground">on</span>
+                <Badge variant="outline" size="sm" className="uppercase tracking-widest font-black">
+                  {l.entityType}
+                </Badge>
+                {l.entityId && <span className="text-[10px] font-mono text-muted-foreground">({l.entityId})</span>}
+              </>
+            )}
           </div>
-        );
-      },
-      csvValue: l => l.action,
-    },
-    {
-      key: 'entity',
-      header: 'Entity',
-      searchValue: l => `${l.entityType ?? ''} ${l.entityId ?? ''}`,
-      render: l => l.entityType ? (
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{l.entityType}</span>
-          {l.entityId && (
-            <p className="text-xs text-muted-foreground font-mono truncate max-w-[140px]">{l.entityId}</p>
+          {l.details && Object.keys(l.details).length > 0 && (
+            <div className="bg-muted/50 rounded-lg p-3 border border-border">
+              <pre className="text-[10px] text-muted-foreground font-mono overflow-x-auto whitespace-pre-wrap">
+                {JSON.stringify(l.details, null, 2)}
+              </pre>
+            </div>
           )}
         </div>
-      ) : <span className="text-muted-foreground">—</span>,
-      csvValue: l => l.entityId ?? '',
-    },
-    {
-      key: 'actor',
-      header: 'Admin',
-      searchValue: l => l.actorEmail ?? '',
-      sortable: true,
-      sortValue: l => l.actorEmail ?? '',
-      render: l => l.actorEmail ? (
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
-            {l.actorEmail.charAt(0).toUpperCase()}
-          </div>
-          <span className="text-sm text-foreground font-medium truncate max-w-[160px]">{l.actorEmail}</span>
-        </div>
-      ) : (
-        <span className="text-xs text-muted-foreground">System</span>
       ),
-      csvValue: l => l.actorEmail ?? 'System',
-    },
-    {
-      key: 'details',
-      header: 'Details',
-      render: l => l.details && Object.keys(l.details).length > 0 ? (
-        <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">
-          {JSON.stringify(l.details)}
-        </p>
-      ) : <span className="text-muted-foreground">—</span>,
-      csvValue: l => l.details ? JSON.stringify(l.details) : '',
-    },
-    {
-      key: 'createdAt',
-      header: 'Timestamp',
-      sortable: true,
-      sortValue: l => {
-        const ts = l.createdAt;
-        if (!ts) return 0;
-        if (typeof ts.toMillis === 'function') return ts.toMillis();
-        if (typeof ts.seconds === 'number') return ts.seconds * 1000;
-        return 0;
-      },
-      render: l => (
-        <span className="text-sm text-muted-foreground tabular-nums">{formatTimestamp(l.createdAt)}</span>
-      ),
-      csvValue: l => formatTimestamp(l.createdAt),
-    },
-  ];
+      timestamp: formatTimestamp(l.createdAt),
+      icon: meta.icon,
+      color: meta.color.includes('rose') ? 'error' : 
+             meta.color.includes('emerald') ? 'success' : 
+             meta.color.includes('amber') ? 'warning' : 'primary'
+    };
+  });
 
   return (
     <div className="space-y-8">
@@ -151,17 +109,23 @@ export default function AdminActivityLog() {
         title="Activity Log"
         subtitle="Audit trail of admin actions across the platform."
       />
-      <DataTable
-        columns={columns}
-        data={logs}
-        rowKey={l => l.id}
-        loading={loading}
-        searchPlaceholder="Search by action, entity, or admin email..."
-        exportFilename="activity-log"
-        emptyIcon={History}
-        emptyTitle="No activity yet"
-        emptyMessage="Admin actions will be recorded here automatically."
-      />
+
+      <Card variant="raised" className="p-8 md:p-12">
+        {loading ? (
+          <div className="py-20 text-center">
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Fetching audit trail...</p>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="py-20 text-center">
+             <History className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+             <h3 className="text-xl font-bold text-foreground">No logs found</h3>
+             <p className="text-muted-foreground mt-1">Platform actions will appear here in real-time.</p>
+          </div>
+        ) : (
+          <Timeline items={timelineItems} />
+        )}
+      </Card>
     </div>
   );
 }

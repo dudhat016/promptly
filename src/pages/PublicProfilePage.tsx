@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { usePath } from '../hooks/usePath';
 import { db } from '../lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { Prompt, UserProfile } from '../types';
 import { User, LayoutGrid, Star, Calendar, ArrowRight, ShieldCheck, Zap, Mail, MessageSquare } from 'lucide-react';
 import { motion } from 'motion/react';
-import Button from '../components/ui/Button';
+import Button from '../components/primitives/Button';
+import PageContainer from '../components/layout/PageContainer';
 
 export default function PublicProfilePage() {
   const { uid } = useParams();
+  const { prefix } = usePath();
   const [targetProfile, setTargetProfile] = useState<UserProfile | null>(null);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +35,7 @@ export default function PublicProfilePage() {
         orderBy('createdAt', 'desc')
       );
       const snap = await getDocs(q);
-      setPrompts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt)));
+      setPrompts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt)));
     } catch (err) {
       console.error("Error fetching public profile:", err);
     } finally {
@@ -54,7 +57,7 @@ export default function PublicProfilePage() {
         <User className="w-16 h-16 text-muted-foreground/20 mb-6" />
         <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Vault Not Found</h2>
         <p className="text-muted-foreground mb-10 max-w-sm">The creator profile you're searching for might have moved or been set to private.</p>
-        <Button as={Link} to="/explore" variant="primary" size="lg">
+        <Button as={Link} to={prefix('/explore')} variant="primary" size="lg">
           Return to Library
         </Button>
       </div>
@@ -63,7 +66,7 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-20">
-      <div className="max-w-6xl mx-auto px-4 md:px-6">
+      <PageContainer className="px-4 md:px-6" ignoreCustomizer>
         {/* Profile Header */}
         <div className="bg-card rounded-lg p-8 md:p-14 border border-border shadow-sm mb-16 relative overflow-hidden">
            <div className="absolute top-0 left-0 w-full h-40 bg-primary/5 -z-10" />
@@ -152,7 +155,7 @@ export default function PublicProfilePage() {
                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest opacity-60">Engineered {new Date(prompt.createdAt).toLocaleDateString()}</span>
                     <Button 
                       as={Link}
-                      to={`/prompt/${prompt.slug || prompt.id}`}
+                      to={prefix(`/prompt/${prompt.slug || prompt.id}`)}
                       variant="primary"
                       size="icon"
                       className="w-12 h-12 bg-foreground text-background hover:bg-primary hover:text-primary-foreground shadow-lg"
@@ -172,7 +175,7 @@ export default function PublicProfilePage() {
              </div>
            )}
         </div>
-      </div>
+      </PageContainer>
     </div>
   );
 }

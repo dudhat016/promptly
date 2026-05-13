@@ -7,10 +7,12 @@ import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import Button from '../../components/ui/Button';
+import { usePath } from '../../hooks/usePath';
+import Button from '../../components/primitives/Button';
 
 export default function AdminTemplates() {
   const confirm = useConfirm();
+  const { prefix } = usePath();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,7 +79,7 @@ export default function AdminTemplates() {
   ];
 
   const actions: DataTableActions<EmailTemplate> = {
-    edit: t => `/admin/templates/edit/${t.id}`,
+    edit: t => prefix(`/admin/templates/${t.id}/edit`),
     onDelete: handleDelete,
   };
 
@@ -91,7 +93,7 @@ export default function AdminTemplates() {
         actions={
           <Button
             as={Link}
-            to="/admin/templates/new"
+            to={prefix("/admin/templates/new")}
             variant="primary"
             size="md"
             leftIcon={Plus}

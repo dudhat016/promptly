@@ -25,23 +25,29 @@ import {
   Shield,
   Unlock,
   Users,
+  Target,
+  Cpu,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Button from '../../components/primitives/Button';
+import Input from '../../components/primitives/Input';
+import Tabs from '../../components/navigation/Tabs';
 import { useAuth } from '../../hooks/useAuth';
 import { logAuditEvent } from '../../lib/auditLog';
 import { auth, db } from '../../lib/firebase';
 import { ActivityItem, UserProfile } from '../../types';
+import { useStaffRoles } from '../../hooks/useStaffRoles';
 
 export default function AdminUserDetails() {
   const confirm = useConfirm();
   const { user: adminUser } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -53,6 +59,10 @@ export default function AdminUserDetails() {
   const [adjustReason, setAdjustReason] = useState('');
   const [adjusting, setAdjusting] = useState(false);
 
+  // Staff role assignment
+  const { staffRoles } = useStaffRoles();
+  const [savingStaffRole, setSavingStaffRole] = useState(false);
+
   useEffect(() => {
     async function loadData() {
       if (!id) return;
@@ -60,7 +70,7 @@ export default function AdminUserDetails() {
         const userDoc = await getDoc(doc(db, 'users', id));
         if (!userDoc.exists()) {
           toast.error('User not found');
-          navigate('/admin/users');
+          navigate(prefix('/admin/users'));
           return;
         }
         setUser({ uid: userDoc.id, ...userDoc.data() } as UserProfile);
@@ -80,7 +90,7 @@ export default function AdminUserDetails() {
       }
     }
     loadData();
-  }, [id, navigate]);
+  }, [id, navigate, prefix]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -99,7 +109,7 @@ export default function AdminUserDetails() {
 
   const handleToggleRole = async () => {
     if (!user || !id) return;
-    const newRole = user.role === 'admin' ? 'user' : 'admin';
+    const newRole: 'admin' | 'user' = user.role === 'admin' ? 'user' : 'admin';
     const ok = await confirm({
       title: `Make this user ${newRole === 'admin' ? 'an Admin' : 'a regular User'}?`,
       description: 'This changes what the user can access in the admin panel.',
@@ -107,13 +117,27 @@ export default function AdminUserDetails() {
       destructive: newRole === 'admin',
     });
     if (!ok) return;
+    await handleSetStaffRole(newRole);
+  };
+
+  const handleSetStaffRole = async (newRole: 'admin' | 'user' | 'staff', newStaffRole?: string) => {
+    if (!user || !id) return;
+    setSavingStaffRole(true);
     try {
-      await updateDoc(doc(db, 'users', id), { role: newRole, updatedAt: serverTimestamp() });
-      setUser(prev => prev ? { ...prev, role: newRole } : null);
-      logAuditEvent({ action: 'user.role_changed', entityType: 'user', entityId: id, actorEmail: adminUser?.email ?? undefined, details: { newRole } });
-      toast.success(`Role updated to ${newRole.toUpperCase()}`);
+      const updates: any = { role: newRole, updatedAt: serverTimestamp() };
+      if (newRole === 'staff') {
+        updates.staffRole = newStaffRole || '';
+      } else {
+        updates.staffRole = null;
+      }
+      await updateDoc(doc(db, 'users', id), updates);
+      setUser(prev => prev ? { ...prev, role: newRole, staffRole: newStaffRole } : null);
+      logAuditEvent({ action: 'user.role_changed', entityType: 'user', entityId: id, actorEmail: adminUser?.email ?? undefined, details: { newRole, staffRole: newStaffRole } });
+      toast.success(`Role updated to ${newRole.toUpperCase()}${newStaffRole ? ` (${newStaffRole})` : ''}`);
     } catch {
       toast.error('Failed to update role');
+    } finally {
+      setSavingStaffRole(false);
     }
   };
 
@@ -201,7 +225,7 @@ export default function AdminUserDetails() {
         actions={
           <div className="flex items-center gap-3">
             <Button
-              onClick={() => navigate('/admin/users')}
+              onClick={() => navigate(prefix('/admin/users'))}
               variant="secondary"
               leftIcon={ArrowLeft}
               size="sm"
@@ -284,22 +308,18 @@ export default function AdminUserDetails() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-t border-border bg-muted/10 p-1">
-          {(['overview', 'activity', 'security'] as const).map(tab => (
-            <Button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              variant={activeTab === tab ? 'primary' : 'ghost'}
-              size="sm"
-              className={cn(
-                "px-8 rounded-lg font-bold transition-all",
-                activeTab === tab ? "shadow-md shadow-primary/20" : "text-muted-foreground"
-              )}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Button>
-          ))}
-        </div>
+        <Tabs
+          tabs={[
+            { id: 'overview', label: 'Overview', icon: Users },
+            { id: 'activity', label: 'Activity', icon: Activity },
+            { id: 'security', label: 'Security', icon: Lock },
+          ]}
+          activeTab={activeTab}
+          onChange={(id) => setActiveTab(id as any)}
+          variant="pill"
+          className="border-t border-border bg-muted/10 p-1 rounded-none"
+          tabClassName="px-8 rounded-lg"
+        />
       </div>
 
       <div className="grid grid-cols-12 gap-6">
@@ -314,22 +334,74 @@ export default function AdminUserDetails() {
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { label: 'Display Name', value: user.displayName || 'Not set' },
-                    { label: 'Account ID', value: user.uid, mono: true },
-                    { label: 'Referral Code', value: user.referralCode || 'None' },
-                    { label: 'Total Used Credits', value: String(user.totalUsedCredits || 0) },
-                    { label: 'Referrals Count', value: String(user.referralsCount || 0) },
-                    { label: 'Affiliate Earnings', value: `$${(user.affiliateEarnings || 0).toFixed(2)}` },
-                  ].map(row => (
-                    <div key={row.label} className="bg-muted/30 p-4 rounded-xl border border-border">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{row.label}</p>
-                      <p className={`text-sm font-bold text-foreground break-all ${row.mono ? 'font-mono text-xs' : ''}`}>{row.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                    {
+                      label: 'Display Name',
+                      value: user.displayName || 'Not set'
+                    },
+                  {
+                    label: 'Account ID',
+                    value: user.uid,
+                    mono: true
+                  },
+                  {
+                    label: 'Referral Code',
+                    value: user.referralCode || 'None'
+                  },
+                  {
+                    label: 'Total Used Credits',
+                    value: String(user.totalUsedCredits || 0)
+                  },
+                  {
+                    label: 'Referrals Count',
+                    value: String(user.referralsCount || 0)
+                  },
+                  {
+                    label: 'Affiliate Earnings',
+                    value: `$${(user.affiliateEarnings || 0).toFixed(2)}`
+                  },
+                ].map(row => (
+                  <div key={row.label} className="bg-muted/30 p-4 rounded-xl border border-border">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{row.label}</p>
+                    <p className={`text-sm font-bold text-foreground break-all ${row.mono ? 'font-mono text-xs' : ''}`}>{row.value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
 
-              <section>
+            <section>
+              <h3 className="text-base font-bold text-foreground mb-5 flex items-center gap-2 uppercase tracking-tight">
+                <Target className="w-4 h-4 text-primary" /> Onboarding & Interests
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-card border border-border rounded-2xl p-6">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Selected Interests</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(user.interests || []).map(interest => (
+                      <span key={interest} className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-bold uppercase tracking-tight">
+                        {interest}
+                      </span>
+                    ))}
+                    {(!user.interests || user.interests.length === 0) && (
+                      <p className="text-sm text-muted-foreground italic">No interests selected during onboarding.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-card border border-border rounded-2xl p-6">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Preferred AI Engine</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-600">
+                      <Cpu className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{user.preferredModel || 'Default (GPT-4o)'}</p>
+                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Primary workspace model</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section>
                 <h3 className="text-base font-bold text-foreground mb-4 flex items-center gap-2 uppercase tracking-tight">
                   <MapPin className="w-4 h-4 text-primary" /> Timestamps
                 </h3>
@@ -359,7 +431,7 @@ export default function AdminUserDetails() {
                 {activities.map(activity => (
                   <div key={activity.id} className="relative pl-12 group">
                     <div className={`absolute left-0 top-0 w-10 h-10 rounded-xl border-4 border-card flex items-center justify-center z-10 shadow-sm ${
-                      activity.type.includes('email') ? 'bg-primary text-white' : 'bg-muted text-foreground'
+                      activity.type.includes('email') ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
                     }`}>
                       {activity.type.includes('email') ? <Mail className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                     </div>
@@ -412,7 +484,7 @@ export default function AdminUserDetails() {
               {/* Reset password */}
               <div className="flex items-center justify-between p-6 bg-primary/5 rounded-xl border border-primary/10">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary text-white rounded-xl">
+                  <div className="p-3 bg-primary text-primary-foreground rounded-xl">
                     <Send className="w-5 h-5" />
                   </div>
                   <div>
@@ -430,28 +502,79 @@ export default function AdminUserDetails() {
                 </Button>
               </div>
 
-              {/* Danger: role */}
-              <div className="flex items-center justify-between p-6 bg-amber-500/5 rounded-xl border border-amber-500/10">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-amber-500 text-white rounded-xl">
-                    <AlertTriangle className="w-5 h-5" />
+              {/* Role management */}
+              <div className="space-y-3">
+                {/* Admin toggle */}
+                <div className="flex items-center justify-between p-6 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-amber-500 text-white rounded-xl">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-foreground">Admin Privileges</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Current role: <span className="font-bold text-foreground">{user.role}</span>
+                        {user.role === 'staff' && user.staffRole && (
+                          <span className="ml-2 text-primary font-mono text-xs">({user.staffRole})</span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-foreground">Admin Privileges</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Current role: <span className="font-bold text-foreground">{user.role}</span>
-                    </p>
-                  </div>
+                  <Button
+                    onClick={handleToggleRole}
+                    variant="outline"
+                    leftIcon={AlertTriangle}
+                    size="sm"
+                    className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"
+                  >
+                    {user.role === 'admin' ? 'Remove Admin' : 'Grant Admin'}
+                  </Button>
                 </div>
-                <Button
-                  onClick={handleToggleRole}
-                  variant="outline"
-                  leftIcon={AlertTriangle}
-                  size="sm"
-                  className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"
-                >
-                  {user.role === 'admin' ? 'Remove Admin' : 'Grant Admin'}
-                </Button>
+
+                {/* Staff role assignment */}
+                {staffRoles.length > 0 && (
+                  <div className="p-5 bg-primary/5 rounded-xl border border-primary/10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2.5 bg-primary text-primary-foreground rounded-lg">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-foreground text-sm">Staff Role</h4>
+                        <p className="text-xs text-muted-foreground">Assign scoped admin access without full privileges</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleSetStaffRole('user')}
+                        disabled={savingStaffRole}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                          user.role === 'user' && !user.staffRole
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'
+                        )}
+                      >
+                        Regular User
+                      </button>
+                      {staffRoles.map(sr => (
+                        <button
+                          key={sr.id}
+                          onClick={() => handleSetStaffRole('staff', sr.id)}
+                          disabled={savingStaffRole}
+                          style={{ borderColor: user.staffRole === sr.id ? sr.color : undefined, color: user.staffRole === sr.id ? sr.color : undefined }}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                            user.staffRole === sr.id
+                              ? 'bg-primary/10'
+                              : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'
+                          )}
+                        >
+                          {sr.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -467,7 +590,8 @@ export default function AdminUserDetails() {
             </h4>
             <div className="space-y-3">
               {[
-                { label: 'Role', value: user.role.toUpperCase(), color: user.role === 'admin' ? 'text-rose-400' : 'text-primary' },
+                { label: 'Role', value: user.role.toUpperCase(), color: user.role === 'admin' ? 'text-rose-400' : user.role === 'staff' ? 'text-amber-400' : 'text-primary' },
+                ...(user.role === 'staff' && user.staffRole ? [{ label: 'Staff Role', value: user.staffRole, color: 'text-amber-300' }] : []),
                 { label: 'Plan', value: user.subscriptionStatus.toUpperCase(), color: user.subscriptionStatus === 'pro' ? 'text-emerald-400' : 'opacity-60' },
                 { label: 'Status', value: isSuspended ? 'SUSPENDED' : 'ACTIVE', color: isSuspended ? 'text-rose-400' : 'text-emerald-400' },
                 { label: 'Affiliate', value: 'ENABLED', color: 'text-emerald-400' },

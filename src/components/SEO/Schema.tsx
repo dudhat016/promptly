@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useConfig } from '../../hooks/useConfig';
 
 interface Breadcrumb {
   name: string;
@@ -12,9 +13,12 @@ interface SchemaProps {
 }
 
 export default function Schema({ type, data, breadcrumbs }: SchemaProps) {
+  const { config } = useConfig();
+  
   const schemaData = useMemo(() => {
     const baseUrl = window.location.origin;
     const schemas: any[] = [];
+    const siteName = config.siteName || "Promptly";
 
     // 1. Breadcrumb Schema (Always useful)
     if (breadcrumbs && breadcrumbs.length > 0) {
@@ -43,7 +47,7 @@ export default function Schema({ type, data, breadcrumbs }: SchemaProps) {
         "offers": {
           "@type": "Offer",
           "price": data.isPaid ? "Subscription" : "0",
-          "priceCurrency": "USD",
+          "priceCurrency": config.currency || "USD",
           "availability": "https://schema.org/InStock"
         },
         "aggregateRating": {
@@ -78,25 +82,25 @@ export default function Schema({ type, data, breadcrumbs }: SchemaProps) {
         "@type": "BlogPosting",
         "headline": data.title,
         "description": data.excerpt || data.metaDescription,
-        "image": data.coverImage || `${baseUrl}/og-image.png`,
+        "image": data.coverImage || config.ogImage || `${baseUrl}/og-image.png`,
         "datePublished": data.publishedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         "author": {
           "@type": "Person",
-          "name": data.authorName || "Promptly Team"
+          "name": data.authorName || `${siteName} Team`
         },
         "publisher": {
           "@type": "Organization",
-          "name": "Promptly",
+          "name": siteName,
           "logo": {
             "@type": "ImageObject",
-            "url": `${baseUrl}/logo.png`
+            "url": config.logoLight || config.logoDark || `${baseUrl}/logo.png`
           }
         }
       });
     }
 
     return schemas;
-  }, [type, data, breadcrumbs]);
+  }, [type, data, breadcrumbs, config.siteName, config.currency, config.logoLight, config.logoDark, config.ogImage]);
 
   return (
     <>

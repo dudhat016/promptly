@@ -4,13 +4,15 @@ import { collection, query, getDocs, doc, deleteDoc, orderBy } from 'firebase/fi
 import { Category } from '../../types';
 import { Plus, Tag } from 'lucide-react';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
-import Button from '../../components/ui/Button';
+import Button from '../../components/primitives/Button';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { usePath } from '../../hooks/usePath';
 
 export default function AdminCategories() {
   const confirm = useConfirm();
+  const { prefix } = usePath();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +72,7 @@ export default function AdminCategories() {
   ];
 
   const actions: DataTableActions<Category> = {
-    edit: c => `/admin/categories/edit/${c.id}`,
+    edit: c => prefix(`/admin/categories/${c.id}/edit`),
     onDelete: handleDelete,
   };
 
@@ -84,7 +86,7 @@ export default function AdminCategories() {
         actions={
           <Button
             as={Link}
-            to="/admin/categories/new"
+            to={prefix("/admin/categories/new")}
             variant="primary"
             size="md"
             leftIcon={Plus}

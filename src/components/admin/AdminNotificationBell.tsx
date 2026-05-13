@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Wallet, MessageSquare, Ticket, Users, ArrowRight } from 'lucide-react';
+import { Bell, Wallet, MessageSquare, Ticket, Users, Flag, ArrowRight } from 'lucide-react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import Button from '../ui/Button';
+import Button from '../primitives/Button';
 
 interface NotifGroup {
   key: string;
@@ -118,7 +118,28 @@ export default function AdminNotificationBell() {
       () => {}
     );
 
-    return () => { unsubWithdrawals(); unsubTickets(); unsubMessages(); unsubUsers(); };
+    // 5. Pending content reports
+    const unsubReports = onSnapshot(
+      query(collection(db, 'prompt_reports'), where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(10)),
+      (snap) => {
+        updates['reports'] = {
+          key: 'reports',
+          icon: Flag,
+          color: 'text-rose-600 bg-rose-500/10',
+          label: 'Flagged Prompts',
+          count: snap.size,
+          href: '/admin/reports',
+          items: snap.docs.slice(0, 3).map(d => ({
+            text: d.data().promptTitle ?? 'Unknown prompt',
+            sub: d.data().reason?.replace(/_/g, ' ') ?? '',
+          })),
+        };
+        setGroups(Object.values(updates).filter((g): g is NotifGroup => !!g && g.count > 0));
+      },
+      () => {}
+    );
+
+    return () => { unsubWithdrawals(); unsubTickets(); unsubMessages(); unsubUsers(); unsubReports(); };
   }, []);
 
   const totalCount = groups.reduce((sum, g) => sum + g.count, 0);

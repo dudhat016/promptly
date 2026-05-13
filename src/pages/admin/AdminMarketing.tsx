@@ -1,14 +1,17 @@
-import { Plus, Users, Tag as TagIcon, GitBranch, Filter, Send } from 'lucide-react';
-import { useLocation, Link } from 'react-router-dom';
+import { LayoutGrid, Plus } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AdminPageHeader } from '../../components/admin';
-import Button from '../../components/ui/Button';
-import ContactManager from '../../components/marketing/ContactManager';
-import TagManager from '../../components/marketing/TagManager';
-import SegmentManager from '../../components/marketing/SegmentManager';
 import AutomationManager from '../../components/marketing/AutomationManager';
+import ContactManager from '../../components/marketing/ContactManager';
+import SegmentManager from '../../components/marketing/SegmentManager';
+import TagManager from '../../components/marketing/TagManager';
+import Button from '../../components/primitives/Button';
+import { usePath } from '../../hooks/usePath';
 
 export default function AdminMarketing() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { prefix } = usePath();
 
   // Determine active mode from URL path (e.g., /admin/marketing/contacts)
   const getActiveMode = () => {
@@ -22,54 +25,51 @@ export default function AdminMarketing() {
 
   const activeMode = getActiveMode();
 
-  const modeIcon = activeMode === 'contact' ? Users : activeMode === 'tag' ? TagIcon : activeMode === 'segment' ? Filter : GitBranch;
-  const modeTitle = `Marketing ${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)}s`;
+  const modeTitle = activeMode === 'contact' ? 'CRM Contacts' :
+                   activeMode === 'tag' ? 'Audience Tags' :
+                   activeMode === 'segment' ? 'Audience Segments' : 'Automations';
+
+  const subtitle = activeMode === 'contact' ? 'Manage your marketing leads and CRM data.' :
+                  activeMode === 'tag' ? 'Organize your audience with custom labels.' :
+                  activeMode === 'segment' ? 'Create targeted lists based on custom rules.' : 'Build intelligent workflows for user engagement.';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-[1600px] mx-auto">
       <AdminPageHeader
-        label="Comms"
-        labelIcon={Send}
+        label="Marketing Engine"
+        labelIcon={LayoutGrid}
         title={modeTitle}
-        subtitle={`Manage and organize your marketing ${activeMode}s and CRM data.`}
+        subtitle={subtitle}
         actions={
-          activeMode === 'automation' ? (
-            <Button as={Link} to="/admin/marketing/automations/new" variant="primary" size="md" leftIcon={Plus} className="font-bold">
-              Create Automation
-            </Button>
-          ) : activeMode === 'tag' ? (
-            <Button as={Link} to="/admin/marketing/tags/new" variant="primary" size="md" leftIcon={Plus} className="font-bold">
-              Create Tag
-            </Button>
-          ) : activeMode === 'segment' ? (
-            <Button as={Link} to="/admin/marketing/segments/new" variant="primary" size="md" leftIcon={Plus} className="font-bold">
-              Create Segment
-            </Button>
-          ) : (
-            <Button as={Link} to="/admin/marketing/contacts/new" variant="primary" size="md" leftIcon={Plus} className="font-bold">
-              Add Contact
-            </Button>
-          )
+          <div className="flex items-center gap-3">
+            {activeMode === 'automation' && (
+              <Button as={Link} to={prefix("/admin/marketing/automations/new")} variant="primary" size="md" leftIcon={Plus} className="font-bold shadow-xl shadow-primary/20">
+                New Automation
+              </Button>
+            )}
+            {activeMode === 'tag' && (
+              <Button as={Link} to={prefix("/admin/marketing/tags/new")} variant="primary" size="md" leftIcon={Plus} className="font-bold shadow-xl shadow-primary/20">
+                New Tag
+              </Button>
+            )}
+            {activeMode === 'segment' && (
+              <Button as={Link} to={prefix("/admin/marketing/segments/new")} variant="primary" size="md" leftIcon={Plus} className="font-bold shadow-xl shadow-primary/20">
+                New Segment
+              </Button>
+            )}
+            {activeMode === 'contact' && (
+              <Button as={Link} to={prefix("/admin/marketing/contacts/new")} variant="primary" size="md" leftIcon={Plus} className="font-bold shadow-xl shadow-primary/20">
+                Add Contact
+              </Button>
+            )}
+          </div>
         }
       />
 
-      <div className={activeMode === 'contact' ? "" : "card overflow-hidden"}>
-        {activeMode === 'contact' && (
-          <ContactManager />
-        )}
-
-        {activeMode === 'automation' && (
-          <AutomationManager />
-        )}
-        
-        {activeMode === 'tag' && (
-          <TagManager />
-        )}
-
-        {activeMode === 'segment' && (
-          <SegmentManager />
-        )}
-      </div>
+      {activeMode === 'contact' && <ContactManager />}
+      {activeMode === 'automation' && <AutomationManager />}
+      {activeMode === 'tag' && <TagManager />}
+      {activeMode === 'segment' && <SegmentManager />}
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { AlertCircle, CreditCard, ExternalLink, Globe, Lock, Save, ShieldCheck, Zap } from 'lucide-react';
+import { AlertCircle, CreditCard, ExternalLink, Globe, Lock, Percent, Save, ShieldCheck, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
+import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
 import { cn } from '../../lib/utils';
 
 export default function AdminPaymentSettings() {
@@ -22,6 +22,10 @@ export default function AdminPaymentSettings() {
       clientId: (process.env as any).PAYPAL_CLIENT_ID || '',
       secretKey: (process.env as any).PAYPAL_SECRET_KEY || '',
       environment: (process.env as any).PAYPAL_ENV || 'sandbox'
+    },
+    fees: {
+      paymentFeePercent: 2,
+      platformFeePercent: 0
     }
   });
 
@@ -42,6 +46,10 @@ export default function AdminPaymentSettings() {
               ...prev.paypal,
               enabled: data.paypal?.enabled ?? prev.paypal.enabled,
               environment: data.paypal?.environment ?? prev.paypal.environment,
+            },
+            fees: {
+              paymentFeePercent: data.fees?.paymentFeePercent ?? 2,
+              platformFeePercent: data.fees?.platformFeePercent ?? 0,
             }
           }));
         }
@@ -58,9 +66,17 @@ export default function AdminPaymentSettings() {
     setSaving(true);
     try {
       await setDoc(doc(db, 'configs', 'payment'), {
-        ...config,
+        cashfree: config.cashfree,
+        paypal: config.paypal,
+        fees: config.fees,
         updatedAt: serverTimestamp()
       });
+      // Sync fee rates to configs/marketing so awardAffiliateCommission reads them
+      await setDoc(doc(db, 'configs', 'marketing'), {
+        paymentFeePercent: config.fees.paymentFeePercent,
+        platformFeePercent: config.fees.platformFeePercent,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
       toast.success('Payment settings updated!');
     } catch (err) {
       console.error(err);
@@ -164,7 +180,7 @@ export default function AdminPaymentSettings() {
                       className={cn(
                         "flex-grow font-bold uppercase tracking-widest border transition-all h-auto py-3",
                         config.cashfree.environment === env 
-                          ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
+                          ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
                           : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                       )}
                     >
@@ -257,6 +273,78 @@ export default function AdminPaymentSettings() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Fee Settings */}
+      <div className="bg-card rounded-lg border border-border p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-amber-500/10 rounded-md flex items-center justify-center">
+            <Percent className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <h4 className="font-bold text-lg leading-tight">Affiliate Fee Settings</h4>
+            <p className="text-xs text-muted-foreground font-medium mt-0.5">
+              Fees are deducted from the gross sale before calculating affiliate commission.
+              Net commission = (Sale − Payment Fee) × Commission Rate × (1 − Platform Fee)
+            </p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <Input
+              label="Payment Gateway Fee (%)"
+              id="paymentFeePercent"
+              name="paymentFeePercent"
+              type="number"
+              value={config.fees.paymentFeePercent}
+              onChange={e => setConfig({ ...config, fees: { ...config.fees, paymentFeePercent: Number(e.target.value) }})}
+              min={0}
+              max={10}
+              step={0.1}
+              variant="filled"
+              helperText="Cashfree: ~2% · PayPal: ~3.49% · Stripe: ~2.9%"
+            />
+          </div>
+          <div>
+            <Input
+              label="Platform Fee (%)"
+              id="platformFeePercent"
+              name="platformFeePercent"
+              type="number"
+              value={config.fees.platformFeePercent}
+              onChange={e => setConfig({ ...config, fees: { ...config.fees, platformFeePercent: Number(e.target.value) }})}
+              min={0}
+              max={50}
+              step={0.5}
+              variant="filled"
+              helperText="Percentage of gross commission kept by the platform. 0 = pass full commission to affiliate."
+            />
+          </div>
+        </div>
+
+        {/* Live Preview */}
+        <div className="mt-6 p-4 bg-muted/50 rounded-xl border border-border text-sm font-mono space-y-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Commission Preview (on $15 sale)</p>
+          {(() => {
+            const sale = 15;
+            const payFee = sale * (config.fees.paymentFeePercent / 100);
+            const net = sale - payFee;
+            const grossComm = net * 0.25;
+            const platFee = grossComm * (config.fees.platformFeePercent / 100);
+            const affiliate = Math.max(0, grossComm - platFee);
+            return (
+              <>
+                <div className="flex justify-between"><span className="text-muted-foreground">Gross sale</span><span>${sale.toFixed(2)}</span></div>
+                <div className="flex justify-between text-rose-500"><span>− Payment fee ({config.fees.paymentFeePercent}%)</span><span>−${payFee.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Net to distribute</span><span>${net.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Gross commission (25%)</span><span>${grossComm.toFixed(2)}</span></div>
+                {config.fees.platformFeePercent > 0 && <div className="flex justify-between text-rose-500"><span>− Platform fee ({config.fees.platformFeePercent}%)</span><span>−${platFee.toFixed(2)}</span></div>}
+                <div className="flex justify-between font-bold text-emerald-600 border-t border-border pt-1 mt-1"><span>Affiliate receives</span><span>${affiliate.toFixed(2)}</span></div>
+              </>
+            );
+          })()}
         </div>
       </div>
 

@@ -3,16 +3,18 @@ import { Heart, Search, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import PromptCard from '../../components/PromptCard';
 import PromptCardSkeleton from '../../components/PromptCardSkeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../lib/firebase';
 import { Prompt } from '../../types';
-import Input from '../../components/ui/Input';
+import Input from '../../components/primitives/Input';
 import { X } from 'lucide-react';
 
 export default function DashboardFavorites() {
   const { user, profile, isPro, isAdmin } = useAuth();
+  const { prefix } = usePath();
   const [favorites, setFavorites] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,7 +106,7 @@ export default function DashboardFavorites() {
           <p className="text-muted-foreground max-w-sm mx-auto mb-8">
             Browse the marketplace and heart the prompts you love to see them here.
           </p>
-          <Link to="/explore" className="btn-primary btn-lg">
+          <Link to={prefix("/explore")} className="btn-primary btn-lg">
             <Sparkles className="w-5 h-5" />
             Explore Marketplace
           </Link>

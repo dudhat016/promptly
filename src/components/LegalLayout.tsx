@@ -1,5 +1,8 @@
-﻿import { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
+import PageContainer from './layout/PageContainer';
+import { usePath } from '../hooks/usePath';
 
 interface LegalLayoutProps {
   title: string;
@@ -8,9 +11,10 @@ interface LegalLayoutProps {
 }
 
 export default function LegalLayout({ title, lastUpdated, children }: LegalLayoutProps) {
+  const { prefix } = usePath();
   return (
     <div className="bg-muted/50 min-h-screen py-24">
-      <div className="container mx-auto px-4 max-w-4xl">
+      <PageContainer ignoreCustomizer>
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -34,10 +38,10 @@ export default function LegalLayout({ title, lastUpdated, children }: LegalLayou
 
         <div className="mt-12 text-center">
           <p className="text-muted-foreground text-sm font-medium">
-            Have questions about our policies? <a href="/contact" className="text-primary font-bold hover:underline">Contact Support</a>
+            Have questions about our policies? <Link to={prefix('/contact')} className="text-primary font-bold hover:underline">Contact Support</Link>
           </p>
         </div>
-      </div>
+      </PageContainer>
     </div>
   );
 }

@@ -3,14 +3,17 @@ import { db } from '../../lib/firebase';
 import { collection, query, getDocs, getDoc, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PricingPlan, AppConfig } from '../../types';
 import { Check, CreditCard, DollarSign, Edit2, Plus, Sparkles, Trash2, Zap, Shield, X } from 'lucide-react';
-import Input from '../../components/ui/Input';
+import Input from '../../components/primitives/Input';
 import { AdminPageHeader, DataTable } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import Button from '../../components/ui/Button';
+import { usePath } from '../../hooks/usePath';
+import Button from '../../components/primitives/Button';
+import Badge from '../../components/primitives/Badge';
 
 export default function AdminSubscriptions() {
+  const { prefix } = usePath();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +82,7 @@ export default function AdminSubscriptions() {
         actions={
           <Button 
             as={Link} 
-            to="/admin/subscriptions/new" 
+            to={prefix("/admin/subscriptions/new")} 
             variant="primary"
             leftIcon={Plus}
             size="sm"
@@ -100,7 +103,7 @@ export default function AdminSubscriptions() {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-8">
               <div className={`w-16 h-16 rounded-md flex items-center justify-center transition-all duration-500 ${
-                config?.activePromotion === 'trial' ? 'bg-primary text-white rotate-12' : 'bg-muted text-muted-foreground'
+                config?.activePromotion === 'trial' ? 'bg-primary text-primary-foreground rotate-12' : 'bg-muted text-muted-foreground'
               }`}>
                 <Zap className="w-8 h-8 fill-current" />
               </div>
@@ -205,9 +208,9 @@ export default function AdminSubscriptions() {
                       />
                     </div>
                   ) : (
-                    <div className="bg-emerald-500/10 text-emerald-600 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest">
+                    <Badge variant="success" size="md" dot pulse>
                       Live Logic Active
-                    </div>
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -264,7 +267,9 @@ export default function AdminSubscriptions() {
             sortable: true,
             sortValue: p => p.features?.length ?? 0,
             render: p => (
-              <span className="text-sm font-medium text-muted-foreground">{p.features?.length || 0} features</span>
+              <Badge variant="soft" size="sm" className="bg-muted/50">
+                {p.features?.length || 0} features
+              </Badge>
             ),
             csvValue: p => p.features?.length ?? 0,
           },
@@ -272,7 +277,7 @@ export default function AdminSubscriptions() {
         data={plans}
         rowKey={p => p.id}
         loading={loading}
-        actions={{ edit: (p: PricingPlan) => `/admin/subscriptions/edit/${p.id}`, onDelete: handleDelete } satisfies DataTableActions<PricingPlan>}
+        actions={{ edit: (p: PricingPlan) => prefix(`/admin/subscriptions/${p.id}/edit`), onDelete: handleDelete } satisfies DataTableActions<PricingPlan>}
         searchPlaceholder="Search plans..."
         selectable
         onBulkDelete={handleBulkDelete}

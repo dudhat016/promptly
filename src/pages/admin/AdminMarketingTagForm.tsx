@@ -4,17 +4,20 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Tag } from '../../types';
 import { Save, Tag as TagIcon } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
-import Button from '../../components/ui/Button';
+import Button from '../../components/primitives/Button';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
-import Input from '../../components/ui/Input';
-import Textarea from '../../components/ui/Textarea';
+import Input from '../../components/primitives/Input';
+import Textarea from '../../components/primitives/Textarea';
 
 export default function AdminMarketingTagForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [tag, setTag] = useState<Partial<Tag>>({
     name: '', description: '', color: '#4f46e5'
   });
@@ -31,8 +34,17 @@ export default function AdminMarketingTagForm() {
     loadData();
   }, [id]);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!tag.name?.trim()) newErrors.name = "Tag name is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setSaving(true);
     try {
       if (id && id !== 'new') {
@@ -42,7 +54,7 @@ export default function AdminMarketingTagForm() {
         await setDoc(doc(db, 'marketing_tags', newId), { ...tag, id: newId });
       }
       toast.success(id && id !== 'new' ? "Tag updated" : "New tag created");
-      navigate('/admin/marketing?tab=tag');
+      navigate(prefix('/admin/marketing?tab=tag'));
     } catch (err) {
       console.error(err);
       toast.error("Failed to save tag");
@@ -52,7 +64,7 @@ export default function AdminMarketingTagForm() {
   };
 
   return (
-    <div className="max-w-xl">
+    <>
       <AdminPageHeader
         label="Marketing CRM"
         labelIcon={TagIcon}
@@ -68,9 +80,12 @@ export default function AdminMarketingTagForm() {
             id="tagName"
             name="tagName"
             type="text"
-            required
+            error={errors.name}
             value={tag.name || ''}
-            onChange={e => setTag({...tag, name: e.target.value})}
+            onChange={e => {
+              setTag({...tag, name: e.target.value});
+              if (errors.name) setErrors({...errors, name: ''});
+            }}
             placeholder="e.g. VIP Customer"
             variant="filled"
           />
@@ -109,7 +124,7 @@ export default function AdminMarketingTagForm() {
             </Button>
             <Button 
               as={Link}
-              to="/admin/marketing?tab=tag"
+              to={prefix("/admin/marketing?tab=tag")}
               variant="secondary"
               size="lg"
               className="px-8 font-bold"
@@ -119,6 +134,6 @@ export default function AdminMarketingTagForm() {
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }

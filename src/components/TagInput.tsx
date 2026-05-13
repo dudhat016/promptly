@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Search, Plus, Tag as TagIcon } from 'lucide-react';
-import Button from './ui/Button';
+import Button from './primitives/Button';
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Tag } from '../types';

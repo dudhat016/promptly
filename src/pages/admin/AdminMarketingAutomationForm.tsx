@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, query, getDocs, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Tag, EmailTemplate, AutomationFlow } from '../../types';
@@ -6,11 +6,13 @@ import { GitBranch } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AutomationBuilder from '../../components/marketing/AutomationBuilder';
+import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
 
 export default function AdminMarketingAutomationForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   
   const [tags, setTags] = useState<Tag[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -55,7 +57,7 @@ export default function AdminMarketingAutomationForm() {
         await setDoc(doc(db, 'marketing_automations', newId), { ...updatedFlow, id: newId });
       }
       toast.success(id && id !== 'new' ? "Automation updated" : "New automation created");
-      navigate('/admin/marketing?tab=automation');
+      navigate(prefix('/admin/marketing?tab=automation'));
     } catch (err) {
       console.error(err);
       toast.error('Failed to save automation');
@@ -79,7 +81,7 @@ export default function AdminMarketingAutomationForm() {
           tags={tags} 
           templates={templates} 
           onSave={handleSave} 
-          onCancel={() => navigate('/admin/marketing?tab=automation')} 
+          onCancel={() => navigate(prefix('/admin/marketing?tab=automation'))} 
         />
       )}
     </div>

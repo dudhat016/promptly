@@ -4,6 +4,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { UserProfile } from '../../types';
 import { CreditCard, TrendingUp, DollarSign } from 'lucide-react';
 import { AdminPageHeader, DataTable } from '../../components/admin';
+import Badge from '../../components/primitives/Badge';
 import type { DataTableColumn } from '../../components/admin';
 import {
   AreaChart, Area, BarChart, Bar,
@@ -143,9 +144,9 @@ export default function AdminFinancials() {
       key: 'status',
       header: 'Status',
       render: p => (
-        <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-lg text-[10px] font-bold uppercase tracking-widest">
+        <Badge variant="success" size="sm" dot>
           {p.status}
-        </span>
+        </Badge>
       ),
       csvValue: p => p.status,
     },

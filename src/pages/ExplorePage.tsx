@@ -1,25 +1,27 @@
 import { limit } from 'firebase/firestore';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Search, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SlidersHorizontal, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ExploreSidebar from '../components/ExploreSidebar';
 import PromptCard from '../components/PromptCard';
 import PromptCardSkeleton from '../components/PromptCardSkeleton';
 import { useAuth } from '../hooks/useAuth';
 import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
 import { toTitleCase } from '../lib/utils';
-import { firestoreService } from '../services/firestoreService';
+import { apiService } from '../services/ApiService';
 import { Prompt } from '../types';
 import NeuralAdBanner from '../components/NeuralAdBanner';
-import Button from '../components/ui/Button';
+import { usePath } from '../hooks/usePath';
+import { Button, Select } from '../components/primitives';
+import PageContainer from '../components/layout/PageContainer';
 
 export default function ExplorePage() {
   const { isPro, isAdmin, profile } = useAuth();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
 
   const { tagSlug, categorySlug, modelSlug } = useParams();
   const [searchParams] = useSearchParams();
@@ -39,13 +41,10 @@ export default function ExplorePage() {
 
   // Sort state
   const [sortBy, setSortBy] = useState<'newest' | 'likes' | 'views' | 'copies' | 'foryou'>('foryou');
-  const [isSortOpen, setIsSortOpen] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
-
-  const affinityProfile = profile?.affinityProfile || getAffinityProfile();
 
   // DERIVE FILTERS DIRECTLY FROM URL (Single Source of Truth)
 
@@ -71,17 +70,16 @@ export default function ExplorePage() {
   }, [location.pathname]);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-      setRecentlyViewed(stored);
-    } catch (e) {}
-  }, []);
-
-  useEffect(() => {
     async function fetchPrompts() {
       setLoading(true);
       try {
-        const fetchedPrompts = await firestoreService.getCollection<Prompt>('prompts', [limit(100)]);
+        const allPrompts = await apiService.getCollection<Prompt>('prompts');
+
+        // Filter: only approved prompts that aren't hidden by moderation
+        const fetchedPrompts = allPrompts.filter(p =>
+          (p.status === 'approved' || !p.status) &&
+          p.moderationStatus !== 'hidden'
+        );
 
         // SECURITY: Proactively scrub content for paid prompts
         const promptsWithSecurity = fetchedPrompts.map(p => {
@@ -96,55 +94,78 @@ export default function ExplorePage() {
         });
 
         setPrompts(promptsWithSecurity);
-      } catch (err: any) {
-        setFetchError(err.message || "Failed to connect to database");
+        setFetchError(null);
+      } catch (err) {
+        console.error("Explore Fetch Error:", err);
+        setFetchError("Service synchronization issue. Please check your network or try again.");
       } finally {
         setLoading(false);
       }
     }
     fetchPrompts();
-  }, [profile?.unlockedPrompts, isPro, isAdmin]);
+  }, [isPro, isAdmin, profile?.unlockedPrompts]);
 
+  // Filtering Logic
   const filteredPrompts = prompts.filter(p => {
-    // 1. Search Filter
-    const matchesSearch = searchTerm === '' ||
-      p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchTerm.toLowerCase());
+    // Model Filter
+    if (activeModel !== 'All' && p.model.toLowerCase() !== activeModel.toLowerCase()) return false;
 
-    // 2. Model Filter
-    const matchesModel = activeModel === 'All' ||
-      (p.model && p.model.toLowerCase() === activeModel.toLowerCase());
-
-    // 3. Category Filter
-    const matchesCategory = activeCategories.size === 0 ||
-      (p.categoryId && activeCategories.has(p.categoryId.toLowerCase()));
-
-    // 4. Tag Filter
-    const toSlug = (text: string) => text.toLowerCase().replace(/\s+/g, '-');
-    const matchesTag = activeTags.size === 0 ||
-      Array.from(activeTags).some(activeTag =>
-        p.tags && p.tags.some(t => toSlug(t) === activeTag)
-      );
-
-    // 5. Pricing Filter
-    let matchesPricing = true;
-    if (activePricing.size === 1) {
-      if (activePricing.has('free')) matchesPricing = p.isPaid !== true;
-      if (activePricing.has('paid')) matchesPricing = p.isPaid === true;
+    // Search Filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const inTitle = p.title.toLowerCase().includes(search);
+      const inDesc = p.description.toLowerCase().includes(search);
+      const inTags = p.tags.some(t => t.toLowerCase().includes(search));
+      if (!inTitle && !inDesc && !inTags) return false;
     }
 
-    return matchesSearch && matchesModel && matchesCategory && matchesTag && matchesPricing;
+    // Category Filter
+    if (activeCategories.size > 0) {
+      if (!activeCategories.has(p.categoryId.toLowerCase())) return false;
+    }
+
+    // Tag Filter
+    if (activeTags.size > 0) {
+      const hasTag = p.tags.some(t => activeTags.has(t.toLowerCase()));
+      if (!hasTag) return false;
+    }
+
+    // Pricing Filter
+    if (activePricing.size > 0) {
+      const isFree = !p.isPaid;
+      const isPaid = p.isPaid;
+      if (activePricing.has('free') && !isFree && !activePricing.has('paid')) return false;
+      if (activePricing.has('paid') && !isPaid && !activePricing.has('free')) return false;
+    }
+
+    return true;
   });
 
+  // Sorting Logic
   const sortedPrompts = [...filteredPrompts].sort((a, b) => {
-    if (sortBy === 'foryou') {
-      const scoreA = calculatePromptScore(a, affinityProfile);
-      const scoreB = calculatePromptScore(b, affinityProfile);
-      return scoreB - scoreA;
-    }
     if (sortBy === 'likes') return (b.likesCount || 0) - (a.likesCount || 0);
     if (sortBy === 'views') return (b.viewsCount || 0) - (a.viewsCount || 0);
     if (sortBy === 'copies') return (b.copiesCount || 0) - (a.copiesCount || 0);
+    if (sortBy === 'foryou') {
+      const affinityProfile = getAffinityProfile();
+      const hasAffinityData = Object.keys(affinityProfile).length > 0;
+
+      if (hasAffinityData) {
+        return calculatePromptScore(b, affinityProfile) - calculatePromptScore(a, affinityProfile);
+      }
+
+      // Cold-start: build a temporary profile from stored interests
+      if (profile?.interests && profile.interests.length > 0) {
+        const coldProfile: Record<string, number> = {};
+        profile.interests.forEach(i => {
+          coldProfile[i.toLowerCase().replace(/\s+/g, '-')] = 5;
+        });
+        return calculatePromptScore(b, coldProfile) - calculatePromptScore(a, coldProfile);
+      }
+
+      // No data at all — fall back to likes
+      return (b.likesCount || 0) - (a.likesCount || 0);
+    }
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -155,13 +176,12 @@ export default function ExplorePage() {
   );
 
   const sortOptions = [
-    { id: 'newest', label: 'Newest First' },
-    { id: 'foryou', label: 'Recommended for You' },
-    { id: 'likes', label: 'Most Liked' },
-    { id: 'views', label: 'Most Viewed' },
-    { id: 'copies', label: 'Most Copied' },
+    { value: 'newest', label: 'Newest First' },
+    { value: 'foryou', label: 'Recommended for You' },
+    { value: 'likes', label: 'Most Liked' },
+    { value: 'views', label: 'Most Viewed' },
+    { value: 'copies', label: 'Most Copied' },
   ];
-
 
   let pageTitle = "Explore Prompts";
   let subtitle = "Discover the best AI prompts for your workflow.";
@@ -192,7 +212,7 @@ export default function ExplorePage() {
   }, [pageTitle]);
 
   return (
-    <div className="container mx-auto px-4 py-12">
+    <PageContainer className="py-12" ignoreCustomizer>
       {/* Header */}
       <div className="mb-12">
         <h1 className="text-4xl font-bold tracking-tight mb-2 text-foreground">{pageTitle}</h1>
@@ -221,170 +241,85 @@ export default function ExplorePage() {
           ) : (
             <>
               <NeuralAdBanner className="mb-6" slot="explore-top-ad" />
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <h2 className="text-xl font-bold text-foreground">
                   {filteredPrompts.length} {filteredPrompts.length === 1 ? 'Prompt' : 'Prompts'}
                 </h2>
-                <div className="relative">
-                  <Button
-                    onClick={() => setIsSortOpen(!isSortOpen)}
-                    variant="white"
-                    size="md"
-                    className="border border-border font-bold"
-                  >
-                    <SlidersHorizontal className="w-4 h-4 text-muted-foreground mr-1" />
-                    <span>{sortOptions.find(o => o.id === sortBy)?.label}</span>
-                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ml-1 ${isSortOpen ? 'rotate-180' : ''}`} />
-                  </Button>
-
-                  {isSortOpen && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setIsSortOpen(false)} />
-                      <div className="absolute right-0 top-full mt-2 w-full min-w-[200px] bg-card border border-border rounded-md shadow-xl z-20 py-2 overflow-hidden">
-                         {sortOptions.map(option => (
-                           <Button
-                             key={option.id}
-                             onClick={() => {
-                               setSortBy(option.id as any);
-                               setIsSortOpen(false);
-                             }}
-                             variant={sortBy === option.id ? 'primary' : 'ghost'}
-                             size="sm"
-                             fullWidth
-                             className="justify-between px-4 py-2.5 h-auto font-bold rounded-none border-b border-border last:border-0"
-                           >
-                             {option.label}
-                             {sortBy === option.id && <Check className="w-4 h-4" />}
-                           </Button>
-                         ))}
-                      </div>
-                    </>
-                  )}
+                <div className="w-full sm:w-64">
+                  <Select
+                    options={sortOptions}
+                    value={sortBy}
+                    onChange={(val) => setSortBy(val as any)}
+                    placeholder="Sort by..."
+                    isSearchable={false}
+                  />
                 </div>
               </div>
 
-              {filteredPrompts.length === 0 ? (
-                <div className="text-center py-24 bg-muted rounded-xl border border-border">
-                  <div className="bg-background w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <Search className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-1">No prompts found</h3>
-                  <p className="text-muted-foreground max-w-xs mx-auto">Try adjusting your search or filters to find what you're looking for.</p>
-                   <Button
-                    onClick={() => { setSearchTerm(''); navigate('/explore'); }}
-                    variant="ghost"
-                    className="mt-6 text-primary font-bold h-auto py-1"
+              {paginatedPrompts.length > 0 ? (
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {paginatedPrompts.map((prompt) => (
+                    <PromptCard key={prompt.id} prompt={prompt} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-24 bg-muted/30 rounded-2xl border border-dashed border-border">
+                  <Zap className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-foreground">No prompts found</h3>
+                  <p className="text-muted-foreground max-w-xs mx-auto mt-2">
+                    Try adjusting your filters or search terms to find what you're looking for.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setSearchTerm('');
+                      navigate(prefix('/explore'));
+                    }}
+                    className="mt-6"
                   >
                     Clear all filters
                   </Button>
                 </div>
-              ) : (
-                <>
-                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {paginatedPrompts.slice(0, 6).map((prompt) => (
-                      <PromptCard key={prompt.id} prompt={prompt} />
-                    ))}
-                  </div>
-
-                  {/* Pro upsell inline banner — shown to free users after first 6 cards */}
-                  {!isPro && !isAdmin && paginatedPrompts.length > 6 && (
-                    <div className="my-6 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden"
-                      style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)' }}>
-                      <div className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
-                        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)' }} />
-                      <div className="flex items-center gap-4 relative z-10">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)' }}>
-                          <Sparkles className="w-5 h-5 text-violet-400" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-foreground text-sm">Unlock all {filteredPrompts.length}+ prompts</p>
-                          <p className="text-xs text-muted-foreground">Pro members get unlimited access, copies, and new prompts every week.</p>
-                        </div>
-                      </div>
-                       <Button 
-                        onClick={() => navigate('/pricing')}
-                        variant="primary"
-                        size="md"
-                        leftIcon={Zap}
-                        className="relative z-10"
-                      >
-                        Go Pro
-                      </Button>
-                    </div>
-                  )}
-
-                  {paginatedPrompts.length > 6 && (
-                    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                      {paginatedPrompts.slice(6).map((prompt) => (
-                        <PromptCard key={prompt.id} prompt={prompt} />
-                      ))}
-                    </div>
-                  )}
-                </>
               )}
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-12">
+                <div className="mt-12 flex items-center justify-center gap-2">
                   <Button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    variant="secondary"
-                    size="icon"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  <div className="flex items-center gap-1">
-                    {[...Array(Math.min(totalPages, 7))].map((_, i) => (
-                      <Button
-                        key={i}
-                        onClick={() => setCurrentPage(i + 1)}
-                        variant={currentPage === i + 1 ? 'primary' : 'ghost'}
-                        size="icon"
-                        className={currentPage === i + 1 ? 'scale-110 shadow-lg shadow-primary/20' : ''}
-                      >
-                        {i + 1}
-                      </Button>
-                    ))}
-                    {totalPages > 7 && <span className="text-muted-foreground text-sm px-1 font-bold">…{totalPages}</span>}
-                  </div>
-                  <Button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    variant="secondary"
-                    size="icon"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </Button>
-                </div>
-              )}
+                  
+                  {[...Array(totalPages)].map((_, i) => (
+                    <Button
+                      key={i}
+                      variant={currentPage === i + 1 ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setCurrentPage(i + 1)}
+                      className="w-10 h-10 font-bold"
+                    >
+                      {i + 1}
+                    </Button>
+                  ))}
 
-              {/* Recently viewed strip */}
-              {recentlyViewed.length > 0 && (
-                <div className="mt-16 pt-10 border-t border-border">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Clock className="w-4 h-4 text-muted-foreground/60" />
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Recently Viewed</h3>
-                  </div>
-                  <div className="flex gap-3 overflow-x-auto pb-2">
-                    {recentlyViewed.map(p => (
-                      <Link key={p.id} to={`/prompt/${p.slug}`}
-                        className="flex-none rounded-xl px-4 py-3 bg-card border border-border hover:border-primary/20 hover:bg-muted/30 transition-all group min-w-[180px] max-w-[220px]"
-                      >
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">{p.model}</div>
-                        <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
-                          {p.title}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

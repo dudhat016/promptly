@@ -5,9 +5,11 @@ import { Prompt } from '../../types';
 import { AlertCircle, CheckCircle2, Search, Edit, Download, Globe, FileText } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { Link } from 'react-router-dom';
-import Button from '../../components/ui/Button';
+import { usePath } from '../../hooks/usePath';
+import Button from '../../components/primitives/Button';
 
 export default function AdminSEO() {
+  const { prefix } = usePath();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
   const [sitePages, setSitePages] = useState<any[]>([]);
@@ -17,7 +19,7 @@ export default function AdminSEO() {
   useEffect(() => {
     async function loadData() {
       const pSnap = await getDocs(collection(db, 'prompts'));
-      setPrompts(pSnap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt)));
+      setPrompts(pSnap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt)));
 
       const bSnap = await getDocs(collection(db, 'blog_posts'));
       setBlogPosts(bSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -136,7 +138,7 @@ export default function AdminSEO() {
           <>
             <Button
               as={Link}
-              to="/admin/site-pages"
+              to={prefix("/admin/site-pages")}
               variant="secondary"
               size="md"
               leftIcon={Globe}
@@ -187,7 +189,7 @@ export default function AdminSEO() {
           </h3>
           <Button
             as={Link}
-            to="/admin/site-pages"
+            to={prefix("/admin/site-pages")}
             variant="ghost"
             size="sm"
             className="text-xs font-black text-primary hover:underline hover:bg-transparent uppercase tracking-widest p-0 h-auto"
@@ -293,7 +295,7 @@ export default function AdminSEO() {
                 <td className="px-8 py-6 text-right">
                   <Button
                     as={Link}
-                    to={`/admin/prompts/edit/${p.id}`}
+                    to={prefix(`/admin/prompts/${p.id}/edit`)}
                     variant="secondary"
                     size="sm"
                     leftIcon={Edit}

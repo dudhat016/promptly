@@ -2,7 +2,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { mergeCloudAffinity, syncAffinityToCloud } from '../lib/affinity';
+import { getAffinityProfile, mergeCloudAffinity, seedAffinityFromInterests, syncAffinityToCloud } from '../lib/affinity';
 import { auth, db } from '../lib/firebase';
 import { seedDatabase } from '../lib/seed';
 import { EmailService } from '../services/emailService';
@@ -118,6 +118,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 updates.role = 'admin';
                 updates.subscriptionStatus = 'pro';
                 updates.credits = 10000;
+                updates.hasCompletedOnboarding = true;
                 needsUpdate = true;
               } else if (isToDemote && data.role === 'admin') {
                 updates.role = 'user';
@@ -133,7 +134,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               const rewardKey = `reward_claimed_${today.getTime()}`;
 
               if ((!lastReward || lastReward < today) && !sessionStorage.getItem(rewardKey)) {
-                updates.credits = increment(5);
+                const globalSnap = await getDoc(doc(db, 'configs', 'global'));
+                const dailyBonus = globalSnap.exists() ? (globalSnap.data().aiDefaults?.freeCreditsDaily ?? 5) : 5;
+                updates.credits = increment(dailyBonus);
                 updates.lastCreditsRewardAt = serverTimestamp();
                 updates.lastActiveAt = serverTimestamp();
                 sessionStorage.setItem(rewardKey, 'true');
@@ -153,8 +156,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 sessionStorage.setItem('DB_SEEDED', 'true');
               }
 
+              // Merge cloud affinity into local profile
               if (data.affinityProfile) mergeCloudAffinity(data.affinityProfile);
-              syncAffinityToCloud(user.uid);
+
+              // Cold-start fix: if local affinity is empty (new device / cleared storage),
+              // seed from stored interests so "For You" works immediately
+              const localAffinity = getAffinityProfile();
+              if (Object.keys(localAffinity).length === 0 && data.interests?.length > 0) {
+                seedAffinityFromInterests(data.interests);
+              } else {
+                syncAffinityToCloud(user.uid);
+              }
 
               const sessionKey = `login_email_${user.uid}`;
               if (!sessionStorage.getItem(sessionKey)) {
@@ -174,6 +186,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
               const newProfile: UserProfile = {
                 uid: user.uid,
+                hasCompletedOnboarding: isAdminEmail ? true : false,
                 email: user.email || '',
                 displayName: user.displayName,
                 photoURL: user.photoURL,

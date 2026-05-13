@@ -7,7 +7,7 @@ import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn } from '../../components/admin';
 import { logAuditEvent } from '../../lib/auditLog';
 import { useAuth } from '../../hooks/useAuth';
-import Button from '../../components/ui/Button';
+import Button from '../../components/primitives/Button';
 
 type PayoutStatus = 'all' | 'pending' | 'completed' | 'rejected';
 

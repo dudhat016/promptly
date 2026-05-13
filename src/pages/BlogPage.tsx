@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { Link, useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { BlogPost } from '../types';
+import { usePath } from '../hooks/usePath';
 import { Calendar, ArrowRight, LayoutGrid, List as ListIcon, X, Eye, Sparkles, Clock } from 'lucide-react';
-import Select from '../components/ui/Select';
+import Select from '../components/primitives/Select';
 import { motion } from 'motion/react';
 import BlogSidebar from '../components/BlogSidebar';
 import { cn } from '../lib/utils';
 import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
-import Button from '../components/ui/Button';
+import Button from '../components/primitives/Button';
+import PageContainer from '../components/layout/PageContainer';
 
 function readTime(content: string) {
   return Math.max(1, Math.ceil((content || '').split(/\s+/).length / 200));
@@ -22,6 +24,7 @@ export default function BlogPage() {
   const [searchParams] = useSearchParams();
   const { tagSlug } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   const tagFilter = tagSlug || searchParams.get('tag');
 
   const profile = getAffinityProfile();
@@ -29,6 +32,7 @@ export default function BlogPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'foryou'>(
     hasAffinityProfile && !tagFilter ? 'foryou' : 'newest'
   );
+  const searchQuery = searchParams.get('q') || '';
 
   useEffect(() => {
     async function fetchPosts() {
@@ -47,15 +51,39 @@ export default function BlogPage() {
     fetchPosts();
   }, []);
 
-  const allTags = Array.from(new Set(posts.flatMap(p => p.tags || []))).slice(0, 8);
+  const allTags = useMemo(() => Array.from(new Set(posts.flatMap(p => p.tags || []))).slice(0, 8), [posts]);
   const tagToSlug = (tag: string) => tag.toLowerCase().replace(/\s+/g, '-');
-  const filteredPosts = tagFilter ? posts.filter(p => p.tags?.some(t => tagToSlug(t) === tagFilter)) : posts;
-  const displayTag = allTags.find(t => tagToSlug(t) === tagFilter) || tagFilter?.replace(/-/g, ' ') || '';
+  
+  const filteredPosts = useMemo(() => {
+    let result = posts;
+    
+    if (tagFilter) {
+      result = result.filter(p => p.tags?.some(t => tagToSlug(t) === tagFilter));
+    }
+    
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(p => 
+        p.title.toLowerCase().includes(q) || 
+        p.excerpt?.toLowerCase().includes(q) || 
+        p.content?.toLowerCase().includes(q)
+      );
+    }
+    
+    return result;
+  }, [posts, tagFilter, searchQuery]);
 
-  const sortedPosts = [...filteredPosts].sort((a, b) => {
-    if (sortBy === 'foryou') return calculateBlogScore(b, profile) - calculateBlogScore(a, profile);
-    return new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime();
-  });
+  const displayTag = useMemo(() => allTags.find(t => tagToSlug(t) === tagFilter) || tagFilter?.replace(/-/g, ' ') || '', [allTags, tagFilter]);
+
+  const sortedPosts = useMemo(() => {
+    const result = [...filteredPosts];
+    if (sortBy === 'foryou') {
+      result.sort((a, b) => calculateBlogScore(b, profile) - calculateBlogScore(a, profile));
+    } else {
+      result.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
+    }
+    return result;
+  }, [filteredPosts, sortBy, profile]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,7 +92,7 @@ export default function BlogPage() {
       <div className="relative pt-24 pb-16 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[350px] pointer-events-none"
           style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.1) 0%, transparent 70%)' }} />
-        <div className="container mx-auto px-4 text-center relative z-10">
+        <PageContainer className="text-center relative z-10" ignoreCustomizer>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-5 bg-primary/10 border border-primary/25 text-primary">
             <Sparkles className="w-3.5 h-3.5" />
             Insights & Resources
@@ -75,13 +103,13 @@ export default function BlogPage() {
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Prompt engineering guides, AI trends, and product updates from our team.
           </p>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── Featured Hero Post (non-filtered view only) ── */}
       {!tagFilter && !loading && sortedPosts.length > 0 && (
-        <div className="container mx-auto px-4 max-w-7xl mb-12">
-          <Link to={`/blog/${sortedPosts[0].slug}`} className="group block rounded-2xl overflow-hidden border border-border bg-card transition-all hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5">
+        <PageContainer className="max-w-7xl mb-12" ignoreCustomizer>
+          <Link to={prefix(`/blog/${sortedPosts[0].slug}`)} className="group block rounded-2xl overflow-hidden border border-border bg-card transition-all hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5">
             <div className="grid md:grid-cols-2">
               <div className="relative aspect-video md:aspect-auto min-h-[240px] overflow-hidden">
                 {sortedPosts[0].coverImage ? (
@@ -92,7 +120,7 @@ export default function BlogPage() {
                   </div>
                 )}
                 <div className="absolute top-4 left-4">
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-primary text-white uppercase tracking-widest">
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-primary text-primary-foreground uppercase tracking-widest">
                     Featured
                   </span>
                 </div>
@@ -131,10 +159,10 @@ export default function BlogPage() {
               </div>
             </div>
           </Link>
-        </div>
+        </PageContainer>
       )}
 
-      <div className="container mx-auto px-4 max-w-7xl pb-24">
+      <PageContainer className="max-w-7xl pb-24" ignoreCustomizer>
         <div className="flex flex-col lg:flex-row gap-10">
 
           {/* ── Main content ── */}
@@ -144,11 +172,17 @@ export default function BlogPage() {
             <div className="flex flex-wrap gap-4 items-center justify-between mb-8 pb-5 border-b border-border">
               <div className="flex items-center gap-3">
                 <h2 className="text-base font-bold text-foreground">
-                  {tagFilter ? `Posts tagged "${displayTag}"` : 'All Posts'}
+                  {searchQuery ? (
+                    <>Search results for "<span className="text-primary">{searchQuery}</span>"</>
+                  ) : tagFilter ? (
+                    <>Posts tagged "<span className="text-primary">{displayTag}</span>"</>
+                  ) : (
+                    'All Posts'
+                  )}
                 </h2>
-                {tagFilter && (
+                {(tagFilter || searchQuery) && (
                   <Button
-                    onClick={() => navigate('/blog')}
+                    onClick={() => navigate(prefix('/blog'))}
                     variant="secondary"
                     size="sm"
                     rightIcon={X}
@@ -220,7 +254,7 @@ export default function BlogPage() {
                   >
                     {/* Cover image */}
                     <Link
-                      to={`/blog/${post.slug}`}
+                      to={prefix(`/blog/${post.slug}`)}
                       className={cn(
                         'block relative overflow-hidden shrink-0',
                         viewMode === 'grid' ? 'aspect-video w-full' : 'w-full sm:w-2/5 h-48 sm:h-auto'
@@ -259,7 +293,7 @@ export default function BlogPage() {
                           <span className="text-primary">{post.tags[0]}</span>
                         )}
                       </div>
-                      <Link to={`/blog/${post.slug}`} className="block group/title mb-2">
+                      <Link to={prefix(`/blog/${post.slug}`)} className="block group/title mb-2">
                         <h2 className={cn(
                           'font-bold text-foreground transition-colors group-hover/title:text-primary',
                           viewMode === 'grid' ? 'text-lg line-clamp-2' : 'text-xl line-clamp-2'
@@ -272,7 +306,7 @@ export default function BlogPage() {
                       </p>
                       <div className="pt-4 flex items-center justify-between border-t border-border">
                         <Link
-                          to={`/blog/${post.slug}`}
+                          to={prefix(`/blog/${post.slug}`)}
                           className="text-sm font-semibold flex items-center gap-1.5 transition-all group/link text-primary hover:text-primary/80"
                         >
                           Read Article
@@ -289,7 +323,7 @@ export default function BlogPage() {
           {/* ── Sidebar ── */}
           <BlogSidebar />
         </div>
-      </div>
+      </PageContainer>
     </div>
   );
 }

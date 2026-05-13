@@ -9,14 +9,12 @@ const DEFAULT_PERMISSIONS: PermissionSet = {
   canViewPremium: false,
   canCopyPrompts: true,
   canExportData: false,
-  canUseAIBuilder: false,
   canCreateCollections: false,
   canAccessPremiumModels: false,
   canUseAPI: false,
   canRemoveWatermarks: false,
   hasPrioritySupport: false,
   canCustomBrandEmails: false,
-  maxDailyPrompts: 5,
   maxFavorites: 10
 };
 

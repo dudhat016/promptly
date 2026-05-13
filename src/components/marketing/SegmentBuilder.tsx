@@ -5,9 +5,9 @@ import {
   Trash2, Database, Info, Save, Search, Check
 } from 'lucide-react';
 import { Segment, Contact } from '../../types';
-import Input from '../ui/Input';
-import Select from '../ui/Select';
-import Button from '../ui/Button';
+import Input from '../primitives/Input';
+import Select from '../primitives/Select';
+import Button from '../primitives/Button';
 import { cn } from '../../lib/utils';
 
 interface Props {

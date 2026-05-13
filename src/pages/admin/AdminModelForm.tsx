@@ -1,21 +1,24 @@
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { Cpu, Save } from 'lucide-react';
-import { AdminPageHeader } from '../../components/admin';
 import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AdminPageHeader } from '../../components/admin';
+import Button from '../../components/primitives/Button';
+import Input from '../../components/primitives/Input';
+import Select from '../../components/primitives/Select';
+import Textarea from '../../components/primitives/Textarea';
+import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
 import { AIModel } from '../../types';
-import { toast } from 'react-hot-toast';
-import Select from '../../components/ui/Select';
-import Input from '../../components/ui/Input';
-import Textarea from '../../components/ui/Textarea';
-import Button from '../../components/ui/Button';
 
 export default function AdminModelForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
 
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [model, setModel] = useState<Partial<AIModel>>({
     name: '', provider: 'OpenAI', version: '', description: ''
   });
@@ -32,8 +35,18 @@ export default function AdminModelForm() {
     loadModel();
   }, [id]);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!model.name?.trim()) newErrors.name = "Model name is required";
+    if (!model.version?.trim()) newErrors.version = "Version is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setSaving(true);
     try {
       if (id && id !== 'new') {
@@ -50,7 +63,7 @@ export default function AdminModelForm() {
         });
       }
       toast.success(id && id !== 'new' ? "Model updated" : "New model added");
-      navigate('/admin/models');
+      navigate(prefix('/admin/models'));
     } catch (err) {
       console.error(err);
       toast.error("Failed to save model");
@@ -60,7 +73,7 @@ export default function AdminModelForm() {
   };
 
   return (
-    <div className="max-w-xl">
+    <>
       <AdminPageHeader
         label="Content"
         labelIcon={Cpu}
@@ -71,21 +84,25 @@ export default function AdminModelForm() {
       <div className="bg-card rounded-lg border border-border shadow-sm p-8">
 
         <form onSubmit={handleSave} className="space-y-6">
-          <Input 
+          <Input
             label="Model Name"
             id="modelName"
             name="modelName"
-            type="text" required
+            type="text"
+            error={errors.name}
             value={model.name || ''}
-            onChange={e => setModel({...model, name: e.target.value})}
+            onChange={e => {
+              setModel({...model, name: e.target.value});
+              if (errors.name) setErrors({...errors, name: ''});
+            }}
             placeholder="e.g. GPT-4 Turbo"
           />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="modelProvider" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Provider</label>
               <Select
                 id="modelProvider"
+                label="Provider"
                 value={model.provider || 'OpenAI'}
                 onChange={val => setModel({...model, provider: val})}
                 options={[
@@ -100,19 +117,23 @@ export default function AdminModelForm() {
               />
             </div>
             <div>
-              <Input 
+              <Input
                 label="Version"
                 id="modelVersion"
                 name="modelVersion"
-                type="text" required
+                type="text"
+                error={errors.version}
                 value={model.version || ''}
-                onChange={e => setModel({...model, version: e.target.value})}
+                onChange={e => {
+                  setModel({...model, version: e.target.value});
+                  if (errors.version) setErrors({...errors, version: ''});
+                }}
                 placeholder="e.g. v2024-05"
               />
             </div>
           </div>
 
-          <Textarea 
+          <Textarea
             label="Description"
             id="modelDescription"
             name="modelDescription"
@@ -120,7 +141,7 @@ export default function AdminModelForm() {
             value={model.description || ''}
             onChange={e => setModel({...model, description: e.target.value})}
             placeholder="What are the strengths of this model?"
-            variant="filled"
+            variant="outline"
           />
 
           <div className="pt-6 border-t border-border flex gap-4">
@@ -137,7 +158,7 @@ export default function AdminModelForm() {
             </Button>
             <Button
               as={Link}
-              to="/admin/models"
+              to={prefix('/admin/models')}
               variant="secondary"
               size="lg"
               className="px-8 font-bold"
@@ -147,6 +168,6 @@ export default function AdminModelForm() {
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }

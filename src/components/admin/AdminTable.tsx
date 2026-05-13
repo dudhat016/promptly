@@ -45,9 +45,12 @@ export default function AdminTable<T>({
             {loading ? (
               Array.from({ length: skeletonRows }).map((_, i) => (
                 <tr key={i} className="tr">
-                  {columns.map((col) => (
+                  {columns.map((col, j) => (
                     <td key={col.key} className="td">
-                      <div className="h-4 bg-muted/60 rounded animate-pulse w-3/4" />
+                      <div 
+                        className="h-4 skeleton" 
+                        style={{ width: `${[75, 55, 65, 45, 80][j % 5]}%`, animationDelay: `${i * 60}ms` }}
+                      />
                     </td>
                   ))}
                 </tr>

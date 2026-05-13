@@ -5,10 +5,11 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
-import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea';
-import Select from '../components/ui/Select';
-import Button from '../components/ui/Button';
+import Input from '../components/primitives/Input';
+import Textarea from '../components/primitives/Textarea';
+import Select from '../components/primitives/Select';
+import Button from '../components/primitives/Button';
+import Skeleton from '../components/feedback/Skeleton';
 
 interface Message {
   senderId: string;
@@ -46,6 +47,7 @@ export default function SupportPage() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [priority, setPriority] = useState('medium');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -73,19 +75,33 @@ export default function SupportPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [selectedTicket?.messages]);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!subject.trim()) newErrors.subject = "Subject is required";
+    if (!message.trim()) newErrors.message = "Message is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subject || !message || !user) return;
+    if (!validate() || !user) return;
+    
     setSubmitting(true);
     try {
+      const idToken = await user.getIdToken();
       const res = await fetch('/api/support/tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
         body: JSON.stringify({ userId: user.uid, userEmail: user.email, subject, message, priority }),
       });
       if (res.ok) {
         toast.success('Ticket created! We\'ll respond within 24 hours.');
         setSubject(''); setMessage(''); setIsCreating(false);
+        setErrors({});
       } else {
         throw new Error('Server error');
       }
@@ -119,7 +135,7 @@ export default function SupportPage() {
     }
   };
 
-  const inputClass = "w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all bg-background border border-border focus:border-primary/50";
+  const inputClass = "w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors bg-background border border-border focus:border-primary";
 
   return (
     <div>
@@ -149,15 +165,19 @@ export default function SupportPage() {
         <div className="max-w-2xl bg-card border border-border rounded-2xl p-8">
           <h2 className="text-lg font-bold text-foreground mb-6">Describe your issue</h2>
           <form onSubmit={handleCreateTicket} className="space-y-5">
-            <Input 
+            <Input
               label="Subject"
               id="subject"
               name="subject"
-              type="text" 
-              value={subject} 
-              onChange={e => setSubject(e.target.value)}
-              placeholder="What can we help you with?" 
-              required 
+              type="text"
+              required
+              error={errors.subject}
+              value={subject}
+              onChange={e => {
+                setSubject(e.target.value);
+                if (errors.subject) setErrors({...errors, subject: ''});
+              }}
+              placeholder="What can we help you with?"
             />
             <Select
               label="Priority"
@@ -171,15 +191,19 @@ export default function SupportPage() {
               ]}
               isSearchable={false}
             />
-            <Textarea 
+            <Textarea
               label="Message"
-              id="message" 
+              id="message"
               name="message"
-              value={message} 
-              onChange={e => setMessage(e.target.value)}
-              rows={6} 
-              placeholder="Describe your issue in detail..." 
-              required 
+              required
+              error={errors.message}
+              value={message}
+              onChange={e => {
+                setMessage(e.target.value);
+                if (errors.message) setErrors({...errors, message: ''});
+              }}
+              rows={6}
+              placeholder="Describe your issue in detail..."
             />
             <Button 
               type="submit" 
@@ -200,7 +224,7 @@ export default function SupportPage() {
           {/* Ticket list */}
           <div className="space-y-2 lg:col-span-1 overflow-y-auto max-h-[75vh]">
             {loading ? (
-              [1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)
+              [1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)
             ) : tickets.length === 0 ? (
               <div className="text-center py-16 rounded-2xl border border-dashed border-border">
                 <HelpCircle className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
@@ -272,12 +296,11 @@ export default function SupportPage() {
                     <div key={idx} className={`flex ${msg.senderRole === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                         msg.senderRole === 'user'
-                          ? 'text-white rounded-tr-md'
+                          ? 'gradient-cta rounded-tr-md'
                           : 'bg-card border border-border text-foreground rounded-tl-md'
-                      }`}
-                        style={msg.senderRole === 'user' ? { background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' } : undefined}>
+                      }`}>
                         <p>{msg.text}</p>
-                        <span className={`text-xs font-semibold block mt-2 ${msg.senderRole === 'user' ? 'text-white/60' : 'text-muted-foreground/60'}`}>
+                        <span className={`text-xs font-semibold block mt-2 ${msg.senderRole === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground/60'}`}>
                           {msg.senderRole === 'admin' ? 'Support Team' : 'You'}
                         </span>
                       </div>

@@ -1,0 +1,134 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save Changes",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "search": "Search...",
+    "noResults": "No results found",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "confirm": "Confirm",
+    "close": "Close",
+    "retry": "Retry",
+    "viewAll": "View All",
+    "learnMore": "Learn More",
+    "getStarted": "Get Started",
+    "signUp": "Sign Up Free",
+    "logIn": "Log In",
+    "logOut": "Log Out"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to your Promptly account",
+      "email": "Email Address",
+      "password": "Password",
+      "submit": "Sign In",
+      "forgotPassword": "Forgot Password?",
+      "noAccount": "Don't have an account?",
+      "register": "Create Account"
+    },
+    "register": {
+      "title": "Create Your Account",
+      "subtitle": "Join the AI prompt marketplace",
+      "name": "Full Name",
+      "email": "Email Address",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Create Account",
+      "hasAccount": "Already have an account?",
+      "login": "Sign In"
+    },
+    "forgot": {
+      "title": "Reset Password",
+      "subtitle": "Enter your email to receive a reset link",
+      "email": "Email Address",
+      "submit": "Send Reset Link",
+      "backToLogin": "Back to Login",
+      "success": "Reset link sent! Check your email."
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "vault": {
+      "title": "My Vault",
+      "empty": "Your vault is empty",
+      "emptyDesc": "Prompts you purchase will appear here."
+    },
+    "favorites": {
+      "title": "Favorites",
+      "empty": "No favorites yet",
+      "emptyDesc": "Heart prompts to save them here."
+    },
+    "builder": {
+      "title": "Prompt Builder",
+      "generate": "Generate Prompt"
+    },
+    "credits": {
+      "title": "Credit History",
+      "balance": "Current Balance"
+    }
+  },
+  "explore": {
+    "title": "Explore Prompts",
+    "searchPlaceholder": "Search prompts...",
+    "filters": "Filters",
+    "category": "Category",
+    "model": "AI Model",
+    "sort": "Sort By",
+    "featured": "Featured",
+    "newest": "Newest",
+    "popular": "Most Popular"
+  },
+  "pricing": {
+    "title": "Simple, Transparent Pricing",
+    "subtitle": "Choose the plan that works for you",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "free": "Free",
+    "pro": "Pro",
+    "enterprise": "Enterprise",
+    "currentPlan": "Current Plan",
+    "upgrade": "Upgrade Now",
+    "features": "Features"
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "billing": "Billing",
+    "security": "Security",
+    "notifications": "Notifications",
+    "language": "Language",
+    "theme": "Theme"
+  },
+  "support": {
+    "title": "Support",
+    "newTicket": "New Ticket",
+    "subject": "Subject",
+    "message": "Message",
+    "priority": "Priority",
+    "submit": "Submit Ticket"
+  },
+  "nav": {
+    "home": "Home",
+    "explore": "Explore",
+    "pricing": "Pricing",
+    "blog": "Blog",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "support": "Support",
+    "admin": "Admin Panel"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error. Check your connection.",
+    "unauthorized": "Please log in to continue",
+    "forbidden": "You don't have permission to access this",
+    "notFound": "Page not found",
+    "offline": "You're offline — changes will sync when reconnected."
+  }
+}

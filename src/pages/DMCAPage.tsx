@@ -1,6 +1,31 @@
 import LegalLayout from '../components/LegalLayout';
+import { useSiteContent } from '../hooks/useSiteContent';
+import { Loader2 } from 'lucide-react';
 
 export default function DMCAPage() {
+  const { content, loading } = useSiteContent('dmca');
+
+  if (loading) {
+    return (
+      <LegalLayout title="DMCA Policy" lastUpdated="...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+        </div>
+      </LegalLayout>
+    );
+  }
+
+  if (content?.content) {
+    return (
+      <LegalLayout title="DMCA Policy" lastUpdated={content.updatedAt?.toDate?.()?.toLocaleDateString() || 'Recently Updated'}>
+        <div 
+          className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground"
+          dangerouslySetInnerHTML={{ __html: content.content }} 
+        />
+      </LegalLayout>
+    );
+  }
+
   return (
     <LegalLayout title="DMCA Policy" lastUpdated="May 2026">
       <section>

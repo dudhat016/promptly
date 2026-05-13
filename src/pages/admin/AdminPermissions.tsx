@@ -6,23 +6,21 @@ import { Save, ShieldCheck, Plus, Trash2, Edit3, Settings2 } from 'lucide-react'
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
-import Input from '../../components/ui/Input';
-import Textarea from '../../components/ui/Textarea';
-import Button from '../../components/ui/Button';
+import Input from '../../components/primitives/Input';
+import Textarea from '../../components/primitives/Textarea';
+import Button from '../../components/primitives/Button';
 import { cn } from '../../lib/utils';
 
 const DEFAULT_PERMISSIONS: PermissionSet = {
   canViewPremium: false,
   canCopyPrompts: false,
   canExportData: false,
-  canUseAIBuilder: false,
   canCreateCollections: false,
   canAccessPremiumModels: false,
   canUseAPI: false,
   canRemoveWatermarks: false,
   hasPrioritySupport: false,
   canCustomBrandEmails: false,
-  maxDailyPrompts: 5,
   maxFavorites: 5
 };
 
@@ -40,8 +38,8 @@ export default function AdminPermissions() {
       } else {
         const initialGroups: PermissionGroup[] = [
           { id: 'free', name: 'Free Tier', description: 'Basic access for all users', permissions: { ...DEFAULT_PERMISSIONS }, createdAt: new Date() },
-          { id: 'pro', name: 'Pro Pack', description: 'Advanced tools for power users', permissions: { ...DEFAULT_PERMISSIONS, canViewPremium: true, canCopyPrompts: true, canAccessPremiumModels: true, maxDailyPrompts: 100 }, createdAt: new Date() },
-          { id: 'enterprise', name: 'Enterprise', description: 'Full access for companies', permissions: { ...DEFAULT_PERMISSIONS, canViewPremium: true, canCopyPrompts: true, canExportData: true, canUseAIBuilder: true, canCreateCollections: true, canAccessPremiumModels: true, canUseAPI: true, canRemoveWatermarks: true, hasPrioritySupport: true, canCustomBrandEmails: true, maxDailyPrompts: -1 }, createdAt: new Date() }
+          { id: 'pro', name: 'Pro Pack', description: 'Advanced tools for power users', permissions: { ...DEFAULT_PERMISSIONS, canViewPremium: true, canCopyPrompts: true, canAccessPremiumModels: true }, createdAt: new Date() },
+          { id: 'enterprise', name: 'Enterprise', description: 'Full access for companies', permissions: { ...DEFAULT_PERMISSIONS, canViewPremium: true, canCopyPrompts: true, canExportData: true, canCreateCollections: true, canAccessPremiumModels: true, canUseAPI: true, canRemoveWatermarks: true, hasPrioritySupport: true, canCustomBrandEmails: true }, createdAt: new Date() }
         ];
         setConfig({ id: 'access_levels', groups: initialGroups, lastUpdated: new Date() });
       }

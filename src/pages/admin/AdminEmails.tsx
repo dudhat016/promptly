@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
 import { EmailNotification } from '../../types';

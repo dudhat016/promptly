@@ -1,38 +1,43 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Search, Filter, Mail, MoreVertical, Trash2, Edit2, ChevronDown, Download,
-  CheckCircle2, XCircle, Clock, Database, Users, Send, X, Tag as TagIcon
+import { collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import {
+  CheckCircle2,
+  Database,
+  Send,
+  Tag as TagIcon,
+  Users,
+  X
 } from 'lucide-react';
-import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
-import { Contact, Tag, Segment, EmailTemplate } from '../../types';
-import { EmailService } from '../../services/emailService';
-import { CRMService } from '../../services/crmService';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import Input from '../ui/Input';
-import Checkbox from '../ui/Checkbox';
-import Button from '../ui/Button';
+import { usePath } from '../../hooks/usePath';
+import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
+import { CRMService } from '../../services/crmService';
+import { EmailService } from '../../services/emailService';
+import { Contact, EmailTemplate, Segment, Tag } from '../../types';
+import DataTable, { DataTableColumn } from '../admin/DataTable';
+import Tabs from '../navigation/Tabs';
+import Badge from '../primitives/Badge';
+import Button from '../primitives/Button';
+import Select from '../primitives/Select';
 
 export default function ContactManager() {
+  const { prefix } = usePath();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'unsubscribed' | 'at_risk'>('all');
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
   const [sendingEmailTo, setSendingEmailTo] = useState<Contact | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [isSending, setIsSending] = useState(false);
-  
-  // Bulk Actions State
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
   const [isBulkTagging, setIsBulkTagging] = useState(false);
+  const [bulkTaggingRows, setBulkTaggingRows] = useState<Contact[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -56,25 +61,24 @@ export default function ContactManager() {
     loadData();
   }, []);
 
-  const handleDeleteContact = async (id: string) => {
+  const handleDeleteContact = async (contact: Contact) => {
     if (!confirm('Delete contact?')) return;
     try {
-      await deleteDoc(doc(db, 'marketing_contacts', id));
-      setContacts(prev => prev.filter(c => c.id !== id));
-      setSelectedIds(prev => prev.filter(p => p !== id));
+      await deleteDoc(doc(db, 'marketing_contacts', contact.id));
+      setContacts(prev => prev.filter(c => c.id !== contact.id));
       toast.success('Contact deleted');
     } catch (err) {
       toast.error('Failed to delete contact');
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (!confirm(`Delete ${selectedIds.length} contacts?`)) return;
+  const handleBulkDelete = async (rows: Contact[]) => {
+    if (!confirm(`Delete ${rows.length} contacts?`)) return;
     try {
-      await Promise.all(selectedIds.map(id => deleteDoc(doc(db, 'marketing_contacts', id))));
-      setContacts(prev => prev.filter(c => !selectedIds.includes(c.id)));
-      setSelectedIds([]);
-      toast.success(`Deleted ${selectedIds.length} contacts`);
+      await Promise.all(rows.map(r => deleteDoc(doc(db, 'marketing_contacts', r.id))));
+      const ids = rows.map(r => r.id);
+      setContacts(prev => prev.filter(c => !ids.includes(c.id)));
+      toast.success(`Deleted ${rows.length} contacts`);
     } catch (err) {
       toast.error('Failed to delete some contacts');
     }
@@ -82,15 +86,15 @@ export default function ContactManager() {
 
   const handleBulkTag = async (tagId: string) => {
     try {
-      await Promise.all(selectedIds.map(async (id) => {
-        const contact = contacts.find(c => c.id === id);
-        if (contact && !contact.tags.includes(tagId)) {
+      await Promise.all(bulkTaggingRows.map(async (contact) => {
+        if (!contact.tags.includes(tagId)) {
           const newTags = [...contact.tags, tagId];
-          await updateDoc(doc(db, 'marketing_contacts', id), { tags: newTags });
-          setContacts(prev => prev.map(c => c.id === id ? { ...c, tags: newTags } : c));
+          await updateDoc(doc(db, 'marketing_contacts', contact.id), { tags: newTags });
+          setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: newTags } : c));
         }
       }));
       setIsBulkTagging(false);
+      setBulkTaggingRows([]);
       toast.success('Tags applied successfully');
     } catch (err) {
       toast.error('Failed to apply tags');
@@ -108,8 +112,7 @@ export default function ContactManager() {
         selectedTemplate,
         { name: sendingEmailTo.displayName || 'User' }
       );
-      
-      // Log CRM Activity
+
       await CRMService.logActivity(
         sendingEmailTo.id,
         'email_sent',
@@ -128,27 +131,10 @@ export default function ContactManager() {
     }
   };
 
-  const toggleSelectAll = () => {
-    if (selectedIds.length === filteredContacts.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredContacts.map(c => c.id));
-    }
-  };
-
-  const toggleSelectContact = (id: string) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-
   const filteredContacts = contacts.filter(c => {
-    const matchesSearch = c.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         c.displayName?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = activeFilter === 'all' || 
+    const matchesFilter = activeFilter === 'all' ||
                          (activeFilter === 'at_risk' ? c.prediction?.churnRisk === 'high' : c.status === activeFilter);
-    
-    // Segment logic
+
     let matchesSegment = true;
     if (selectedSegment) {
       const segment = segments.find(s => s.id === selectedSegment);
@@ -156,7 +142,7 @@ export default function ContactManager() {
         const results = segment.filters.map(f => {
           const cValue = (c as any)[f.field];
           const targetValue = f.value;
-          
+
           if (f.operator === 'equals') return String(cValue) === String(targetValue);
           if (f.operator === 'contains') {
             if (Array.isArray(cValue)) return cValue.some(v => String(v).toLowerCase().includes(String(targetValue).toLowerCase()));
@@ -183,376 +169,274 @@ export default function ContactManager() {
       }
     }
 
-    return matchesSearch && matchesFilter && matchesSegment;
+    return matchesFilter && matchesSegment;
   });
 
-  if (loading) return <div className="p-20 text-center text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Loading Contacts...</div>;
+  const columns: DataTableColumn<Contact>[] = [
+    {
+      key: 'contact',
+      header: 'Contact Info',
+      sortable: true,
+      sortValue: c => c.displayName || c.email,
+      searchValue: c => `${c.displayName} ${c.email}`,
+      render: contact => (
+        <div className="flex items-center gap-4 text-left group/name">
+          <div className="w-12 h-12 rounded-xl bg-muted/50 border border-border/50 flex items-center justify-center text-muted-foreground group-hover/name:bg-primary/10 group-hover/name:text-primary group-hover/name:scale-105 transition-all shrink-0 shadow-sm">
+            <Database className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-bold text-foreground truncate group-hover/name:text-primary transition-colors">{contact.displayName || 'Anonymous'}</p>
+            <p className="text-xs font-medium text-muted-foreground truncate">{contact.email}</p>
+          </div>
+        </div>
+      ),
+      csvValue: c => `${c.displayName || 'Anonymous'} (${c.email})`,
+    },
+    {
+      key: 'tags',
+      header: 'Tags',
+      render: contact => (
+        <div className="flex flex-wrap gap-1.5 max-w-[220px]">
+           {contact.tags.map(tId => {
+             const tag = tags.find(t => t.id === tId);
+             return tag ? (
+               <Badge
+                key={tId}
+                size="sm"
+                className="border-border/5"
+                style={{ backgroundColor: tag.color + '15', color: tag.color }}
+               >
+                {tag.name}
+               </Badge>
+             ) : null;
+           })}
+           {contact.tags.length === 0 && (
+             <Badge variant="soft" size="sm" className="bg-muted/50 text-muted-foreground/30 italic">
+               No Tags
+             </Badge>
+           )}
+        </div>
+      ),
+      csvValue: c => c.tags.map(tId => tags.find(t => t.id === tId)?.name).filter(Boolean).join(', '),
+    },
+    {
+      key: 'leadScore',
+      header: 'Lead Status',
+      sortable: true,
+      sortValue: c => c.leadScore || 0,
+      render: contact => (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-4 max-w-[120px]">
+            <span className="text-xs font-semibold text-foreground/70">Score: {contact.leadScore || 0}</span>
+            <div className={`w-2 h-2 rounded-full shadow-sm animate-pulse ${
+              contact.leadScore && contact.leadScore > 70 ? 'bg-emerald-500' :
+              contact.leadScore && contact.leadScore > 30 ? 'bg-amber-500' : 'bg-muted-foreground/40'
+            }`} />
+          </div>
+          <div className="w-full h-1.5 bg-muted/50 rounded-full overflow-hidden max-w-[120px] border border-border/30">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${contact.leadScore || 0}%` }}
+              className={`h-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.3)] ${
+                contact.leadScore && contact.leadScore > 70 ? 'bg-emerald-500' :
+                contact.leadScore && contact.leadScore > 30 ? 'bg-amber-500' : 'bg-muted-foreground/60'
+              }`}
+            />
+          </div>
+        </div>
+      ),
+      csvValue: c => c.leadScore || 0,
+    },
+    {
+      key: 'prediction',
+      header: 'Risk Profile',
+      sortable: true,
+      sortValue: c => c.prediction?.churnRisk || 'none',
+      render: contact => contact.prediction ? (
+        <Badge
+          variant={
+            contact.prediction.churnRisk === 'low' ? 'success' :
+            contact.prediction.churnRisk === 'medium' ? 'warning' : 'error'
+          }
+          dot
+          className="capitalize"
+        >
+          {contact.prediction.churnRisk} Risk
+        </Badge>
+      ) : (
+        <span className="text-[10px] font-black text-muted-foreground/20 uppercase tracking-widest">N/A</span>
+      ),
+      csvValue: c => c.prediction?.churnRisk || 'N/A',
+    }
+  ];
+
+  const toolbar = (
+    <div className="w-full flex justify-between flex-wrap items-center gap-3">
+      <Tabs
+        variant="pill"
+        tabs={[
+          { id: 'all', label: 'All' },
+          { id: 'active', label: 'Active' },
+          { id: 'unsubscribed', label: 'Unsubscribed' },
+          { id: 'at_risk', label: 'At Risk' },
+        ]}
+        activeTab={activeFilter}
+        onChange={(id) => setActiveFilter(id as any)}
+        tabClassName="px-4 py-1.5 rounded-lg text-xs"
+        className="bg-muted/50 p-1 rounded-xl border border-border/30"
+      />
+
+      <Select
+        options={[
+          { label: 'All Contacts', value: 'all' },
+          ...segments.map(s => ({ label: s.name, value: s.id }))
+        ]}
+        value={selectedSegment || 'all'}
+        onChange={(val) => setSelectedSegment(val === 'all' ? null : val)}
+        isSearchable={segments.length > 5}
+        className="w-max min-w-[200px]"
+        placeholder="Segments"
+      />
+    </div>
+  );
 
   return (
-    <div className="space-y-8 pb-20">
-      {/* Search and Filters */}
-      <div className="bg-card rounded-lg border border-border p-6 flex flex-wrap items-center gap-6 shadow-sm">
-        <Input 
-          placeholder="Search contacts by name or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          leftIcon={Search}
-          variant="filled"
-          className="flex-1 min-w-[300px]"
-        />
-        
-        <div className="flex bg-muted/50 p-1 rounded-md">
-          {(['all', 'active', 'unsubscribed', 'at_risk'] as const).map(filter => (
-            <Button 
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              variant={activeFilter === filter ? 'white' : 'ghost'}
-              size="sm"
-              className={cn(
-                "px-6 font-bold uppercase tracking-widest",
-                activeFilter === filter ? "text-foreground shadow-sm" : "text-muted-foreground"
-              )}
-            >
-              {filter.replace('_', ' ')}
-            </Button>
-          ))}
-        </div>
+    <>
+      <DataTable
+        columns={columns}
+        data={filteredContacts}
+        rowKey={c => c.id}
+        loading={loading}
+        selectable
+        onBulkDelete={handleBulkDelete}
+        emptyIcon={Users}
+        emptyTitle="No leads found"
+        emptyMessage="Try adjusting your filters or import new leads."
+        searchPlaceholder="Search leads by name or email..."
+        exportFilename="marketing_contacts"
+        toolbar={toolbar}
+        actions={{
+          edit: c => prefix(`/admin/marketing/contacts/${c.id}/edit`),
+          onDelete: handleDeleteContact,
+          custom: [
+            {
+              icon: Send,
+              label: 'Direct Message',
+              onClick: c => setSendingEmailTo(c),
+            }
+          ],
+          bulk: [
+            {
+              icon: TagIcon,
+              label: 'Apply Tag',
+              onClick: rows => {
+                setBulkTaggingRows(rows);
+                setIsBulkTagging(true);
+              }
+            }
+          ]
+        }}
+      />
 
-        <div className="relative group">
-          <Button 
-            variant="ghost" 
-            size="md" 
-            leftIcon={Filter} 
-            rightIcon={ChevronDown}
-            className="bg-muted/50 px-6 font-bold uppercase tracking-widest text-muted-foreground border-transparent hover:border-border"
-          >
-            {selectedSegment ? segments.find(s => s.id === selectedSegment)?.name : 'Segments'}
-          </Button>
-          <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 p-4">
-             <Button 
-               onClick={() => setSelectedSegment(null)} 
-               variant="ghost" 
-               size="sm" 
-               fullWidth 
-               className="justify-start px-3 font-bold text-muted-foreground"
-             >
-               All Contacts
-             </Button>
-             {segments.map(s => (
-               <Button 
-                key={s.id} 
-                onClick={() => setSelectedSegment(s.id)}
-                variant="ghost"
-                size="sm"
-                fullWidth
-                className="justify-start px-3 font-bold text-foreground hover:bg-primary/8"
-               >
-                 {s.name}
-               </Button>
-             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Table view of contacts */}
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground border-b border-border">
-                <th className="p-8 w-12">
-                  <Checkbox 
-                    variant="simple"
-                    checked={selectedIds.length === filteredContacts.length && filteredContacts.length > 0}
-                    onChange={toggleSelectAll}
-                  />
-                </th>
-                <th className="p-8">Contact</th>
-                <th className="p-8">Tags</th>
-                <th className="p-8">Lead Score</th>
-                <th className="p-8">Risk</th>
-                <th className="p-8">Status</th>
-                <th className="p-8 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              <AnimatePresence mode="popLayout">
-                {filteredContacts.map(contact => (
-                  <motion.tr 
-                    key={contact.id}
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className={`tr group ${selectedIds.includes(contact.id) ? 'bg-primary/5' : ''}`}
-                  >
-                    <td className="p-8">
-                      <Checkbox 
-                        variant="simple"
-                        checked={selectedIds.includes(contact.id)}
-                        onChange={() => toggleSelectContact(contact.id)}
-                      />
-                    </td>
-                    <td className="p-8">
-                      <Link 
-                        to={`/admin/marketing/contacts/${contact.id}`}
-                        className="flex items-center gap-4 text-left group/name"
-                      >
-                        <div className="w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center text-muted-foreground group-hover/name:bg-primary/10 group-hover/name:text-primary transition-all shrink-0">
-                          <Database className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-foreground uppercase tracking-tight group-hover/name:text-primary transition-colors">{contact.displayName || 'Anonymous'}</p>
-                          <p className="text-xs font-bold text-muted-foreground">{contact.email}</p>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="p-8">
-                      <div className="flex flex-wrap gap-1.5 max-w-[200px]">
-                         {contact.tags.map(tId => {
-                           const tag = tags.find(t => t.id === tId);
-                           return tag ? (
-                             <span key={tId} className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase" style={{ backgroundColor: tag.color + '15', color: tag.color }}>
-                              {tag.name}
-                             </span>
-                           ) : null;
-                         })}
-                         {contact.tags.length === 0 && <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest italic opacity-40">No Tags</span>}
-                      </div>
-                    </td>
-                    <td className="p-8">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[60px]">
-                          <div 
-                            className={`h-full ${contact.leadScore && contact.leadScore > 70 ? 'bg-emerald-500' : contact.leadScore && contact.leadScore > 30 ? 'bg-amber-500' : 'bg-muted-foreground/40'}`}
-                            style={{ width: `${contact.leadScore || 0}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-bold text-foreground">{contact.leadScore || 0}</span>
-                      </div>
-                    </td>
-                    <td className="p-8">
-                      {contact.prediction ? (
-                        <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-tight ${
-                          contact.prediction.churnRisk === 'low' ? 'text-emerald-600 bg-emerald-500/10' :
-                          contact.prediction.churnRisk === 'medium' ? 'text-amber-600 bg-amber-500/10' : 'text-rose-600 bg-rose-500/10'
-                        }`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${
-                            contact.prediction.churnRisk === 'low' ? 'bg-emerald-500' :
-                            contact.prediction.churnRisk === 'medium' ? 'bg-amber-500' : 'bg-rose-500'
-                          }`} />
-                          {contact.prediction.churnRisk}
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-bold text-muted-foreground/40 uppercase">No Data</span>
-                      )}
-                    </td>
-                    <td className="p-8">
-                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${
-                        contact.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 
-                        contact.status === 'unsubscribed' ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' : 'bg-muted text-muted-foreground border-border'
-                      }`}>
-                        {contact.status === 'active' && <CheckCircle2 className="w-3 h-3" />}
-                        {contact.status === 'unsubscribed' && <XCircle className="w-3 h-3" />}
-                        {contact.status}
-                      </div>
-                    </td>
-                    <td className="p-8 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          onClick={() => setSendingEmailTo(contact)}
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-primary"
-                          title="Send Email"
-                        >
-                          <Mail className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          as={Link}
-                          to={`/admin/marketing/contacts/edit/${contact.id}`}
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-primary"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          onClick={() => handleDeleteContact(contact.id)} 
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-rose-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
-            </tbody>
-          </table>
-        </div>
-
-        {filteredContacts.length === 0 && (
-          <div className="p-20 text-center">
-            <div className="w-16 h-16 bg-muted/50 rounded-md flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-muted-foreground/20" />
-            </div>
-            <h3 className="font-bold text-foreground mb-1">No contacts found</h3>
-            <p className="text-sm text-muted-foreground font-medium">Try adjusting your filters or search terms.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Floating Bulk Action Bar */}
+      {/* Bulk Tagging Dropdown (Overlay) */}
       <AnimatePresence>
-        {selectedIds.length > 0 && (
-          <motion.div 
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-foreground text-background px-8 py-4 rounded-full shadow-2xl flex items-center gap-8 z-50 min-w-[500px]"
-          >
-            <div className="flex items-center gap-4 border-r border-background/20 pr-8">
-              <span className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">
-                {selectedIds.length}
-              </span>
-              <span className="text-sm font-bold uppercase tracking-widest">Contacts Selected</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button 
-                onClick={() => setIsBulkTagging(!isBulkTagging)}
-                variant="ghost"
-                size="sm"
-                leftIcon={TagIcon}
-                className="text-white hover:bg-white/10 font-bold uppercase tracking-widest"
-              >
-                Add Tags
-              </Button>
-              <Button 
-                variant="ghost"
-                size="sm"
-                leftIcon={Send}
-                className="text-white hover:bg-white/10 font-bold uppercase tracking-widest"
-              >
-                Bulk Email
-              </Button>
-              <Button 
-                onClick={handleBulkDelete}
-                variant="ghost"
-                size="sm"
-                leftIcon={Trash2}
-                className="text-rose-400 hover:bg-rose-500/20 font-bold uppercase tracking-widest"
-              >
-                Delete
-              </Button>
-            </div>
-
-            <Button 
-              onClick={() => setSelectedIds([])}
-              variant="ghost"
-              size="icon"
-              className="ml-auto text-white hover:bg-white/10 rounded-full"
+        {isBulkTagging && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-foreground/20 backdrop-blur-sm" onClick={() => setIsBulkTagging(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+              className="w-80 bg-card border border-border rounded-3xl shadow-2xl p-6"
             >
-              <X className="w-5 h-5" />
-            </Button>
-
-            {/* Sub-menu for Bulk Tagging */}
-            {isBulkTagging && (
-              <div className="absolute bottom-full left-0 mb-4 w-64 bg-card border border-border rounded-lg shadow-2xl p-4 overflow-hidden">
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 px-2">Select Tag to Apply</div>
-                <div className="max-h-[200px] overflow-y-auto space-y-1">
-                  {tags.map(tag => (
-                    <Button 
-                      key={tag.id}
-                      onClick={() => handleBulkTag(tag.id)}
-                      variant="ghost"
-                      size="sm"
-                      fullWidth
-                      className="justify-start gap-3 hover:bg-primary/5"
-                    >
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
-                      <span className="text-sm font-medium text-foreground">{tag.name}</span>
-                    </Button>
-                  ))}
-                </div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Assign to Audience</div>
+                <Button onClick={() => setIsBulkTagging(false)} variant="ghost" size="icon" className="w-8 h-8 rounded-lg">
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
-            )}
-          </motion.div>
+              <div className="max-h-[350px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                {tags.map(tag => (
+                  <Button
+                    key={tag.id}
+                    onClick={() => handleBulkTag(tag.id)}
+                    variant="ghost"
+                    size="sm"
+                    fullWidth
+                    className="justify-start gap-4 hover:bg-primary/5 p-3 rounded-xl transition-all group/tag"
+                  >
+                    <div className="w-4 h-4 rounded-full shadow-inner border border-white/10" style={{ backgroundColor: tag.color }} />
+                    <span className="text-xs font-bold text-foreground group-hover/tag:text-primary">{tag.name}</span>
+                  </Button>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
-
-
-
-      {contacts.length > 0 && selectedIds.length === 0 && (
-        <div className="flex justify-center">
-           <Button 
-             variant="outline" 
-             size="lg" 
-             leftIcon={Download} 
-             className="px-8 bg-card font-bold uppercase tracking-widest text-muted-foreground shadow-sm"
-           >
-             Export Contacts (CSV)
-           </Button>
-        </div>
-      )}
 
       {/* Send Email Modal */}
       <AnimatePresence>
         {sendingEmailTo && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-foreground/60 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-foreground/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-card rounded-lg w-full max-w-lg overflow-hidden shadow-2xl"
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              className="bg-card rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.5)] border border-border/50"
             >
-              <div className="p-8 border-b border-border flex items-center justify-between">
+              <div className="p-10 border-b border-border bg-muted/5 flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold text-foreground">Send Campaign</h3>
-                  <p className="text-muted-foreground font-medium">To: {sendingEmailTo.email}</p>
+                  <h3 className="text-3xl font-black text-foreground tracking-tight">Direct Message</h3>
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <p className="text-sm font-bold text-muted-foreground">{sendingEmailTo.email}</p>
+                  </div>
                 </div>
-                <Button 
-                  onClick={() => setSendingEmailTo(null)} 
-                  variant="ghost" 
-                  size="icon" 
-                  className="rounded-full"
+                <Button
+                  onClick={() => setSendingEmailTo(null)}
+                  variant="ghost"
+                  size="icon"
+                  className="w-12 h-12 rounded-2xl hover:bg-muted"
                 >
                   <X className="w-6 h-6" />
                 </Button>
               </div>
-              
-              <div className="p-8 space-y-6">
+
+              <div className="p-10 space-y-8">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Select Template</label>
-                  <div className="grid gap-3 max-h-[300px] overflow-y-auto pr-2">
+                  <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-5">Select Communication Template</label>
+                  <div className="grid gap-4 max-h-[350px] overflow-y-auto pr-4 custom-scrollbar">
                     {templates.map(t => (
-                      <Button 
+                      <button
                         key={t.id}
                         onClick={() => setSelectedTemplate(t.id)}
-                        variant="outline"
-                        size="lg"
-                        fullWidth
                         className={cn(
-                          "justify-between h-auto p-4 border-2 font-normal",
-                          selectedTemplate === t.id ? 'border-primary bg-primary/10' : 'border-border bg-muted/20'
+                          "flex items-center justify-between p-6 rounded-2xl border-2 transition-all text-left group",
+                          selectedTemplate === t.id
+                            ? 'border-primary bg-primary/5 shadow-inner'
+                            : 'border-border/50 bg-muted/20 hover:border-primary/20 hover:bg-muted/30'
                         )}
                       >
-                        <div className="text-left overflow-hidden">
-                          <p className="font-bold text-foreground truncate">{t.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{t.subject}</p>
+                        <div className="min-w-0 pr-4">
+                          <p className={cn("font-bold transition-colors truncate", selectedTemplate === t.id ? 'text-primary' : 'text-foreground')}>
+                            {t.name}
+                          </p>
+                          <p className="text-xs font-medium text-muted-foreground truncate mt-1">{t.subject}</p>
                         </div>
-                        {selectedTemplate === t.id && <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />}
-                      </Button>
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center transition-all shrink-0",
+                          selectedTemplate === t.id ? 'bg-primary text-primary-foreground scale-110 shadow-lg' : 'bg-muted/50 text-transparent border border-border'
+                        )}>
+                          <CheckCircle2 className="w-4 h-4" />
+                        </div>
+                      </button>
                     ))}
-                    {templates.length === 0 && <p className="text-center text-muted-foreground py-8 text-xs font-bold uppercase">No templates found</p>}
                   </div>
                 </div>
 
                 <div className="pt-4 flex gap-4">
-                  <Button 
+                  <Button
                     onClick={handleSendEmail}
                     isLoading={isSending}
                     disabled={!selectedTemplate}
@@ -560,17 +444,17 @@ export default function ContactManager() {
                     size="lg"
                     fullWidth
                     leftIcon={Send}
-                    className="py-4 font-bold uppercase tracking-widest"
+                    className="h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20"
                   >
-                    {isSending ? 'Sending...' : 'Send Now'}
+                    {isSending ? 'Transmitting...' : 'Dispatch Message'}
                   </Button>
-                  <Button 
+                  <Button
                     onClick={() => setSendingEmailTo(null)}
                     variant="secondary"
                     size="lg"
-                    className="px-8 font-bold uppercase tracking-widest"
+                    className="h-16 px-10 rounded-2xl font-black uppercase tracking-widest"
                   >
-                    Cancel
+                    Hold
                   </Button>
                 </div>
               </div>
@@ -578,6 +462,6 @@ export default function ContactManager() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

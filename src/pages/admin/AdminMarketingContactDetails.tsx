@@ -17,9 +17,10 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import { AdminPageHeader } from '../../components/admin';
-import Button from '../../components/ui/Button';
-import Textarea from '../../components/ui/Textarea';
+import Button from '../../components/primitives/Button';
+import Textarea from '../../components/primitives/Textarea';
 import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import { ActivityItem, Contact, Tag } from '../../types';
@@ -27,6 +28,7 @@ import { ActivityItem, Contact, Tag } from '../../types';
 export default function AdminMarketingContactDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   const [contact, setContact] = useState<Contact | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -41,7 +43,7 @@ export default function AdminMarketingContactDetails() {
         const contactDoc = await getDoc(doc(db, 'marketing_contacts', id));
         if (!contactDoc.exists()) {
           toast.error('Contact not found');
-          navigate('/admin/marketing/contacts');
+          navigate(prefix('/admin/marketing/contacts'));
           return;
         }
         setContact({ id: contactDoc.id, ...contactDoc.data() } as Contact);
@@ -74,7 +76,7 @@ export default function AdminMarketingContactDetails() {
     try {
       await deleteDoc(doc(db, 'marketing_contacts', id));
       toast.success('Contact deleted');
-      navigate('/admin/marketing/contacts');
+      navigate(prefix('/admin/marketing/contacts'));
     } catch (err) {
       toast.error('Failed to delete contact');
     }
@@ -93,7 +95,7 @@ export default function AdminMarketingContactDetails() {
         actions={
           <div className="flex items-center gap-3">
             <Button
-              onClick={() => navigate('/admin/marketing/contacts')}
+              onClick={() => navigate(prefix('/admin/marketing/contacts'))}
               variant="secondary"
               size="md"
               leftIcon={ArrowLeft}
@@ -103,7 +105,7 @@ export default function AdminMarketingContactDetails() {
             </Button>
             <Button
               as={Link}
-              to={`/admin/marketing/contacts/edit/${contact.id}`}
+              to={prefix(`/admin/marketing/contacts/${contact.id}/edit`)}
               variant="secondary"
               size="md"
               leftIcon={Edit2}
@@ -214,7 +216,7 @@ export default function AdminMarketingContactDetails() {
                 {activities.map((activity) => (
                   <div key={activity.id} className="relative pl-20 group">
                     <div className={`absolute left-0 top-0 w-12 h-12 rounded-2xl border-4 border-card flex items-center justify-center z-10 shadow-md transition-transform group-hover:scale-110 ${
-                      activity.type.includes('email') ? 'bg-primary text-white' :
+                      activity.type.includes('email') ? 'bg-primary text-primary-foreground' :
                       activity.type.includes('tag') ? 'bg-amber-500 text-white' : 'bg-muted text-foreground'
                     }`}>
                       {activity.type.includes('email') && <Mail className="w-5 h-5" />}

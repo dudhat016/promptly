@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import { Sparkles, LogIn, User, Mail, Lock as LockIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
-import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
+import Input from '../components/primitives/Input';
+import Button from '../components/primitives/Button';
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const ref = searchParams.get('ref');
@@ -29,7 +30,26 @@ export default function LoginPage() {
     }
   }, [user, loading, navigate]);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Invalid email format";
+    }
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleLogin = async (type: 'google' | 'guest' | 'email-signin' | 'email-signup') => {
+    if ((type === 'email-signin' || type === 'email-signup') && !validate()) return;
+    
     setIsLoggingIn(true);
     try {
       if (type === 'google') {
@@ -37,10 +57,8 @@ export default function LoginPage() {
       } else if (type === 'guest') {
         await signInAsGuest();
       } else if (type === 'email-signin') {
-        if (!email || !password) throw new Error("Please enter email and password");
         await signInWithEmail(email, password);
       } else if (type === 'email-signup') {
-        if (!email || !password) throw new Error("Please enter email and password");
         await signUpWithEmail(email, password);
       }
     } catch (error: any) {
@@ -76,9 +94,14 @@ export default function LoginPage() {
               id="email"
               name="email"
               type="email" 
+              required
               placeholder="Email address" 
+              error={errors.email}
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors({...errors, email: ''});
+              }}
               leftIcon={Mail}
               variant="filled"
             />
@@ -86,9 +109,14 @@ export default function LoginPage() {
               id="password"
               name="password"
               type="password" 
+              required
               placeholder="Password" 
+              error={errors.password}
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={e => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors({...errors, password: ''});
+              }}
               leftIcon={LockIcon}
               variant="filled"
             />

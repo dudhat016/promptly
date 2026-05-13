@@ -10,10 +10,13 @@ import { AppConfig, PricingPlan } from '../types';
 import UnifiedAuth from '../components/auth/UnifiedAuth';
 import { PaymentService } from '../services/paymentService';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import Input from "../components/ui/Input";
-import Checkbox from "../components/ui/Checkbox";
+import Input from "../components/primitives/Input";
+import Checkbox from "../components/primitives/Checkbox";
 import { useCurrency } from '../context/CurrencyContext';
-import Button from '../components/ui/Button';
+import Button from '../components/primitives/Button';
+import PageContainer from '../components/layout/PageContainer';
+import { usePath } from '../hooks/usePath';
+import { useMarketing } from '../hooks/useMarketing';
 
 const UNLOCK_BENEFITS = [
   '5,000+ expert-engineered AI prompts',
@@ -27,6 +30,8 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading, syncMarketingTags } = useAuth();
   const { currency, symbol, exchangeRate, isLoading: currencyLoading } = useCurrency();
+  const { marketingConfig } = useMarketing();
+  const { prefix } = usePath();
   const [searchParams] = useSearchParams();
 
   const planId = searchParams.get('plan');
@@ -44,9 +49,10 @@ export default function CheckoutPage() {
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!planId) { navigate('/pricing'); return; }
+    if (!planId) { navigate(prefix('/pricing')); return; }
     if (authLoading || currencyLoading) return;
 
     async function loadData() {
@@ -62,7 +68,7 @@ export default function CheckoutPage() {
           trackEvent('start_checkout', user?.uid, { planId, planName: planData.name, amount: planData.monthlyPrice, currency: 'USD' });
         } else {
           toast.error("Plan not found");
-          navigate('/pricing');
+          navigate(prefix('/pricing'));
         }
 
         if (cSnap.exists()) setConfig(cSnap.data() as AppConfig);
@@ -92,11 +98,26 @@ export default function CheckoutPage() {
 
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
+  const validate = () => {
+    if (price === 0) return true;
+    if (paymentConfig?.cashfree?.enabled || (paymentConfig?.paypal?.enabled && currency !== 'INR')) return true;
+
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) newErrors.name = "Cardholder name is required";
+    if (cardNumber.replace(/\s/g, '').length < 16) newErrors.cardNumber = "Enter a valid card number";
+    if (!expiry.includes('/')) newErrors.expiry = "Invalid format";
+    if (cvc.length < 3) newErrors.cvc = "Required";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreeToTerms) { toast.error("Please agree to the Terms and Refund Policy to proceed."); return; }
     if (!plan) return;
     if (!user) { toast.error("Please log in or create an account to continue."); return; }
+    if (!validate()) return;
 
     setProcessing(true);
     try {
@@ -107,8 +128,6 @@ export default function CheckoutPage() {
         });
         return;
       }
-
-      if (price > 0 && !name) { toast.error("Please enter your name for the purchase."); setProcessing(false); return; }
 
       let finalUid = user?.uid;
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -122,18 +141,26 @@ export default function CheckoutPage() {
       const trialDays = config?.freeTrialDays || 7;
       const trialEndsAt = isTrial ? new Date(Date.now() + (trialDays * 24 * 60 * 60 * 1000)) : null;
 
+      const planCredits = plan.monthlyCredits ?? (status === 'enterprise' ? 2500 : status === 'pro' ? 500 : 50);
       const userRef = doc(db, 'users', finalUid);
       await setDoc(userRef, {
         subscriptionStatus: status, activePlanId: plan.id,
-        credits: status === 'pro' ? 500 : (status === 'enterprise' ? 2500 : 50),
-        monthlyLimit: status === 'pro' ? 500 : (status === 'enterprise' ? 2500 : 50),
+        credits: planCredits,
+        monthlyLimit: planCredits,
         trialUsed: isTrial ? true : (profile?.trialUsed || false),
         trialEndsAt, updatedAt: serverTimestamp()
       }, { merge: true });
 
       const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode');
       if (refCode && !isTrial && price > 0) {
-        const commission = Math.floor(price * 0.25);
+        const commissionRate = (marketingConfig.referralCommission ?? 25) / 100;
+        const paymentFeeRate = (marketingConfig.paymentFeePercent ?? 2) / 100;
+        const platformFeeRate = (marketingConfig.platformFeePercent ?? 0) / 100;
+        const paymentFee = price * paymentFeeRate;
+        const netAmount = price - paymentFee;
+        const grossCommission = netAmount * commissionRate;
+        const platformFee = grossCommission * platformFeeRate;
+        const commission = Math.max(0, Math.floor(grossCommission - platformFee));
         if (commission > 0) {
           const q = query(collection(db, 'users'), where('referralCode', '==', refCode));
           const snap = await getDocs(q);
@@ -142,7 +169,10 @@ export default function CheckoutPage() {
             await updateDoc(affiliateDoc.ref, { affiliateEarnings: increment(commission) });
             await addDoc(collection(db, 'referrals'), {
               referrerId: affiliateDoc.id, buyerId: finalUid, buyerEmail: user?.email,
-              amount: commission, purchaseAmount: price, planId: plan.id,
+              grossSaleAmount: price, paymentFee, platformFee,
+              grossCommission, netCommission: commission,
+              commissionRate: commissionRate * 100,
+              purchaseAmount: price, planId: plan.id,
               status: 'completed', createdAt: serverTimestamp()
             });
           }
@@ -164,7 +194,7 @@ export default function CheckoutPage() {
       } catch (crmErr) { /* non-blocking */ }
 
       toast.success(isTrial ? `Trial Started!` : `Success! Your ${plan.name} plan is active.`);
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => navigate(prefix('/dashboard')), 1500);
 
     } catch (err: any) {
       toast.error(err.message || "Checkout failed.");
@@ -210,7 +240,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen pt-24 pb-16 bg-background">
-      <div className="container mx-auto px-4 max-w-5xl">
+      <PageContainer ignoreCustomizer className="max-w-5xl">
 
         <Button
           as={Link}
@@ -328,9 +358,13 @@ export default function CheckoutPage() {
                             onApprove={async (data, actions) => {
                               try {
                                 setProcessing(true);
+                                const idToken = await user?.getIdToken();
                                 const response = await fetch('/api/payments/paypal/verify', {
                                   method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    ...(idToken && { 'Authorization': `Bearer ${idToken}` }),
+                                  },
                                   body: JSON.stringify({ orderID: data.orderID, planId, billingCycle: cycle, customerId: user?.uid, customerEmail: user?.email })
                                 });
                                 const result = await response.json();
@@ -358,9 +392,12 @@ export default function CheckoutPage() {
                           id="cardName"
                           name="cardName"
                           type="text"
-                          required
+                          error={errors.name}
                           value={name}
-                          onChange={e => setName(e.target.value)}
+                          onChange={e => {
+                            setName(e.target.value);
+                            if (errors.name) setErrors({...errors, name: ''});
+                          }}
                           placeholder="Name on card"
                         />
 
@@ -369,9 +406,12 @@ export default function CheckoutPage() {
                           id="cardNumber"
                           name="cardNumber"
                           type="text"
-                          required
+                          error={errors.cardNumber}
                           value={cardNumber}
-                          onChange={handleCardNumber}
+                          onChange={e => {
+                            handleCardNumber(e);
+                            if (errors.cardNumber) setErrors({...errors, cardNumber: ''});
+                          }}
                           placeholder="0000 0000 0000 0000"
                           leftIcon={CreditCard}
                           className="font-mono"
@@ -383,9 +423,12 @@ export default function CheckoutPage() {
                             id="cardExpiry"
                             name="cardExpiry"
                             type="text"
-                            required
+                            error={errors.expiry}
                             value={expiry}
-                            onChange={handleExpiry}
+                            onChange={e => {
+                              handleExpiry(e);
+                              if (errors.expiry) setErrors({...errors, expiry: ''});
+                            }}
                             placeholder="MM/YY"
                             className="font-mono"
                           />
@@ -394,9 +437,12 @@ export default function CheckoutPage() {
                             id="cardCvc"
                             name="cardCvc"
                             type="text"
-                            required
+                            error={errors.cvc}
                             value={cvc}
-                            onChange={handleCvc}
+                            onChange={e => {
+                              handleCvc(e);
+                              if (errors.cvc) setErrors({...errors, cvc: ''});
+                            }}
                             placeholder="123"
                             className="font-mono"
                           />
@@ -535,7 +581,7 @@ export default function CheckoutPage() {
           </div>
 
         </div>
-      </div>
+      </PageContainer>
     </div>
   );
 }

@@ -4,8 +4,9 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import Input from '../ui/Input';
-import Button from '../ui/Button';
+import { usePath } from '../../hooks/usePath';
+import Input from '../primitives/Input';
+import Button from '../primitives/Button';
 import { cn } from '../../lib/utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ interface AdminGlobalSearchProps {
 
 export default function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchProps) {
   const navigate = useNavigate();
+  const { prefix } = usePath();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +74,7 @@ export default function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchPr
         }),
         ...promptsSnap.docs.map(d => {
           const data = d.data();
-          return { id: d.id, type: 'prompt' as ResultType, label: data.title || 'Untitled', sub: data.model, href: `/admin/prompts/edit/${d.id}` };
+          return { id: d.id, type: 'prompt' as ResultType, label: data.title || 'Untitled', sub: data.model, href: prefix(`/admin/prompts/${d.id}/edit`) };
         }),
         ...blogSnap.docs.map(d => {
           const data = d.data();
@@ -80,7 +82,7 @@ export default function AdminGlobalSearch({ open, onClose }: AdminGlobalSearchPr
         }),
         ...catSnap.docs.map(d => {
           const data = d.data();
-          return { id: d.id, type: 'category' as ResultType, label: data.name || 'Unnamed', sub: data.slug, href: `/admin/categories/edit/${d.id}` };
+          return { id: d.id, type: 'category' as ResultType, label: data.name || 'Unnamed', sub: data.slug, href: prefix(`/admin/categories/${d.id}/edit`) };
         }),
       ];
 

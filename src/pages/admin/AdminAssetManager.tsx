@@ -18,10 +18,10 @@ import {
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { db } from '../../lib/firebase';
+import { db, auth } from '../../lib/firebase';
 import { useImageUpload } from '../../hooks/useImageUpload';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
+import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
 import { cn } from '../../lib/utils';
 
 interface Asset {
@@ -95,9 +95,13 @@ export default function AdminAssetManager() {
   const testConnection = async () => {
     setTesting(true);
     try {
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/test-ftp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken && { 'Authorization': `Bearer ${idToken}` }),
+        },
         body: JSON.stringify(config)
       });
       const data = await res.json();
@@ -183,7 +187,7 @@ export default function AdminAssetManager() {
           </div>
         </div>
 
-        <div className="max-w-4xl space-y-6">
+        <div className="space-y-6">
           {/* Header Toggle */}
           <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg border border-border">
             <div className="flex items-center gap-3">

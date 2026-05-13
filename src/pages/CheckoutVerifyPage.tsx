@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import Button from '../components/ui/Button';
+import { usePath } from '../hooks/usePath';
+import Button from '../components/primitives/Button';
 
 export default function CheckoutVerifyPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { prefix } = usePath();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
   const [message, setMessage] = useState('Verifying your payment...');
 
@@ -16,7 +18,7 @@ export default function CheckoutVerifyPage() {
 
   useEffect(() => {
     if (!orderId) {
-      navigate('/dashboard');
+      navigate(prefix('/dashboard'));
       return;
     }
 
@@ -65,7 +67,7 @@ export default function CheckoutVerifyPage() {
             <h2 className="text-2xl font-bold text-foreground">Payment Successful!</h2>
             <p className="text-muted-foreground font-medium">{message}</p>
             <Button
-              onClick={() => navigate(`/checkout/success?order_id=${orderId}`)}
+              onClick={() => navigate(prefix(`/checkout/success?order_id=${orderId}`))}
               variant="primary"
               size="lg"
               fullWidth
@@ -86,7 +88,7 @@ export default function CheckoutVerifyPage() {
             <p className="text-muted-foreground font-medium">{message}</p>
             <div className="grid grid-cols-2 gap-4 mt-4">
               <Button
-                onClick={() => navigate('/pricing')}
+                onClick={() => navigate(prefix('/pricing'))}
                 variant="secondary"
                 size="lg"
                 className="font-bold"
@@ -94,7 +96,7 @@ export default function CheckoutVerifyPage() {
                 Try Again
               </Button>
               <Button
-                onClick={() => navigate('/')}
+                onClick={() => navigate(prefix('/'))}
                 variant="outline"
                 size="lg"
                 leftIcon={Home}

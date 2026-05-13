@@ -1,13 +1,19 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { 
-  X, Mail, Tag as TagIcon, Clock, TrendingUp, AlertTriangle, 
-  CheckCircle2, Database, ExternalLink, Activity
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import {
+  Activity,
+  AlertTriangle,
+  Clock,
+  Database,
+  Mail, Tag as TagIcon,
+  TrendingUp,
+  X
 } from 'lucide-react';
-import Button from '../ui/Button';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { motion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
-import { Contact, Tag, ActivityItem } from '../../types';
+import { ActivityItem, Contact, Tag } from '../../types';
+import Button from '../primitives/Button';
+import Badge from '../primitives/Badge';
 
 interface Props {
   contact: Contact;
@@ -40,7 +46,7 @@ export default function ContactProfile({ contact, tags, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-end bg-foreground/60 backdrop-blur-sm">
-      <motion.div 
+      <motion.div
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
@@ -57,10 +63,10 @@ export default function ContactProfile({ contact, tags, onClose }: Props) {
               <p className="text-muted-foreground font-medium">{contact.email}</p>
             </div>
           </div>
-          <Button 
-            onClick={onClose} 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            size="icon"
             className="rounded-full text-muted-foreground"
           >
             <X className="w-6 h-6" />
@@ -79,16 +85,23 @@ export default function ContactProfile({ contact, tags, onClose }: Props) {
             </div>
             <div className="bg-muted/30 p-4 rounded-xl border border-border">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Status</p>
-              <span className={`text-xs font-bold uppercase tracking-wider ${contact.status === 'active' ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <Badge 
+                variant={contact.status === 'active' ? 'success' : 'error'} 
+                dot 
+                className="w-full justify-center"
+              >
                 {contact.status}
-              </span>
+              </Badge>
             </div>
             <div className="bg-muted/30 p-4 rounded-xl border border-border">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Churn Risk</p>
-              <div className="flex items-center gap-2">
-                <AlertTriangle className={`w-4 h-4 ${contact.prediction?.churnRisk === 'high' ? 'text-rose-500' : 'text-emerald-500'}`} />
-                <span className="text-xs font-bold uppercase">{contact.prediction?.churnRisk || 'Unknown'}</span>
-              </div>
+              <Badge 
+                variant={contact.prediction?.churnRisk === 'high' ? 'error' : 'success'} 
+                size="sm"
+                className="w-full justify-center"
+              >
+                {contact.prediction?.churnRisk || 'Unknown'}
+              </Badge>
             </div>
           </div>
 
@@ -115,14 +128,14 @@ export default function ContactProfile({ contact, tags, onClose }: Props) {
             <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
               <Activity className="w-4 h-4" /> Activity Timeline
             </h4>
-            
+
             <div className="space-y-8 relative before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
               {loading ? (
                 <div className="pl-12 py-4 animate-pulse text-muted-foreground font-bold uppercase tracking-widest text-xs">Loading history...</div>
               ) : activities.map((activity, idx) => (
                 <div key={activity.id} className="relative pl-12">
                   <div className={`absolute left-0 top-1 w-9 h-9 rounded-full border-4 border-card flex items-center justify-center z-10 ${
-                    activity.type.includes('email') ? 'bg-primary text-white' :
+                    activity.type.includes('email') ? 'bg-primary text-primary-foreground' :
                     activity.type.includes('tag') ? 'bg-amber-500 text-white' : 'bg-muted text-foreground'
                   }`}>
                     {activity.type.includes('email') && <Mail className="w-4 h-4" />}
@@ -131,7 +144,7 @@ export default function ContactProfile({ contact, tags, onClose }: Props) {
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <p className="font-bold text-foreground text-sm uppercase tracking-tight">{activity.description}</p>
+                      <p className="font-semibold text-foreground text-md">{activity.description}</p>
                       <span className="text-[10px] font-bold text-muted-foreground uppercase">{activity.timestamp?.toDate().toLocaleDateString()}</span>
                     </div>
                     {activity.metadata && (
@@ -155,18 +168,18 @@ export default function ContactProfile({ contact, tags, onClose }: Props) {
 
         {/* Footer Actions */}
         <div className="p-8 border-t border-border bg-muted/10 flex gap-4">
-          <Button 
-            variant="primary" 
-            size="lg" 
-            fullWidth 
-            leftIcon={Mail} 
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            leftIcon={Mail}
             className="py-4 font-bold uppercase tracking-widest"
           >
             Send Direct Email
           </Button>
-          <Button 
-            variant="secondary" 
-            size="lg" 
+          <Button
+            variant="secondary"
+            size="lg"
             className="px-8 font-bold uppercase tracking-widest"
           >
             Manage Subscription

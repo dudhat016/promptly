@@ -1,6 +1,31 @@
 import LegalLayout from '../components/LegalLayout';
+import { useSiteContent } from '../hooks/useSiteContent';
+import { Loader2 } from 'lucide-react';
 
 export default function CookiePolicyPage() {
+  const { content, loading } = useSiteContent('cookies');
+
+  if (loading) {
+    return (
+      <LegalLayout title="Cookie Policy" lastUpdated="...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+        </div>
+      </LegalLayout>
+    );
+  }
+
+  if (content?.content) {
+    return (
+      <LegalLayout title="Cookie Policy" lastUpdated={content.updatedAt?.toDate?.()?.toLocaleDateString() || 'Recently Updated'}>
+        <div 
+          className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground"
+          dangerouslySetInnerHTML={{ __html: content.content }} 
+        />
+      </LegalLayout>
+    );
+  }
+
   return (
     <LegalLayout title="Cookie Policy" lastUpdated="May 2026">
       <section>

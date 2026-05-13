@@ -1,24 +1,27 @@
 import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, query, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, BookOpen, Check, ChevronRight, Copy, Eye, Heart, Lock, Share2, Sparkles, Star, Terminal, User, Zap } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronRight, Copy, Eye, Flag, Heart, Lock, Share2, Sparkles, Star, Terminal, User, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import NeuralAdBanner from '../components/NeuralAdBanner';
+import ReportModal from '../components/ReportModal';
+import Schema from '../components/SEO/Schema';
 import ShareModal from '../components/ShareModal';
 import UpgradeModal from '../components/UpgradeModal';
+import Breadcrumbs from '../components/navigation/Breadcrumbs';
+import Button from '../components/primitives/Button';
+import PageContainer from '../components/layout/PageContainer';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
+import { usePath } from '../hooks/usePath';
 import { usePermissions } from '../hooks/usePermissions';
 import { useSEO } from '../hooks/useSEO';
-import { recordPromptInteraction } from '../lib/affinity';
-import Schema from '../components/SEO/Schema';
-import Breadcrumbs from '../components/ui/Breadcrumbs';
-import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
+import { INTERACTION_WEIGHTS, recordPromptInteraction } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
 import { Prompt, UserProfile } from '../types';
-import Button from '../components/ui/Button';
+import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +68,7 @@ export default function PromptDetailPage() {
   const { user, profile, isPro, isAdmin, loading: authLoading, toggleFavorite, isFavorited } = useAuth();
   const { permissions, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [creator, setCreator] = useState<UserProfile | null>(null);
   const { config } = useConfig();
@@ -73,6 +77,7 @@ export default function PromptDetailPage() {
   const [copied, setCopied] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [relatedPrompts, setRelatedPrompts] = useState<Prompt[]>([]);
   const [category, setCategory] = useState<any | null>(null);
   const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
@@ -120,7 +125,8 @@ export default function PromptDetailPage() {
         }
 
         if (docSnap) {
-          const pData = { id: docSnap.id, ...docSnap.data() } as Prompt;
+          // Always use Firestore document ID — prevent custom 'id' field in data from overriding it
+          const pData = { ...docSnap.data(), id: docSnap.id } as Prompt;
           const alreadyUnlocked = (profile?.unlockedPrompts || []).includes(pData.id!);
           const hasAccess = isPro || isAdmin || alreadyUnlocked || !pData.isPaid;
 
@@ -137,7 +143,7 @@ export default function PromptDetailPage() {
 
           setPrompt(pData);
           await updateDoc(docSnap.ref, { viewsCount: increment(1) }).catch(() => {});
-          recordPromptInteraction(pData, 1);
+          recordPromptInteraction(pData, INTERACTION_WEIGHTS.VIEW);
 
           try {
             const recent = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
@@ -153,7 +159,7 @@ export default function PromptDetailPage() {
 
           const relatedQ = query(collection(db, 'prompts'), where('categoryId', '==', pData.categoryId || 'general'), limit(4));
           const relatedSnap = await getDocs(relatedQ);
-          setRelatedPrompts(relatedSnap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt)).filter(p => p.id !== pData.id).slice(0, 3));
+          setRelatedPrompts(relatedSnap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt)).filter(p => p.id !== pData.id).slice(0, 3));
 
           if (pData.categoryId) {
             const catSnap = await getDoc(doc(db, 'categories', pData.categoryId));
@@ -172,39 +178,61 @@ export default function PromptDetailPage() {
   useEffect(() => {
     if (!prompt) return;
     const interval = setInterval(() => {
-      if (!document.hidden) recordPromptInteraction(prompt, 1, false);
+      if (!document.hidden) recordPromptInteraction(prompt, INTERACTION_WEIGHTS.VIEW, false);
     }, 60000);
     return () => clearInterval(interval);
   }, [prompt?.id]);
 
   const handleLikeClick = async () => {
-    if (!user || !prompt?.id) { navigate('/login'); return; }
+    if (!user || !prompt?.id) { navigate(prefix('/login')); return; }
     await toggleFavorite(prompt.id);
     if (prompt) {
-      if (!isLiked) recordPromptInteraction(prompt, 5);
+      if (!isLiked) recordPromptInteraction(prompt, INTERACTION_WEIGHTS.LIKE);
       setPrompt({ ...prompt, likesCount: isLiked ? (prompt.likesCount || 1) - 1 : (prompt.likesCount || 0) + 1 });
     }
   };
 
   const handleCopy = async () => {
-    if (!prompt || !user || !profile) { toast.error("Please login."); navigate('/login'); return; }
-    if (!permissions.canCopyPrompts) { setIsUpgradeModalOpen(true); return; }
-    const userIsPro = profile.subscriptionStatus !== 'free';
-    if (!userIsPro && (profile.credits || 0) <= 0) { setIsUpgradeModalOpen(true); return; }
+    if (!prompt || !user || !profile) { toast.error("Please login."); navigate(prefix('/login')); return; }
 
+    // 1. Check permissions — admin and pro always bypass
+    if (!permissions.canCopyPrompts && !isAdmin && !isPro) { setIsUpgradeModalOpen(true); return; }
+
+    const alreadyUnlocked = (profile?.unlockedPrompts || []).includes(prompt.id!);
+    const userIsPro = isPro || isAdmin;
+
+    // 2. If it's a paid prompt, not unlocked, and not a pro/admin user, charge a credit
+    if (prompt.isPaid && !alreadyUnlocked && !userIsPro) {
+      if ((profile.credits || 0) <= 0) {
+        setIsUpgradeModalOpen(true);
+        return;
+      }
+      // If they have credits, auto-unlock it
+      try {
+        await handleUnlock();
+      } catch (e) {
+        return; // handleUnlock shows toast
+      }
+    }
+
+    // 3. For pro/admin: silently add to vault on first copy of a paid prompt
+    if (prompt.isPaid && !alreadyUnlocked && userIsPro) {
+      updateDoc(doc(db, 'users', user.uid), { unlockedPrompts: arrayUnion(prompt.id!) }).catch(() => {});
+    }
+
+    // 4. Perform Copy
     try {
-      if (!userIsPro) await updateDoc(doc(db, 'users', user.uid), { credits: increment(-1), totalUsedCredits: increment(1) });
       await updateDoc(doc(db, 'prompts', prompt.id!), { copiesCount: increment(1) });
-      navigator.clipboard.writeText(prompt.content);
+      navigator.clipboard.writeText(prompt.content || '');
       setCopied(true);
-      recordPromptInteraction(prompt, 10);
+      recordPromptInteraction(prompt, INTERACTION_WEIGHTS.COPY);
       toast.success("Prompt copied!");
       setTimeout(() => setCopied(false), 2000);
     } catch (err) { toast.error("Copy failed."); }
   };
 
   const handleUnlock = async () => {
-    if (!prompt || !user || !profile) { navigate('/login'); return; }
+    if (!prompt || !user || !profile) { navigate(prefix('/login')); return; }
     if (hasNoCredits) { setIsUpgradeModalOpen(true); return; }
     const unlockedCount = (profile.unlockedPrompts || []).length;
     const vaultLimit = config?.vaultLimit || 10;
@@ -227,6 +255,7 @@ export default function PromptDetailPage() {
         await updateDoc(doc(db, 'users', user.uid), { unlockedPrompts: arrayUnion(prompt.id!) });
       }
 
+      recordPromptInteraction(prompt, INTERACTION_WEIGHTS.UNLOCK);
       const privateDoc = await getDoc(doc(db, 'prompts', prompt.id!, 'private', 'content'));
       if (privateDoc.exists()) setPrompt({ ...prompt, content: privateDoc.data().formula });
       toast.success("Unlocked! Ready to use.");
@@ -244,7 +273,7 @@ export default function PromptDetailPage() {
 
   if (loading && !prompt) return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-32 max-w-5xl">
+      <PageContainer ignoreCustomizer className="py-32 max-w-5xl">
         <div className="animate-pulse space-y-8 max-w-4xl mx-auto">
           <div className="h-10 w-2/3 rounded-xl bg-muted" />
           <div className="h-96 w-full rounded-2xl bg-muted" />
@@ -252,7 +281,7 @@ export default function PromptDetailPage() {
             {[1, 2, 3].map(i => <div key={i} className="h-5 rounded-lg bg-muted" style={{ width: `${95 - i * 8}%` }} />)}
           </div>
         </div>
-      </div>
+      </PageContainer>
     </div>
   );
 
@@ -262,30 +291,54 @@ export default function PromptDetailPage() {
     </div>
   );
 
+  // Block public access to pending/rejected prompts — only creator and admin can view
+  const isReviewPending = prompt?.status === 'pending' || prompt?.status === 'rejected';
+  const isCreator = user?.uid === prompt?.creatorId;
+  if (isReviewPending && !isCreator && !isAdmin && !authLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center max-w-sm mx-auto px-6">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+          <Lock className="w-6 h-6 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground mb-2">
+          {prompt?.status === 'rejected' ? 'Prompt Unavailable' : 'Under Review'}
+        </h2>
+        <p className="text-sm text-muted-foreground mb-6">
+          {prompt?.status === 'rejected'
+            ? 'This prompt was not approved for the marketplace.'
+            : 'This prompt is currently being reviewed by our team and is not yet publicly available.'}
+        </p>
+        <Button onClick={() => navigate(prefix('/explore'))} variant="primary" size="md">
+          Browse Marketplace
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       {prompt && (
-        <Schema 
-          type="Prompt" 
-          data={prompt} 
+        <Schema
+          type="Prompt"
+          data={prompt}
           breadcrumbs={[
-            { name: 'Library', item: '/explore' },
-            { name: category?.name || 'Category', item: `/explore?category=${prompt.categoryId}` },
-            { name: prompt.title, item: `/prompt/${prompt.slug}` }
+            { name: 'Library', item: prefix('/explore') },
+            { name: category?.name || 'Category', item: prefix(`/explore?category=${prompt.categoryId}`) },
+            { name: prompt.title, item: prefix(`/prompt/${prompt.slug}`) }
           ]}
         />
       )}
-      <div className="container mx-auto px-4 py-12 max-w-5xl">
-        <Breadcrumbs 
+      <PageContainer className="py-12" ignoreCustomizer>
+        <Breadcrumbs
           items={[
-            { name: 'Library', item: '/explore' },
-            { name: category?.name || 'Category', item: `/explore?category=${prompt.categoryId}` },
-            { name: prompt.title, item: `/prompt/${prompt.slug}` }
-          ]} 
+            { name: 'Library', item: prefix('/explore') },
+            { name: category?.name || 'Category', item: prefix(`/explore?category=${prompt.categoryId}`) },
+            { name: prompt.title, item: prefix(`/prompt/${prompt.slug}`) }
+          ]}
         />
 
         <Button
-          onClick={() => navigate('/explore')}
+          onClick={() => navigate(prefix('/explore'))}
           variant="ghost"
           size="sm"
           leftIcon={ArrowLeft}
@@ -368,7 +421,7 @@ export default function PromptDetailPage() {
               {/* ── Tags ── */}
               <div className="flex flex-wrap gap-2 mb-10">
                 {prompt!.tags.map(tag => (
-                  <Link key={tag} to={`/explore?q=${tag}`}
+                  <Link key={tag} to={prefix(`/explore?q=${tag}`)}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all bg-muted text-muted-foreground border border-border hover:bg-primary/10 hover:text-primary hover:border-primary/20"
                   >
                     #{tag}
@@ -402,7 +455,7 @@ export default function PromptDetailPage() {
                     )}
                   </div>
                    {isUnlocked && (
-                     <Button 
+                     <Button
                        onClick={handleCopy}
                        variant={copied ? 'success' : 'secondary'}
                        size="sm"
@@ -436,7 +489,7 @@ export default function PromptDetailPage() {
                       style={{ boxShadow: '0 0 40px rgba(139,92,246,0.1)' }}
                     >
                       <div className="absolute top-0 left-0 right-0 h-0.5"
-                        style={{ background: 'linear-gradient(90deg, transparent, hsl(258,90%,56%), transparent)' }} />
+                        style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary)), transparent)' }} />
 
                       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
                         style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
@@ -489,7 +542,7 @@ export default function PromptDetailPage() {
 
                       <div className="space-y-2.5">
                         {!isCategoryLocked && !hasNoCredits && (
-                          <Button 
+                          <Button
                             onClick={handleUnlock}
                             variant="primary"
                             fullWidth
@@ -499,7 +552,7 @@ export default function PromptDetailPage() {
                             Unlock for 1 Credit
                           </Button>
                         )}
-                        <Button 
+                        <Button
                           onClick={() => setIsUpgradeModalOpen(true)}
                           variant={hasNoCredits || isCategoryLocked ? 'primary' : 'secondary'}
                           fullWidth
@@ -549,7 +602,7 @@ export default function PromptDetailPage() {
 
               {/* ── Action bar ── */}
               <div className="flex flex-col sm:flex-row items-center gap-3 py-8 border-t border-border">
-                <Button 
+                <Button
                   onClick={() => setIsShareModalOpen(true)}
                   variant="secondary"
                   size="lg"
@@ -559,7 +612,7 @@ export default function PromptDetailPage() {
                   Share & Earn
                 </Button>
                 {!isPro && (
-                  <Button 
+                  <Button
                     onClick={() => setIsUpgradeModalOpen(true)}
                     variant="primary"
                     size="lg"
@@ -569,6 +622,15 @@ export default function PromptDetailPage() {
                     Go Pro — Unlimited Access
                   </Button>
                 )}
+                <Button
+                  onClick={() => setIsReportModalOpen(true)}
+                  variant="ghost"
+                  size="lg"
+                  leftIcon={Flag}
+                  className="w-full sm:w-auto text-muted-foreground hover:text-rose-500"
+                >
+                  Report
+                </Button>
               </div>
 
               <NeuralAdBanner className="mt-4" />
@@ -634,7 +696,7 @@ export default function PromptDetailPage() {
                       </li>
                     ))}
                   </ul>
-                  <Button 
+                  <Button
                     onClick={() => setIsUpgradeModalOpen(true)}
                     variant="primary"
                     fullWidth
@@ -658,15 +720,14 @@ export default function PromptDetailPage() {
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all"
+                    className={`h-full rounded-full transition-all ${(profile?.credits || 0) === 0 ? 'bg-destructive' : 'gradient-cta'}`}
                     style={{
                       width: `${Math.min(100, ((profile?.credits || 0) / (profile?.monthlyLimit || 50)) * 100)}%`,
-                      background: (profile?.credits || 0) === 0 ? 'rgb(239,68,68)' : 'linear-gradient(90deg, hsl(258,90%,56%), hsl(280,90%,60%))',
                     }}
                   />
                 </div>
                 {(profile?.credits || 0) === 0 && (
-                   <Button 
+                   <Button
                     onClick={() => setIsUpgradeModalOpen(true)}
                     variant="primary"
                     fullWidth
@@ -685,13 +746,13 @@ export default function PromptDetailPage() {
           <div className="mt-20 pt-12 border-t border-border">
             <h2 className="text-2xl font-bold text-foreground mb-8 tracking-tight">
               Similar{' '}
-              <span style={{ background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              <span className="gradient-text">
                 Formulas
               </span>
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               {relatedPrompts.map(p => (
-                <Link key={p.id} to={`/prompt/${p.slug}`}
+                <Link key={p.id} to={prefix(`/prompt/${p.slug}`)}
                   className="group rounded-2xl p-6 flex flex-col transition-all bg-card border border-border hover:border-primary/20 hover:bg-muted/30"
                 >
                   <div className="flex items-center gap-2 mb-3">
@@ -729,7 +790,7 @@ export default function PromptDetailPage() {
             <h2 className="text-lg font-bold text-foreground mb-5 tracking-tight">Continue Exploring</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
               {recentlyViewed.filter(p => p.id !== prompt?.id).map((p) => (
-                <Link key={p.id} to={`/prompt/${p.slug}`}
+                <Link key={p.id} to={prefix(`/prompt/${p.slug}`)}
                   className="flex-none rounded-xl px-4 py-3 bg-card border border-border hover:border-primary/20 hover:bg-muted/30 transition-all group min-w-[200px] max-w-[240px]"
                 >
                   <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">{p.model}</div>
@@ -741,8 +802,7 @@ export default function PromptDetailPage() {
             </div>
           </div>
         )}
-
-      </div>
+      </PageContainer>
 
       {/* ── Modals ── */}
       {prompt && (
@@ -759,6 +819,14 @@ export default function PromptDetailPage() {
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
       />
+
+      {prompt && (
+        <ReportModal
+          prompt={prompt}
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

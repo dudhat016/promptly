@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Mail, ArrowLeft, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Input from '../ui/Input';
-import Button from '../ui/Button';
+import Input from '../primitives/Input';
+import Button from '../primitives/Button';
 import { sendPasswordReset } from '../../lib/firebase';
 
 export default function ForgotPasswordForm() {

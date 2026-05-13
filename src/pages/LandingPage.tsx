@@ -1,17 +1,40 @@
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import type { LucideIcon } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Bot,
+  Briefcase,
+  Check,
+  ChevronRight,
+  Clock,
+  Code2,
+  Copy,
+  GraduationCap,
+  Layers,
+  Library,
+  Megaphone,
+  Palette,
+  PenLine,
+  Repeat,
+  Search,
+  Sparkles,
+  TrendingUp,
+  Unlock,
+  Wand2,
+  X,
+  Zap
+} from 'lucide-react';
+import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
-import {
-  Sparkles, Search, ArrowRight, TrendingUp,
-  Megaphone, Code2, PenLine, Palette, Briefcase, GraduationCap, Bot, BarChart3,
-  Star, Check, X, Wand2, Library, Crown, Copy, ChevronRight, Layers,
-  Clock, AlertTriangle, Repeat, RefreshCw, Zap, Lock, Unlock,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { useSEO } from '../hooks/useSEO';
+import Rating from '../components/feedback/Rating';
+import PageContainer from '../components/layout/PageContainer';
 import { useConfig } from '../hooks/useConfig';
+import { usePath } from '../hooks/usePath';
+import { useSEO } from '../hooks/useSEO';
+import { db } from '../lib/firebase';
 import { Prompt } from '../types';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -41,7 +64,6 @@ const PAIN_POINTS = [
 const BENEFITS = [
   { icon: Zap,     title: 'Expert results in 30 seconds',       desc: 'Grab a tested, expert-crafted prompt and paste it straight into ChatGPT, Claude, or Gemini. Zero tweaking required.' },
   { icon: Library, title: 'Your personal prompt vault',         desc: 'Save and organize your best prompts in one place. Access them from any device, any time. Never lose a great prompt again.' },
-  { icon: Wand2,   title: 'Build custom prompts with AI',       desc: 'Can\'t find what you need? Our built-in AI builder creates prompts tailored to your exact use case in seconds.' },
 ];
 
 const STEPS = [
@@ -84,6 +106,7 @@ const S = {
 
 export default function LandingPage() {
   const { config } = useConfig();
+  const { prefix } = usePath();
   useSEO('home');
 
   const displayCategories = config.categories.slice(0, 8);
@@ -93,7 +116,7 @@ export default function LandingPage() {
   const [livePrompts, setLivePrompts] = useState<Prompt[]>([]);
   useEffect(() => {
     getDocs(query(collection(db, 'prompts'), orderBy('viewsCount', 'desc'), limit(4)))
-      .then(snap => setLivePrompts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt))))
+      .then(snap => setLivePrompts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt))))
       .catch(() => {});
   }, []);
 
@@ -119,7 +142,7 @@ export default function LandingPage() {
           style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.18) 0%, transparent 70%)' }}
         />
 
-        <div className="container mx-auto px-4 relative z-10">
+        <PageContainer ignoreCustomizer>
           <div className="text-center max-w-4xl mx-auto">
 
             <motion.div
@@ -140,14 +163,7 @@ export default function LandingPage() {
               Your AI isn't<br />
               the problem.
               <br />
-              <span
-                style={{
-                  background: 'linear-gradient(135deg, hsl(258,90%,70%) 0%, hsl(280,100%,75%) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
+              <span className="gradient-text">
                 Your prompts are.
               </span>
             </motion.h1>
@@ -170,12 +186,9 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20"
             >
               <Link
-                to="/register"
-                className="group relative inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-base text-foreground w-full sm:w-auto justify-center overflow-hidden"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))',
-                  boxShadow: '0 0 40px rgba(139,92,246,0.4)',
-                }}
+                to={prefix('/register')}
+                className="group relative inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-base gradient-cta w-full sm:w-auto justify-center overflow-hidden"
+                style={{ boxShadow: '0 0 40px rgba(139,92,246,0.4)' }}
               >
                 <span className="relative z-10 flex items-center gap-2">
                   Start for Free — No Card Needed
@@ -183,9 +196,9 @@ export default function LandingPage() {
                 </span>
               </Link>
               <Link
-                to="/explore"
+                to={prefix('/explore')}
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-base text-foreground/70 border border-border hover:border-border hover:text-foreground transition-all w-full sm:w-auto justify-center"
-                
+
               >
                 Browse Free Prompts
               </Link>
@@ -221,7 +234,7 @@ export default function LandingPage() {
                   {(livePrompts.length > 0 ? livePrompts : MOCK_CARDS.map(m => ({ title: m.title, tags: [m.tag], isPaid: m.pro, categoryId: m.tag.toLowerCase() } as Partial<Prompt>))).map((p, i) => (
                     <Link
                       key={i}
-                      to={livePrompts.length > 0 ? `/prompt/${(p as Prompt).slug || (p as Prompt).id}` : '/explore'}
+                      to={livePrompts.length > 0 ? prefix(`/prompt/${(p as Prompt).slug || (p as Prompt).id}`) : prefix('/explore')}
                       className="rounded-xl p-4 flex items-start gap-3 border border-white/8 hover:border-white/15 transition-all cursor-pointer"
                       style={{ background: 'rgba(255,255,255,0.04)' }}
                     >
@@ -254,14 +267,14 @@ export default function LandingPage() {
               </div>
             </motion.div>
           </div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           2. SOCIAL PROOF BAR — Trust signals
       ════════════════════════════════════════════════════════════════════ */}
       <div className="border-y border-border bg-muted/20">
-        <div className="container mx-auto px-4 py-8">
+        <PageContainer className="py-8" ignoreCustomizer>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
               { value: '12,000+', label: 'Expert Prompts'    },
@@ -275,14 +288,14 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
           3. PROBLEM — Agitation (make the pain real)
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-28 bg-background">
-        <div className="container mx-auto px-4 max-w-5xl">
+        <PageContainer className="text-center" ignoreCustomizer>
           <div className="text-center mb-16">
             <div className={`${S.tag} mx-auto mb-6 border-rose-500/30 bg-rose-500/10 text-rose-400`}>
               <AlertTriangle className="w-3.5 h-3.5" />
@@ -367,14 +380,14 @@ export default function LandingPage() {
               ))}
             </div>
           </motion.div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           4. SOLUTION — The shift (bridge problem → product)
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-28 border-y border-border bg-muted/30">
-        <div className="container mx-auto px-4 max-w-4xl text-center">
+        <PageContainer className="text-center" ignoreCustomizer>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -389,12 +402,7 @@ export default function LandingPage() {
               <br />
               don't type better —
               <br />
-              <span style={{
-                background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}>
+              <span className="gradient-text">
                 they prompt smarter.
               </span>
             </h2>
@@ -404,14 +412,14 @@ export default function LandingPage() {
               Now you can use the same ones — without spending years figuring them out.
             </p>
           </motion.div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           5. TOOL INTRODUCTION — Product reveal
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-28 bg-background">
-        <div className="container mx-auto px-4">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-16">
             <div className={`${S.tag} mx-auto mb-6`}>
               <Sparkles className="w-3.5 h-3.5" />
@@ -443,9 +451,9 @@ export default function LandingPage() {
                     viewport={{ once: true }}
                   >
                     <Link
-                      to={`/explore?category=${encodeURIComponent(cat.name)}`}
+                      to={prefix(`/explore?category=${encodeURIComponent(cat.name)}`)}
                       className="group flex items-center gap-3 rounded-xl p-4 border border-border hover:border-border hover:bg-muted/50 transition-all"
-                      
+
                     >
                       <Icon className={`w-5 h-5 ${style.color} shrink-0`} />
                       <span className="text-sm font-semibold text-foreground/70 group-hover:text-foreground transition-colors truncate">{cat.name}</span>
@@ -464,9 +472,9 @@ export default function LandingPage() {
                 return (
                   <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} viewport={{ once: true }}>
                     <Link
-                      to={`/explore?category=${encodeURIComponent(name)}`}
+                      to={prefix(`/explore?category=${encodeURIComponent(name)}`)}
                       className="group flex items-center gap-3 rounded-xl p-4 border border-border hover:border-border transition-all"
-                      
+
                     >
                       <Icon className={`w-5 h-5 ${style.color} shrink-0`} />
                       <span className="text-sm font-semibold text-foreground/70 group-hover:text-foreground transition-colors truncate">{name}</span>
@@ -480,21 +488,20 @@ export default function LandingPage() {
 
           <div className="text-center mt-8">
             <Link
-              to="/explore"
+              to={prefix('/explore')}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold text-muted-foreground border border-border hover:border-border hover:text-foreground transition-all"
-              
             >
               View All Categories <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           6. BENEFITS — Outcome-focused (not features)
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-28 border-y border-border bg-muted/30">
-        <div className="container mx-auto px-4">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-16">
             <h2 className={`${S.heading} text-4xl md:text-5xl mb-4`}>
               What you get
@@ -512,7 +519,7 @@ export default function LandingPage() {
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
                 className="rounded-2xl p-8 border border-border group hover:border-violet-500/30 transition-all relative overflow-hidden"
-                
+
               >
                 <div
                   className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
@@ -527,14 +534,14 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           7. HOW IT WORKS — Process (reduce friction)
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-28 bg-background">
-        <div className="container mx-auto px-4">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-16">
             <h2 className={`${S.heading} text-4xl md:text-5xl mb-4`}>
               Up and running in 60 seconds
@@ -566,20 +573,20 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           8. TRENDING — Product proof (show don't tell)
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-28 border-y border-border bg-muted/30">
-        <div className="container mx-auto px-4">
+        <PageContainer ignoreCustomizer>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
             <div>
               <h2 className={`${S.heading} text-3xl md:text-4xl mb-2`}>Trending This Week</h2>
               <p className="text-muted-foreground">The most-used prompts across our community.</p>
             </div>
-            <Link to="/explore"
+            <Link to={prefix('/explore')}
               className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors shrink-0">
               View All <ArrowRight className="w-4 h-4" />
             </Link>
@@ -600,25 +607,25 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-bold text-foreground mb-2 group-hover:text-violet-300 transition-colors">{p.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed mb-5">{p.desc}</p>
-                <Link to="/explore"
+                <Link to={prefix('/explore')}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-400 group-hover:gap-2.5 transition-all">
                   View Prompt <ArrowRight className="w-3 h-3" />
                 </Link>
               </motion.div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           9. TESTIMONIALS — Social proof (remove doubt)
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-28 bg-background">
-        <div className="container mx-auto px-4">
+        <PageContainer ignoreCustomizer>
           <div className="text-center mb-14">
-            <div className="flex items-center justify-center gap-0.5 mb-5">
-              {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />)}
-              <span className="text-muted-foreground text-sm ml-2">Rated 4.9/5 by our users</span>
+            <div className="flex items-center justify-center gap-3 mb-5">
+              <Rating value={4.9} precision={0.5} readOnly size="sm" />
+              <span className="text-muted-foreground text-sm">Rated 4.9/5 by our users</span>
             </div>
             <h2 className={`${S.heading} text-3xl md:text-4xl mb-3`}>
               Real people. Real results.
@@ -637,8 +644,8 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 className={`${S.card} p-7 flex flex-col`}
               >
-                <div className="flex items-center gap-0.5 mb-5">
-                  {[...Array(t.rating)].map((_, j) => <Star key={j} className="w-4 h-4 text-amber-400 fill-amber-400" />)}
+                <div className="mb-5">
+                  <Rating value={t.rating} readOnly size="sm" />
                 </div>
                 <p className="text-foreground/70 text-sm leading-relaxed mb-6 flex-1 italic">"{t.quote}"</p>
                 <div className="flex items-center gap-3">
@@ -656,14 +663,14 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           10. PRICING — Make saying yes easy
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-28 border-y border-border bg-muted/30">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <PageContainer className="max-w-4xl" ignoreCustomizer>
           <div className="text-center mb-14">
             <h2 className={`${S.heading} text-3xl md:text-5xl mb-3`}>
               Start free. Upgrade when you're ready.
@@ -696,9 +703,9 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link
-                to="/register"
+                to={prefix('/register')}
                 className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm text-foreground/70 border border-border hover:border-border hover:text-foreground transition-all"
-                
+
               >
                 Get Started Free
               </Link>
@@ -706,7 +713,7 @@ export default function LandingPage() {
 
             {/* Pro */}
             <div className="rounded-2xl p-8 border relative overflow-hidden" style={{ background: 'rgba(139,92,246,0.08)', borderColor: 'rgba(139,92,246,0.3)' }}>
-              <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: 'linear-gradient(90deg, hsl(258,90%,60%), hsl(280,90%,65%))' }} />
+              <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary-end, var(--primary))))' }} />
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{ background: 'radial-gradient(ellipse at top right, rgba(139,92,246,0.12), transparent 60%)' }}
@@ -739,22 +746,22 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link
-                to="/pricing"
-                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm text-foreground relative"
-                style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))', boxShadow: '0 0 24px rgba(139,92,246,0.3)' }}
+                to={prefix('/pricing')}
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm gradient-cta relative"
+                style={{ boxShadow: '0 0 24px rgba(139,92,246,0.3)' }}
               >
                 See Full Pricing <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
-        </div>
+        </PageContainer>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           11. FINAL CTA — Close strong
       ════════════════════════════════════════════════════════════════════ */}
       <section className="py-32 bg-background">
-        <div className="container mx-auto px-4 max-w-3xl text-center relative">
+        <PageContainer className="max-w-3xl text-center relative" ignoreCustomizer>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] pointer-events-none"
             style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.15) 0%, transparent 70%)' }}
           />
@@ -764,18 +771,13 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="relative"
           >
-            <div className="flex items-center justify-center gap-0.5 mb-7">
-              {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />)}
+            <div className="flex justify-center mb-7">
+              <Rating value={5} readOnly size="md" />
             </div>
             <h2 className={`${S.heading} text-4xl md:text-6xl mb-5 leading-[1.1]`}>
               Stop leaving AI potential
               <br />
-              <span style={{
-                background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}>
+              <span className="gradient-text">
                 on the table.
               </span>
             </h2>
@@ -785,27 +787,24 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                to="/register"
-                className="group inline-flex items-center justify-center gap-2 px-9 py-4 rounded-xl font-semibold text-base text-foreground w-full sm:w-auto"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))',
-                  boxShadow: '0 0 50px rgba(139,92,246,0.4)',
-                }}
+                to={prefix('/register')}
+                className="group inline-flex items-center justify-center gap-2 px-9 py-4 rounded-xl font-semibold text-base gradient-cta w-full sm:w-auto"
+                style={{ boxShadow: '0 0 50px rgba(139,92,246,0.4)' }}
               >
                 Start for Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
-                to="/explore"
+                to={prefix('/explore')}
                 className="inline-flex items-center justify-center gap-2 px-9 py-4 rounded-xl font-semibold text-base text-muted-foreground border border-border hover:border-border hover:text-foreground transition-all w-full sm:w-auto"
-                
+
               >
                 Browse Prompts First
               </Link>
             </div>
             <p className="text-xs text-muted-foreground/50 mt-6">No credit card required · Free forever plan available · Cancel anytime</p>
           </motion.div>
-        </div>
+        </PageContainer>
       </section>
 
     </div>

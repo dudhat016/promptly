@@ -102,8 +102,18 @@ service cloud.firestore {
     match /prompts/{promptId} {
       allow read: if true; // Metadata is public, content is blurred in UI until unlocked
 
-      allow create: if isAdmin() || request.auth.token.email == 'learnwithdudhat016@gmail.com' || (isSignedIn() && isEmailVerified() && isValidPrompt(incoming()) && incoming().createdAt == request.time);
-      allow update: if isAdmin() || request.auth.token.email == 'learnwithdudhat016@gmail.com' || (isSignedIn() && isEmailVerified() && isValidPrompt(incoming()) && incoming().updatedAt == request.time) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount', 'likesCount']));
+      // Creators can submit (status must start as 'pending'); admins can create approved prompts directly
+      allow create: if isAdmin() || request.auth.token.email == 'learnwithdudhat016@gmail.com' ||
+                    (isSignedIn() && isEmailVerified() && isValidPrompt(incoming()) &&
+                     incoming().createdAt == request.time &&
+                     (!incoming().keys().hasAny(['status']) || incoming().status == 'pending'));
+
+      // Admins can change status/moderationStatus; creators can update their own pending prompts; anyone can increment viewsCount/likesCount/reportCount
+      allow update: if isAdmin() || request.auth.token.email == 'learnwithdudhat016@gmail.com' ||
+                    (isSignedIn() && isEmailVerified() && isValidPrompt(incoming()) && incoming().updatedAt == request.time &&
+                     existing().creatorId == request.auth.uid && existing().status == 'pending') ||
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount', 'likesCount'])) ||
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount', 'moderationStatus']));
       allow delete: if isAdmin() || isOwner(existing().creatorId);
 
       // Versions subcollection
@@ -255,10 +265,52 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Media Library — tracked image assets uploaded via FTP
+    match /media_assets/{assetId} {
+      allow read: if isAdmin() || isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     // Orders & Transactions
     match /orders/{orderId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow write: if isAdmin();
+    }
+
+    // Site Content (Legal Pages, FAQs)
+    match /site_content/{contentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Invoices
+    match /invoices/{invoiceId} {
+      allow read, write: if isAdmin();
+    }
+
+    // AI Creations (image generations stored per user)
+    match /creations/{creationId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // Prompt Reports — any user (including anonymous) can create; admin manages
+    match /prompt_reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if true; // anonymous + logged-in users can report
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Per-user notifications (approval/rejection/warning)
+    match /users/{userId}/notifications/{notifId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin() || isSignedIn(); // system writes via SDK
+      allow update: if isOwner(userId); // user can mark as read
+      allow delete: if isOwner(userId) || isAdmin();
     }
   }
 }

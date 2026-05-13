@@ -3,17 +3,20 @@ import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Category } from '../../types';
 import { Save, Tag } from 'lucide-react';
-import { AdminPageHeader } from '../../components/admin';
-import Button from '../../components/ui/Button';
+import { AdminPageHeader, PageContainer as AdminPageContainer } from '../../components/admin';
+import Button from '../../components/primitives/Button';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
-import Input from '../../components/ui/Input';
+import Input from '../../components/primitives/Input';
 
 export default function AdminCategoryForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [category, setCategory] = useState<Partial<Category>>({
     name: '', slug: ''
   });
@@ -30,8 +33,17 @@ export default function AdminCategoryForm() {
     loadData();
   }, [id]);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!category.name?.trim()) newErrors.name = "Category name is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+    
     setSaving(true);
     try {
       const slug = category.slug || category.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || '';
@@ -50,7 +62,7 @@ export default function AdminCategoryForm() {
         });
       }
       toast.success(id && id !== 'new' ? "Category updated" : "New category added");
-      navigate('/admin/categories');
+      navigate(prefix('/admin/categories'));
     } catch (err) {
       console.error(err);
       toast.error("Failed to save category");
@@ -60,7 +72,7 @@ export default function AdminCategoryForm() {
   };
 
   return (
-    <div className="max-w-2xl">
+    <>
       <AdminPageHeader
         label="Content"
         labelIcon={Tag}
@@ -71,13 +83,18 @@ export default function AdminCategoryForm() {
       <div className="bg-card rounded-lg border border-border shadow-sm p-8">
         
         <form onSubmit={handleSave} className="space-y-6">
-          <Input 
+          <Input
             label="Category Name"
             id="categoryName"
             name="categoryName"
-            type="text" required
+            type="text"
+            required
+            error={errors.name}
             value={category.name || ''}
-            onChange={e => setCategory({...category, name: e.target.value})}
+            onChange={e => {
+              setCategory({...category, name: e.target.value});
+              if (errors.name) setErrors({...errors, name: ''});
+            }}
             placeholder="e.g. Marketing"
           />
 
@@ -107,7 +124,7 @@ export default function AdminCategoryForm() {
             </Button>
             <Button 
               as={Link}
-              to="/admin/categories"
+              to={prefix("/admin/categories")}
               variant="secondary"
               size="lg"
               className="px-8 font-bold"
@@ -117,6 +134,6 @@ export default function AdminCategoryForm() {
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }

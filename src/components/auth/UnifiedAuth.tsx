@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { signInWithEmail, signInWithGoogle, signUpWithEmail } from '../../lib/firebase';
-import Input from '../ui/Input';
-import Button from '../ui/Button';
+import Input from '../primitives/Input';
+import Button from '../primitives/Button';
 import { cn } from '../../lib/utils';
 
 interface UnifiedAuthProps {

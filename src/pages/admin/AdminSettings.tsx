@@ -1,130 +1,314 @@
-import { useState, useEffect } from 'react';
-import { db } from '../../lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
-  Save, Mail, Shield, Zap, Globe, AlertCircle, Settings,
-  Search, Lock, Info, Terminal, Layout, CreditCard, Image, Target
+  BarChart,
+  Code, CreditCard,
+  ExternalLink,
+  Globe, Image, Info, Layout,
+  Mail, MessageSquare,
+  Palette, Phone, Plus, Save, Search, Settings, Share2, Shield,
+  Sparkles, Target,
+  Trash2, UserPlus
 } from 'lucide-react';
-import { AdminPageHeader } from '../../components/admin';
-import { logAuditEvent } from '../../lib/auditLog';
-import { motion, AnimatePresence } from 'motion/react';
+import { useEffect, useState, useId } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import Select from '../../components/ui/Select';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
-import Textarea from '../../components/ui/Textarea';
-import AdminEmailSettings from './AdminEmailSettings';
+import { AdminPageHeader } from '../../components/admin';
+import ImageUpload from '../../components/admin/ImageUpload';
+import Alert from '../../components/feedback/Alert';
+import Button from '../../components/primitives/Button';
+import Input from '../../components/primitives/Input';
+import Select from '../../components/primitives/Select';
+import TagInput from '../../components/primitives/TagInput';
+import Textarea from '../../components/primitives/Textarea';
+import { useConfig } from '../../hooks/useConfig';
+import { logAuditEvent } from '../../lib/auditLog';
+import { db } from '../../lib/firebase';
+import { cn } from '../../lib/utils';
 import AdminAssetManager from './AdminAssetManager';
-import AdminPaymentSettings from './AdminPaymentSettings';
+import AdminEmailSettings from './AdminEmailSettings';
 import AdminMarketingSettings from './AdminMarketingSettings';
+import AdminPaymentSettings from './AdminPaymentSettings';
+import AdminContentSettings from './AdminContentSettings';
 
-type TabType = 'general' | 'email' | 'payment' | 'marketing' | 'assets' | 'seo' | 'security' | 'advanced';
+type TabType = 'general' | 'branding' | 'auth' | 'ai' | 'contact' | 'social' | 'regional' | 'appearance' | 'email' | 'content' | 'payment' | 'marketing' | 'assets' | 'seo' | 'security' | 'advanced';
+
+interface SitePage {
+  id: string;
+  title: string;
+  description: string;
+  keywords: string;
+  ogImage: string;
+  canonical: string;
+  path: string;
+}
 
 export default function AdminSettings() {
+  const { "*": subPath } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('general');
+
+  // Sync tab with URL
+  useEffect(() => {
+    const tabFromUrl = subPath?.split('/')[0];
+    if (tabFromUrl) {
+      // Handle common aliases or typos
+      const normalized = tabFromUrl === 'payments' ? 'payment' : tabFromUrl;
+      setActiveTab(normalized as TabType);
+    } else {
+      setActiveTab('general');
+    }
+  }, [subPath]);
+
+  const handleTabChange = (tabId: string) => {
+    // Preserve the current language if possible, otherwise use /en/ as default
+    navigate(`/en/admin/settings/${tabId}`);
+  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
-  const [generalConfig, setGeneralConfig] = useState({
+  const { config: liveConfig, refreshConfig } = useConfig();
+
+  // Site Pages SEO State
+  const [pages, setPages] = useState<SitePage[]>([]);
+  const [editingPage, setEditingPage] = useState<Partial<SitePage> | null>(null);
+  const [savingPage, setSavingPage] = useState(false);
+
+  // Dynamic Site Content State
+  const [siteContent, setSiteContent] = useState<any>({
+    terms: '',
+    privacy: '',
+    dmca: '',
+    cookies: '',
+    faq: [],
+  });
+  const [contentLoading, setContentLoading] = useState(false);
+  const [savingContent, setSavingContent] = useState(false);
+  const [activeContentPage, setActiveContentPage] = useState('terms');
+
+  const defaultPages = [
+    { id: 'home', path: '/', title: 'Promptly - Master AI Prompting' },
+    { id: 'explore', path: '/explore', title: 'Explore AI Prompts' },
+    { id: 'pricing', path: '/pricing', title: 'Pricing Plans' },
+    { id: 'blog', path: '/blog', title: 'AI Prompting Blog' },
+    { id: 'contact', path: '/contact', title: 'Contact Us' },
+  ];
+
+  const [config, setConfig] = useState<any>({
     siteName: 'Promptly',
     siteTagline: 'Professional AI Prompt Marketplace',
+    siteDescription: '',
     supportEmail: 'support@techworldproduct.com',
+    contactPhone: '',
+    whatsapp: '',
     businessAddress: '',
     currency: 'USD',
+    currencySymbol: '$',
+    currencyFormat: 'before',
+    timezone: 'UTC',
+    defaultLanguage: 'en',
     taxRate: 0,
-    maintenanceMode: false
+    maintenanceMode: false,
+    maintenanceMessage: '',
+    logoLight: '',
+    logoDark: '',
+    favicon: '',
+    projectIcon: '',
+    ogImage: '',
+    googleAnalyticsId: '',
+    facebookPixelId: '',
+    customHeadScripts: '',
+    customFooterScripts: '',
+    allowRegistration: true,
+    requireEmailVerification: false,
+    defaultUserRole: 'user',
+    enableSocialLogin: true,
+    socials: {
+      twitter: '',
+      facebook: '',
+      instagram: '',
+      linkedin: '',
+      github: '',
+      youtube: '',
+      discord: ''
+    },
+    appearance: {
+      theme: 'system',
+      primaryColor: '#8B5CF6',
+      borderRadius: '0.75rem',
+      layoutMode: 'boxed'
+    },
+    aiDefaults: {
+      defaultModel: 'gpt-4o',
+      defaultTemperature: 0.7,
+      maxTokens: 2000,
+      freeCreditsDaily: 5
+    }
   });
 
   useEffect(() => {
-    async function loadConfig() {
+    async function loadAll() {
       try {
-        const docSnap = await getDoc(doc(db, 'configs', 'global'));
-        if (docSnap.exists()) {
-          setGeneralConfig(prev => ({ ...prev, ...docSnap.data() }));
+        const [configSnap, pagesSnap, contentSnap] = await Promise.all([
+          getDoc(doc(db, 'configs', 'global')),
+          getDocs(collection(db, 'site_pages')),
+          getDocs(collection(db, 'site_content'))
+        ]);
+
+        if (configSnap.exists()) {
+          const data = configSnap.data();
+          setConfig((prev: any) => ({
+            ...prev,
+            ...data,
+            socials: { ...prev.socials, ...(data.socials || {}) },
+            appearance: { ...prev.appearance, ...(data.appearance || {}) },
+            aiDefaults: { ...prev.aiDefaults, ...(data.aiDefaults || {}) }
+          }));
         }
+
+        const fetchedPages = pagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SitePage));
+        setPages(fetchedPages);
+
+        const contentMap: any = {};
+        contentSnap.docs.forEach(d => { contentMap[d.id] = d.data(); });
+        setSiteContent((prev: any) => ({
+          ...prev,
+          terms: contentMap.terms?.content || '',
+          privacy: contentMap.privacy?.content || '',
+          dmca: contentMap.dmca?.content || '',
+          cookies: contentMap.cookies?.content || '',
+          faq: contentMap.faq?.categories || [],
+          onboarding: contentMap.onboarding || { interests: [], models: [], welcome: { headline: '', description: '' } },
+        }));
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     }
-    loadConfig();
+    loadAll();
   }, []);
 
-  const handleSaveGeneral = async () => {
+  const handleSaveContent = async (id: string) => {
+    setSavingContent(true);
+    try {
+      let data;
+      if (id === 'faq') {
+        data = { categories: siteContent.faq };
+      } else if (id === 'onboarding') {
+        data = { ...siteContent.onboarding, updatedAt: serverTimestamp() };
+      } else {
+        data = { content: siteContent[id], updatedAt: serverTimestamp() };
+      }
+      
+      await setDoc(doc(db, 'site_content', id), data);
+      toast.success(`${id.toUpperCase()} updated successfully`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update content');
+    } finally {
+      setSavingContent(false);
+    }
+  };
+
+  const handleSave = async () => {
     setSaving(true);
     try {
       await setDoc(doc(db, 'configs', 'global'), {
-        ...generalConfig,
+        ...config,
         updatedAt: serverTimestamp()
       });
+      await refreshConfig();
       logAuditEvent({ action: 'settings.updated', entityType: 'config', entityId: 'global' });
-      toast.success('General settings updated!');
+      toast.success('System parameters synchronized!');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to save settings');
+      toast.error('Sync failed');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleSavePage = async () => {
+    if (!editingPage?.id) return;
+    setSavingPage(true);
+    try {
+      await setDoc(doc(db, 'site_pages', editingPage.id), editingPage);
+      toast.success(`${editingPage.id.toUpperCase()} metadata saved!`);
+      const snap = await getDocs(collection(db, 'site_pages'));
+      setPages(snap.docs.map(d => ({ id: d.id, ...d.data() } as SitePage)));
+      setEditingPage(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save page SEO");
+    } finally {
+      setSavingPage(false);
+    }
+  };
+
   const tabs = [
-    { id: 'general', label: 'General', icon: Info },
-    { id: 'email', label: 'Email & SMTP', icon: Mail },
+    { id: 'general', label: 'Platform Info', icon: Info },
+    { id: 'branding', label: 'Branding', icon: Image },
+    { id: 'auth', label: 'Authentication', icon: UserPlus },
+    { id: 'ai', label: 'AI Engine', icon: Sparkles },
+    { id: 'contact', label: 'Contact', icon: Phone },
+    { id: 'social', label: 'Social', icon: Share2 },
+    { id: 'regional', label: 'Regional', icon: Globe },
+    { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'email', label: 'Email/SMTP', icon: Mail },
+    { id: 'content', label: 'Pages & Content', icon: Layout },
     { id: 'payment', label: 'Payments', icon: CreditCard },
-    { id: 'marketing', label: 'Marketing & Ads', icon: Target },
-    { id: 'assets', label: 'Asset Vault', icon: Image },
-    { id: 'seo', label: 'Default SEO', icon: Search },
-    { id: 'security', label: 'Security', icon: Lock },
-    { id: 'advanced', label: 'Advanced', icon: Terminal },
+    { id: 'marketing', label: 'Marketing', icon: Target },
+    { id: 'seo', label: 'SEO/Analytics', icon: Search },
+    { id: 'security', label: 'System Control', icon: Shield },
+    { id: 'advanced', label: 'Advanced/API', icon: Code },
   ];
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
-      <div className="text-muted-foreground font-bold uppercase tracking-[0.3em] animate-pulse">Loading Platform Engine...</div>
+      <div className="text-muted-foreground font-semibold tracking-[0.4em] animate-pulse">Synchronizing Neural Core...</div>
     </div>
   );
 
   return (
-    <div>
+    <div className="pb-24">
       <AdminPageHeader
-        label="System"
+        label="Configuration"
         labelIcon={Settings}
         title="Global Settings"
-        subtitle="Configure your platform's core engine and delivery systems."
+        subtitle="Fine-tune your platform's operational parameters, branding, and core logic."
         actions={
-          activeTab === 'general' ? (
-            <Button 
-              onClick={handleSaveGeneral} 
-              isLoading={saving} 
-              variant="primary"
-              leftIcon={Save}
-              size="sm"
-            >
-              Save Changes
-            </Button>
-          ) : undefined
+          <Button
+            onClick={handleSave}
+            isLoading={saving}
+            variant="primary"
+            leftIcon={Save}
+            size="sm"
+            className="rounded-xl shadow-lg shadow-primary/20"
+          >
+            Sync Config
+          </Button>
         }
       />
 
-      <div className="flex flex-col lg:flex-row gap-10">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Tab Navigation */}
         <div className="lg:w-64 shrink-0">
-          <div className="bg-card rounded-lg border border-border p-4 shadow-sm space-y-2 sticky top-10">
+          <div className="bg-card rounded-2xl border border-border p-3 shadow-sm space-y-1 sticky top-24">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
-                <Button
+                <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as TabType)}
-                  variant={activeTab === tab.id ? 'primary' : 'ghost'}
-                  size="sm"
-                  fullWidth
-                  leftIcon={Icon}
-                  className="justify-start normal-case"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    "flex items-center cursor-pointer gap-3 w-full px-4 py-3 rounded-xl text-[14px] font-semibold tracking-widest transition-all",
+                    activeTab === tab.id
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
+                  )}
                 >
+                  <Icon className="w-4 h-4" />
                   {tab.label}
-                </Button>
+                </button>
               );
             })}
           </div>
@@ -132,219 +316,621 @@ export default function AdminSettings() {
 
         {/* Content Area */}
         <div className="flex-grow">
-          <AnimatePresence mode="wait">
+          <div className="h-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
             {activeTab === 'general' && (
-              <motion.div
-                key="general"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
-              >
-                <div className="card p-6">
-                  <h3 className="section-title mb-5">
-                    <Layout className="w-4 h-4 text-primary" />
-                    Identity & Branding
-                  </h3>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-5">
-                      <Input 
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Layout className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">Platform Identity</h3>
+                  </div>
+                  <div className="p-8 space-y-6">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Input
                         label="Platform Name"
-                        id="siteName"
-                        name="siteName"
-                        type="text"
-                        value={generalConfig.siteName}
-                        onChange={e => setGeneralConfig({ ...generalConfig, siteName: e.target.value })}
-                        variant="filled"
+                        value={config.siteName}
+                        onChange={e => setConfig({ ...config, siteName: e.target.value })}
+                        variant="outline"
+                        placeholder="e.g. Promptly"
                       />
-                      <Input 
-                        label="Support Email"
-                        id="supportEmail"
-                        name="supportEmail"
-                        type="email"
-                        value={generalConfig.supportEmail}
-                        onChange={e => setGeneralConfig({ ...generalConfig, supportEmail: e.target.value })}
-                        variant="filled"
+                      <Input
+                        label="Tagline"
+                        value={config.siteTagline}
+                        onChange={e => setConfig({ ...config, siteTagline: e.target.value })}
+                        variant="outline"
+                        placeholder="Expert AI Prompt Marketplace"
                       />
                     </div>
-                    <div>
-                    <Textarea 
-                      label="Platform Tagline"
-                      id="siteTagline"
-                      name="siteTagline"
-                      value={generalConfig.siteTagline}
-                      onChange={e => setGeneralConfig({ ...generalConfig, siteTagline: e.target.value })}
-                      className="h-[148px]"
-                      variant="filled"
+                    <Textarea
+                      label="Global Meta Description"
+                      value={config.siteDescription}
+                      onChange={e => setConfig({ ...config, siteDescription: e.target.value })}
+                      variant="outline"
+                      rows={3}
+                      placeholder="Default description for search engines..."
                     />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'branding' && (
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Image className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">Brand Assets</h3>
+                  </div>
+                  <div className="p-8 space-y-12">
+                    <div className="grid md:grid-cols-2 gap-12">
+                      <ImageUpload
+                        label="Logo (Light Mode)"
+                        value={config.logoLight}
+                        onChange={val => setConfig({ ...config, logoLight: val })}
+                        helpText="Visible on dark backgrounds."
+                        aspectRatio="any"
+                        folder="branding"
+                      />
+                      <ImageUpload
+                        label="Logo (Dark Mode)"
+                        value={config.logoDark}
+                        onChange={val => setConfig({ ...config, logoDark: val })}
+                        helpText="Visible on light backgrounds."
+                        aspectRatio="any"
+                        folder="branding"
+                      />
+                      <ImageUpload
+                        label="Default OG Image"
+                        value={config.ogImage}
+                        onChange={val => setConfig({ ...config, ogImage: val })}
+                        helpText="Used for social shares by default."
+                        aspectRatio="video"
+                        folder="branding"
+                      />
+                      <ImageUpload
+                        label="Favicon / Icon"
+                        value={config.favicon}
+                        onChange={val => setConfig({ ...config, favicon: val })}
+                        helpText="Platform favicon and browser icon."
+                        aspectRatio="square"
+                        folder="branding"
+                      />
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
 
-                <div className="card p-6">
-                  <h3 className="section-title mb-5">
-                    <CreditCard className="w-4 h-4 text-primary" />
-                    Commerce & Billing
-                  </h3>
-                  <div className="grid md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Default Currency</label>
-                      <Select
-                        id="currency"
-                        name="currency"
-                        value={generalConfig.currency}
-                        onChange={val => setGeneralConfig({ ...generalConfig, currency: val })}
-                        options={[
-                          { label: 'USD ($)', value: 'USD', description: 'United States Dollar' },
-                          { label: 'EUR (â‚¬)', value: 'EUR', description: 'Euro' },
-                          { label: 'GBP (Â£)', value: 'GBP', description: 'British Pound' },
-                          { label: 'INR (â‚¹)', value: 'INR', description: 'Indian Rupee' }
-                        ]}
-                        isSearchable={false}
-                      />
+            {activeTab === 'auth' && (
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <UserPlus className="w-4 h-4" />
                     </div>
-                    <div>
-                      <Input 
-                        label="Base Tax Rate (%)"
-                        id="taxRate"
-                        name="taxRate"
-                        type="number"
-                        value={generalConfig.taxRate}
-                        onChange={e => setGeneralConfig({ ...generalConfig, taxRate: Number(e.target.value) })}
-                        variant="filled"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Maintenance Mode</label>
+                    <h3 className="font-semibold text-lg text-foreground">User Access Policy</h3>
+                  </div>
+                  <div className="p-8 grid md:grid-cols-2 gap-6">
+                    <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-border">
+                      <div>
+                        <p className="text-sm font-semibold tracking-wider text-foreground">Allow Registration</p>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5">Toggle public signups.</p>
+                      </div>
                       <Button
-                        onClick={() => setGeneralConfig({ ...generalConfig, maintenanceMode: !generalConfig.maintenanceMode })}
-                        variant={generalConfig.maintenanceMode ? 'danger' : 'success'}
-                        fullWidth
-                        size="lg"
-                        className="h-[52px]"
+                        onClick={() => setConfig({ ...config, allowRegistration: !config.allowRegistration })}
+                        variant={config.allowRegistration ? 'success' : 'outline'}
+                        size="sm"
+                        className="rounded-xl px-4"
                       >
-                        <div className={`w-2 h-2 rounded-full animate-pulse mr-2 ${generalConfig.maintenanceMode ? 'bg-white' : 'bg-white'}`} />
-                        {generalConfig.maintenanceMode ? 'System Offline' : 'System Online'}
+                        {config.allowRegistration ? 'Active' : 'Locked'}
                       </Button>
                     </div>
+                    <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-border">
+                      <div>
+                        <p className="text-sm font-semibold tracking-wider text-foreground">Email Verification</p>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5">Require account validation.</p>
+                      </div>
+                      <Button
+                        onClick={() => setConfig({ ...config, requireEmailVerification: !config.requireEmailVerification })}
+                        variant={config.requireEmailVerification ? 'success' : 'outline'}
+                        size="sm"
+                        className="rounded-xl px-4"
+                      >
+                        {config.requireEmailVerification ? 'Enabled' : 'Disabled'}
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-border">
+                      <div>
+                        <p className="text-sm font-semibold tracking-wider text-foreground">Social Auth</p>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5">Enable Google/GitHub login.</p>
+                      </div>
+                      <Button
+                        onClick={() => setConfig({ ...config, enableSocialLogin: !config.enableSocialLogin })}
+                        variant={config.enableSocialLogin ? 'success' : 'outline'}
+                        size="sm"
+                        className="rounded-xl px-4"
+                      >
+                        {config.enableSocialLogin ? 'Enabled' : 'Disabled'}
+                      </Button>
+                    </div>
+                    <Select
+                      label="New User Role"
+                      value={config.defaultUserRole}
+                      onChange={val => setConfig({ ...config, defaultUserRole: val })}
+                      options={[
+                        { label: 'Customer (Buyer)', value: 'user' },
+                        { label: 'Creator (Seller)', value: 'creator' }
+                      ]}
+                    />
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
 
-            {activeTab === 'email' && (
-              <motion.div
-                key="email"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <AdminEmailSettings />
-              </motion.div>
-            )}
-
-            {activeTab === 'payment' && (
-              <motion.div
-                key="payment"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <AdminPaymentSettings />
-              </motion.div>
-            )}
-
-            {activeTab === 'marketing' && (
-              <motion.div
-                key="marketing"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <AdminMarketingSettings />
-              </motion.div>
-            )}
-
-            {activeTab === 'assets' && (
-              <motion.div
-                key="assets"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <AdminAssetManager />
-              </motion.div>
+            {activeTab === 'ai' && (
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">AI Intelligence Defaults</h3>
+                  </div>
+                  <div className="p-8 grid md:grid-cols-2 gap-6">
+                    <Select
+                      label="Default LLM Model"
+                      value={config.aiDefaults.defaultModel}
+                      onChange={val => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, defaultModel: val }})}
+                      options={[
+                        { label: 'GPT-4o (Omni)', value: 'gpt-4o' },
+                        { label: 'Claude 3.5 Sonnet', value: 'claude-3-5-sonnet' },
+                        { label: 'GPT-4 Turbo', value: 'gpt-4-turbo' }
+                      ]}
+                    />
+                    <Input
+                      label="Daily Free Credits"
+                      type="number"
+                      value={config.aiDefaults.freeCreditsDaily}
+                      onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, freeCreditsDaily: Number(e.target.value) }})}
+                      variant="outline"
+                    />
+                    <Input
+                      label="Default Temperature"
+                      type="number"
+                      step="0.1"
+                      value={config.aiDefaults.defaultTemperature}
+                      onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, defaultTemperature: Number(e.target.value) }})}
+                      variant="outline"
+                    />
+                    <Input
+                      label="Max Tokens per Run"
+                      type="number"
+                      value={config.aiDefaults.maxTokens}
+                      onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, maxTokens: Number(e.target.value) }})}
+                      variant="outline"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
 
             {activeTab === 'seo' && (
-              <motion.div
-                key="seo"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-card rounded-lg border border-border p-6 shadow-sm text-center py-24"
-              >
-                <Search className="w-16 h-16 text-muted-foreground/20 mx-auto mb-6" />
-                <h3 className="text-base font-semibold text-foreground mb-2">SEO Module Integration</h3>
-                <p className="text-muted-foreground max-w-sm mx-auto">Default metadata and OG image generation settings are being migrated to this central hub.</p>
-              </motion.div>
+              <div className="space-y-8">
+                {/* Analytics & Scripts */}
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <BarChart className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">Tracking & Custom Scripts</h3>
+                  </div>
+                  <div className="p-8 space-y-6">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Input
+                        label="Google Analytics 4 ID"
+                        value={config.googleAnalyticsId}
+                        onChange={e => setConfig({ ...config, googleAnalyticsId: e.target.value })}
+                        variant="outline"
+                        placeholder="G-XXXXXXXXXX"
+                      />
+                      <Input
+                        label="Facebook Pixel ID"
+                        value={config.facebookPixelId}
+                        onChange={e => setConfig({ ...config, facebookPixelId: e.target.value })}
+                        variant="outline"
+                        placeholder="1234567890"
+                      />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
+                      <Textarea
+                        label="Global Header Scripts"
+                        value={config.customHeadScripts}
+                        onChange={e => setConfig({ ...config, customHeadScripts: e.target.value })}
+                        variant="outline"
+                        rows={5}
+                        placeholder="<script>...</script>"
+                        helperText="Injected into <head>."
+                      />
+                      <Textarea
+                        label="Global Footer Scripts"
+                        value={config.customFooterScripts}
+                        onChange={e => setConfig({ ...config, customFooterScripts: e.target.value })}
+                        variant="outline"
+                        rows={5}
+                        placeholder="<script>...</script>"
+                        helperText="Injected before </body>."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Site Pages SEO */}
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                        <Globe className="w-4 h-4" />
+                      </div>
+                      <h3 className="font-semibold text-lg text-foreground">Route-Specific SEO</h3>
+                    </div>
+                    <Button
+                      onClick={() => setEditingPage({ id: '', path: '', title: '', description: '' })}
+                      variant="outline"
+                      size="sm"
+                      leftIcon={Plus}
+                      className="rounded-xl font-bold"
+                    >
+                      Custom Page
+                    </Button>
+                  </div>
+
+                  <div className="p-8">
+                    <div className="space-y-8">
+                      {/* Page Selection Dropdown */}
+                      <div className="flex flex-col md:flex-row items-end gap-4">
+                        <div className="flex-grow">
+                          <Select
+                            label="Select Route to Configure"
+                            placeholder="Choose a site page..."
+                            value={editingPage?.id || ""}
+                            onChange={(val) => {
+                              const page = pages.find(p => p.id === val) || defaultPages.find(dp => dp.id === val);
+                              setEditingPage(page || null);
+                            }}
+                            options={[
+                              ...(editingPage && !pages.find(p => p.id === editingPage.id) && !defaultPages.find(dp => dp.id === editingPage.id) ? [{
+                                label: `NEW: ${editingPage.id || 'Untitled'}`,
+                                value: editingPage.id,
+                                description: 'Draft Route',
+                                icon: Plus
+                              }] : []),
+                              ...defaultPages.map(dp => ({
+                                label: `${dp.id.toUpperCase()} (${dp.path})`,
+                                value: dp.id,
+                                description: pages.find(p => p.id === dp.id) ? 'Configured' : 'Using Defaults',
+                                icon: Globe
+                              })),
+                              ...pages.filter(p => !defaultPages.find(dp => dp.id === p.id)).map(p => ({
+                                label: `${p.id.toUpperCase()} (${p.path})`,
+                                value: p.id,
+                                description: 'Custom Route',
+                                icon: Plus
+                              }))
+                            ]}
+                          />
+                        </div>
+                        {editingPage?.id && !defaultPages.find(dp => dp.id === editingPage.id) && pages.find(p => p.id === editingPage.id) && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            className="rounded-xl h-11 px-6 font-bold"
+                            leftIcon={Trash2}
+                            onClick={() => {
+                              if(confirm('Delete custom page SEO?')) {
+                                deleteDoc(doc(db, 'site_pages', editingPage.id)).then(() => {
+                                  setPages(pages.filter(pg => pg.id !== editingPage.id));
+                                  setEditingPage(null);
+                                  toast.success('Route SEO deleted');
+                                });
+                              }
+                            }}
+                          >
+                            Delete Route
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Edit Area */}
+                        {editingPage ? (
+                          <div className="space-y-8">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                  <Target className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-bold text-foreground">Configure SEO Metadata</h4>
+                                  <p className="text-xs text-muted-foreground font-medium">/{editingPage.id || 'new-route'}</p>
+                                </div>
+                              </div>
+                              <a
+                                href={editingPage.path}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 bg-muted/50 border border-border rounded-xl text-xs font-bold hover:text-primary transition-colors"
+                              >
+                                View Page <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-8">
+                              <Input
+                                label="Route ID"
+                                value={editingPage.id}
+                                onChange={e => setEditingPage({...editingPage, id: e.target.value})}
+                                variant="outline"
+                                placeholder="e.g. explore"
+                                helperText="Machine-readable identifier."
+                              />
+                              <Input
+                                label="Route Path"
+                                value={editingPage.path}
+                                onChange={e => setEditingPage({...editingPage, path: e.target.value})}
+                                variant="outline"
+                                placeholder="e.g. /explore"
+                                helperText="Relative URL path of the page."
+                              />
+                            </div>
+
+                            <div className="space-y-6 pt-4 border-t border-border/50">
+                              <Input
+                                label="Meta Title"
+                                value={editingPage.title}
+                                onChange={e => setEditingPage({...editingPage, title: e.target.value})}
+                                variant="outline"
+                                placeholder="SEO Optimized Page Title"
+                              />
+                              <Textarea
+                                label="Meta Description"
+                                value={editingPage.description}
+                                onChange={e => setEditingPage({...editingPage, description: e.target.value})}
+                                variant="outline"
+                                rows={4}
+                                placeholder="Search engine snippet (max 160 characters)..."
+                              />
+                              <TagInput
+                                label="Keywords"
+                                tags={editingPage.keywords ? editingPage.keywords.split(',').map(k => k.trim()).filter(Boolean) : []}
+                                onChange={tags => setEditingPage({...editingPage, keywords: tags.join(', ')})}
+                                placeholder="Add keyword and press enter..."
+                                helperText="Search engine keywords (comma-separated internally)."
+                              />
+
+                              <div className="grid md:grid-cols-1 gap-6">
+                                <ImageUpload
+                                  label="Social Sharing (OG Image)"
+                                  value={editingPage.ogImage || ''}
+                                  onChange={val => setEditingPage({...editingPage, ogImage: val})}
+                                  aspectRatio="video"
+                                  folder="seo"
+                                  helpText="Custom preview image for social media links."
+                                />
+                              </div>
+
+                              <div className="pt-8">
+                                <Button
+                                  onClick={handleSavePage}
+                                  isLoading={savingPage}
+                                  variant="primary"
+                                  fullWidth
+                                  size="lg"
+                                  className="rounded-2xl h-14 font-bold text-sm shadow-xl shadow-primary/20"
+                                  leftIcon={Save}
+                                >
+                                  Update SEO Configuration
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-[400px] border-2 border-dashed border-border rounded-[2.5rem] flex flex-col items-center justify-center p-12 text-center bg-muted/5">
+                            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/30 mb-6">
+                              <Search className="w-8 h-8" />
+                            </div>
+                            <h5 className="text-sm font-bold text-foreground mb-2">Select a Route to Begin</h5>
+                            <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+                              Choose a page from the dropdown above to audit and refine its meta tags, tracking scripts, and social presence.
+                            </p>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'contact' && (
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Phone className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">Communication Channels</h3>
+                  </div>
+                  <div className="p-8 space-y-6">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Input label="Support Email" value={config.supportEmail} onChange={e => setConfig({...config, supportEmail: e.target.value})} variant="outline" leftIcon={Mail} />
+                      <Input label="Public Phone" value={config.contactPhone} onChange={e => setConfig({...config, contactPhone: e.target.value})} variant="outline" leftIcon={Phone} />
+                      <Input label="WhatsApp" value={config.whatsapp} onChange={e => setConfig({...config, whatsapp: e.target.value})} variant="outline" leftIcon={MessageSquare} />
+                    </div>
+                    <Textarea label="Business HQ Address" value={config.businessAddress} onChange={e => setConfig({...config, businessAddress: e.target.value})} variant="outline" rows={3} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'social' && (
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Share2 className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">Social Presence</h3>
+                  </div>
+                  <div className="p-8 grid md:grid-cols-2 gap-6">
+                    <Input label="X (Twitter)" value={config.socials.twitter} onChange={e => setConfig({...config, socials: {...config.socials, twitter: e.target.value}})} variant="outline" />
+                    <Input label="Facebook" value={config.socials.facebook} onChange={e => setConfig({...config, socials: {...config.socials, facebook: e.target.value}})} variant="outline" />
+                    <Input label="Instagram" value={config.socials.instagram} onChange={e => setConfig({...config, socials: {...config.socials, instagram: e.target.value}})} variant="outline" />
+                    <Input label="LinkedIn" value={config.socials.linkedin} onChange={e => setConfig({...config, socials: {...config.socials, linkedin: e.target.value}})} variant="outline" />
+                    <Input label="GitHub" value={config.socials.github} onChange={e => setConfig({...config, socials: {...config.socials, github: e.target.value}})} variant="outline" />
+                    <Input label="YouTube" value={config.socials.youtube} onChange={e => setConfig({...config, socials: {...config.socials, youtube: e.target.value}})} variant="outline" />
+                    <Input label="Discord" value={config.socials.discord} onChange={e => setConfig({...config, socials: {...config.socials, discord: e.target.value}})} variant="outline" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'regional' && (
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Globe className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">Localization & Regional</h3>
+                  </div>
+                  <div className="p-8 grid md:grid-cols-2 gap-6">
+                    <Select
+                      label="Primary Language"
+                      value={config.defaultLanguage}
+                      onChange={val => setConfig({...config, defaultLanguage: val})}
+                      options={[{ label: 'English (US)', value: 'en' }, { label: 'Hindi', value: 'hi' }, { label: 'Spanish', value: 'es' }]}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <Select
+                        label="Currency"
+                        value={config.currency}
+                        onChange={val => setConfig({...config, currency: val})}
+                        options={[{ label: 'USD', value: 'USD' }, { label: 'EUR', value: 'EUR' }, { label: 'INR', value: 'INR' }]}
+                      />
+                      <Input label="Symbol" value={config.currencySymbol} onChange={e => setConfig({...config, currencySymbol: e.target.value})} variant="outline" />
+                    </div>
+                    <Select
+                      label="Timezone"
+                      value={config.timezone}
+                      onChange={val => setConfig({...config, timezone: val})}
+                      options={[{ label: 'UTC', value: 'UTC' }, { label: 'IST', value: 'Asia/Kolkata' }, { label: 'EST', value: 'America/New_York' }]}
+                    />
+                    <Input label="Tax Rate (%)" type="number" value={config.taxRate} onChange={e => setConfig({...config, taxRate: Number(e.target.value)})} variant="outline" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'content' && (
+              <AdminContentSettings 
+                siteContent={siteContent}
+                setSiteContent={setSiteContent}
+                onSave={handleSaveContent}
+                isSaving={savingContent}
+              />
+            )}
+
+            {activeTab === 'appearance' && (
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Palette className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">Visual Style</h3>
+                  </div>
+                  <div className="p-8 grid md:grid-cols-2 gap-6">
+                    <Select
+                      label="Theme Default"
+                      value={config.appearance.theme}
+                      onChange={val => setConfig({...config, appearance: {...config.appearance, theme: val}})}
+                      options={[{ label: 'System', value: 'system' }, { label: 'Light', value: 'light' }, { label: 'Dark', value: 'dark' }]}
+                    />
+                    <Input
+                      label="Primary Brand Color"
+                      type="color"
+                      value={config.appearance.primaryColor}
+                      onChange={e => setConfig({...config, appearance: {...config.appearance, primaryColor: e.target.value}})}
+                      variant="outline"
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
 
             {activeTab === 'security' && (
-              <motion.div
-                key="security"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-card rounded-lg border border-border p-6 shadow-sm text-center py-24"
-              >
-                <Lock className="w-16 h-16 text-muted-foreground/20 mx-auto mb-6" />
-                <h3 className="text-base font-semibold text-foreground mb-2">Security & Access</h3>
-                <p className="text-muted-foreground max-w-sm mx-auto">Configure IP whitelisting, session timeouts, and two-factor authentication requirements.</p>
-              </motion.div>
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-lg text-foreground">Platform Governance</h3>
+                  </div>
+                  <div className="p-8 space-y-6">
+                    <div className="flex items-center justify-between p-6 bg-rose-500/5 rounded-3xl border border-rose-500/20">
+                      <div>
+                        <p className="text-[11px] font-semibold tracking-widest text-rose-600">Maintenance Mode</p>
+                        <p className="text-[10px] text-rose-500/60 font-medium mt-1">Restrict public access globally.</p>
+                      </div>
+                      <Button
+                        onClick={() => setConfig({ ...config, maintenanceMode: !config.maintenanceMode })}
+                        variant={config.maintenanceMode ? 'danger' : 'outline'}
+                        size="sm"
+                        className="rounded-2xl px-8"
+                      >
+                        {config.maintenanceMode ? 'System Locked' : 'Platform Live'}
+                      </Button>
+                    </div>
+                    {config.maintenanceMode && (
+                      <Textarea
+                        label="Maintenance Messaging"
+                        value={config.maintenanceMessage}
+                        onChange={e => setConfig({ ...config, maintenanceMessage: e.target.value })}
+                        variant="outline"
+                        rows={3}
+                        placeholder="Explain the downtime to your users..."
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
+            {activeTab === 'email' && <AdminEmailSettings />}
+            {activeTab === 'payment' && <AdminPaymentSettings />}
+            {activeTab === 'marketing' && <AdminMarketingSettings />}
+            {activeTab === 'assets' && <AdminAssetManager />}
+
             {activeTab === 'advanced' && (
-              <motion.div
-                key="advanced"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="card p-6"
-              >
-                <div className="flex items-center gap-4 p-6 bg-rose-500/10 border border-rose-500/20 rounded-lg mb-8">
-                  <AlertCircle className="w-10 h-10 text-rose-600 shrink-0" />
+              <div className="bg-card border border-border rounded-3xl p-10 shadow-sm">
+                <Alert variant="error" title="Critical Engine Access" className="mb-8">
+                  Mutating these parameters can disrupt core delivery pipelines and API authentication.
+                </Alert>
+                <div className="flex items-center justify-between p-6 bg-muted/20 rounded-3xl border border-border">
                   <div>
-                    <h4 className="font-bold text-rose-600">Danger Zone</h4>
-                    <p className="text-rose-500 text-sm font-medium">These settings can break your platform if configured incorrectly. Proceed with caution.</p>
+                    <p className="font-semibold text-xs tracking-widest text-rose-600">Flush Global Cache</p>
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1">Reset CDN states and serialized data clusters.</p>
                   </div>
+                  <Button variant="danger" size="sm" className="rounded-2xl">Execute Purge</Button>
                 </div>
-                <div className="space-y-5">
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-md border border-border">
-                    <div>
-                      <p className="font-bold text-foreground">Clear System Cache</p>
-                      <p className="text-xs text-muted-foreground font-medium">Force clear all CDN and local interest profiles.</p>
-                    </div>
-                    <Button variant="outline" size="sm">Execute</Button>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-md border border-border opacity-50">
-                    <div>
-                      <p className="font-bold text-foreground">Developer Mode</p>
-                      <p className="text-xs text-muted-foreground font-medium">Enable verbose logging and React DevTools in production.</p>
-                    </div>
-                    <Button
-                      onClick={() => toast.error('Developer mode is restricted to root administrators.')}
-                      variant="secondary"
-                      size="sm"
-                      className="opacity-50 cursor-not-allowed"
-                    >
-                      Enable
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </div>
         </div>
       </div>
     </div>

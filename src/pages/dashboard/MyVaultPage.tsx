@@ -3,49 +3,57 @@ import { FolderLock, Lock, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import PromptCard from '../../components/PromptCard';
 import PromptCardSkeleton from '../../components/PromptCardSkeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../lib/firebase';
 import { Prompt } from '../../types';
-import Input from '../../components/ui/Input';
+import Input from '../../components/primitives/Input';
 import { X } from 'lucide-react';
 
 export default function MyVaultPage() {
   const { user, profile, isPro, isAdmin } = useAuth();
+  const { prefix } = usePath();
   const [unlockedPrompts, setUnlockedPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     async function fetchVault() {
-      if (!profile?.unlockedPrompts?.length) {
-        setLoading(false);
-        return;
-      }
-
+      if (!profile) return;
       setLoading(true);
       try {
-        const promptsRef = collection(db, 'prompts');
-        // Firestore 'in' query is limited to 30 IDs, so we handle that if needed
-        // For now assuming user has < 30 prompts for the MVP
-        const q = query(promptsRef, where('__name__', 'in', profile.unlockedPrompts));
-        const querySnapshot = await getDocs(q);
-        const fetched = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          const id = doc.id;
-          
-          // SECURITY: Defense in Depth - ensure we only have content if really unlocked
-          const isUnlocked = (profile?.unlockedPrompts || []).includes(id);
-          const hasAccess = isPro || isAdmin || isUnlocked || !data.isPaid;
-          
-          if (!hasAccess) {
-            delete data.content;
+        // 1. Fetch Unlocked Prompts
+        let prompts: Prompt[] = [];
+        if (profile.unlockedPrompts?.length) {
+          const promptsRef = collection(db, 'prompts');
+          // Firestore 'in' queries are limited to 30 items — chunk for scale
+          const chunks: string[][] = [];
+          for (let i = 0; i < profile.unlockedPrompts.length; i += 30) {
+            chunks.push(profile.unlockedPrompts.slice(i, i + 30));
           }
-          
-          return { id, ...data } as Prompt;
-        });
-        setUnlockedPrompts(fetched);
+          const results = await Promise.all(
+            chunks.map(chunk => getDocs(query(promptsRef, where('__name__', 'in', chunk))))
+          );
+          prompts = results.flatMap(snap =>
+            snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Prompt))
+          );
+        }
+
+        // 2. Fetch AI Creations
+        const creationsRef = collection(db, 'creations');
+        const cq = query(creationsRef, where('userId', '==', user?.uid));
+        const cSnapshot = await getDocs(cq);
+        const creations = cSnapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          title: `Creation ${doc.id.slice(-4)}`, // Fallback title
+          description: (doc.data() as any).prompt || 'AI Generated Asset',
+          isCreation: true 
+        }));
+
+        setUnlockedPrompts([...prompts, ...creations as any]);
       } catch (err) {
         console.error("Error fetching vault:", err);
       } finally {
@@ -54,7 +62,7 @@ export default function MyVaultPage() {
     }
 
     if (profile) fetchVault();
-  }, [profile]);
+  }, [profile, user]);
 
   const filteredPrompts = unlockedPrompts.filter(p =>
     p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -109,7 +117,7 @@ export default function MyVaultPage() {
             You haven't unlocked any premium prompts yet. Start exploring our marketplace to build your library.
           </p>
           <Link
-            to="/explore"
+            to={prefix("/explore")}
             className="btn-primary btn-lg"
           >
             <Sparkles className="w-5 h-5" />

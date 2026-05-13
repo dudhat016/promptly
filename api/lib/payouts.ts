@@ -56,22 +56,31 @@ export async function sendSuccessEmail(email: string, name: string, planName: st
 export async function awardAffiliateCommission(customerId: string, orderAmount: any, orderId: string, currency: string, referralCode: string) {
   try {
     const db = admin.firestore();
-    
-    // 1. Fetch Dynamic Commission Rate
+
+    // 1. Fetch commission config (rate + fee deductions)
     const marketingSnap = await db.collection("configs").doc("marketing").get();
-    const marketingConfig = marketingSnap.exists ? marketingSnap.data() : { referralCommission: 25 };
-    const commissionPercent = Number(marketingConfig?.referralCommission || 25) / 100;
+    const marketingConfig = marketingSnap.exists ? marketingSnap.data() : {};
+    const commissionPercent = Number(marketingConfig?.referralCommission ?? 25) / 100;
+    const paymentFeePercent = Number(marketingConfig?.paymentFeePercent ?? 2) / 100;
+    const platformFeePercent = Number(marketingConfig?.platformFeePercent ?? 0) / 100;
 
     // 2. Find Referrer
     const referrerSnap = await db.collection("users")
       .where("referralCode", "==", referralCode)
       .limit(1)
       .get();
-    
+
     if (referrerSnap.empty) return;
 
     const referrerDoc = referrerSnap.docs[0];
-    const commissionAmount = Number(orderAmount) * commissionPercent;
+    const gross = Number(orderAmount);
+
+    // Net after payment gateway fee, then apply commission, then deduct platform fee
+    const paymentFee = gross * paymentFeePercent;
+    const netAfterFees = gross - paymentFee;
+    const grossCommission = netAfterFees * commissionPercent;
+    const platformFee = grossCommission * platformFeePercent;
+    const commissionAmount = Math.max(0, grossCommission - platformFee);
 
     // 3. Award Earnings
     await referrerDoc.ref.update({
@@ -79,18 +88,25 @@ export async function awardAffiliateCommission(customerId: string, orderAmount: 
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // 4. Log Transaction for Transparency
+    // 4. Log Transaction with full fee breakdown
     await db.collection("referral_commissions").add({
       referrerId: referrerDoc.id,
       buyerId: customerId,
       orderId: orderId,
-      amount: commissionAmount,
-      commissionPercent: commissionPercent * 100,
+      grossSaleAmount: gross,
+      paymentFee: parseFloat(paymentFee.toFixed(4)),
+      platformFee: parseFloat(platformFee.toFixed(4)),
+      grossCommission: parseFloat(grossCommission.toFixed(4)),
+      netCommission: parseFloat(commissionAmount.toFixed(4)),
+      commissionRate: commissionPercent * 100,
+      paymentFeeRate: paymentFeePercent * 100,
+      platformFeeRate: platformFeePercent * 100,
       currency: currency,
+      status: 'awarded',
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    console.log(`[Affiliate] Awarded $${commissionAmount.toFixed(2)} to ${referrerDoc.id} for order ${orderId}`);
+    console.log(`[Affiliate] Awarded ${commissionAmount.toFixed(2)} ${currency} to ${referrerDoc.id} for order ${orderId} (gross: ${gross}, paymentFee: ${paymentFee.toFixed(2)}, platformFee: ${platformFee.toFixed(2)})`);
   } catch (err) {
     console.error("Affiliate Commission Error:", err);
   }

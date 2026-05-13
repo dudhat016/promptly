@@ -3,14 +3,17 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePath } from '../hooks/usePath';
 import { PricingPlan } from '../types';
 import { useConfig } from '../hooks/useConfig';
 import { useCurrency } from '../context/CurrencyContext';
-import Button from '../components/ui/Button';
+import Button from '../components/primitives/Button';
+import PageContainer from '../components/layout/PageContainer';
 
 export default function PricingPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { prefix } = usePath();
   const { config, loading: configLoading } = useConfig();
   const { currency, symbol, exchangeRate } = useCurrency();
   const plans = config.plans;
@@ -18,7 +21,9 @@ export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const handleSubscribe = (plan: PricingPlan) => {
-    navigate(`/checkout?plan=${plan.id}&cycle=${billingCycle}`);
+    const refCode = new URLSearchParams(window.location.search).get('ref') || localStorage.getItem('referralCode');
+    const refParam = refCode ? `&ref=${refCode}` : '';
+    navigate(prefix(`/checkout?plan=${plan.id}&cycle=${billingCycle}${refParam}`));
   };
 
   if (configLoading) return (
@@ -35,17 +40,14 @@ export default function PricingPage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] pointer-events-none"
           style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.14) 0%, transparent 70%)' }} />
 
-        <div className="container mx-auto px-4 relative z-10">
+        <PageContainer className="relative z-10" ignoreCustomizer>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 bg-primary/10 border border-primary/25 text-primary">
             <Sparkles className="w-3.5 h-3.5" />
             Simple, transparent pricing
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4 tracking-tight leading-[1.1]">
             Invest in better<br />
-            <span style={{
-              background: 'linear-gradient(135deg, hsl(258,90%,70%), hsl(280,100%,75%))',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-            }}>AI results</span>
+            <span className="gradient-text">AI results</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-10">
             Start free. Upgrade only when you're ready. No hidden fees, no contracts.
@@ -77,14 +79,13 @@ export default function PricingPage() {
               </Button>
             ))}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* ── Promotional banners ── */}
       <AnimatePresence mode="wait">
         {config?.activePromotion === 'trial' && !profile?.trialUsed && (
-          <motion.div key="trial-banner" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="container mx-auto px-4 max-w-4xl mb-8">
+          <PageContainer className="mb-8" ignoreCustomizer>
             <div className="rounded-xl p-5 flex items-center justify-between border"
               style={{ background: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.2)' }}>
               <div className="flex items-center gap-4">
@@ -102,12 +103,11 @@ export default function PricingPage() {
               </div>
               <span className="hidden md:block text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">Trial Available</span>
             </div>
-          </motion.div>
+          </PageContainer>
         )}
 
         {config?.activePromotion === 'yearly_bonus' && (
-          <motion.div key="yearly-banner" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="container mx-auto px-4 max-w-4xl mb-8">
+          <PageContainer className="mb-8" ignoreCustomizer>
             <div className="rounded-xl p-5 flex items-center justify-between border"
               style={{ background: 'rgba(16,185,129,0.06)', borderColor: 'rgba(16,185,129,0.2)' }}>
               <div className="flex items-center gap-4">
@@ -129,13 +129,13 @@ export default function PricingPage() {
               </div>
               <span className="hidden md:block text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest">Best Value</span>
             </div>
-          </motion.div>
+          </PageContainer>
         )}
       </AnimatePresence>
 
       {/* ── Plan cards ── */}
-      <div className="container mx-auto px-4 pb-20">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
+      <PageContainer className="pb-20" ignoreCustomizer>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {plans.map((plan, i) => {
             const discount = plan.monthlyPrice > 0
               ? Math.round(((plan.monthlyPrice * 12 - plan.yearlyPrice) / (plan.monthlyPrice * 12)) * 100)
@@ -160,7 +160,7 @@ export default function PricingPage() {
                 {plan.isPopular && (
                   <>
                     <div className="absolute top-0 left-0 right-0 h-px"
-                      style={{ background: 'linear-gradient(90deg, transparent, hsl(258,90%,60%), transparent)' }} />
+                      style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary)), transparent)' }} />
                     <div className="absolute top-4 right-4">
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
                         style={{ background: 'rgba(139,92,246,0.2)', color: 'rgb(167,139,250)', border: '1px solid rgba(139,92,246,0.3)' }}>
@@ -242,7 +242,7 @@ export default function PricingPage() {
             </div>
           ))}
         </div>
-      </div>
+      </PageContainer>
     </div>
   );
 }

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { AdminPageHeader } from '../../components/admin';
-import Button from '../../components/ui/Button';
+import { usePath } from '../../hooks/usePath';
+import Button from '../../components/primitives/Button';
+import Badge from '../../components/primitives/Badge';
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -78,6 +80,7 @@ function buildLast7Days(users: any[]) {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdminOverview() {
+  const { prefix } = usePath();
   const [stats, setStats] = useState({ totalUsers: 0, totalPrompts: 0, proUsers: 0, totalCopies: 0, totalViews: 0, estimatedRevenue: 0, newUsersWeek: 0 });
   const [loading, setLoading] = useState(true);
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
@@ -169,10 +172,9 @@ export default function AdminOverview() {
               <h3 className="font-bold text-foreground">User Growth</h3>
               <p className="text-xs text-muted-foreground mt-0.5">New signups — last 7 days</p>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-              <TrendingUp className="w-3 h-3" />
+            <Badge variant="success" size="sm" dot pulse>
               +{stats.newUsersWeek} this week
-            </div>
+            </Badge>
           </div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={growthData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -209,7 +211,7 @@ export default function AdminOverview() {
             </div>
             <Button
               as={Link}
-              to="/admin/prompts"
+              to={prefix("/admin/prompts")}
               variant="ghost"
               size="sm"
               rightIcon={ArrowUpRight}
@@ -249,7 +251,7 @@ export default function AdminOverview() {
               <h3 className="font-bold text-foreground">Revenue</h3>
               <Button
                 as={Link}
-                to="/admin/revenue"
+                to={prefix("/admin/revenue")}
                 variant="ghost"
                 size="sm"
                 rightIcon={ArrowUpRight}
@@ -333,7 +335,7 @@ export default function AdminOverview() {
             <h3 className="font-bold text-foreground">Recent Signups</h3>
             <Button
               as={Link}
-              to="/admin/users"
+              to={prefix("/admin/users")}
               variant="ghost"
               size="sm"
               rightIcon={ArrowUpRight}
@@ -358,11 +360,13 @@ export default function AdminOverview() {
                     <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                   </div>
                 </div>
-                <span className={`shrink-0 px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wide ${
-                  u.subscriptionStatus === 'pro' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                }`}>
+                <Badge
+                  variant={u.subscriptionStatus === 'pro' ? 'soft' : 'outline'}
+                  size="sm"
+                  className="shrink-0"
+                >
                   {u.subscriptionStatus === 'pro' ? 'Pro' : 'Free'}
-                </span>
+                </Badge>
               </div>
             ))}
             {recentUsers.length === 0 && (

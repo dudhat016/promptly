@@ -1,28 +1,36 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { db } from '../../lib/firebase';
+import { db, storage } from '../../lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { User, Lock, Coins, ShieldCheck, Zap } from 'lucide-react';
-import Input from '../../components/ui/Input';
-import Textarea from '../../components/ui/Textarea';
+import Input from '../../components/primitives/Input';
+import Textarea from '../../components/primitives/Textarea';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
-import ImageUpload from '../../components/ui/ImageUpload';
-import Button from '../../components/ui/Button';
+import ImageUpload from '../../components/forms/ImageUpload';
+import Button from '../../components/primitives/Button';
 
 export default function AccountSettings() {
   const { user, profile, isPro } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
   const [upiId, setUpiId] = useState(profile?.payoutMethods?.upiId || '');
   const [paypalEmail, setPaypalEmail] = useState(profile?.payoutMethods?.paypalEmail || '');
   const [bankDetails, setBankDetails] = useState(profile?.payoutMethods?.bankDetails || '');
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!displayName.trim()) newErrors.displayName = "Display name is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !validate()) return;
     setIsSaving(true);
     try {
       await updateDoc(doc(db, 'users', user.uid), {
@@ -35,6 +43,7 @@ export default function AccountSettings() {
         updatedAt: serverTimestamp()
       });
       toast.success('Settings updated successfully!');
+      setErrors({});
     } catch (err) {
       console.error(err);
       toast.error('Failed to update profile');
@@ -111,15 +120,20 @@ export default function AccountSettings() {
 
         <form onSubmit={handleUpdateProfile} className="space-y-8">
           <div className="grid md:grid-cols-2 gap-8">
-            <Input 
+            <Input
               label="Display Name"
               id="displayName"
               name="displayName"
-              type="text" 
+              type="text"
+              error={errors.displayName}
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              onChange={(e) => {
+                setDisplayName(e.target.value);
+                if (errors.displayName) setErrors({...errors, displayName: ''});
+              }}
               placeholder="e.g. John Doe"
               variant="filled"
+              required
             />
             <Input 
               label="Account Email"

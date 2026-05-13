@@ -7,8 +7,9 @@ import { Gift, Award, Check, Percent } from 'lucide-react';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { toast } from 'react-hot-toast';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
+import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
+import Badge from '../../components/primitives/Badge';
 import { useMarketing } from '../../hooks/useMarketing';
 
 const formatDate = (date: any) => {
@@ -151,7 +152,9 @@ export default function AdminAffiliates() {
           Mark as Paid
         </Button>
       ) : (
-        <span className="text-xs text-muted-foreground font-bold bg-muted px-3 py-1.5 rounded-lg">All Paid</span>
+        <Badge variant="soft" size="sm" className="bg-muted text-muted-foreground border-transparent">
+          All Paid
+        </Badge>
       ),
     },
   ];

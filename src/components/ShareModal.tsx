@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Twitter, Linkedin, Facebook, Link as LinkIcon, Check, Mail, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import Button from './ui/Button';
+import Button from './primitives/Button';
 
 interface ShareModalProps {
   isOpen: boolean;

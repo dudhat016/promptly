@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Keyboard, X } from 'lucide-react';
-import Button from '../ui/Button';
+import Button from '../primitives/Button';
 
 interface AdminShortcutsModalProps {
   open: boolean;

@@ -1,36 +1,37 @@
 import { useEffect } from 'react';
-import { useMarketing } from '../hooks/useMarketing';
+import { useConfig } from '../hooks/useConfig';
 
 /**
- * Neural Marketing Scripts
- * Dynamically injects GA and FB Pixel scripts based on Admin Config.
+ * Dynamic Scripts Injection
+ * Dynamically injects GA, FB Pixel, and Custom scripts based on Global Configuration.
  */
 export default function NeuralMarketingScripts() {
-  const { marketingConfig } = useMarketing();
+  const { config } = useConfig();
 
   useEffect(() => {
-    if (!marketingConfig.analyticsEnabled) return;
-
     // 1. Inject Google Analytics
-    if (marketingConfig.gaTrackingId) {
+    if (config.googleAnalyticsId) {
       const gaScript = document.createElement('script');
       gaScript.async = true;
-      gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${marketingConfig.gaTrackingId}`;
+      gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${config.googleAnalyticsId}`;
+      gaScript.id = 'ga-script';
       document.head.appendChild(gaScript);
 
       const gaInit = document.createElement('script');
+      gaInit.id = 'ga-init-script';
       gaInit.innerHTML = `
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', '${marketingConfig.gaTrackingId}');
+        gtag('config', '${config.googleAnalyticsId}');
       `;
       document.head.appendChild(gaInit);
     }
 
     // 2. Inject Facebook Pixel
-    if (marketingConfig.fbPixelId) {
+    if (config.facebookPixelId) {
       const fbScript = document.createElement('script');
+      fbScript.id = 'fb-pixel-script';
       fbScript.innerHTML = `
         !function(f,b,e,v,n,t,s)
         {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -40,17 +41,47 @@ export default function NeuralMarketingScripts() {
         t.src=v;s=b.getElementsByTagName(e)[0];
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '${marketingConfig.fbPixelId}');
+        fbq('init', '${config.facebookPixelId}');
         fbq('track', 'PageView');
       `;
       document.head.appendChild(fbScript);
     }
 
+    // 3. Inject Custom Head Scripts
+    if (config.customHeadScripts) {
+      const headContainer = document.createElement('div');
+      headContainer.id = 'custom-head-scripts';
+      headContainer.innerHTML = config.customHeadScripts;
+      // Extract and execute scripts manually since innerHTML doesn't execute them
+      const scripts = headContainer.querySelectorAll('script');
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+        document.head.appendChild(newScript);
+      });
+    }
+
+    // 4. Inject Custom Footer Scripts
+    if (config.customFooterScripts) {
+      const footerContainer = document.createElement('div');
+      footerContainer.id = 'custom-footer-scripts';
+      footerContainer.innerHTML = config.customFooterScripts;
+      const scripts = footerContainer.querySelectorAll('script');
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+        document.body.appendChild(newScript);
+      });
+    }
+
     return () => {
-      // Clean up scripts on unmount if necessary, 
-      // but usually these remain for the session.
+      // Optional: Cleanup scripts on unmount if needed
+      const ids = ['ga-script', 'ga-init-script', 'fb-pixel-script', 'custom-head-scripts', 'custom-footer-scripts'];
+      ids.forEach(id => document.getElementById(id)?.remove());
     };
-  }, [marketingConfig.analyticsEnabled, marketingConfig.gaTrackingId, marketingConfig.fbPixelId]);
+  }, [config.googleAnalyticsId, config.facebookPixelId, config.customHeadScripts, config.customFooterScripts]);
 
   return null;
 }

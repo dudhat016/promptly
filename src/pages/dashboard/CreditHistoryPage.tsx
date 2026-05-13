@@ -8,6 +8,10 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
+import Timeline from '../../components/data/Timeline';
+import Skeleton from '../../components/feedback/Skeleton';
+import { cn } from '../../lib/utils';
 
 interface Transaction {
   id: string;
@@ -39,6 +43,7 @@ function formatDate(ts: any): string {
 
 export default function CreditHistoryPage() {
   const { user, profile, isPro } = useAuth();
+  const { prefix } = usePath();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,9 +85,8 @@ export default function CreditHistoryPage() {
         </div>
         {!isPro && (
           <Link
-            to="/pricing"
-            className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
-            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
+            to={prefix("/pricing")}
+            className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm gradient-cta transition-all"
           >
             <Zap className="w-4 h-4" />
             Get More Credits
@@ -110,9 +114,9 @@ export default function CreditHistoryPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-20 bg-muted/50 rounded-2xl animate-pulse" />
+            <Skeleton key={i} className="h-24" />
           ))}
         </div>
       ) : transactions.length === 0 ? (
@@ -129,51 +133,39 @@ export default function CreditHistoryPage() {
             Your credit usage and top-ups will appear here as you interact with the platform.
           </p>
           <Link
-            to="/explore"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
-            style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}
+            to={prefix("/explore")}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm gradient-cta transition-all"
           >
             <Coins className="w-4 h-4" />
             Explore Prompts
           </Link>
         </motion.div>
       ) : (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-          <div className="divide-y divide-border">
-            {transactions.map(tx => {
-              const config = TX_CONFIG[tx.type] ?? TX_CONFIG['topup'];
-              const Icon = config.icon;
-              const isCredit = config.sign === '+';
-              return (
-                <motion.div
-                  key={tx.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="p-5 hover:bg-muted/30 transition-colors flex items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${config.color}`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{config.label(tx)}</p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(tx.createdAt)}
-                        {tx.balanceAfter !== undefined && (
-                          <span className="text-muted-foreground/60 ml-1">· balance: {tx.balanceAfter}</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`text-lg font-bold tabular-nums ${isCredit ? 'text-emerald-600' : 'text-rose-500'}`}>
+        <Timeline
+          items={transactions.map(tx => {
+            const config = TX_CONFIG[tx.type] ?? TX_CONFIG['topup'];
+            return {
+              id: tx.id,
+              title: config.label(tx),
+              timestamp: formatDate(tx.createdAt),
+              icon: config.icon as any,
+              color: config.sign === '+' ? 'success' : 'error',
+              description: (
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {tx.balanceAfter !== undefined && `Ledger Balance: ${tx.balanceAfter}`}
+                  </span>
+                  <span className={cn(
+                    "text-xl font-black tabular-nums",
+                    config.sign === '+' ? 'text-emerald-600' : 'text-rose-500'
+                  )}>
                     {config.sign}{tx.amount}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
+                  </span>
+                </div>
+              )
+            };
+          })}
+        />
       )}
     </div>
   );

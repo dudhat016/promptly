@@ -3,10 +3,9 @@ import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Target, Save, BarChart3, Facebook, DollarSign, ShieldCheck, Info } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
-import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
+import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
 import { cn } from '../../lib/utils';
 
 export default function AdminMarketingSettings() {
@@ -58,11 +57,7 @@ export default function AdminMarketingSettings() {
   if (loading) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-8"
-    >
+    <div className="space-y-8">
       <AdminPageHeader
         label="Marketing"
         labelIcon={Target}
@@ -213,6 +208,6 @@ export default function AdminMarketingSettings() {
           {saving ? 'Synchronizing...' : 'Save Marketing Engine'}
         </Button>
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -4,9 +4,9 @@ import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore'
 import { Layout, Save, Trash2, Globe, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { toast } from 'react-hot-toast';
-import Input from '../../components/ui/Input';
-import Textarea from '../../components/ui/Textarea';
-import Button from '../../components/ui/Button';
+import Input from '../../components/primitives/Input';
+import Textarea from '../../components/primitives/Textarea';
+import Button from '../../components/primitives/Button';
 import { cn } from '../../lib/utils';
 
 interface SitePage {
@@ -101,7 +101,7 @@ export default function AdminSitePages() {
                 className={cn(
                   "w-full flex items-center justify-between p-6 rounded-md border transition-all text-left h-auto",
                   editingPage?.id === dp.id 
-                    ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-[1.02] hover:bg-primary/90' 
+                    ? 'bg-primary border-primary text-primary-foreground shadow-xl shadow-primary/20 scale-[1.02] hover:bg-primary/90' 
                     : 'bg-card border-border text-muted-foreground hover:border-primary/20 hover:bg-muted/10'
                 )}
               >
@@ -131,7 +131,7 @@ export default function AdminSitePages() {
               className={cn(
                 "w-full flex items-center justify-between p-6 rounded-md border transition-all text-left h-auto",
                 editingPage?.id === p.id 
-                  ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20 hover:bg-primary/90' 
+                  ? 'bg-primary border-primary text-primary-foreground shadow-xl shadow-primary/20 hover:bg-primary/90' 
                   : 'bg-card border-border text-muted-foreground hover:border-primary/20 hover:bg-muted/10'
               )}
             >

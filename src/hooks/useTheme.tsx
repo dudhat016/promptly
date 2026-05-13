@@ -1,73 +1,30 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import React from 'react';
+import { useUI, UIProvider } from '../contexts/UIProvider';
 
-type Theme = 'dark' | 'light' | 'system';
-
-interface ThemeProviderProps {
+/**
+ * Compatibility wrapper for the legacy ThemeProvider.
+ * Now uses UIProvider internally.
+ */
+export function ThemeProvider({ 
+  children 
+}: { 
   children: React.ReactNode;
-  defaultTheme?: Theme;
+  defaultTheme?: string;
   storageKey?: string;
+}) {
+  return <UIProvider>{children}</UIProvider>;
 }
 
-interface ThemeProviderState {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-}
+/**
+ * Compatibility hook for the legacy useTheme.
+ * Maps to the new UIProvider context.
+ */
+export const useTheme = () => {
+  const { config, setConfig } = useUI();
 
-const initialState: ThemeProviderState = {
-  theme: 'system',
-  setTheme: () => null,
+  return {
+    theme: config.mode,
+    setTheme: (mode: 'light' | 'dark' | 'system') => setConfig({ mode }),
+  };
 };
 
-const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
-
-export function ThemeProvider({
-  children,
-  defaultTheme = 'system',
-  storageKey = 'promptly-ui-theme',
-  ...props
-}: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  );
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-
-    root.classList.remove('light', 'dark');
-
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
-        .matches
-        ? 'dark'
-        : 'light';
-
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
-  }, [theme]);
-
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
-  };
-
-  return (
-    <ThemeProviderContext.Provider {...props} value={value}>
-      {children}
-    </ThemeProviderContext.Provider>
-  );
-}
-
-export const useTheme = () => {
-  const context = useContext(ThemeProviderContext);
-
-  if (context === undefined)
-    throw new Error('useTheme must be used within a ThemeProvider');
-
-  return context;
-}

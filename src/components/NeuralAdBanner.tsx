@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useMarketing } from '../hooks/useMarketing';
 import { ShieldCheck, Info } from 'lucide-react';
@@ -33,7 +33,7 @@ export default function NeuralAdBanner({ slot, format = 'auto', className = "" }
       const adsbygoogle = (window as any).adsbygoogle || [];
       adsbygoogle.push({});
     } catch (e) {
-      console.error("âŒ [Neural Ads] Ad injection failed:", e);
+      console.error("❌ [Neural Ads] Ad injection failed:", e);
     }
   }, [activeSlot]);
 

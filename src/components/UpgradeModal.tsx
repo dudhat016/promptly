@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
-import Button from './ui/Button';
+import Button from './primitives/Button';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -55,7 +55,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             style={{ boxShadow: '0 0 60px rgba(139,92,246,0.15)' }}
           >
             <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
-              style={{ background: 'linear-gradient(90deg, transparent, hsl(258,90%,56%), transparent)' }} />
+              style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary)), transparent)' }} />
 
             <Button
               onClick={onClose}
@@ -67,9 +67,8 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             </Button>
 
             <div className="text-center mb-7">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ background: 'linear-gradient(135deg, hsl(258,90%,56%), hsl(280,90%,60%))' }}>
-                <Sparkles className="w-7 h-7 text-white" />
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 gradient-cta">
+                <Sparkles className="w-7 h-7" />
               </div>
               <h2 className="text-2xl font-bold text-foreground mb-2">
                 {isTrial ? `Start Your Free ${config.freeTrialDays}-Day Trial` : 'Unlock Everything'}

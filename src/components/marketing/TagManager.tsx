@@ -1,13 +1,14 @@
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Tag as TagIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Link } from 'react-router-dom';
-import Button from '../ui/Button';
+import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
 import { Tag } from '../../types';
+import DataTable, { DataTableColumn } from '../admin/DataTable';
 
 export default function TagManager() {
+  const { prefix } = usePath();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,71 +26,58 @@ export default function TagManager() {
     fetchTags();
   }, []);
 
-  const handleDeleteTag = async (id: string) => {
+  const handleDeleteTag = async (tag: Tag) => {
     if (!confirm('Delete this tag?')) return;
     try {
-      await deleteDoc(doc(db, 'marketing_tags', id));
-      setTags(prev => prev.filter(t => t.id !== id));
+      await deleteDoc(doc(db, 'marketing_tags', tag.id));
+      setTags(prev => prev.filter(t => t.id !== tag.id));
       toast.success('Tag deleted');
     } catch (err) {
       toast.error('Failed to delete tag');
     }
   };
 
-  if (loading) return <div className="p-20 text-center text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Loading Tags...</div>;
+  const columns: DataTableColumn<Tag>[] = [
+    {
+      key: 'name',
+      header: 'Tag Identity',
+      sortable: true,
+      sortValue: t => t.name,
+      searchValue: t => t.name,
+      render: t => (
+        <div className="flex items-center gap-4">
+          <div className="w-4 h-4 rounded-full shadow-inner border border-white/10 shrink-0" style={{ backgroundColor: t.color }} />
+          <span className="font-semibold text-foreground text-md">{t.name}</span>
+        </div>
+      ),
+      csvValue: t => t.name,
+    },
+    {
+      key: 'description',
+      header: 'Description',
+      searchValue: t => t.description || '',
+      render: t => (
+        <p className="text-xs font-medium text-muted-foreground line-clamp-1 max-w-md">{t.description || 'No description provided'}</p>
+      ),
+      csvValue: t => t.description || '',
+    }
+  ];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground border-b border-border">
-            <th className="p-8">Tag Name</th>
-            <th className="p-8">Description</th>
-            <th className="p-8 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {tags.map(tag => (
-            <tr key={tag.id} className="tr group">
-              <td className="p-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
-                  <span className="font-bold text-foreground">{tag.name}</span>
-                </div>
-              </td>
-              <td className="p-8">
-                <p className="text-sm text-muted-foreground line-clamp-1 max-w-md">{tag.description || 'No description provided'}</p>
-              </td>
-              <td className="p-8 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    as={Link}
-                    to={`/admin/marketing/tags/edit/${tag.id}`}
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-primary"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    onClick={() => handleDeleteTag(tag.id)} 
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-rose-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {tags.length === 0 && (
-            <tr>
-              <td colSpan={3} className="p-20 text-center text-muted-foreground font-medium italic">No marketing tags found.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={tags}
+      rowKey={t => t.id}
+      loading={loading}
+      emptyIcon={TagIcon}
+      emptyTitle="No Labels Defined"
+      emptyMessage="Create tags to organize your marketing audience."
+      actions={{
+        edit: t => prefix(`/admin/marketing/tags/${t.id}/edit`),
+        onDelete: handleDeleteTag,
+      }}
+      searchPlaceholder="Search tags..."
+      exportFilename="marketing_tags"
+    />
   );
 }

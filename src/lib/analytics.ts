@@ -23,17 +23,24 @@ export async function trackEvent(
   userId?: string, 
   metadata: EventMetadata = {}
 ) {
-  try {
-    await addDoc(collection(db, 'analytics'), {
-      event: eventName,
-      userId: userId || 'anonymous',
-      metadata,
-      timestamp: serverTimestamp(),
-      userAgent: navigator.userAgent,
-      path: window.location.pathname
-    });
+    // 1. Firestore Behavioral Tracking (Neural Insight)
+    try {
+      await addDoc(collection(db, 'analytics'), {
+        event: eventName,
+        userId: userId || 'anonymous',
+        metadata,
+        timestamp: serverTimestamp(),
+        userAgent: navigator.userAgent,
+        path: window.location.pathname
+      });
+    } catch (dbErr) {
+      // Non-blocking: Log but don't stop the funnel
+      if (import.meta.env.DEV) {
+        console.warn("⚠️ [Analytics] Firestore write failed (likely permissions). Funnel tracking will continue.", dbErr);
+      }
+    }
     
-    // 2. Facebook Pixel Funnel Integration
+    // 2. Facebook Pixel Funnel Integration (Mission Critical)
     if ((window as any).fbq) {
       switch (eventName) {
         case 'start_checkout':
@@ -63,7 +70,4 @@ export async function trackEvent(
     if (import.meta.env.DEV) {
       console.log(`📊 [Analytics] Event: ${eventName}`, metadata);
     }
-  } catch (err) {
-    console.error("❌ [Analytics] Failed to track event:", err);
-  }
 }

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Contact, Segment } from '../../types';
@@ -6,11 +6,13 @@ import { Filter } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import SegmentBuilder from '../../components/marketing/SegmentBuilder';
+import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
 
 export default function AdminMarketingSegmentForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
   
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [segment, setSegment] = useState<Partial<Segment> | null>(null);
@@ -50,7 +52,7 @@ export default function AdminMarketingSegmentForm() {
         await setDoc(doc(db, 'marketing_segments', newId), { ...updatedSegment, id: newId });
       }
       toast.success(id && id !== 'new' ? "Segment updated" : "New segment created");
-      navigate('/admin/marketing?tab=segment');
+      navigate(prefix('/admin/marketing?tab=segment'));
     } catch (err) {
       console.error(err);
       toast.error('Failed to save segment');
@@ -58,7 +60,7 @@ export default function AdminMarketingSegmentForm() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <>
       <AdminPageHeader
         label="Marketing CRM"
         labelIcon={Filter}
@@ -73,9 +75,9 @@ export default function AdminMarketingSegmentForm() {
           segment={segment} 
           contacts={contacts} 
           onSave={handleSave} 
-          onCancel={() => navigate('/admin/marketing?tab=segment')} 
+          onCancel={() => navigate(prefix('/admin/marketing?tab=segment'))} 
         />
       )}
-    </div>
+    </>
   );
 }

@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { toast } from 'react-hot-toast';
 import { Mail, Lock, LogIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Input from '../ui/Input';
-import Button from '../ui/Button';
+import Input from '../primitives/Input';
+import Button from '../primitives/Button';
 import { signInWithEmail, signInWithGoogle } from '../../lib/firebase';
 
 const loginSchema = z.object({
@@ -49,6 +49,7 @@ export default function LoginForm() {
           {...register('email')}
           error={errors.email?.message}
           variant="filled"
+          required
         />
         <div className="space-y-2">
           <Input
@@ -59,6 +60,7 @@ export default function LoginForm() {
             {...register('password')}
             error={errors.password?.message}
             variant="filled"
+            required
           />
           <div className="text-right">
             <Link

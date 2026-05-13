@@ -11,7 +11,9 @@ export function useMarketing() {
     analyticsEnabled: false,
     minWithdrawalAmount: 50,
     fraudScoreThreshold: 70,
-    referralCommission: 25
+    referralCommission: 25,
+    paymentFeePercent: 2,
+    platformFeePercent: 0
   });
   const [loading, setLoading] = useState(true);
 

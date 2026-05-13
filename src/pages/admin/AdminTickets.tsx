@@ -5,10 +5,11 @@ import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
-import Select from '../../components/ui/Select';
-import Input from '../../components/ui/Input';
-import Textarea from '../../components/ui/Textarea';
-import Button from '../../components/ui/Button';
+import Select from '../../components/primitives/Select';
+import Input from '../../components/primitives/Input';
+import Textarea from '../../components/primitives/Textarea';
+import Button from '../../components/primitives/Button';
+import Badge from '../../components/primitives/Badge';
 import { cn } from '../../lib/utils';
 
 interface Ticket {
@@ -143,19 +144,31 @@ export default function AdminTickets() {
                     : "bg-card border-border text-foreground hover:border-primary/30"
                 )}
               >
-                <div className="flex items-center justify-between mb-1.5 w-full">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                    selectedTicket?.id === ticket.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  }`}>
+                <div className="flex items-center justify-between mb-2 w-full">
+                  <Badge 
+                    variant={
+                      ticket.status === 'open' ? 'error' :
+                      ticket.status === 'pending' ? 'warning' : 'success'
+                    }
+                    size="sm"
+                    dot
+                    className={selectedTicket?.id === ticket.id ? 'bg-primary-foreground/20 text-primary-foreground border-transparent' : ''}
+                  >
                     {ticket.status}
-                  </span>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                    ticket.priority === 'high'
-                      ? selectedTicket?.id === ticket.id ? 'text-primary-foreground/80' : 'text-rose-500'
-                      : selectedTicket?.id === ticket.id ? 'text-primary-foreground/60' : 'text-muted-foreground'
-                  }`}>
+                  </Badge>
+                  <Badge 
+                    variant={
+                      ticket.priority === 'high' ? 'error' :
+                      ticket.priority === 'medium' ? 'warning' : 'info'
+                    }
+                    size="sm"
+                    className={cn(
+                      "lowercase",
+                      selectedTicket?.id === ticket.id ? 'bg-primary-foreground/10 text-primary-foreground' : ''
+                    )}
+                  >
                     {ticket.priority}
-                  </span>
+                  </Badge>
                 </div>
                 <h3 className="text-sm font-bold truncate mb-0.5 w-full">{ticket.subject}</h3>
                 <p className={`text-[11px] truncate w-full ${selectedTicket?.id === ticket.id ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>

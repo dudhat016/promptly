@@ -1,7 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, Home, RefreshCcw, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
-import Button from './ui/Button';
+import Button from './primitives/Button';
 
 interface Props {
   children?: ReactNode;

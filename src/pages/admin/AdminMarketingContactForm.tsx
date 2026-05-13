@@ -5,19 +5,22 @@ import { Contact, Tag } from '../../types';
 import { Save, Users } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
 
-import Select from '../../components/ui/Select';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
+import Select from '../../components/primitives/Select';
+import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
 import { cn } from '../../lib/utils';
 
 export default function AdminMarketingContactForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { prefix } = usePath();
 
   const [tags, setTags] = useState<Tag[]>([]);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [contact, setContact] = useState<Partial<Contact>>({
     email: '', displayName: '', tags: [], status: 'active', customFields: {}
   });
@@ -37,8 +40,22 @@ export default function AdminMarketingContactForm() {
     loadData();
   }, [id]);
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!contact.email?.trim()) {
+      newErrors.email = "Email address is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+      newErrors.email = "Invalid email format";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setSaving(true);
     try {
       if (id && id !== 'new') {
@@ -48,7 +65,7 @@ export default function AdminMarketingContactForm() {
         await setDoc(doc(db, 'marketing_contacts', newId), { ...contact, id: newId, createdAt: new Date() });
       }
       toast.success(id && id !== 'new' ? "Contact updated" : "New contact created");
-      navigate('/admin/marketing?tab=contact');
+      navigate(prefix('/admin/marketing?tab=contact'));
     } catch (err) {
       console.error(err);
       toast.error("Failed to save contact");
@@ -66,10 +83,9 @@ export default function AdminMarketingContactForm() {
     }
   };
 
-  const inputCls = "w-full bg-card border border-border rounded-2xl p-4 text-foreground focus:outline-none focus:border-primary transition-all";
 
   return (
-    <div className="max-w-4xl">
+    <>
       <AdminPageHeader
         label="Marketing CRM"
         labelIcon={Users}
@@ -86,9 +102,12 @@ export default function AdminMarketingContactForm() {
               id="contactEmail"
               name="contactEmail"
               type="email"
-              required
+              error={errors.email}
               value={contact.email || ''}
-              onChange={e => setContact({ ...contact, email: e.target.value })}
+              onChange={e => {
+                setContact({ ...contact, email: e.target.value });
+                if (errors.email) setErrors({ ...errors, email: '' });
+              }}
               variant="filled"
             />
             <Input
@@ -103,17 +122,17 @@ export default function AdminMarketingContactForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Status</label>
-            <Select
-              value={contact.status || 'active'}
-              onChange={val => setContact({ ...contact, status: val as any })}
-              options={[
-                { label: 'Active', value: 'active', description: 'Contact is subscribed and receiving emails' },
-                { label: 'Unsubscribed', value: 'unsubscribed', description: 'User opted out of marketing' },
-                { label: 'Bounced', value: 'bounced', description: 'Email delivery failed' }
-              ]}
-              isSearchable={false}
-            />
+          <Select
+            label="Status"
+            value={contact.status || 'active'}
+            onChange={val => setContact({ ...contact, status: val as any })}
+            options={[
+              { label: 'Active', value: 'active', description: 'Contact is subscribed and receiving emails' },
+              { label: 'Unsubscribed', value: 'unsubscribed', description: 'User opted out of marketing' },
+              { label: 'Bounced', value: 'bounced', description: 'Email delivery failed' }
+            ]}
+            isSearchable={false}
+          />
           </div>
 
           <div>
@@ -157,7 +176,7 @@ export default function AdminMarketingContactForm() {
             </Button>
             <Button
               as={Link}
-              to="/admin/marketing?tab=contact"
+              to={prefix("/admin/marketing?tab=contact")}
               variant="secondary"
               size="lg"
               className="px-8 font-bold"
@@ -167,6 +186,6 @@ export default function AdminMarketingContactForm() {
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }

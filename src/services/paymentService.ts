@@ -1,5 +1,5 @@
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 
 declare const Cashfree: any;
 
@@ -27,10 +27,17 @@ export const PaymentService = {
     billingCycle: string;
   }) {
     try {
-      // 1. Call your backend to create a Cashfree Order and get payment_session_id
+      // 1. Get Firebase ID token for backend auth
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Not authenticated');
+
+      // 2. Call your backend to create a Cashfree Order and get payment_session_id
       const response = await fetch('/api/payments/cashfree/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
         body: JSON.stringify(orderData)
       });
 

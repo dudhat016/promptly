@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
-import PageShell from '../../components/ui/PageShell';
+import PageShell from '../../components/navigation/PageShell';
 
 export default function SettingsLayout() {
   return (

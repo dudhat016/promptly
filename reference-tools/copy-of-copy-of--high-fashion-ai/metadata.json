@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Copy of  High Fashion AI",
+  "description": "An AI-powered fashion assistant that provides style advice, edits photos, and offers a real-time voice concierge service. Leveraging the power of Gemini, High Fashion AI is your personal stylist.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
