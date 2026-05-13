@@ -52,9 +52,10 @@ export const PaymentService = {
       });
 
       // 3. Trigger Checkout
+      const lng = window.location.pathname.split('/')[1] || 'en';
       await cashfree.checkout({
         paymentSessionId: payment_session_id,
-        returnUrl: `${window.location.origin}/checkout/verify?order_id={order_id}`
+        returnUrl: `${window.location.origin}/${lng}/checkout/verify?order_id={order_id}`
       });
 
       return { success: true };

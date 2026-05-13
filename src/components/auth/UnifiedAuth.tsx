@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { signInWithEmail, signInWithGoogle, signUpWithEmail } from '../../lib/firebase';
+import { usePath } from '../../hooks/usePath';
 import Input from '../primitives/Input';
 import Button from '../primitives/Button';
 import { cn } from '../../lib/utils';
@@ -14,6 +15,7 @@ interface UnifiedAuthProps {
 }
 
 export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFooter = false }: UnifiedAuthProps) {
+  const { prefix } = usePath();
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -96,7 +98,7 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
           />
           {isLogin && (
             <div className="text-right">
-              <Link to="/forgot-password" title="Reset your password" className="text-xs font-medium uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+              <Link to={prefix('/forgot-password')} title="Reset your password" className="text-xs font-medium uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
                 Forgot Password?
               </Link>
             </div>

@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import Input from '../primitives/Input';
 import Button from '../primitives/Button';
 import { signInWithEmail, signInWithGoogle } from '../../lib/firebase';
+import { usePath } from '../../hooks/usePath';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid professional email'),
@@ -16,6 +17,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
+  const { prefix } = usePath();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
@@ -64,7 +66,7 @@ export default function LoginForm() {
           />
           <div className="text-right">
             <Link
-              to="/forgot-password"
+              to={prefix('/forgot-password')}
               className="text-xs font-medium uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
             >
               Forgot Password?
@@ -105,7 +107,7 @@ export default function LoginForm() {
 
       <p className="text-center text-sm font-medium text-muted-foreground">
         Don't have an account?{' '}
-        <Link to="/register" className="text-primary hover:underline">
+        <Link to={prefix('/register')} className="text-primary hover:underline">
           Create one for free
         </Link>
       </p>

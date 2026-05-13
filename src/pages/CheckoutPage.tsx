@@ -244,7 +244,7 @@ export default function CheckoutPage() {
 
         <Button
           as={Link}
-          to="/pricing"
+          to={prefix('/pricing')}
           variant="ghost"
           size="sm"
           leftIcon={ArrowLeft}

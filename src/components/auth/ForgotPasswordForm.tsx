@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom';
 import Input from '../primitives/Input';
 import Button from '../primitives/Button';
 import { sendPasswordReset } from '../../lib/firebase';
+import { usePath } from '../../hooks/usePath';
 
 export default function ForgotPasswordForm() {
+  const { prefix } = usePath();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +48,7 @@ export default function ForgotPasswordForm() {
           </p>
         </div>
         <Link 
-          to="/login" 
+          to={prefix('/login')} 
           className="inline-flex items-center gap-2 text-primary font-bold text-sm hover:gap-3 transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -91,7 +93,7 @@ export default function ForgotPasswordForm() {
 
       <p className="text-center">
         <Link 
-          to="/login" 
+          to={prefix('/login')} 
           className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground hover:text-primary transition-all"
         >
           <ArrowLeft className="w-4 h-4" />

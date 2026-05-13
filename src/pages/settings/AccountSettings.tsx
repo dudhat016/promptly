@@ -9,11 +9,13 @@ import Textarea from '../../components/primitives/Textarea';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import ImageUpload from '../../components/forms/ImageUpload';
 import Button from '../../components/primitives/Button';
 
 export default function AccountSettings() {
   const { user, profile, isPro } = useAuth();
+  const { prefix } = usePath();
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
@@ -64,7 +66,7 @@ export default function AccountSettings() {
               <span className="text-3xl font-bold text-foreground">{profile?.credits || 0}</span>
               <span className="text-xs font-bold text-muted-foreground">Tokens</span>
             </div>
-            <Link to="/dashboard/credits" className="text-xs font-bold text-primary hover:underline mt-4 inline-block">View History →</Link>
+            <Link to={prefix('/dashboard/credits')} className="text-xs font-bold text-primary hover:underline mt-4 inline-block">View History →</Link>
           </div>
           <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center">
             <Coins className="w-8 h-8 text-primary" />
@@ -78,7 +80,7 @@ export default function AccountSettings() {
               <span className="text-xl font-bold text-foreground">{isPro ? 'Pro Member' : 'Free Tier'}</span>
               {isPro && <Zap className="w-4 h-4 text-amber-500 fill-current" />}
             </div>
-            <Link to="/pricing" className="text-xs font-bold text-primary hover:underline mt-4 inline-block">Manage Subscription →</Link>
+            <Link to={prefix('/pricing')} className="text-xs font-bold text-primary hover:underline mt-4 inline-block">Manage Subscription →</Link>
           </div>
           <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
             <ShieldCheck className={`w-8 h-8 ${isPro ? 'text-primary' : 'text-muted-foreground opacity-30'}`} />

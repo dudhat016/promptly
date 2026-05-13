@@ -15,6 +15,7 @@ import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useMarketing } from '../hooks/useMarketing';
+import { usePath } from '../hooks/usePath';
 import { db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
 import Button from '../components/primitives/Button';
@@ -36,13 +37,14 @@ const formatDate = (date: any) => {
 export default function AffiliatePage() {
   const { user, profile } = useAuth();
   const { marketingConfig } = useMarketing();
+  const { prefix } = usePath();
   const [copied, setCopied] = useState(false);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const referralLink = profile?.referralCode
-    ? `${window.location.origin}/login?ref=${profile.referralCode}`
+    ? `${window.location.origin}${prefix('/login')}?ref=${profile.referralCode}`
     : 'Loading your link...';
 
   useEffect(() => {

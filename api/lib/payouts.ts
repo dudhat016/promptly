@@ -55,7 +55,9 @@ export async function sendSuccessEmail(email: string, name: string, planName: st
 
 export async function awardAffiliateCommission(customerId: string, orderAmount: any, orderId: string, currency: string, referralCode: string) {
   try {
-    const db = admin.firestore();
+    const firebase = await initFirebase();
+    if (!firebase) return;
+    const db = firebase.db;
 
     // 1. Fetch commission config (rate + fee deductions)
     const marketingSnap = await db.collection("configs").doc("marketing").get();

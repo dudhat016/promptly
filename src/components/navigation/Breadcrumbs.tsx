@@ -1,6 +1,7 @@
 import { ChevronRight, Home } from 'lucide-react';
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 
 interface BreadcrumbItem {
   name: string;
@@ -13,6 +14,7 @@ interface BreadcrumbsProps {
 }
 
 export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps) {
+  const { prefix } = usePath();
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter((x) => x);
 
@@ -32,7 +34,7 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
   return (
     <nav className={`flex items-center gap-1.5 text-[11px] font-black tracking-widest text-muted-foreground/60 mb-8 overflow-x-auto whitespace-nowrap scrollbar-hide ${className}`} aria-label="Breadcrumb">
       <Link
-        to="/"
+        to={prefix('/')}
         className="hover:text-primary transition-colors flex items-center gap-1 group shrink-0"
       >
         <Home className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
@@ -49,7 +51,7 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
               </span>
             ) : (
               <Link
-                to={item.item}
+                to={prefix(item.item)}
                 className="hover:text-primary transition-colors transition-all shrink-0"
               >
                 {item.name}

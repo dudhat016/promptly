@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import React from 'react';
 import { Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ interface AuthLayoutProps {
 }
 
 export default function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
+  const { prefix } = usePath();
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-muted/30">
       <motion.div
@@ -20,7 +22,7 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex flex-col items-center gap-3 group mb-6">
+          <Link to={prefix('/')} className="inline-flex flex-col items-center gap-3 group mb-6">
             <div className="w-11 h-11 gradient-primary rounded-md flex items-center justify-center shadow-md shadow-primary/25 group-hover:scale-95 transition-transform">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
@@ -37,9 +39,9 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
 
         <p className="mt-6 text-center text-xs text-muted-foreground/60">
           By continuing, you agree to our{' '}
-          <Link to="/terms" className="underline hover:text-foreground transition-colors">Terms</Link>
+          <Link to={prefix('/terms')} className="underline hover:text-foreground transition-colors">Terms</Link>
           {' '}and{' '}
-          <Link to="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
+          <Link to={prefix('/privacy')} className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
         </p>
       </motion.div>
     </div>

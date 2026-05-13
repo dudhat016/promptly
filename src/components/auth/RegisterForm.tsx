@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import Input from '../primitives/Input';
 import Button from '../primitives/Button';
 import { signUpWithEmail, signInWithGoogle } from '../../lib/firebase';
+import { usePath } from '../../hooks/usePath';
 
 const registerSchema = z.object({
   email: z.string().email('Please enter a valid professional email'),
@@ -16,6 +17,7 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterForm() {
+  const { prefix } = usePath();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
   });
@@ -95,7 +97,7 @@ export default function RegisterForm() {
 
       <p className="text-center text-sm font-medium text-muted-foreground">
         Already have an account?{' '}
-        <Link to="/login" className="text-primary hover:underline">
+        <Link to={prefix('/login')} className="text-primary hover:underline">
           Sign in here
         </Link>
       </p>

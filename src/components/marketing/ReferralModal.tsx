@@ -24,7 +24,7 @@ export default function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
   const [copied, setCopied] = useState(false);
 
   const referralLink = profile?.referralCode
-    ? `${window.location.origin}/login?ref=${profile.referralCode}`
+    ? `${window.location.origin}${prefix('/login')}?ref=${profile.referralCode}`
     : '';
 
   const copyToClipboard = () => {

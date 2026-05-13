@@ -93,7 +93,7 @@ export default function UserLayout({ children }: { children?: React.ReactNode })
             <a href={`mailto:${globalConfig.supportEmail}`} className="flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-all">
               <Mail className="w-4 h-4" /> Contact Support
             </a>
-            <Button onClick={() => auth.signOut().then(() => navigate('/'))} variant="secondary" size="md" leftIcon={LogOut} fullWidth>
+            <Button onClick={() => auth.signOut().then(() => navigate(prefix('/')))} variant="secondary" size="md" leftIcon={LogOut} fullWidth>
               Sign Out
             </Button>
           </div>

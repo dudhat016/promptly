@@ -5,12 +5,14 @@ import { useNotifications, Notification } from '../../hooks/useNotifications';
 import { Button, Card } from '../primitives';
 import { cn } from '../../lib/utils';
 import { Link } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 
 /**
  * A premium Notification Bell component for the user header.
  * Features: unread badge, real-time dropdown, batch actions, and responsive layout.
  */
 export default function NotificationBell() {
+  const { prefix } = usePath();
   const [open, setOpen] = useState(false);
   const { notifications, unreadCount, markAsRead, markAllAsRead, loading } = useNotifications();
 
@@ -94,8 +96,8 @@ export default function NotificationBell() {
                 </div>
 
                 {/* Footer */}
-                <Link 
-                  to="/notifications" 
+                <Link
+                  to={prefix('/notifications')}
                   onClick={() => setOpen(false)}
                   className="block px-4 py-3 text-center text-xs font-bold text-primary bg-primary/5 hover:bg-primary/10 border-t border-border transition-colors"
                 >

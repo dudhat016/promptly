@@ -8,8 +8,8 @@ import Button from '../../components/primitives/Button';
 import { db } from '../../lib/firebase';
 import { UserProfile } from '../../types';
 import { usePath } from '../../hooks/usePath';
-import { Link } from 'react-router-dom';
 import Badge from '../../components/primitives/Badge';
+import { useStaffRoles } from '../../hooks/useStaffRoles';
 
 const formatDate = (date: any): string => {
   if (!date) return 'N/A';
@@ -39,6 +39,7 @@ export default function AdminUsers() {
   const { prefix } = usePath();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const { staffRoles } = useStaffRoles();
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -73,6 +74,17 @@ export default function AdminUsers() {
       toast.success('User deleted');
     } catch {
       toast.error('Failed to delete user');
+    }
+  };
+
+  const handleRoleChange = async (u: UserProfile, value: string) => {
+    if (value === 'admin') {
+      await handleUpdateUser(u.uid, { role: 'admin', staffRole: undefined });
+    } else if (value === 'user') {
+      await handleUpdateUser(u.uid, { role: 'user', staffRole: undefined });
+    } else if (value.startsWith('staff:')) {
+      const staffRoleId = value.slice(6);
+      await handleUpdateUser(u.uid, { role: 'staff', staffRole: staffRoleId });
     }
   };
 
@@ -121,6 +133,35 @@ export default function AdminUsers() {
         </div>
       ),
       csvValue: u => u.subscriptionStatus ?? 'free',
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      searchValue: u => `${u.role ?? ''} ${u.staffRole ?? ''}`,
+      render: u => {
+        const currentValue = u.role === 'admin'
+          ? 'admin'
+          : u.role === 'staff' && u.staffRole
+            ? `staff:${u.staffRole}`
+            : 'user';
+        return (
+          <select
+            value={currentValue}
+            onChange={e => handleRoleChange(u, e.target.value)}
+            onClick={e => e.stopPropagation()}
+            className="text-xs font-medium bg-background border border-border rounded-lg px-2 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer min-w-[120px]"
+          >
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+            {staffRoles.map(role => (
+              <option key={role.id} value={`staff:${role.id}`}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+        );
+      },
+      csvValue: u => u.staffRole ? `staff:${u.staffRole}` : (u.role ?? 'user'),
     },
     {
       key: 'interests',
@@ -196,7 +237,7 @@ export default function AdminUsers() {
   ];
 
   const actions: DataTableActions<UserProfile> = {
-    view: u => prefix(`/admin/users/${u.uid}`),
+    edit: u => prefix(`/admin/users/${u.uid}`),
     onDelete: handleDelete,
   };
 

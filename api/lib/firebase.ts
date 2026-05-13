@@ -37,41 +37,6 @@ export const initFirebase = async () => {
       credential: admin.credential.cert(serviceAccount)
     });
 
-    // Neural Sweeper: Background Task to clean up expired subscriptions
-    setInterval(async () => {
-      console.log("🧹 [Neural Sweeper] Starting daily subscription audit...");
-      try {
-        const db = getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)');
-        const now = admin.firestore.Timestamp.now();
-
-        const expiredUsers = await db.collection("users")
-          .where("subscriptionStatus", "==", "pro")
-          .where("currentPeriodEnd", "<", now)
-          .get();
-
-        if (expiredUsers.empty) {
-          console.log("✅ [Neural Sweeper] No expired subscriptions found.");
-          return;
-        }
-
-        const batch = db.batch();
-        expiredUsers.docs.forEach(doc => {
-          console.log(`📉 [Neural Sweeper] Demoting user ${doc.id} (Subscription Expired)`);
-          batch.update(doc.ref, {
-            subscriptionStatus: "free",
-            activePlanId: "free",
-            credits: 5,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-        });
-
-        await batch.commit();
-        console.log(`✅ [Neural Sweeper] Successfully processed ${expiredUsers.size} demotions.`);
-      } catch (err) {
-        console.error("❌ [Neural Sweeper] Audit Error:", err);
-      }
-    }, 24 * 60 * 60 * 1000);
-
     return {
       db: getFirestore(process.env.VITE_FIREBASE_DATABASE_ID || '(default)'),
       auth: admin.auth(),

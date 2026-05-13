@@ -5,11 +5,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { CreditCard, Zap, Shield, ChevronRight, Check, Clock, FileText, DollarSign } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/primitives/Button';
 
 export default function BillingSettings() {
   const { isPro, profile, user } = useAuth();
+  const { prefix } = usePath();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,7 +69,7 @@ export default function BillingSettings() {
                 </div>
                 <h3 className="text-4xl font-bold mb-4 tracking-tighter">Go Pro. Be Expert.</h3>
                 <p className="opacity-60 text-sm mb-10 leading-relaxed font-medium">Unlock priority AI model access, unlimited library storage, and advanced prompt engineering tools.</p>
-                <Button as={Link} to="/pricing" variant="primary" size="lg">
+                <Button as={Link} to={prefix('/pricing')} variant="primary" size="lg">
                   View Pricing Plans
                 </Button>
               </div>
@@ -85,7 +87,7 @@ export default function BillingSettings() {
                 <div className="flex flex-wrap gap-4">
                   <Button 
                     as={Link} 
-                    to="/pricing" 
+                    to={prefix('/pricing')} 
                     variant="secondary" 
                     size="lg" 
                     className="bg-card/10 text-white hover:bg-card/20 border-white/5 backdrop-blur-sm"

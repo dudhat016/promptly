@@ -6,9 +6,11 @@ import Button from '../components/primitives/Button';
 import { toast } from 'react-hot-toast';
 import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../hooks/useAuth';
+import { usePath } from '../hooks/usePath';
 
 export default function CheckoutSuccessPage() {
   const { user } = useAuth();
+  const { prefix } = usePath();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('order_id');
   const planName = searchParams.get('plan_name') || 'Pro Plan';
@@ -95,9 +97,9 @@ export default function CheckoutSuccessPage() {
 
         {/* Action Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <Button 
-            as={Link} 
-            to="/dashboard"
+           <Button
+            as={Link}
+            to={prefix('/dashboard')}
             variant="primary"
             size="lg"
             fullWidth
@@ -106,9 +108,9 @@ export default function CheckoutSuccessPage() {
           >
             Access Dashboard
           </Button>
-          <Button 
-            as={Link} 
-            to="/explore"
+          <Button
+            as={Link}
+            to={prefix('/explore')}
             variant="primary"
             size="lg"
             fullWidth
@@ -119,11 +121,11 @@ export default function CheckoutSuccessPage() {
         </div>
 
         <div className="mt-12">
-           <Button 
-            as={Link} 
-            to="/" 
-            variant="ghost" 
-            size="sm" 
+           <Button
+            as={Link}
+            to={prefix('/')}
+            variant="ghost"
+            size="sm"
             leftIcon={Home}
             className="text-muted-foreground/40 hover:text-primary uppercase tracking-[0.3em] font-bold"
           >

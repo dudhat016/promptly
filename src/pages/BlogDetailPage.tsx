@@ -107,7 +107,7 @@ export default function BlogDetailPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold text-foreground mb-4">Post not found</h1>
           <p className="mb-8 text-muted-foreground">The article you're looking for doesn't exist or has been removed.</p>
-          <Link to="/blog" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-semibold transition-colors">
+          <Link to={prefix('/blog')} className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-semibold transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Blog
           </Link>
         </div>
@@ -242,11 +242,11 @@ export default function BlogDetailPage() {
                   Browse 5,000+ expert-engineered AI prompts on Promptly and start getting better results today.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <Link to="/explore"
+                  <Link to={prefix('/explore')}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm gradient-cta transition-all">
                     Explore Prompts <ArrowRight className="w-4 h-4" />
                   </Link>
-                  <Link to="/pricing"
+                  <Link to={prefix('/pricing')}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/70">
                     View Pricing
                   </Link>

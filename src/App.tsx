@@ -124,6 +124,7 @@ function ReferralCapture() {
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { profile, loading } = useAuth();
+  const { prefix } = usePath();
 
   if (loading) {
     return (
@@ -134,7 +135,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (profile?.role !== 'admin' && profile?.role !== 'staff') {
-    return <Navigate to="/" replace />;
+    return <Navigate to={prefix('/')} replace />;
   }
 
   return <>{children}</>;
@@ -161,7 +162,8 @@ const SectionRoute = ({ section, children }: { section: AdminSection; children: 
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  
+  const { prefix } = usePath();
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -169,11 +171,11 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
   }
-  
+
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={prefix('/login')} replace />;
   }
-  
+
   return <>{children}</>;
 };
 
