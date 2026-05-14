@@ -140,7 +140,14 @@ export default function PricingPage() {
             const discount = plan.monthlyPrice > 0
               ? Math.round(((plan.monthlyPrice * 12 - plan.yearlyPrice) / (plan.monthlyPrice * 12)) * 100)
               : 0;
-            const isCurrent = plan.id === profile?.activePlanId;
+            // Primary: match activePlanId. Fallback: match by subscriptionStatus when activePlanId is unset.
+            const isCurrent = profile?.activePlanId
+              ? plan.id === profile.activePlanId
+              : profile?.subscriptionStatus === 'free'
+                ? plan.monthlyPrice === 0
+                : profile?.subscriptionStatus === 'pro'
+                  ? (plan.isPopular ?? false)
+                  : false;
             const displayPrice = billingCycle === 'monthly'
               ? (currency === 'INR' ? Math.round(plan.monthlyPrice * exchangeRate) : plan.monthlyPrice)
               : (currency === 'INR' ? Math.round((plan.yearlyPrice / 12) * exchangeRate) : Math.floor(plan.yearlyPrice / 12));

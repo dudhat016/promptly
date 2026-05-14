@@ -37,17 +37,22 @@ import Button from '../../components/primitives/Button';
 import Input from '../../components/primitives/Input';
 import Tabs from '../../components/navigation/Tabs';
 import { useAuth } from '../../hooks/useAuth';
+import { useConfig } from '../../hooks/useConfig';
 import { logAuditEvent } from '../../lib/auditLog';
 import { auth, db } from '../../lib/firebase';
-import { ActivityItem, UserProfile } from '../../types';
+import { ActivityItem, PricingPlan, UserProfile } from '../../types';
 import { useStaffRoles } from '../../hooks/useStaffRoles';
+import Select from '../../components/primitives/Select';
 
 export default function AdminUserDetails() {
   const confirm = useConfirm();
   const { user: adminUser } = useAuth();
+  const { config } = useConfig();
   const { id } = useParams();
   const navigate = useNavigate();
   const { prefix } = usePath();
+
+  const plans = config.plans;
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -94,16 +99,37 @@ export default function AdminUserDetails() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  const handleToggleStatus = async () => {
-    if (!user || !id) return;
-    const newStatus = user.subscriptionStatus === 'pro' ? 'free' : 'pro';
+  const [changingPlan, setChangingPlan] = useState(false);
+
+  const handleChangePlan = async (planId: string) => {
+    if (!user || !id || planId === user.activePlanId) return;
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+
+    // Derive subscriptionStatus from plan properties
+    const nameLower = plan.name.toLowerCase();
+    let newStatus: 'free' | 'pro' | 'enterprise' = 'pro';
+    if (plan.monthlyPrice === 0) newStatus = 'free';
+    else if (nameLower.includes('enterprise') || nameLower.includes('agency') || nameLower.includes('team')) newStatus = 'enterprise';
+
+    const credits = plan.monthlyCredits ?? (newStatus === 'enterprise' ? 2500 : newStatus === 'pro' ? 500 : 50);
+
+    setChangingPlan(true);
     try {
-      await updateDoc(doc(db, 'users', id), { subscriptionStatus: newStatus, updatedAt: serverTimestamp() });
-      setUser(prev => prev ? { ...prev, subscriptionStatus: newStatus } : null);
-      logAuditEvent({ action: 'user.plan_changed', entityType: 'user', entityId: id, actorEmail: adminUser?.email ?? undefined, details: { newStatus } });
-      toast.success(`User updated to ${newStatus.toUpperCase()}`);
+      await updateDoc(doc(db, 'users', id), {
+        subscriptionStatus: newStatus,
+        activePlanId: planId,
+        credits,
+        monthlyLimit: credits,
+        updatedAt: serverTimestamp(),
+      });
+      setUser(prev => prev ? { ...prev, subscriptionStatus: newStatus, activePlanId: planId, credits } : null);
+      logAuditEvent({ action: 'user.plan_changed', entityType: 'user', entityId: id, actorEmail: adminUser?.email ?? undefined, details: { planId, newStatus } });
+      toast.success(`Plan changed to ${plan.name}`);
     } catch {
       toast.error('Failed to update plan');
+    } finally {
+      setChangingPlan(false);
     }
   };
 
@@ -231,14 +257,6 @@ export default function AdminUserDetails() {
               size="sm"
             >
               Back
-            </Button>
-            <Button
-              onClick={handleToggleStatus}
-              variant="secondary"
-              leftIcon={CreditCard}
-              size="sm"
-            >
-              {user.subscriptionStatus === 'pro' ? 'Downgrade to Free' : 'Upgrade to Pro'}
             </Button>
             <Button
               onClick={handleToggleRole}
@@ -592,7 +610,7 @@ export default function AdminUserDetails() {
               {[
                 { label: 'Role', value: user.role.toUpperCase(), color: user.role === 'admin' ? 'text-rose-400' : user.role === 'staff' ? 'text-amber-400' : 'text-primary' },
                 ...(user.role === 'staff' && user.staffRole ? [{ label: 'Staff Role', value: user.staffRole, color: 'text-amber-300' }] : []),
-                { label: 'Plan', value: user.subscriptionStatus.toUpperCase(), color: user.subscriptionStatus === 'pro' ? 'text-emerald-400' : 'opacity-60' },
+                { label: 'Plan', value: user.subscriptionStatus.toUpperCase(), color: user.subscriptionStatus === 'pro' ? 'text-emerald-400' : user.subscriptionStatus === 'enterprise' ? 'text-amber-400' : 'opacity-60' },
                 { label: 'Status', value: isSuspended ? 'SUSPENDED' : 'ACTIVE', color: isSuspended ? 'text-rose-400' : 'text-emerald-400' },
                 { label: 'Affiliate', value: 'ENABLED', color: 'text-emerald-400' },
               ].map(row => (
@@ -603,6 +621,35 @@ export default function AdminUserDetails() {
               ))}
             </div>
           </div>
+
+          {/* Plan selector */}
+          {plans.length > 0 && (
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+              <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+                <CreditCard className="w-3.5 h-3.5 text-primary" /> Change Plan
+              </h4>
+              <Select
+                value={user.activePlanId || ''}
+                onChange={(val) => handleChangePlan(val)}
+                disabled={changingPlan}
+                options={plans.map(p => ({
+                  value: p.id,
+                  label: p.name,
+                  description: p.monthlyPrice === 0
+                    ? 'Free'
+                    : `$${p.monthlyPrice}/mo · ${p.monthlyCredits ?? 0} credits`,
+                }))}
+                placeholder="Select a plan..."
+                isSearchable={false}
+              />
+              {user.activePlanId && (
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Current: <span className="font-bold text-foreground">{plans.find(p => p.id === user.activePlanId)?.name ?? user.activePlanId}</span>
+                  {' · '}{user.subscriptionStatus.toUpperCase()}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Credit adjustment */}
           <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
