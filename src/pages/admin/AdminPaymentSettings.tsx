@@ -1,5 +1,5 @@
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { AlertCircle, CreditCard, ExternalLink, Globe, Lock, Percent, Save, ShieldCheck, Zap } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Copy, CreditCard, ExternalLink, Globe, Lock, Percent, RefreshCw, Save, ShieldCheck, Webhook, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
@@ -15,19 +15,22 @@ export default function AdminPaymentSettings() {
       enabled: false,
       appId: (process.env as any).CASHFREE_APP_ID || '',
       secretKey: (process.env as any).CASHFREE_SECRET_KEY || '',
-      environment: (process.env as any).CASHFREE_ENV || 'sandbox'
+      environment: (process.env as any).CASHFREE_ENV || 'sandbox',
+      webhookSecret: ''
     },
     paypal: {
       enabled: false,
       clientId: (process.env as any).PAYPAL_CLIENT_ID || '',
       secretKey: (process.env as any).PAYPAL_SECRET_KEY || '',
-      environment: (process.env as any).PAYPAL_ENV || 'sandbox'
+      environment: (process.env as any).PAYPAL_ENV || 'sandbox',
+      webhookId: ''
     },
     fees: {
       paymentFeePercent: 2,
       platformFeePercent: 0
     }
   });
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadConfig() {
@@ -39,13 +42,19 @@ export default function AdminPaymentSettings() {
           setConfig(prev => ({
             cashfree: {
               ...prev.cashfree,
-              enabled: data.cashfree?.enabled ?? prev.cashfree.enabled,
-              environment: data.cashfree?.environment ?? prev.cashfree.environment,
+              enabled:       data.cashfree?.enabled       ?? prev.cashfree.enabled,
+              environment:   data.cashfree?.environment   ?? prev.cashfree.environment,
+              webhookSecret: data.cashfree?.webhookSecret ?? '',
+              appId:         data.cashfree?.appId         || prev.cashfree.appId,
+              secretKey:     data.cashfree?.secretKey     || prev.cashfree.secretKey,
             },
             paypal: {
               ...prev.paypal,
-              enabled: data.paypal?.enabled ?? prev.paypal.enabled,
+              enabled:     data.paypal?.enabled     ?? prev.paypal.enabled,
               environment: data.paypal?.environment ?? prev.paypal.environment,
+              webhookId:   data.paypal?.webhookId   ?? '',
+              clientId:    data.paypal?.clientId    || prev.paypal.clientId,
+              secretKey:   data.paypal?.secretKey   || prev.paypal.secretKey,
             },
             fees: {
               paymentFeePercent: data.fees?.paymentFeePercent ?? 2,
@@ -84,6 +93,21 @@ export default function AdminPaymentSettings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const appUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : (process.env as any).VITE_APP_URL || 'https://yourdomain.com';
+
+  const WEBHOOK_URLS = {
+    cashfree: `${appUrl}/api/payments/webhook/cashfree`,
+    paypal:   `${appUrl}/api/payments/webhook/paypal`,
+  };
+
+  const copyUrl = (key: string, url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(key);
+    setTimeout(() => setCopiedUrl(null), 2000);
   };
 
   if (loading) return <div className="p-12 text-center text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Loading Gateway Config...</div>;
@@ -179,7 +203,7 @@ export default function AdminPaymentSettings() {
                       size="md"
                       className={cn(
                         "flex-grow font-bold uppercase tracking-widest border transition-all h-auto py-3",
-                        config.cashfree.environment === env 
+                        config.cashfree.environment === env
                           ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
                           : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                       )}
@@ -189,6 +213,18 @@ export default function AdminPaymentSettings() {
                   ))}
                 </div>
               </div>
+              <Input
+                label="Webhook Secret"
+                id="cashfreeWebhookSecret"
+                name="cashfreeWebhookSecret"
+                type="password"
+                value={config.cashfree.webhookSecret}
+                onChange={e => setConfig({ ...config, cashfree: { ...config.cashfree, webhookSecret: e.target.value }})}
+                placeholder="From Cashfree Developers → Webhooks"
+                className="font-mono"
+                variant="filled"
+                helperText="Used to verify incoming webhook signatures (HMAC-SHA256)"
+              />
             </div>
           </div>
         </div>
@@ -261,8 +297,8 @@ export default function AdminPaymentSettings() {
                       size="md"
                       className={cn(
                         "flex-grow font-bold uppercase tracking-widest border transition-all h-auto py-3",
-                        config.paypal.environment === env 
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200' 
+                        config.paypal.environment === env
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
                           : 'bg-card text-muted-foreground border-border hover:border-blue-600/50'
                       )}
                     >
@@ -271,6 +307,18 @@ export default function AdminPaymentSettings() {
                   ))}
                 </div>
               </div>
+              <Input
+                label="Webhook ID"
+                id="paypalWebhookId"
+                name="paypalWebhookId"
+                type="text"
+                value={config.paypal.webhookId}
+                onChange={e => setConfig({ ...config, paypal: { ...config.paypal, webhookId: e.target.value }})}
+                placeholder="From PayPal Developer → Apps → Webhooks"
+                className="font-mono"
+                variant="filled"
+                helperText="Required for PayPal to verify webhook delivery"
+              />
             </div>
           </div>
         </div>
@@ -345,6 +393,193 @@ export default function AdminPaymentSettings() {
               </>
             );
           })()}
+        </div>
+      </div>
+
+      {/* ── Webhook Setup Guide ── */}
+      <div className="bg-card rounded-lg border border-border p-8 shadow-sm space-y-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-violet-500/10 rounded-md flex items-center justify-center">
+            <Webhook className="w-5 h-5 text-violet-500" />
+          </div>
+          <div>
+            <h4 className="font-bold text-lg leading-tight">Webhook Endpoints</h4>
+            <p className="text-xs text-muted-foreground font-medium mt-0.5">
+              Copy these URLs and paste them into each gateway's webhook settings. Required for auto-renew to work.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Cashfree webhook card */}
+          <div className="rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-primary" />
+              <span className="font-bold text-sm text-foreground">Cashfree</span>
+              {config.cashfree.webhookSecret && (
+                <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 uppercase tracking-widest flex items-center gap-1">
+                  <CheckCircle2 className="w-2.5 h-2.5" /> Secret Saved
+                </span>
+              )}
+            </div>
+
+            {/* URL row */}
+            <div className="bg-muted/50 rounded-lg border border-border overflow-hidden">
+              <div className="px-3 py-1.5 border-b border-border bg-muted/30">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Webhook URL</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2">
+                <code className="text-xs font-mono text-foreground flex-1 truncate">{WEBHOOK_URLS.cashfree}</code>
+                <button
+                  onClick={() => copyUrl('cashfree', WEBHOOK_URLS.cashfree)}
+                  className="shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  {copiedUrl === 'cashfree' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Events list */}
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Subscribe to these events</p>
+              {[
+                'SUBSCRIPTION_PAYMENT_SUCCESS',
+                'SUBSCRIPTION_PAYMENT_FAILED',
+                'SUBSCRIPTION_CANCELLED',
+                'PAYMENT_SUCCESS_WEBHOOK',
+              ].map(e => (
+                <div key={e} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+                  <code>{e}</code>
+                </div>
+              ))}
+            </div>
+
+            {/* Setup steps */}
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Setup Steps</p>
+              {[
+                'Log in to Cashfree Dashboard',
+                'Go to Developers → Webhooks',
+                'Click "Add New Webhook"',
+                'Paste the URL above and select events',
+                'Copy the Webhook Secret and save it above',
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <span className="w-4 h-4 rounded-full bg-muted text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  {step}
+                </div>
+              ))}
+              <a
+                href="https://merchant.cashfree.com/merchants/developers/webhook"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline mt-2"
+              >
+                Open Cashfree Webhooks <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+
+          {/* PayPal webhook card */}
+          <div className="rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-blue-500" />
+              <span className="font-bold text-sm text-foreground">PayPal</span>
+              {config.paypal.webhookId && (
+                <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 uppercase tracking-widest flex items-center gap-1">
+                  <CheckCircle2 className="w-2.5 h-2.5" /> ID Saved
+                </span>
+              )}
+            </div>
+
+            {/* URL row */}
+            <div className="bg-muted/50 rounded-lg border border-border overflow-hidden">
+              <div className="px-3 py-1.5 border-b border-border bg-muted/30">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Webhook URL</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2">
+                <code className="text-xs font-mono text-foreground flex-1 truncate">{WEBHOOK_URLS.paypal}</code>
+                <button
+                  onClick={() => copyUrl('paypal', WEBHOOK_URLS.paypal)}
+                  className="shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  {copiedUrl === 'paypal' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Events list */}
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Subscribe to these events</p>
+              {[
+                'BILLING.SUBSCRIPTION.ACTIVATED',
+                'BILLING.SUBSCRIPTION.CANCELLED',
+                'BILLING.SUBSCRIPTION.EXPIRED',
+                'PAYMENT.SALE.COMPLETED',
+              ].map(e => (
+                <div key={e} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 shrink-0" />
+                  <code>{e}</code>
+                </div>
+              ))}
+            </div>
+
+            {/* Setup steps */}
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Setup Steps</p>
+              {[
+                'Go to PayPal Developer Dashboard',
+                'Open My Apps & Credentials',
+                'Select your app → Webhooks tab',
+                'Click "Add Webhook"',
+                'Paste the URL and select events above',
+                'Copy the Webhook ID and save it above',
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <span className="w-4 h-4 rounded-full bg-muted text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  {step}
+                </div>
+              ))}
+              <a
+                href="https://developer.paypal.com/dashboard/applications/live"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold text-blue-500 hover:underline mt-2"
+              >
+                Open PayPal Developer <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Webhook test */}
+        <div className="rounded-xl border border-dashed border-border p-5 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold text-foreground flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-primary" />
+              Test Webhook Delivery
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Use each gateway's "Send Test Event" button after saving your webhook URL. Check server logs for confirmation.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <a
+              href="https://merchant.cashfree.com/merchants/developers/webhook"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="secondary" size="sm" rightIcon={ExternalLink}>Test Cashfree</Button>
+            </a>
+            <a
+              href="https://developer.paypal.com/dashboard/webhooks"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="secondary" size="sm" rightIcon={ExternalLink}>Test PayPal</Button>
+            </a>
+          </div>
         </div>
       </div>
 

@@ -152,6 +152,14 @@ service cloud.firestore {
       allow create: if isSignedIn();
     }
 
+    // Affiliate commission ledger — users read their own rows; admin reads all
+    match /referral_commissions/{id} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.referrerId == request.auth.uid);
+      allow create: if false; // written server-side only
+      allow update: if isAdmin(); // lock-period processing
+      allow delete: if false;
+    }
+
     // Email Notifications & Templates
     match /notifications/{notificationId} {
       allow read, write: if isAdmin();

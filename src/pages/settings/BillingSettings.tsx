@@ -1,24 +1,25 @@
-import { collection, getDocs, orderBy, query, where, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { CreditCard, Zap, Shield, ChevronRight, Check, Clock, FileText, DollarSign } from 'lucide-react';
+import { AlertTriangle, CreditCard, FileText, RefreshCw, Shield, X, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/primitives/Button';
+import { PaymentService } from '../../services/paymentService';
 
 export default function BillingSettings() {
   const { isPro, profile, user } = useAuth();
   const { prefix } = usePath();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
-    if (user?.uid) {
-      fetchOrders();
-    }
+    if (user?.uid) fetchOrders();
   }, [user]);
 
   async function fetchOrders() {
@@ -34,13 +35,34 @@ export default function BillingSettings() {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err: any) {
       console.error("Error fetching orders:", err);
-      if (err.message?.includes('index')) {
-        console.warn("Firestore Index Required: Please click the link in the console error above to create the composite index for 'orders'.");
-      }
     } finally {
       setLoading(false);
     }
   }
+
+  async function handleCancelSubscription() {
+    if (!user?.uid) return;
+    setCancelling(true);
+    try {
+      await PaymentService.cancelSubscription({
+        customerId: user.uid,
+        subscriptionGateway: profile?.subscriptionGateway,
+        subscriptionId: profile?.subscriptionId,
+        paypalSubscriptionId: profile?.paypalSubscriptionId
+      });
+      toast.success("Subscription cancelled. Access continues until the end of your billing period.");
+      setShowCancelConfirm(false);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Cancellation failed. Please contact support.");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  const nextBillingDate = profile?.currentPeriodEnd?.toDate
+    ? profile.currentPeriodEnd.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -61,65 +83,119 @@ export default function BillingSettings() {
 
         {!isPro ? (
           <div className="bg-foreground text-background rounded-lg p-6 relative overflow-hidden group shadow-2xl">
-              <Zap className="w-48 h-48 absolute -right-12 -bottom-12 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000" />
-              <div className="relative z-10 max-w-md">
-                <div className="bg-background/10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-6 backdrop-blur-md border border-background/20">
-                  <Sparkles className="w-3 h-3 text-amber-400" />
-                  Most Popular Upgrade
-                </div>
-                <h3 className="text-4xl font-bold mb-4 tracking-tighter">Go Pro. Be Expert.</h3>
-                <p className="opacity-60 text-sm mb-10 leading-relaxed font-medium">Unlock priority AI model access, unlimited library storage, and advanced prompt engineering tools.</p>
-                <Button as={Link} to={prefix('/pricing')} variant="primary" size="lg">
-                  View Pricing Plans
-                </Button>
+            <Zap className="w-48 h-48 absolute -right-12 -bottom-12 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000" />
+            <div className="relative z-10 max-w-md">
+              <div className="bg-background/10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-6 backdrop-blur-md border border-background/20">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                Most Popular Upgrade
               </div>
+              <h3 className="text-4xl font-bold mb-4 tracking-tighter">Go Pro. Be Expert.</h3>
+              <p className="opacity-60 text-sm mb-10 leading-relaxed font-medium">Unlock priority AI model access, unlimited library storage, and advanced prompt engineering tools.</p>
+              <Button as={Link} to={prefix('/pricing')} variant="primary" size="lg">
+                View Pricing Plans
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-primary to-primary-foreground/10 rounded-lg p-6 text-primary-foreground relative overflow-hidden shadow-md shadow-primary/20">
+          <>
+            <div className="bg-gradient-to-br from-primary to-primary-foreground/10 rounded-lg p-6 text-primary-foreground relative overflow-hidden shadow-md shadow-primary/20">
               <Shield className="w-48 h-48 absolute -right-12 -bottom-12 opacity-5 -rotate-12" />
               <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-4">
-                  <Check className="w-6 h-6 p-1 bg-card text-primary rounded-full" />
-                  <h3 className="text-3xl font-bold text-white">PRO Member</h3>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-6 h-6 text-white" />
+                    <h3 className="text-3xl font-bold text-white">
+                      {profile?.subscriptionStatus?.toUpperCase()} Member
+                    </h3>
+                  </div>
+                  {profile?.cancelAtPeriodEnd && (
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
+                      Cancels {nextBillingDate || 'soon'}
+                    </span>
+                  )}
                 </div>
-                <p className="text-white/60 text-sm mb-10 leading-relaxed max-w-md font-medium">Your subscription is active. You have full access to all professional prompt engineering tools.</p>
-                
+
+                {/* Subscription metadata */}
+                <div className="flex flex-wrap gap-4 mb-6 text-sm">
+                  {profile?.autoPayEnabled && !profile?.cancelAtPeriodEnd && (
+                    <div className="flex items-center gap-1.5 text-white/70">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Auto-renews {nextBillingDate ? `on ${nextBillingDate}` : 'monthly'}</span>
+                    </div>
+                  )}
+                  {!profile?.autoPayEnabled && nextBillingDate && (
+                    <div className="flex items-center gap-1.5 text-white/70">
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Active until {nextBillingDate}</span>
+                    </div>
+                  )}
+                  {profile?.subscriptionGateway && (
+                    <div className="flex items-center gap-1.5 text-white/50 text-xs uppercase tracking-widest">
+                      via {profile.subscriptionGateway}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap gap-4">
-                  <Button 
-                    as={Link} 
-                    to={prefix('/pricing')} 
-                    variant="secondary" 
-                    size="lg" 
+                  <Button
+                    as={Link}
+                    to={prefix('/pricing')}
+                    variant="secondary"
+                    size="lg"
                     className="bg-card/10 text-white hover:bg-card/20 border-white/5 backdrop-blur-sm"
                   >
-                    Upgrade/Downgrade
+                    Change Plan
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-white/40 hover:text-white/80 uppercase tracking-widest font-bold"
-                    onClick={async () => {
-                      if (window.confirm("Are you sure you want to cancel? You will lose Pro access immediately.")) {
-                        try {
-                          await updateDoc(doc(db, 'users', user!.uid), {
-                            subscriptionStatus: 'free',
-                            activePlanId: 'free',
-                            credits: 5,
-                            updatedAt: new Date()
-                          });
-                          toast.success("Subscription cancelled.");
-                          window.location.reload();
-                        } catch (e) {
-                          toast.error("Cancellation failed.");
-                        }
-                      }
-                    }}
+                  {!profile?.cancelAtPeriodEnd && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/40 hover:text-rose-300 uppercase tracking-widest font-bold"
+                      onClick={() => setShowCancelConfirm(true)}
+                    >
+                      Cancel Subscription
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Cancel confirmation panel */}
+            {showCancelConfirm && (
+              <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-foreground">Cancel your subscription?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {profile?.autoPayEnabled
+                        ? `Auto-renewal will stop. You keep access until ${nextBillingDate || 'the end of your current period'}.`
+                        : `Your subscription will end on ${nextBillingDate || 'the billing period end'}.`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleCancelSubscription}
+                    isLoading={cancelling}
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={X}
+                    className="border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
                   >
-                    Cancel Subscription
+                    Yes, Cancel
+                  </Button>
+                  <Button
+                    onClick={() => setShowCancelConfirm(false)}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    Keep Subscription
                   </Button>
                 </div>
               </div>
-          </div>
+            )}
+          </>
         )}
 
         <div className="pt-8 border-t border-border">

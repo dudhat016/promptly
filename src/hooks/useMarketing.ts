@@ -13,7 +13,8 @@ export function useMarketing() {
     fraudScoreThreshold: 70,
     referralCommission: 25,
     paymentFeePercent: 2,
-    platformFeePercent: 0
+    platformFeePercent: 0,
+    lockPeriodDays: 14
   });
   const [loading, setLoading] = useState(true);
 

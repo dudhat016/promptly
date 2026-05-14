@@ -12,6 +12,7 @@ import dataRouter from "./api/routes/data";
 import locationRouter from "./api/routes/location";
 import marketingRouter from "./api/routes/marketing";
 import paymentsRouter from "./api/routes/payments";
+import affiliatesRouter from "./api/routes/affiliates";
 import supportRouter from "./api/routes/support";
 import aiRouter from "./api/routes/aiRouter";
 
@@ -37,6 +38,7 @@ app.get("/ping", (req, res) => {
 console.log("🛰️ [Neural Mount] Registering Modular Routes...");
 app.use("/api/location", locationRouter);
 app.use("/api/payments", paymentsRouter);
+app.use("/api/affiliates", affiliatesRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/support", supportRouter);
 app.use("/api/data", dataRouter);

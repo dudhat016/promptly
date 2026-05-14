@@ -1,5 +1,5 @@
 import { addDoc, collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
-import { AlertCircle, ArrowLeft, Check, CheckCircle2, CreditCard, Heart, Lock, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, CheckCircle2, CreditCard, Heart, Lock, RefreshCw, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -97,6 +97,7 @@ export default function CheckoutPage() {
   }, [planId, navigate, profile, searchParams, authLoading]);
 
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [autoPay, setAutoPay] = useState(true);
 
   const validate = () => {
     if (price === 0) return true;
@@ -122,10 +123,20 @@ export default function CheckoutPage() {
     setProcessing(true);
     try {
       if (paymentConfig?.cashfree?.enabled && price > 0) {
-        await PaymentService.initiateCashfreePayment({
-          amount: price, currency, customerId: user.uid, customerEmail: user.email || '',
-          customerPhone: profile?.phoneNumber || '9999999999', planId, billingCycle: cycle
-        });
+        if (autoPay) {
+          await PaymentService.initiateCashfreeSubscription({
+            amount: price, currency, customerId: user.uid, customerEmail: user.email || '',
+            customerPhone: profile?.phoneNumber || '9999999999',
+            customerName: profile?.displayName || user.displayName || 'Creator',
+            planId: planId as string, billingCycle: cycle
+          });
+        } else {
+          await PaymentService.initiateCashfreePayment({
+            amount: price, currency, customerId: user.uid, customerEmail: user.email || '',
+            customerPhone: profile?.phoneNumber || '9999999999',
+            planId: planId as string, billingCycle: cycle
+          });
+        }
         return;
       }
 
@@ -313,7 +324,7 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  <Checkbox 
+                  <Checkbox
                     id="termsCheckbox"
                     checked={agreeToTerms}
                     onChange={e => setAgreeToTerms(e.target.checked)}
@@ -322,67 +333,137 @@ export default function CheckoutPage() {
                     className="p-5"
                   />
 
+                  {/* Auto-pay toggle */}
+                  <div
+                    className="rounded-xl p-4 flex items-center justify-between cursor-pointer border transition-colors"
+                    style={autoPay
+                      ? { background: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.25)' }
+                      : { background: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))' }}
+                    onClick={() => setAutoPay(p => !p)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={autoPay
+                          ? { background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)' }
+                          : { background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
+                        <RefreshCw className={`w-4 h-4 ${autoPay ? 'text-violet-400' : 'text-muted-foreground'}`} />
+                      </div>
+                      <div>
+                        <p className={`text-sm font-semibold ${autoPay ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          Auto-renew subscription
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {autoPay
+                            ? `Renews automatically every ${cycle === 'yearly' ? 'year' : 'month'}. Cancel anytime.`
+                            : 'One-time payment — you will need to renew manually.'}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      className="relative w-11 h-6 rounded-full transition-colors shrink-0"
+                      style={{ background: autoPay ? 'rgba(139,92,246,0.8)' : 'hsl(var(--border))' }}
+                    >
+                      <div
+                        className="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all"
+                        style={{ left: autoPay ? '24px' : '4px' }}
+                      />
+                    </div>
+                  </div>
+
                   {/* Payment gateways */}
                   <div className="space-y-4">
                     {paymentConfig?.cashfree?.enabled && (
-                     <Button
-                      onClick={handleCheckout}
-                      isLoading={processing}
-                      variant="primary"
-                      size="lg"
-                      fullWidth
-                      leftIcon={Zap}
-                      className="shadow-xl shadow-primary/20"
-                    >
-                      {isTrial ? 'Start Trial with Cashfree' : `Pay ${symbol}${price} with Cashfree`}
-                    </Button>
+                      <Button
+                        onClick={handleCheckout}
+                        isLoading={processing}
+                        variant="primary"
+                        size="lg"
+                        fullWidth
+                        leftIcon={autoPay ? RefreshCw : Zap}
+                        className="shadow-xl shadow-primary/20"
+                      >
+                        {isTrial
+                          ? 'Start Trial with Cashfree'
+                          : autoPay
+                            ? `Subscribe ${symbol}${price}/${cycle === 'yearly' ? 'yr' : 'mo'} with Cashfree`
+                            : `Pay ${symbol}${price} with Cashfree`}
+                      </Button>
                     )}
 
                     {paymentConfig?.paypal?.enabled && currency !== 'INR' && (
-                      <div className="relative z-0">
-                        <PayPalScriptProvider options={{
-                          "clientId": (import.meta as any).env.VITE_PAYPAL_CLIENT_ID || (process.env as any).PAYPAL_CLIENT_ID || "test",
-                          currency: "USD", intent: "capture"
-                        }}>
-                          <PayPalButtons
-                            style={{ layout: "vertical", shape: "rect", label: "pay", color: "blue" }}
-                            disabled={processing}
-                            onClick={(data, actions) => {
-                              if (!agreeToTerms) { toast.error("Please agree to the Terms and Refund Policy to proceed."); return actions.reject(); }
-                              return actions.resolve();
-                            }}
-                            createOrder={(data, actions) => actions.order.create({
-                              intent: "CAPTURE",
-                              purchase_units: [{ description: `${plan.name} Subscription`, amount: { currency_code: "USD", value: price.toString() } }],
-                            })}
-                            onApprove={async (data, actions) => {
-                              try {
-                                setProcessing(true);
-                                const idToken = await user?.getIdToken();
-                                const response = await fetch('/api/payments/paypal/verify', {
-                                  method: 'POST',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    ...(idToken && { 'Authorization': `Bearer ${idToken}` }),
-                                  },
-                                  body: JSON.stringify({ orderID: data.orderID, planId, billingCycle: cycle, customerId: user?.uid, customerEmail: user?.email })
-                                });
-                                const result = await response.json();
-                                if (result.status === 'COMPLETED') {
-                                  toast.success("Payment Successful! Welcome to Pro.");
-                                  window.location.href = result.redirectUrl || '/checkout/success';
-                                } else {
-                                  throw new Error(result.message || "Payment verification failed");
+                      autoPay ? (
+                        // PayPal subscription (redirect flow)
+                        <Button
+                          onClick={async () => {
+                            if (!agreeToTerms) { toast.error("Please agree to the Terms and Refund Policy to proceed."); return; }
+                            if (!user) { toast.error("Please log in to continue."); return; }
+                            setProcessing(true);
+                            try {
+                              await PaymentService.initiatePaypalSubscription({
+                                customerId: user.uid, customerEmail: user.email || '',
+                                planId: planId as string, billingCycle: cycle, amount: price
+                              });
+                            } catch (err: any) {
+                              toast.error(err.message || "PayPal subscription failed");
+                              setProcessing(false);
+                            }
+                          }}
+                          isLoading={processing}
+                          variant="secondary"
+                          size="lg"
+                          fullWidth
+                          leftIcon={RefreshCw}
+                          className="border-[#0070ba] text-[#0070ba] hover:bg-[#0070ba]/10"
+                        >
+                          Subscribe with PayPal
+                        </Button>
+                      ) : (
+                        // PayPal one-time payment
+                        <div className="relative z-0">
+                          <PayPalScriptProvider options={{
+                            "clientId": (import.meta as any).env.VITE_PAYPAL_CLIENT_ID || (process.env as any).PAYPAL_CLIENT_ID || "test",
+                            currency: "USD", intent: "capture"
+                          }}>
+                            <PayPalButtons
+                              style={{ layout: "vertical", shape: "rect", label: "pay", color: "blue" }}
+                              disabled={processing}
+                              onClick={(data, actions) => {
+                                if (!agreeToTerms) { toast.error("Please agree to the Terms and Refund Policy to proceed."); return actions.reject(); }
+                                return actions.resolve();
+                              }}
+                              createOrder={(data, actions) => actions.order.create({
+                                intent: "CAPTURE",
+                                purchase_units: [{ description: `${plan.name} Plan`, amount: { currency_code: "USD", value: price.toString() } }],
+                              })}
+                              onApprove={async (data, actions) => {
+                                try {
+                                  setProcessing(true);
+                                  const idToken = await user?.getIdToken();
+                                  const response = await fetch('/api/payments/paypal/verify', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      ...(idToken && { 'Authorization': `Bearer ${idToken}` }),
+                                    },
+                                    body: JSON.stringify({ orderID: data.orderID, planId, billingCycle: cycle, customerId: user?.uid, customerEmail: user?.email })
+                                  });
+                                  const result = await response.json();
+                                  if (result.status === 'COMPLETED') {
+                                    toast.success("Payment Successful! Welcome to Pro.");
+                                    window.location.href = result.redirectUrl || '/checkout/success';
+                                  } else {
+                                    throw new Error(result.message || "Payment verification failed");
+                                  }
+                                } catch (err: any) {
+                                  toast.error(err.message || "Payment failed");
+                                } finally {
+                                  setProcessing(false);
                                 }
-                              } catch (err: any) {
-                                toast.error(err.message || "Payment failed");
-                              } finally {
-                                setProcessing(false);
-                              }
-                            }}
-                          />
-                        </PayPalScriptProvider>
-                      </div>
+                              }}
+                            />
+                          </PayPalScriptProvider>
+                        </div>
+                      )
                     )}
 
                     {!paymentConfig?.cashfree?.enabled && !paymentConfig?.paypal?.enabled && (

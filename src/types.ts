@@ -18,6 +18,13 @@ export interface UserProfile {
   role: 'user' | 'admin' | 'staff';
   subscriptionStatus: 'free' | 'pro' | 'enterprise';
   activePlanId?: string;
+  subscriptionId?: string;
+  subscriptionGateway?: 'cashfree' | 'paypal' | 'stripe';
+  paypalSubscriptionId?: string;
+  billingCycle?: 'monthly' | 'yearly';
+  autoPayEnabled?: boolean;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: any;
   createdAt: string;
   referralCode?: string;
   referredBy?: string;

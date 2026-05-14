@@ -21,16 +21,27 @@ export default function CheckoutVerifyPage() {
   const [result, setResult] = useState<VerifyResult | null>(null);
 
   const orderId = searchParams.get('order_id');
+  const subscriptionId = searchParams.get('subscription_id');
+  const paypalSubId = searchParams.get('paypal_sub_id');
 
   useEffect(() => {
-    if (!orderId) {
+    if (!orderId && !subscriptionId) {
       navigate(prefix('/dashboard'));
       return;
     }
 
     async function verifyPayment() {
       try {
-        const response = await fetch(`/api/payments/verify?order_id=${orderId}`);
+        let response: Response;
+
+        if (subscriptionId) {
+          const params = new URLSearchParams({ subscription_id: subscriptionId });
+          if (paypalSubId) params.set('paypal_sub_id', paypalSubId);
+          response = await fetch(`/api/payments/verify-subscription?${params.toString()}`);
+        } else {
+          response = await fetch(`/api/payments/verify?order_id=${orderId}`);
+        }
+
         const data = await response.json();
 
         if (response.ok && (data.status === 'PAID' || data.status === 'COMPLETED')) {
@@ -38,7 +49,7 @@ export default function CheckoutVerifyPage() {
             planName: data.planName || 'Pro Plan',
             amount: data.amount ?? 0,
             currency: data.currency ?? 'INR',
-            orderId: data.orderId ?? orderId!,
+            orderId: data.orderId ?? (subscriptionId || orderId!),
           });
           setStatus('success');
           setMessage(`Your ${data.planName || 'subscription'} is now active.`);
@@ -55,7 +66,7 @@ export default function CheckoutVerifyPage() {
     }
 
     verifyPayment();
-  }, [orderId]);
+  }, [orderId, subscriptionId, paypalSubId]);
 
   const goToSuccess = () => {
     if (!result) return;
