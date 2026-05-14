@@ -313,12 +313,20 @@ export type AdminSection =
   | 'emails'
   | 'reports';
 
+export interface SectionPermission {
+  canView: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 export interface StaffRoleDefinition {
   id: string;
   name: string;
   description: string;
   color: string;
   sections: AdminSection[];
+  sectionPermissions?: Partial<Record<AdminSection, SectionPermission>>;
   createdAt: any;
 }
 

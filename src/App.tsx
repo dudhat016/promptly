@@ -45,6 +45,7 @@ import AdminModels from './pages/admin/AdminModels';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminPermissions from './pages/admin/AdminPermissions';
 import AdminRoles from './pages/admin/AdminRoles';
+import AdminRoleForm from './pages/admin/AdminRoleForm';
 import AdminPromptForm from './pages/admin/AdminPromptForm';
 import AdminPrompts from './pages/admin/AdminPrompts';
 import AdminSEO from './pages/admin/AdminSEO';
@@ -337,6 +338,8 @@ function AppContent() {
                   <Route path="settings/*" element={<SectionRoute section="settings"><AdminSettings /></SectionRoute>} />
                   <Route path="permissions" element={<SectionRoute section="permissions"><AdminPermissions /></SectionRoute>} />
                   <Route path="roles" element={<SectionRoute section="roles"><AdminRoles /></SectionRoute>} />
+                  <Route path="roles/new" element={<SectionRoute section="roles"><AdminRoleForm /></SectionRoute>} />
+                  <Route path="roles/:id" element={<SectionRoute section="roles"><AdminRoleForm /></SectionRoute>} />
                   <Route path="activity" element={<SectionRoute section="activity"><AdminActivityLog /></SectionRoute>} />
                   <Route path="media" element={<SectionRoute section="media"><AdminMedia /></SectionRoute>} />
                   <Route path="invoices" element={<SectionRoute section="revenue"><AdminInvoices /></SectionRoute>} />

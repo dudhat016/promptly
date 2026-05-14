@@ -1,7 +1,7 @@
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../lib/firebase';
-import { AdminSection, StaffRoleDefinition, StaffRolesConfig } from '../types';
+import { AdminSection, SectionPermission, StaffRoleDefinition, StaffRolesConfig } from '../types';
 import { useAuth } from './useAuth';
 
 export function useStaffRoles() {
@@ -36,6 +36,16 @@ export function useStaffRoles() {
     return role.sections.includes(section);
   };
 
+  const canPerform = (section: AdminSection, action: keyof SectionPermission): boolean => {
+    if (profile?.role === 'admin') return true;
+    const role = getCurrentRole();
+    if (!role || !role.sections.includes(section)) return false;
+    const perms = role.sectionPermissions?.[section];
+    // If no granular permissions set, default all to true for backward compat
+    if (!perms) return true;
+    return perms[action] ?? true;
+  };
+
   const saveRoles = async (roles: StaffRoleDefinition[]) => {
     await setDoc(doc(db, 'configs', 'staff_roles'), {
       roles,
@@ -47,6 +57,7 @@ export function useStaffRoles() {
     staffRoles: config?.roles ?? [],
     currentStaffRole: getCurrentRole(),
     canAccessSection,
+    canPerform,
     saveRoles,
     loading
   };
