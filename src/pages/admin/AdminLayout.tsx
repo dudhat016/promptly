@@ -81,12 +81,13 @@ export default function AdminLayout() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  // Live badge counts
+  // Live badge counts (errors silently ignored for staff users without access)
   useEffect(() => {
-    const unsubW = onSnapshot(query(collection(db, 'payouts'), where('status', '==', 'pending')), snap => setPendingWithdrawals(snap.size));
-    const unsubT = onSnapshot(query(collection(db, 'tickets'), where('status', '==', 'open')), snap => setOpenTickets(snap.size));
-    const unsubI = onSnapshot(collection(db, 'contact_messages'), snap => setUnreadInquiries(snap.docs.filter(d => !d.data().readAt).length));
-    const unsubR = onSnapshot(query(collection(db, 'prompt_reports'), where('status', '==', 'pending')), snap => setPendingReports(snap.size));
+    const noop = () => {};
+    const unsubW = onSnapshot(query(collection(db, 'payouts'), where('status', '==', 'pending')), snap => setPendingWithdrawals(snap.size), noop);
+    const unsubT = onSnapshot(query(collection(db, 'tickets'), where('status', '==', 'open')), snap => setOpenTickets(snap.size), noop);
+    const unsubI = onSnapshot(collection(db, 'contact_messages'), snap => setUnreadInquiries(snap.docs.filter(d => !d.data().readAt).length), noop);
+    const unsubR = onSnapshot(query(collection(db, 'prompt_reports'), where('status', '==', 'pending')), snap => setPendingReports(snap.size), noop);
     return () => { unsubW(); unsubT(); unsubI(); unsubR(); };
   }, []);
 

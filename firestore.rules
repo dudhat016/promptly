@@ -71,8 +71,8 @@ service cloud.firestore {
 
     // --- Configurations (Marketing & Monetization) ---
     match /configs/{configId} {
-      // Allow everyone to read marketing config (for Pixel/GA/AdMob IDs)
-      allow read: if configId == 'marketing' || isAdmin();
+      // marketing/global: public; staff_roles: signed-in users need it for canAccessSection; rest: admin only
+      allow read: if configId == 'marketing' || configId == 'staff_roles' || isSignedIn() && configId == 'global' || isAdmin();
       // Only admins can modify configurations
       allow write: if isAdmin();
     }
@@ -171,10 +171,9 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // New Centralized Platform Configuration
+    // New Centralized Platform Configuration (duplicate block — kept for clarity, merged into rule above)
     match /configs/{configId} {
-      // General branding is public, sensitive settings (SMTP/Email) are Admin-only
-      allow read: if (configId == 'global') || isAdmin();
+      allow read: if configId == 'global' || configId == 'marketing' || configId == 'staff_roles' || isAdmin();
       allow write: if isAdmin();
     }
 

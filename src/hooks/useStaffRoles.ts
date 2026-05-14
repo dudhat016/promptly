@@ -10,14 +10,17 @@ export function useStaffRoles() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'configs', 'staff_roles'), (snap) => {
-      if (snap.exists()) {
-        setConfig(snap.data() as StaffRolesConfig);
-      } else {
+    const unsub = onSnapshot(
+      doc(db, 'configs', 'staff_roles'),
+      (snap) => {
+        setConfig(snap.exists() ? (snap.data() as StaffRolesConfig) : { roles: [], lastUpdated: null });
+        setLoading(false);
+      },
+      () => {
         setConfig({ roles: [], lastUpdated: null });
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
     return () => unsub();
   }, []);
 
