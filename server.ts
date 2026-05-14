@@ -22,7 +22,10 @@ const app = express();
 const PORT = 3001;
 
 // Neural Global Parser: Required for reading JSON from frontend
-app.use(express.json());
+// verify callback captures raw body for webhook signature verification
+app.use(express.json({
+  verify: (req: any, _res, buf) => { req.rawBody = buf.toString('utf8'); }
+}));
 
 // Neural Request Logger: Diagnostic tool for routing
 app.use((req, res, next) => {

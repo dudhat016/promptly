@@ -199,58 +199,46 @@ router.post("/cancel-subscription", authMiddleware, json(), async (req: Authenti
   }
 });
 
-// Webhooks — raw body needed for signature verification
-router.post("/webhook/cashfree", (req, res, next) => {
-  // Collect raw body for HMAC verification before JSON parsing
-  let rawBody = '';
-  req.setEncoding('utf8');
-  req.on('data', chunk => { rawBody += chunk; });
-  req.on('end', async () => {
-    try {
-      // Cashfree signature: HMAC-SHA256(timestamp + rawBody, secretKey)
-      const ts        = req.headers['x-webhook-timestamp'] as string;
-      const signature = req.headers['x-webhook-signature'] as string;
+// Webhooks — raw body captured by express.json verify callback in server.ts
+router.post("/webhook/cashfree", json(), async (req: any, res) => {
+  try {
+    // Cashfree signature: HMAC-SHA256(timestamp + rawBody, secretKey)
+    const ts        = req.headers['x-webhook-timestamp'] as string;
+    const signature = req.headers['x-webhook-signature'] as string;
+    const rawBody   = req.rawBody || JSON.stringify(req.body);
 
-      const firebase = await initFirebase();
-      const configSnap = firebase ? await firebase.db.collection("configs").doc("payment").get() : null;
-      const config = configSnap?.exists ? configSnap.data() : null;
-      const webhookSecret = config?.cashfree?.webhookSecret || process.env.CASHFREE_WEBHOOK_SECRET;
+    const firebase = await initFirebase();
+    const configSnap = firebase ? await firebase.db.collection("configs").doc("payment").get() : null;
+    const config = configSnap?.exists ? configSnap.data() : null;
+    const webhookSecret = config?.cashfree?.webhookSecret || process.env.CASHFREE_WEBHOOK_SECRET;
 
-      if (webhookSecret && ts && signature) {
-        const expected = crypto
-          .createHmac('sha256', webhookSecret)
-          .update(ts + rawBody)
-          .digest('base64');
-        if (expected !== signature) {
-          console.warn('[Cashfree Webhook] Signature mismatch — rejected');
-          return res.status(401).json({ error: 'Invalid signature' });
-        }
+    if (webhookSecret && ts && signature) {
+      const expected = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(ts + rawBody)
+        .digest('base64');
+      if (expected !== signature) {
+        console.warn('[Cashfree Webhook] Signature mismatch — rejected');
+        return res.status(401).json({ error: 'Invalid signature' });
       }
-
-      const payload = JSON.parse(rawBody);
-      const result = await SubscriptionService.handleCashfreeWebhook(payload);
-      res.json(result);
-    } catch (err: any) {
-      console.error("Cashfree webhook error:", err.message);
-      res.status(500).json({ error: err.message });
     }
-  });
+
+    const result = await SubscriptionService.handleCashfreeWebhook(req.body);
+    res.json(result);
+  } catch (err: any) {
+    console.error("Cashfree webhook error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.post("/webhook/paypal", (req, res) => {
-  let rawBody = '';
-  req.setEncoding('utf8');
-  req.on('data', chunk => { rawBody += chunk; });
-  req.on('end', async () => {
-    try {
-      const payload = JSON.parse(rawBody);
-      const result = await SubscriptionService.handlePaypalWebhook(payload);
-      res.json(result);
-    } catch (err: any) {
-      console.error("PayPal webhook error:", err.message);
-      res.status(500).json({ error: err.message });
-    }
-  });
+router.post("/webhook/paypal", json(), async (req: any, res) => {
+  try {
+    const result = await SubscriptionService.handlePaypalWebhook(req.body);
+    res.json(result);
+  } catch (err: any) {
+    console.error("PayPal webhook error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
