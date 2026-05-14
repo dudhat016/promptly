@@ -149,7 +149,7 @@ export default function Header() {
   const { config: uiConfig } = useUI();
   const { config } = useConfig();
   const { theme } = useTheme();
-  const { user, profile, isPro, isAdmin, loading } = useAuth();
+  const { user, profile, isPro, isAdmin, isStaff, loading } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { prefix, lng } = usePath();
@@ -238,10 +238,10 @@ export default function Header() {
           
           <div className="flex items-center gap-1 ml-1">
             {user && <NotificationBell />}
-  
+
             {!loading && (
               user ? (
-                <UserDropdown isAdmin={isAdmin} />
+                <UserDropdown isAdmin={isAdmin || isStaff} />
               ) : (
                 <div className="flex items-center gap-2">
                   <Button
@@ -335,8 +335,10 @@ export default function Header() {
                       <MobileLink to={prefix('/dashboard/vault')}     icon={LayoutGrid} onClick={() => setMobileOpen(false)}>My Private Vault</MobileLink>
                       <MobileLink to={prefix('/dashboard/favorites')} icon={Heart}     onClick={() => setMobileOpen(false)}>Saved Formulas</MobileLink>
                       <MobileLink to={prefix('/settings/profile')}    icon={Settings}  onClick={() => setMobileOpen(false)}>Account Settings</MobileLink>
-                      {isAdmin && (
-                        <MobileLink to={prefix('/admin')} icon={ShieldCheck} onClick={() => setMobileOpen(false)} accent>Admin Control Tower</MobileLink>
+                      {(isAdmin || isStaff) && (
+                        <MobileLink to={prefix('/admin')} icon={ShieldCheck} onClick={() => setMobileOpen(false)} accent>
+                          {isAdmin ? 'Admin Control Tower' : 'Staff Panel'}
+                        </MobileLink>
                       )}
                     </div>
                     <div className="h-px my-4 bg-border/50" />

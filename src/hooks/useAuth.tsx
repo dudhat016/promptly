@@ -13,6 +13,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
+  isStaff: boolean;
   isPro: boolean;
   toggleFavorite: (promptId: string) => Promise<boolean>;
   isFavorited: (promptId: string) => boolean;
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   isAdmin: false,
+  isStaff: false,
   isPro: false,
   toggleFavorite: async () => false,
   isFavorited: () => false,
@@ -313,6 +315,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     profile,
     loading,
     isAdmin: profile?.role === 'admin',
+    isStaff: profile?.role === 'staff',
     isPro: profile?.subscriptionStatus === 'pro' || profile?.subscriptionStatus === 'enterprise' || profile?.role === 'admin',
     toggleFavorite,
     isFavorited,

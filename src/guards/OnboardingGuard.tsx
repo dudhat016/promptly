@@ -19,9 +19,9 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
 
   const isOnOnboardingPage = location.pathname.includes('/onboarding');
 
-  // Admins always skip onboarding
-  if (profile?.role === 'admin') {
-    if (isOnOnboardingPage) return <Navigate to={prefix('/dashboard')} replace />;
+  // Admins and staff always skip onboarding
+  if (profile?.role === 'admin' || profile?.role === 'staff') {
+    if (isOnOnboardingPage) return <Navigate to={prefix('/admin')} replace />;
     return <>{children}</>;
   }
 

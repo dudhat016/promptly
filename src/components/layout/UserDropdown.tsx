@@ -90,10 +90,9 @@ export default function UserDropdown({ isAdmin }: UserDropdownProps) {
                 <DropdownLink to={prefix('/settings/profile')} icon={UserIcon} onClick={() => setIsOpen(false)}>Profile Settings</DropdownLink>
 
                 {isAdmin && (
-                   <DropdownLink to={prefix('/admin')} icon={Shield} onClick={() => setIsOpen(false)}>Admin Control</DropdownLink>
-                )}
-                {!isAdmin && profile?.role === 'admin' && (
-                  <DropdownLink to={prefix('/admin')} icon={Shield} onClick={() => setIsOpen(false)}>Switch to Admin</DropdownLink>
+                  <DropdownLink to={prefix('/admin')} icon={Shield} onClick={() => setIsOpen(false)}>
+                    {profile?.role === 'staff' ? 'Staff Panel' : 'Admin Control'}
+                  </DropdownLink>
                 )}
               </div>
 

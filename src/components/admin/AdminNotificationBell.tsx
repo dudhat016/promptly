@@ -51,7 +51,8 @@ export default function AdminNotificationBell() {
           })),
         };
         setGroups(Object.values(updates).filter((g): g is NotifGroup => !!g && g.count > 0));
-      }
+      },
+      () => {}
     );
 
     // 2. Open support tickets
