@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  doc, 
-  updateDoc, 
-  writeBatch, 
-  limit 
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  doc,
+  updateDoc,
+  writeBatch,
+  limit
 } from 'firebase/firestore';
 import { useAuth } from './useAuth';
 
@@ -43,18 +42,17 @@ export function useNotifications() {
     }
 
     const q = query(
-      collection(db, 'notifications'),
-      where('userId', '==', user.uid),
+      collection(db, 'users', user.uid, 'notifications'),
       orderBy('createdAt', 'desc'),
       limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(d => ({ 
-        id: d.id, 
-        ...d.data() 
+      const docs = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data()
       } as Notification));
-      
+
       setNotifications(docs);
       setUnreadCount(docs.filter(n => !n.readAt).length);
       setLoading(false);
@@ -67,9 +65,9 @@ export function useNotifications() {
   }, [user]);
 
   const markAsRead = async (id: string) => {
+    if (!user) return;
     try {
-      const ref = doc(db, 'notifications', id);
-      await updateDoc(ref, {
+      await updateDoc(doc(db, 'users', user.uid, 'notifications', id), {
         readAt: new Date().toISOString()
       });
     } catch (error) {
@@ -79,12 +77,11 @@ export function useNotifications() {
 
   const markAllAsRead = async () => {
     if (!user || unreadCount === 0) return;
-
     try {
       const batch = writeBatch(db);
       notifications.forEach(n => {
         if (!n.readAt) {
-          batch.update(doc(db, 'notifications', n.id), {
+          batch.update(doc(db, 'users', user.uid, 'notifications', n.id), {
             readAt: new Date().toISOString()
           });
         }
