@@ -1,5 +1,5 @@
 import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, query, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, BookOpen, Check, ChevronRight, Copy, Eye, Flag, Heart, Lock, Share2, Sparkles, Star, Terminal, User, Zap } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronRight, Copy, Eye, Flag, Heart, Lock, Share2, ShieldCheck, Sparkles, Star, Terminal, User, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -645,21 +645,38 @@ export default function PromptDetailPage() {
               <h4 className="text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2 text-muted-foreground">
                 <User className="w-3.5 h-3.5 text-primary" /> Creator
               </h4>
-              <div className="flex items-center gap-3 mb-5">
-                {creator?.photoURL ? (
-                  <img src={creator.photoURL} className="w-12 h-12 rounded-xl object-cover border border-border" alt="" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-primary bg-primary/15">
-                    {creator?.displayName?.charAt(0) || 'C'}
+              {(() => {
+                const isOfficial = prompt!.creatorRole === 'admin' || prompt!.creatorRole === 'staff';
+                const displayName = prompt!.creatorName || creator?.displayName || 'Creator';
+                const avatarLetter = displayName.charAt(0).toUpperCase();
+                return (
+                  <div className="flex items-center gap-3 mb-5">
+                    {isOfficial ? (
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center gradient-cta shadow-md shadow-primary/20">
+                        <ShieldCheck className="w-6 h-6 text-white" />
+                      </div>
+                    ) : creator?.photoURL ? (
+                      <img src={creator.photoURL} className="w-12 h-12 rounded-xl object-cover border border-border" alt="" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-primary bg-primary/15">
+                        {avatarLetter}
+                      </div>
+                    )}
+                    <div>
+                      <div className="font-bold text-foreground">{displayName}</div>
+                      <div className="text-xs font-semibold flex items-center gap-1 text-primary">
+                        {isOfficial ? (
+                          <><ShieldCheck className="w-3 h-3" /> Official Content</>
+                        ) : creator?.subscriptionStatus === 'pro' ? (
+                          'Verified Expert'
+                        ) : (
+                          'Creator'
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div>
-                  <div className="font-bold text-foreground">{creator?.displayName || 'Designer'}</div>
-                  <div className="text-xs font-semibold text-primary">
-                    {creator?.subscriptionStatus === 'pro' ? 'Verified Expert' : 'Creator'}
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
               <div className="space-y-0.5">
                 {[
                   { label: 'Model',    value: models.find(m => m.id === prompt!.model)?.name || prompt!.model },

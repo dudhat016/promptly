@@ -244,6 +244,8 @@ export interface Prompt {
   isPaid: boolean;
   categoryId: string;
   creatorId: string;
+  creatorName?: string;
+  creatorRole?: 'user' | 'staff' | 'admin';
   model: string; // This can be the Model ID
   tags: string[];
   likesCount: number;

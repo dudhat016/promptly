@@ -19,7 +19,7 @@ export default function AdminPromptForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { prefix } = usePath();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   const [categories, setCategories] = useState<Category[]>([]);
   const [models, setModels] = useState<AIModel[]>([]);
@@ -153,6 +153,8 @@ export default function AdminPromptForm() {
           ...prompt,
           id: newId,
           creatorId: user?.uid || 'system',
+          creatorName: 'Promptly Team',
+          creatorRole: profile?.role || 'admin',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           likesCount: 0,

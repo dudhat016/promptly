@@ -29,7 +29,7 @@ const slugify = (text: string) =>
     .replace(/^-+|-+$/g, '');
 
 export default function SubmitPromptPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { prefix } = usePath();
   const navigate = useNavigate();
   const { uploadImage, isUploading } = useImageUpload();
@@ -116,6 +116,8 @@ export default function SubmitPromptPage() {
         id,
         slug: form.slug || slugify(form.title),
         creatorId: user.uid,
+        creatorName: profile?.displayName || user.displayName || user.email || 'Creator',
+        creatorRole: 'user',
         status: 'pending',
         moderationStatus: 'active',
         isPaid: false,
