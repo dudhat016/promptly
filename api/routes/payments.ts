@@ -12,10 +12,16 @@ router.post("/cashfree/create-order", authMiddleware, json(), async (req: Authen
 
   try {
     const { amount, currency, customerId, customerEmail, customerPhone } = req.body;
-    
+
     // Security: Ensure the user can only create orders for themselves
     if (req.user?.uid !== customerId) {
       return res.status(403).json({ error: "Unauthorized order creation" });
+    }
+
+    // Cashfree requires order_amount as a number with at most 2 decimal places
+    const parsedAmount = parseFloat(Number(amount).toFixed(2));
+    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: "Invalid payment amount" });
     }
 
     const configSnap = await firebase.db.collection("configs").doc("payment").get();
@@ -38,7 +44,7 @@ router.post("/cashfree/create-order", authMiddleware, json(), async (req: Authen
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        order_amount: amount,
+        order_amount: parsedAmount,
         order_currency: currency || "INR",
         customer_details: {
           customer_id: customerId,
@@ -56,7 +62,7 @@ router.post("/cashfree/create-order", authMiddleware, json(), async (req: Authen
     });
 
     const data: any = await response.json();
-    if (!response.ok) throw new Error(data.message || "Failed to create Cashfree order");
+    if (!response.ok) throw new Error(data.message || data.type || JSON.stringify(data) || "Failed to create Cashfree order");
 
     res.json({ payment_session_id: data.payment_session_id, environment });
   } catch (err: any) {
