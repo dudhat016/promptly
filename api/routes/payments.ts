@@ -210,7 +210,9 @@ router.post("/webhook/cashfree", json(), async (req: any, res) => {
     const firebase = await initFirebase();
     const configSnap = firebase ? await firebase.db.collection("configs").doc("payment").get() : null;
     const config = configSnap?.exists ? configSnap.data() : null;
-    const webhookSecret = config?.cashfree?.webhookSecret || process.env.CASHFREE_WEBHOOK_SECRET;
+    // Cashfree signs with the App Secret — no separate webhook secret needed
+    const webhookSecret = config?.cashfree?.webhookSecret || process.env.CASHFREE_WEBHOOK_SECRET
+      || config?.cashfree?.secretKey || process.env.CASHFREE_SECRET_KEY;
 
     if (webhookSecret && ts && signature) {
       const expected = crypto
