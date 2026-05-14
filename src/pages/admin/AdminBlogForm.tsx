@@ -22,7 +22,7 @@ export default function AdminBlogForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { prefix } = usePath();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { theme } = useTheme();
   const isNew = !id || id === 'new';
 
@@ -128,6 +128,8 @@ export default function AdminBlogForm() {
       const postData = {
         ...post,
         authorId: user.uid,
+        authorName: 'Promptly Team',
+        authorRole: profile?.role || 'admin',
         updatedAt: serverTimestamp(),
       };
 

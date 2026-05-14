@@ -5,7 +5,7 @@ import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/
 import { db } from '../lib/firebase';
 import { BlogPost, UserProfile } from '../types';
 import ReactMarkdown from 'react-markdown';
-import { Calendar, ArrowLeft, Share2, Eye, Sparkles, ArrowRight, Clock } from 'lucide-react';
+import { Calendar, ArrowLeft, Share2, Eye, Sparkles, ArrowRight, Clock, ShieldCheck } from 'lucide-react';
 import BlogSidebar from '../components/BlogSidebar';
 import ShareModal from '../components/ShareModal';
 import { useAuth } from '../hooks/useAuth';
@@ -55,7 +55,9 @@ export default function BlogDetailPage() {
             updateDoc(docSnap.ref, { viewsCount: increment(1) }).catch(() => {});
           });
           recordBlogInteraction(postData, INTERACTION_WEIGHTS.VIEW);
-          if (postData.authorId) {
+          // Only fetch the user profile for community-authored posts
+          const isOfficial = postData.authorRole === 'admin' || postData.authorRole === 'staff';
+          if (postData.authorId && !isOfficial) {
             const authorDoc = await getDoc(doc(db, 'users', postData.authorId)).catch(() => null);
             if (authorDoc?.exists()) setAuthor({ uid: authorDoc.id, ...authorDoc.data() } as UserProfile);
           }
@@ -188,20 +190,35 @@ export default function BlogDetailPage() {
                   <Eye className="w-4 h-4" />
                   {post.viewsCount || 0} views
                 </div>
-                {author && (
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full overflow-hidden">
-                      {author.photoURL ? (
-                        <img src={author.photoURL} alt={author.displayName || 'Author'} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary bg-primary/20">
-                          {author.displayName?.charAt(0) || 'A'}
-                        </div>
-                      )}
+                {(() => {
+                  const isOfficial = post.authorRole === 'admin' || post.authorRole === 'staff';
+                  const displayName = post.authorName || author?.displayName || 'Promptly Team';
+                  return (
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                        {isOfficial ? (
+                          <div className="w-full h-full flex items-center justify-center gradient-cta">
+                            <ShieldCheck className="w-4 h-4 text-white" />
+                          </div>
+                        ) : author?.photoURL ? (
+                          <img src={author.photoURL} alt={displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary bg-primary/20">
+                            {displayName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-muted-foreground">{displayName}</span>
+                        {isOfficial && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">
+                            Official
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-sm font-semibold text-muted-foreground">{author.displayName || 'Anonymous'}</span>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
 

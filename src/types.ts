@@ -338,6 +338,8 @@ export interface BlogPost {
   metaKeywords?: string;
   coverImage?: string;
   authorId: string;
+  authorName?: string;
+  authorRole?: 'user' | 'staff' | 'admin';
   status: 'draft' | 'published';
   tags: string[];
   viewsCount?: number;
