@@ -50,6 +50,16 @@ service cloud.firestore {
       );
     }
 
+    function isStaff() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff';
+    }
+
+    function isAdminOrStaff() {
+      return isAdmin() || isStaff();
+    }
+
     // --- Entity Validations ---
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email', 'role', 'subscriptionStatus']) &&
@@ -184,11 +194,17 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // Audit logs — append-only by admins, immutable once written
+    // Audit logs — append-only by admins/staff, immutable once written
     match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin();
+      allow read: if isAdminOrStaff();
+      allow create: if isAdminOrStaff();
       allow update, delete: if false;
+    }
+
+    // Changelogs — public read, admin write
+    match /changelogs/{entryId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // Marketing & CRM
@@ -296,11 +312,11 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
-    // Prompt Reports — any user (including anonymous) can create; admin manages
+    // Prompt Reports — any user (including anonymous) can create; admin/staff manage
     match /prompt_reports/{reportId} {
-      allow read: if isAdmin();
+      allow read: if isAdminOrStaff();
       allow create: if true; // anonymous + logged-in users can report
-      allow update: if isAdmin();
+      allow update: if isAdminOrStaff();
       allow delete: if isAdmin();
     }
 

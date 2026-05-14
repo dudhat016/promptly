@@ -23,7 +23,7 @@ export function useMarketing() {
         setConfig(doc.data() as any);
       }
       setLoading(false);
-    });
+    }, () => setLoading(false));
 
     return () => unsub();
   }, []);

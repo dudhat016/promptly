@@ -90,6 +90,8 @@ export default function AdminOverview() {
   useEffect(() => {
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+    const noop = () => {};
+
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
       let pro = 0, newWeek = 0;
       const users = snap.docs.map(d => {
@@ -106,7 +108,7 @@ export default function AdminOverview() {
       setGrowthData(buildLast7Days(users));
       setRecentUsers([...users].sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5));
       setLoading(false);
-    });
+    }, noop);
 
     const unsubPrompts = onSnapshot(collection(db, 'prompts'), (snap) => {
       let copies = 0, views = 0;
@@ -118,7 +120,7 @@ export default function AdminOverview() {
       });
       setStats(prev => ({ ...prev, totalPrompts: snap.size, totalCopies: copies, totalViews: views }));
       setTopPrompts([...prompts].sort((a: any, b: any) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 6));
-    });
+    }, noop);
 
     return () => { unsubUsers(); unsubPrompts(); };
   }, []);
