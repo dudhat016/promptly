@@ -18,7 +18,8 @@ export class PaymentService {
     const secretKey = config?.cashfree?.secretKey || process.env.CASHFREE_SECRET_KEY;
     const environment = config?.cashfree?.environment || process.env.CASHFREE_ENV || 'sandbox';
 
-    const baseUrl = environment === 'production' ? "https://api.cashfree.com/pg" : "https://sandbox.cashfree.com/pg";
+    // Always use api.cashfree.com — sandbox sessions are also hosted here
+    const baseUrl = "https://api.cashfree.com/pg";
 
     const response = await fetch(`${baseUrl}/orders/${orderId}`, {
       headers: {
@@ -74,12 +75,14 @@ export class PaymentService {
         await awardAffiliateCommission(customerId, data.order_amount, data.order_id, data.order_currency, userData.referredBy);
       }
 
-      sendSuccessEmail(data.customer_details.customer_email, userData?.displayName || 'Creator', planData.name);
+      sendSuccessEmail(data.customer_details.customer_email, userData?.displayName || 'Creator', planData.name, data.order_id, data.order_amount, data.order_currency);
 
       return {
         status: 'PAID',
         orderId: data.order_id,
         planName: planData.name,
+        amount: data.order_amount,
+        currency: data.order_currency,
         creditsAdded: planCredits
       };
     }
@@ -152,14 +155,16 @@ export class PaymentService {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+      const ppCapture = captureData.purchase_units[0].payments.captures[0];
+
       await firebase.db.collection("orders").doc(orderID).set({
         orderId: orderID,
         userId: customerId,
         userEmail: customerEmail,
         planId: planId,
         planName: planData.name,
-        amount: captureData.purchase_units[0].payments.captures[0].amount.value,
-        currency: captureData.purchase_units[0].payments.captures[0].amount.currency_code,
+        amount: ppCapture.amount.value,
+        currency: ppCapture.amount.currency_code,
         status: 'completed',
         billingCycle: billingCycle,
         gateway: 'paypal',
@@ -167,10 +172,10 @@ export class PaymentService {
       });
 
       if (userData?.referredBy) {
-        await awardAffiliateCommission(customerId, captureData.purchase_units[0].payments.captures[0].amount.value, orderID, captureData.purchase_units[0].payments.captures[0].amount.currency_code, userData.referredBy);
+        await awardAffiliateCommission(customerId, ppCapture.amount.value, orderID, ppCapture.amount.currency_code, userData.referredBy);
       }
 
-      sendSuccessEmail(customerEmail, userData?.displayName || 'Creator', planData.name);
+      sendSuccessEmail(customerEmail, userData?.displayName || 'Creator', planData.name, orderID, parseFloat(ppCapture.amount.value), ppCapture.amount.currency_code);
 
       return {
         status: 'COMPLETED',

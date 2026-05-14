@@ -15,6 +15,8 @@ export default function CheckoutSuccessPage() {
   const orderId = searchParams.get('order_id');
   const planName = searchParams.get('plan_name') || 'Pro Plan';
   const amount = searchParams.get('amount') || '0';
+  const currency = searchParams.get('currency') || 'INR';
+  const currencySymbol = currency === 'INR' ? '₹' : '$';
   const [confetti, setConfetti] = useState(true);
 
   useEffect(() => {
@@ -82,8 +84,14 @@ export default function CheckoutSuccessPage() {
               <p className="font-mono text-xs font-bold text-foreground truncate max-w-[200px]">
                 {orderId || 'TXN_PROMPTLY_001'}
               </p>
+              {planName && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {planName} &nbsp;·&nbsp;
+                  {parseFloat(amount) > 0 ? `${currencySymbol}${amount}` : 'Free'}
+                </p>
+              )}
             </div>
-             <Button 
+             <Button
               onClick={copyOrderId}
               variant="secondary"
               size="sm"
