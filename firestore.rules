@@ -82,7 +82,7 @@ service cloud.firestore {
     // --- Configurations (Marketing & Monetization) ---
     match /configs/{configId} {
       // marketing/payment/global: public; staff_roles: signed-in; rest: admin only
-      allow read: if configId == 'marketing' || configId == 'payment' || configId == 'staff_roles' || isSignedIn() && configId == 'global' || isAdmin();
+      allow read: if configId == 'marketing' || configId == 'payment' || configId == 'access_levels' || configId == 'staff_roles' || isSignedIn() && configId == 'global' || isAdmin();
       // Only admins can modify configurations
       allow write: if isAdmin();
     }
