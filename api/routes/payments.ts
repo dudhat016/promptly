@@ -33,7 +33,9 @@ router.post("/cashfree/create-order", authMiddleware, json(), async (req: Authen
 
     if (!appId || !secretKey) return res.status(400).json({ error: "Cashfree credentials missing" });
 
-    const baseUrl = environment === 'production' ? "https://api.cashfree.com/pg" : "https://sandbox.cashfree.com/pg";
+    // Cashfree's JS checkout SDK always renders via api.cashfree.com regardless of mode.
+    // Orders must be created on the same host; use api.cashfree.com for both test and live.
+    const baseUrl = "https://api.cashfree.com/pg";
 
     const response = await fetch(`${baseUrl}/orders`, {
       method: 'POST',
