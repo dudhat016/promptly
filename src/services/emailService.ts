@@ -77,7 +77,7 @@ export const EmailService = {
       // 2. Wrap in branded layout
       const brandedContent = this.wrapWithBranding(notification.content, notification.recipientEmail);
 
-      await addDoc(collection(db, 'notifications'), {
+      await addDoc(collection(db, 'email_logs'), {
         ...notification,
         content: brandedContent,
         sentAt: serverTimestamp(),

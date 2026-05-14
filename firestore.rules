@@ -81,8 +81,8 @@ service cloud.firestore {
 
     // --- Configurations (Marketing & Monetization) ---
     match /configs/{configId} {
-      // marketing/global: public; staff_roles: signed-in users need it for canAccessSection; rest: admin only
-      allow read: if configId == 'marketing' || configId == 'staff_roles' || isSignedIn() && configId == 'global' || isAdmin();
+      // marketing/payment/global: public; staff_roles: signed-in; rest: admin only
+      allow read: if configId == 'marketing' || configId == 'payment' || configId == 'staff_roles' || isSignedIn() && configId == 'global' || isAdmin();
       // Only admins can modify configurations
       allow write: if isAdmin();
     }
@@ -183,7 +183,7 @@ service cloud.firestore {
 
     // New Centralized Platform Configuration (duplicate block — kept for clarity, merged into rule above)
     match /configs/{configId} {
-      allow read: if configId == 'global' || configId == 'marketing' || configId == 'staff_roles' || isAdmin();
+      allow read: if configId == 'global' || configId == 'marketing' || configId == 'payment' || configId == 'staff_roles' || isAdmin();
       allow write: if isAdmin();
     }
 
@@ -226,9 +226,11 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Email Logs
+    // Email Logs — signed-in users can create (client-side simulation); admin manages
     match /email_logs/{id} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
     // Models are public
