@@ -1,6 +1,6 @@
 import { Router, json } from "express";
-import { MarketingService } from "../services/marketingService";
-import { authMiddleware, adminOnly } from "../middleware/auth";
+import { MarketingService } from "../services/marketingService.js";
+import { authMiddleware, adminOnly } from "../middleware/auth.js";
 
 const router = Router();
 

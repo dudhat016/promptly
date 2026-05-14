@@ -1,6 +1,6 @@
 import admin from "firebase-admin";
 import nodemailer from "nodemailer";
-import { initFirebase } from "./firebase";
+import { initFirebase } from "./firebase.js";
 
 export async function sendSuccessEmail(email: string, name: string, planName: string) {
   try {

@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
-import { initFirebase } from "../lib/firebase";
+import { initFirebase } from "../lib/firebase.js";
 
 export class GeneralService {
   /**

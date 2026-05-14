@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { initFirebase } from "../lib/firebase";
+import { initFirebase } from "../lib/firebase.js";
 import nodemailer from "nodemailer";
 
 export class MarketingService {

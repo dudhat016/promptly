@@ -4,17 +4,17 @@ import admin from "firebase-admin";
 import helmet from "helmet";
 import cors from "cors";
 import multiparty from "multiparty";
-import paymentsRouter from "./routes/payments";
-import authRouter from "./routes/auth";
-import marketingRouter from "./routes/marketing";
-import supportRouter from "./routes/support";
-import locationRouter from "./routes/location";
-import dataRouter from "./routes/data";
-import { generalLimiter } from "./middleware/rateLimit";
-import { errorHandler } from "./middleware/errorHandler";
-import { authMiddleware, adminOnly, AuthenticatedRequest } from "./middleware/auth";
-import { GeneralService } from "./services/generalService";
-import { initFirebase } from "./lib/firebase";
+import paymentsRouter from "./routes/payments.js";
+import authRouter from "./routes/auth.js";
+import marketingRouter from "./routes/marketing.js";
+import supportRouter from "./routes/support.js";
+import locationRouter from "./routes/location.js";
+import dataRouter from "./routes/data.js";
+import { generalLimiter } from "./middleware/rateLimit.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { authMiddleware, adminOnly, AuthenticatedRequest } from "./middleware/auth.js";
+import { GeneralService } from "./services/generalService.js";
+import { initFirebase } from "./lib/firebase.js";
 
 dotenv.config();
 

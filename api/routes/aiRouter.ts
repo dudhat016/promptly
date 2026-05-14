@@ -4,8 +4,8 @@ import { Router } from "express";
 import axios from "axios";
 import multiparty from "multiparty";
 import fs from "fs";
-import { authMiddleware, type AuthenticatedRequest } from "../middleware/auth";
-import { initFirebase } from "../lib/firebase";
+import { authMiddleware, type AuthenticatedRequest } from "../middleware/auth.js";
+import { initFirebase } from "../lib/firebase.js";
 
 const router = Router();
 

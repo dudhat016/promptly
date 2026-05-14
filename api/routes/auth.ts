@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { AuthService } from "../services/authService";
-import { authLimiter } from "../middleware/rateLimit";
+import { AuthService } from "../services/authService.js";
+import { authLimiter } from "../middleware/rateLimit.js";
 
 const router = Router();
 

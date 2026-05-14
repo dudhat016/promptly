@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
-import { initFirebase } from "../lib/firebase";
-import { getStripe } from "../lib/stripe";
-import { awardAffiliateCommission, sendSuccessEmail } from "../lib/payouts";
+import { initFirebase } from "../lib/firebase.js";
+import { getStripe } from "../lib/stripe.js";
+import { awardAffiliateCommission, sendSuccessEmail } from "../lib/payouts.js";
 
 export class PaymentService {
   /**

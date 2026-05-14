@@ -1,7 +1,7 @@
 import { Router, json } from "express";
-import { initFirebase } from "../lib/firebase";
-import { PaymentService } from "../services/paymentService";
-import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { initFirebase } from "../lib/firebase.js";
+import { PaymentService } from "../services/paymentService.js";
+import { authMiddleware, AuthenticatedRequest } from "../middleware/auth.js";
 
 const router = Router();
 
