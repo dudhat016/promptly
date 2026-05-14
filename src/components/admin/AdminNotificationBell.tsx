@@ -5,6 +5,7 @@ import { db } from '../../lib/firebase';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import Button from '../primitives/Button';
+import { usePath } from '../../hooks/usePath';
 
 interface NotifGroup {
   key: string;
@@ -20,6 +21,7 @@ export default function AdminNotificationBell() {
   const [open, setOpen] = useState(false);
   const [groups, setGroups] = useState<NotifGroup[]>([]);
   const ref = useRef<HTMLDivElement>(null);
+  const { prefix } = usePath();
 
   // Close on outside click
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function AdminNotificationBell() {
           color: 'text-amber-500 bg-amber-500/10',
           label: 'Pending Withdrawals',
           count: snap.size,
-          href: '/admin/withdrawals',
+          href: prefix('/admin/withdrawals'),
           items: snap.docs.slice(0, 3).map(d => ({
             text: d.data().userEmail ?? 'Unknown user',
             sub: `$${d.data().amount ?? 0} pending`,
@@ -65,7 +67,7 @@ export default function AdminNotificationBell() {
           color: 'text-rose-500 bg-rose-500/10',
           label: 'Open Tickets',
           count: snap.size,
-          href: '/admin/tickets',
+          href: prefix('/admin/tickets'),
           items: snap.docs.slice(0, 3).map(d => ({
             text: d.data().subject ?? 'Untitled',
             sub: d.data().userEmail,
@@ -86,7 +88,7 @@ export default function AdminNotificationBell() {
           color: 'text-primary bg-primary/10',
           label: 'Unread Inquiries',
           count: snap.size,
-          href: '/admin/inquiries',
+          href: prefix('/admin/inquiries'),
           items: snap.docs.slice(0, 3).map(d => ({
             text: d.data().subject ?? 'No subject',
             sub: d.data().name,
@@ -108,7 +110,7 @@ export default function AdminNotificationBell() {
           color: 'text-emerald-600 bg-emerald-500/10',
           label: 'New Signups (24h)',
           count: snap.size,
-          href: '/admin/users',
+          href: prefix('/admin/users'),
           items: snap.docs.slice(0, 3).map(d => ({
             text: d.data().displayName || d.data().email || 'Unknown',
             sub: d.data().subscriptionStatus === 'pro' ? 'Pro plan' : 'Free plan',
@@ -129,7 +131,7 @@ export default function AdminNotificationBell() {
           color: 'text-rose-600 bg-rose-500/10',
           label: 'Flagged Prompts',
           count: snap.size,
-          href: '/admin/reports',
+          href: prefix('/admin/reports'),
           items: snap.docs.slice(0, 3).map(d => ({
             text: d.data().promptTitle ?? 'Unknown prompt',
             sub: d.data().reason?.replace(/_/g, ' ') ?? '',
