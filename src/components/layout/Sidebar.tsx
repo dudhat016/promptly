@@ -199,7 +199,9 @@ function SidebarItem({ item, isActive, collapsed }: { item: NavItem; isActive: b
       {item.badge && !collapsed && (
         <span className={cn(
           "min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[9px] font-bold px-1",
-          item.badgeVariant === 'danger' ? 'bg-rose-500 text-white' : 'bg-primary/20 text-primary'
+          item.badgeVariant === 'danger' ? 'bg-rose-500 text-white'
+            : item.badgeVariant === 'warning' ? 'bg-amber-500 text-white'
+            : 'bg-primary/20 text-primary'
         )}>
           {item.badge}
         </span>

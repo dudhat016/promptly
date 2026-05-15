@@ -4,13 +4,15 @@ import {
   Database,
   Send,
   Tag as TagIcon,
+  Upload,
   Users,
   X
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { usePath } from '../../hooks/usePath';
+import { api } from '../../lib/api';
 import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import { CRMService } from '../../services/crmService';
@@ -38,6 +40,8 @@ export default function ContactManager() {
 
   const [isBulkTagging, setIsBulkTagging] = useState(false);
   const [bulkTaggingRows, setBulkTaggingRows] = useState<Contact[]>([]);
+  const [importing, setImporting] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -91,6 +95,11 @@ export default function ContactManager() {
           const newTags = [...contact.tags, tagId];
           await updateDoc(doc(db, 'marketing_contacts', contact.id), { tags: newTags });
           setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: newTags } : c));
+
+          // Fire tag_added automation trigger for contacts linked to a user
+          if (contact.userId) {
+            await api.post('/automation/trigger', { triggerType: 'tag_added', userId: contact.userId, data: { value: tagId } }).catch(() => {});
+          }
         }
       }));
       setIsBulkTagging(false);
@@ -98,6 +107,40 @@ export default function ContactManager() {
       toast.success('Tags applied successfully');
     } catch (err) {
       toast.error('Failed to apply tags');
+    }
+  };
+
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''));
+      const emailIdx = header.indexOf('email');
+      const nameIdx  = header.indexOf('name');
+      const tagsIdx  = header.indexOf('tags');
+      if (emailIdx === -1) { toast.error('CSV must have an "email" column'); return; }
+      const rows = lines.slice(1).map(line => {
+        const cols = line.split(',').map(c => c.trim().replace(/"/g, ''));
+        return {
+          email: cols[emailIdx] || '',
+          name:  nameIdx  !== -1 ? cols[nameIdx]  || '' : '',
+          tags:  tagsIdx  !== -1 ? cols[tagsIdx]?.split('|').map(t => t.trim()).filter(Boolean) || [] : [],
+        };
+      }).filter(r => r.email);
+      const r = await api.post('/marketing/contacts/import', { contacts: rows }) as any;
+      toast.success(`Imported ${r.created}, updated ${r.updated}, skipped ${r.skipped}`);
+      // Refresh the contacts list
+      getDocs(collection(db, 'marketing_contacts')).then(snap =>
+        setContacts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Contact)))
+      ).catch(() => {});
+    } catch (err: any) {
+      toast.error(err?.message || 'Import failed');
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -145,7 +188,7 @@ export default function ContactManager() {
 
           if (f.operator === 'equals') return String(cValue) === String(targetValue);
           if (f.operator === 'contains') {
-            if (Array.isArray(cValue)) return cValue.some(v => String(v).toLowerCase().includes(String(targetValue).toLowerCase()));
+            if (Array.isArray(cValue)) return cValue.map(String).includes(String(targetValue));
             return String(cValue).toLowerCase().includes(String(targetValue).toLowerCase());
           }
           if (f.operator === 'greater_than') return Number(cValue) > Number(targetValue);
@@ -286,17 +329,36 @@ export default function ContactManager() {
         className="bg-muted/50 p-1 rounded-xl border border-border/30"
       />
 
-      <Select
-        options={[
-          { label: 'All Contacts', value: 'all' },
-          ...segments.map(s => ({ label: s.name, value: s.id }))
-        ]}
-        value={selectedSegment || 'all'}
-        onChange={(val) => setSelectedSegment(val === 'all' ? null : val)}
-        isSearchable={segments.length > 5}
-        className="w-max min-w-[200px]"
-        placeholder="Segments"
-      />
+      <div className="flex items-center gap-2">
+        <input
+          ref={csvInputRef}
+          type="file"
+          accept=".csv"
+          className="hidden"
+          onChange={handleCsvImport}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          isLoading={importing}
+          onClick={() => csvInputRef.current?.click()}
+          className="flex items-center gap-1.5"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          Import CSV
+        </Button>
+        <Select
+          options={[
+            { label: 'All Contacts', value: 'all' },
+            ...segments.map(s => ({ label: s.name, value: s.id }))
+          ]}
+          value={selectedSegment || 'all'}
+          onChange={(val) => setSelectedSegment(val === 'all' ? null : val)}
+          isSearchable={segments.length > 5}
+          className="w-max min-w-[200px]"
+          placeholder="Segments"
+        />
+      </div>
     </div>
   );
 

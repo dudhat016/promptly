@@ -7,7 +7,7 @@ interface Breadcrumb {
 }
 
 interface SchemaProps {
-  type: 'Prompt' | 'Blog' | 'General';
+  type: 'Prompt' | 'Blog' | 'General' | 'Pricing';
   data: any;
   breadcrumbs?: Breadcrumb[];
 }
@@ -74,6 +74,42 @@ export default function Schema({ type, data, breadcrumbs }: SchemaProps) {
           });
         }
       }
+    }
+
+    if (type === 'Pricing' && data?.plans?.length) {
+      // ItemList of Offers for the pricing page
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": `${siteName} Pricing Plans`,
+        "itemListElement": data.plans.map((plan: any, i: number) => ({
+          "@type": "ListItem",
+          "position": i + 1,
+          "item": {
+            "@type": "Offer",
+            "name": plan.name,
+            "description": plan.description || plan.tagline || plan.name,
+            "price": plan.monthlyPrice ?? 0,
+            "priceCurrency": data.currency || config.currency || "USD",
+            "availability": "https://schema.org/InStock",
+            "url": `${baseUrl}/pricing`,
+          }
+        }))
+      });
+
+      // WebPage with Organization
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": `Pricing — ${siteName}`,
+        "description": `Choose a ${siteName} plan that fits your needs. Free and Pro options available.`,
+        "url": `${baseUrl}/pricing`,
+        "provider": {
+          "@type": "Organization",
+          "name": siteName,
+          "url": baseUrl,
+        }
+      });
     }
 
     if (type === 'Blog' && data) {

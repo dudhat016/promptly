@@ -1,5 +1,5 @@
 import { addDoc, collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
-import { AlertCircle, ArrowLeft, Check, CheckCircle2, CreditCard, Heart, Lock, RefreshCw, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, CheckCircle2, CreditCard, Heart, Lock, RefreshCw, ShieldCheck, Sparkles, Tag, TrendingUp, X, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -17,8 +17,9 @@ import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
 import { usePath } from '../hooks/usePath';
 import { useMarketing } from '../hooks/useMarketing';
+import { useConfig } from '../hooks/useConfig';
 
-const UNLOCK_BENEFITS = [
+const DEFAULT_BENEFITS = [
   '5,000+ expert-engineered AI prompts',
   'Copy, save & organize unlimited prompts',
   'New prompts added every week',
@@ -31,6 +32,7 @@ export default function CheckoutPage() {
   const { user, profile, loading: authLoading, syncMarketingTags } = useAuth();
   const { currency, symbol, exchangeRate, isLoading: currencyLoading } = useCurrency();
   const { marketingConfig } = useMarketing();
+  const { config: globalConfig } = useConfig();
   const { prefix } = usePath();
   const [searchParams] = useSearchParams();
 
@@ -99,6 +101,15 @@ export default function CheckoutPage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [autoPay, setAutoPay] = useState(true);
 
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('');
+  const [couponData, setCouponData] = useState<null | { couponId: string; code: string; type: string; value: number; discountAmount: number; finalAmount: number; description: string }>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+
+  // Two-sided referral: referee discount
+  const refereeDiscountPct = marketingConfig?.refereeDiscountPercent ?? 10;
+
   const validate = () => {
     if (price === 0) return true;
     if (paymentConfig?.cashfree?.enabled || (paymentConfig?.paypal?.enabled && currency !== 'INR')) return true;
@@ -113,6 +124,35 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const redeemCoupon = async (idToken: string | undefined) => {
+    if (!couponData) return;
+    try {
+      await fetch('/api/coupons/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(idToken && { Authorization: `Bearer ${idToken}` }) },
+        body: JSON.stringify({ couponId: couponData.couponId, planId, amount: price }),
+      });
+    } catch { /* non-blocking */ }
+  };
+
+  const applyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponInput.trim(), planId, amount: price }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setCouponError(data.error); return; }
+      setCouponData(data);
+      toast.success(`Coupon applied — ${data.type === 'percent' ? `${data.value}% off` : `₹${data.value} off`}`);
+    } catch { setCouponError('Failed to validate coupon'); }
+    finally { setCouponLoading(false); }
+  };
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreeToTerms) { toast.error("Please agree to the Terms and Refund Policy to proceed."); return; }
@@ -123,6 +163,8 @@ export default function CheckoutPage() {
     setProcessing(true);
     try {
       if (paymentConfig?.cashfree?.enabled && price > 0) {
+        const idToken = await user?.getIdToken();
+        await redeemCoupon(idToken);
         if (autoPay) {
           await PaymentService.initiateCashfreeSubscription({
             amount: price, currency, customerId: user.uid, customerEmail: user.email || '',
@@ -161,6 +203,11 @@ export default function CheckoutPage() {
         trialUsed: isTrial ? true : (profile?.trialUsed || false),
         trialEndsAt, updatedAt: serverTimestamp()
       }, { merge: true });
+
+      if (couponData && !isTrial && price > 0) {
+        const idToken = await user?.getIdToken();
+        await redeemCoupon(idToken);
+      }
 
       const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode');
       if (refCode && !isTrial && price > 0) {
@@ -242,10 +289,27 @@ export default function CheckoutPage() {
   }
 
   const isTrial = config?.activePromotion === 'trial' && !profile?.trialUsed && plan.monthlyPrice > 0;
-  const price = cycle === 'yearly'
-    ? (currency === 'INR' ? Math.round(plan.yearlyPrice * exchangeRate) : plan.yearlyPrice)
-    : (currency === 'INR' ? Math.round(plan.monthlyPrice * exchangeRate) : plan.monthlyPrice);
+
+  // Use fixed INR prices from the plan when set; fall back to live rate conversion.
+  const inrMonthly = (plan.inrMonthlyPrice ?? 0) > 0 ? plan.inrMonthlyPrice : Math.round(plan.monthlyPrice * exchangeRate);
+  const inrYearly  = (plan.inrYearlyPrice  ?? 0) > 0 ? plan.inrYearlyPrice  : Math.round(plan.yearlyPrice  * exchangeRate);
+
+  const basePrice = cycle === 'yearly'
+    ? (currency === 'INR' ? inrYearly : plan.yearlyPrice)
+    : (currency === 'INR' ? inrMonthly : plan.monthlyPrice);
+
+  // Referee discount (two-sided referral)
+  const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode');
+  const refereeDiscount = refCode && affiliateName ? parseFloat((basePrice * refereeDiscountPct / 100).toFixed(2)) : 0;
+
+  // Final price: base → referee discount → coupon
+  const priceAfterReferee = Math.max(0, basePrice - refereeDiscount);
+  const price = couponData ? couponData.finalAmount : priceAfterReferee;
   const isFree = price === 0;
+
+  const UNLOCK_BENEFITS: string[] = (globalConfig as any)?.checkoutBenefits?.length
+    ? (globalConfig as any).checkoutBenefits
+    : DEFAULT_BENEFITS;
 
   const inputClass = "w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all bg-background border border-border focus:border-primary/50";
 
@@ -370,6 +434,57 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
+                  {/* Coupon Code */}
+                  {!couponData ? (
+                    <div className="rounded-xl border border-border p-4 space-y-2.5">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <Tag className="w-3.5 h-3.5" /> Have a coupon?
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponInput}
+                          onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(''); }}
+                          placeholder="Enter coupon code"
+                          className={inputClass + " flex-1 uppercase font-mono tracking-widest"}
+                          onKeyDown={e => e.key === 'Enter' && applyCoupon()}
+                        />
+                        <Button onClick={applyCoupon} isLoading={couponLoading} variant="outline" size="sm" className="shrink-0 px-5">
+                          Apply
+                        </Button>
+                      </div>
+                      {couponError && (
+                        <p className="text-xs text-rose-500 flex items-center gap-1.5">
+                          <AlertCircle className="w-3 h-3 shrink-0" />{couponError}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl p-4 flex items-center justify-between"
+                      style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: 'rgba(16,185,129,0.15)' }}>
+                          <Tag className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{couponData.code} applied!</p>
+                          <p className="text-xs text-emerald-600/60 dark:text-emerald-400/60">
+                            {couponData.type === 'percent' ? `${couponData.value}% off` : `${symbol}${couponData.value} off`}
+                            {couponData.description ? ` — ${couponData.description}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setCouponData(null); setCouponInput(''); setCouponError(''); }}
+                        className="text-muted-foreground hover:text-rose-500 transition-colors ml-3"
+                        title="Remove coupon"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Payment gateways */}
                   <div className="space-y-4">
                     {paymentConfig?.cashfree?.enabled && (
@@ -433,6 +548,7 @@ export default function CheckoutPage() {
                               }}
                               createOrder={(data, actions) => actions.order.create({
                                 intent: "CAPTURE",
+                                // PayPal is only shown for non-INR users so currency is always USD here.
                                 purchase_units: [{ description: `${plan.name} Plan`, amount: { currency_code: "USD", value: price.toString() } }],
                               })}
                               onApprove={async (data, actions) => {
@@ -449,6 +565,7 @@ export default function CheckoutPage() {
                                   });
                                   const result = await response.json();
                                   if (result.status === 'COMPLETED') {
+                                    await redeemCoupon(idToken);
                                     toast.success("Payment Successful! Welcome to Pro.");
                                     window.location.href = result.redirectUrl || '/checkout/success';
                                   } else {
@@ -585,6 +702,11 @@ export default function CheckoutPage() {
                   </div>
                   <p className="font-semibold text-foreground text-sm">{affiliateName}</p>
                   <p className="text-xs mt-0.5 text-muted-foreground">A portion of your payment supports this creator.</p>
+                  {refereeDiscount > 0 && (
+                    <p className="text-xs font-bold mt-1" style={{ color: 'rgb(139,92,246)' }}>
+                      You save {refereeDiscountPct}% as a referred friend!
+                    </p>
+                  )}
                 </div>
                 <Heart className="absolute right-4 top-4 w-8 h-8 text-rose-500/10" />
               </div>
@@ -605,17 +727,75 @@ export default function CheckoutPage() {
                   <p className="font-bold text-foreground">{plan.name} Plan</p>
                   <p className="text-xs mt-0.5 text-muted-foreground">Billed {cycle}</p>
                 </div>
-                <p className="font-bold text-2xl text-foreground">{symbol}{price}</p>
+                <div className="text-right">
+                  {(refereeDiscount > 0 || couponData) && (
+                    <p className="text-sm text-muted-foreground line-through">{symbol}{basePrice}</p>
+                  )}
+                  <p className="font-bold text-2xl text-foreground">{symbol}{price}</p>
+                </div>
               </div>
+
+              {cycle === 'monthly' && plan.yearlyPrice > 0 && plan.yearlyPrice < plan.monthlyPrice * 12 && (() => {
+                const annualSavings = currency === 'INR'
+                  ? Math.round(inrMonthly * 12 - inrYearly)
+                  : (plan.monthlyPrice * 12) - plan.yearlyPrice;
+                const annualBase = currency === 'INR' ? inrMonthly * 12 : plan.monthlyPrice * 12;
+                const savePct = Math.round((annualSavings / (annualBase || 1)) * 100);
+                const incentiveVal = (globalConfig as any)?.yearlyIncentiveValue ?? savePct;
+                const incentiveType = (globalConfig as any)?.yearlyIncentiveType ?? 'percent';
+                const label = incentiveType === 'free_months'
+                  ? `Get ${incentiveVal} months free`
+                  : incentiveType === 'amount'
+                  ? `Save ${symbol}${incentiveVal}`
+                  : `Save ${incentiveVal}%`;
+                const params = new URLSearchParams(window.location.search);
+                params.set('cycle', 'yearly');
+                return (
+                  <div className="my-3 rounded-xl p-3.5 flex items-center justify-between gap-3 bg-emerald-500/8 border border-emerald-500/20">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-emerald-600">{label} with Annual billing</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Pay {symbol}{currency === 'INR' ? inrYearly : plan.yearlyPrice}/yr instead</p>
+                      </div>
+                    </div>
+                    <a
+                      href={`?${params.toString()}`}
+                      className="text-[10px] font-bold text-emerald-600 bg-emerald-500/15 hover:bg-emerald-500/25 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap border border-emerald-500/20"
+                    >
+                      Switch →
+                    </a>
+                  </div>
+                );
+              })()}
 
               {cycle === 'yearly' && plan.monthlyPrice > 0 && (
                 <div className="flex items-center justify-between py-3 border-b border-border text-emerald-600 dark:text-emerald-400">
                   <p className="text-sm font-semibold">Yearly discount</p>
                   <p className="text-sm font-bold">
                     -{symbol}{currency === 'INR'
-                      ? Math.round(((plan.monthlyPrice * 12) - plan.yearlyPrice) * exchangeRate)
+                      ? Math.max(0, inrMonthly * 12 - inrYearly)
                       : (plan.monthlyPrice * 12) - plan.yearlyPrice}
                   </p>
+                </div>
+              )}
+
+              {refereeDiscount > 0 && (
+                <div className="flex items-center justify-between py-3 border-b border-border" style={{ color: 'rgb(139,92,246)' }}>
+                  <p className="text-sm font-semibold">Referral discount ({refereeDiscountPct}%)</p>
+                  <p className="text-sm font-bold">-{symbol}{refereeDiscount}</p>
+                </div>
+              )}
+
+              {couponData && (
+                <div className="flex items-center justify-between py-3 border-b border-border text-emerald-600 dark:text-emerald-400">
+                  <div>
+                    <p className="text-sm font-semibold flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5" />{couponData.code}
+                    </p>
+                    {couponData.description && <p className="text-xs text-muted-foreground mt-0.5">{couponData.description}</p>}
+                  </div>
+                  <p className="text-sm font-bold shrink-0">-{symbol}{couponData.discountAmount}</p>
                 </div>
               )}
 

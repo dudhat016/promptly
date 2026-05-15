@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { db } from '../../lib/firebase';
-import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { logAuditEvent } from '../../lib/auditLog';
 import { UserProfile } from '../../types';
-import { Gift, Award, Check, Percent } from 'lucide-react';
-import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
+import { Gift, Award, Percent, Check, RefreshCw, Clock, DollarSign, Users, TrendingUp, ExternalLink } from 'lucide-react';
+import { AdminPageHeader, DataTable } from '../../components/admin';
 import type { DataTableColumn, DataTableActions } from '../../components/admin';
 import { toast } from 'react-hot-toast';
 import Input from '../../components/primitives/Input';
 import Button from '../../components/primitives/Button';
 import Badge from '../../components/primitives/Badge';
 import { useMarketing } from '../../hooks/useMarketing';
+import { api } from '../../lib/api';
+import { usePath } from '../../hooks/usePath';
 
 const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -24,28 +27,29 @@ const formatDate = (date: any) => {
 };
 
 export default function AdminAffiliates() {
-  const confirm = useConfirm();
+  const { prefix } = usePath();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingLocks, setProcessingLocks] = useState(false);
   const { marketingConfig } = useMarketing();
   const [isEditingRate, setIsEditingRate] = useState(false);
   const [newRate, setNewRate] = useState(marketingConfig.referralCommission);
 
   useEffect(() => { setNewRate(marketingConfig.referralCommission); }, [marketingConfig.referralCommission]);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const uSnap = await getDocs(collection(db, 'users'));
-        setUsers(uSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const uSnap = await getDocs(collection(db, 'users'));
+      setUsers(uSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    loadData();
-  }, []);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const handleUpdateRate = async () => {
     try {
@@ -58,29 +62,28 @@ export default function AdminAffiliates() {
     }
   };
 
-  const handleProcessPayout = async (affiliate: UserProfile) => {
-    const amount = affiliate.affiliateEarnings || 0;
-    if (amount <= 0) return toast.error('No pending earnings');
-    const ok = await confirm({ title: `Mark $${amount} as paid to ${affiliate.email}?`, description: 'This action cannot be undone.', confirmLabel: 'Delete', destructive: true });
-    if (!ok) return;
+  const handleProcessLocks = async () => {
+    setProcessingLocks(true);
     try {
-      await addDoc(collection(db, 'payouts'), {
-        userId: affiliate.uid,
-        userEmail: affiliate.email,
-        amount,
-        status: 'paid',
-        processedAt: serverTimestamp(),
-      });
-      await updateDoc(doc(db, 'users', affiliate.uid), { affiliateEarnings: 0, updatedAt: serverTimestamp() });
-      setUsers(prev => prev.map(u => u.uid === affiliate.uid ? { ...u, affiliateEarnings: 0 } : u));
-      logAuditEvent({ action: 'payout.processed', entityType: 'user', entityId: affiliate.uid, details: { amount, email: affiliate.email } });
-      toast.success('Payout processed!');
+      const r = await api.post('/affiliates/process-locks') as any;
+      toast.success(`Approved ${r.approved ?? 0} commission(s) — earnings credited to affiliates`);
+      await loadData();
     } catch {
-      toast.error('Failed to process payout');
+      toast.error('Failed to process lock periods');
+    } finally {
+      setProcessingLocks(false);
     }
   };
 
-  const affiliates = users.filter(u => (u.referralsCount && u.referralsCount > 0) || (u.affiliateEarnings && u.affiliateEarnings > 0));
+  const affiliates = users.filter(u =>
+    (u.referralsCount && u.referralsCount > 0) ||
+    (u.affiliateEarnings && u.affiliateEarnings > 0) ||
+    (u.pendingEarnings && u.pendingEarnings > 0)
+  );
+
+  const totalAvailable = affiliates.reduce((s, u) => s + (u.affiliateEarnings ?? 0), 0);
+  const totalLocked    = affiliates.reduce((s, u) => s + (u.pendingEarnings ?? 0), 0);
+  const totalReferrals = affiliates.reduce((s, u) => s + (u.referralsCount ?? 0), 0);
 
   const columns: DataTableColumn<UserProfile>[] = [
     {
@@ -107,14 +110,12 @@ export default function AdminAffiliates() {
       header: 'Referrals',
       sortable: true,
       sortValue: u => u.referralsCount ?? 0,
-      render: u => (
-        <span className="font-bold text-foreground">{u.referralsCount || 0}</span>
-      ),
+      render: u => <span className="font-bold text-foreground">{u.referralsCount || 0}</span>,
       csvValue: u => u.referralsCount ?? 0,
     },
     {
-      key: 'earnings',
-      header: 'Unpaid Earnings',
+      key: 'available',
+      header: 'Available',
       sortable: true,
       sortValue: u => u.affiliateEarnings ?? 0,
       render: u => (
@@ -123,6 +124,33 @@ export default function AdminAffiliates() {
         </span>
       ),
       csvValue: u => (u.affiliateEarnings || 0).toFixed(2),
+    },
+    {
+      key: 'pending',
+      header: 'In Lock-up',
+      sortable: true,
+      sortValue: u => u.pendingEarnings ?? 0,
+      render: u => (
+        <div className="flex items-center gap-1.5">
+          {(u.pendingEarnings ?? 0) > 0 && <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+          <span className={`font-semibold ${(u.pendingEarnings ?? 0) > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+            ${(u.pendingEarnings || 0).toFixed(2)}
+          </span>
+        </div>
+      ),
+      csvValue: u => (u.pendingEarnings || 0).toFixed(2),
+    },
+    {
+      key: 'withdrawn',
+      header: 'Withdrawn',
+      sortable: true,
+      sortValue: u => u.withdrawnAmount ?? 0,
+      render: u => (
+        <span className="text-sm text-muted-foreground font-semibold">
+          ${(u.withdrawnAmount || 0).toFixed(2)}
+        </span>
+      ),
+      csvValue: u => (u.withdrawnAmount || 0).toFixed(2),
     },
     {
       key: 'joined',
@@ -139,82 +167,106 @@ export default function AdminAffiliates() {
       csvValue: u => formatDate(u.createdAt),
     },
     {
-      key: 'payout',
-      header: 'Payout',
+      key: 'payouts',
+      header: 'Payouts',
       hideable: false,
       render: u => (u.affiliateEarnings ?? 0) > 0 ? (
-        <Button
-          onClick={() => handleProcessPayout(u)}
-          variant="secondary"
-          size="sm"
-          className="bg-primary/10 text-primary border border-primary/20 font-bold hover:bg-primary/20"
+        <Link
+          to={prefix('/admin/withdrawals')}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
         >
-          Mark as Paid
-        </Button>
+          <ExternalLink className="w-3 h-3" />
+          View Requests
+        </Link>
       ) : (
         <Badge variant="soft" size="sm" className="bg-muted text-muted-foreground border-transparent">
-          All Paid
+          {(u.pendingEarnings ?? 0) > 0 ? 'In Lock-up' : 'All Paid'}
         </Badge>
       ),
     },
   ];
 
   const actions: DataTableActions<UserProfile> = {
-    view: u => `/admin/users/${u.uid}`,
+    view: u => prefix(`/admin/users/${u.uid}`),
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <AdminPageHeader
         label="Revenue"
         labelIcon={Gift}
         title="Affiliate Program"
-        subtitle="Manage referral earnings and process affiliate payouts."
+        subtitle="Track referral earnings, lock periods, and withdrawal requests."
         actions={
-          <div className="bg-primary/8 border border-primary/10 rounded-lg px-5 py-3 flex items-center gap-4 shadow-sm min-w-[260px]">
-            <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center shrink-0">
-              <Percent className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex-grow">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Commission Rate</p>
-              {isEditingRate ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="commissionRate"
-                    name="commissionRate"
-                    type="number"
-                    value={newRate}
-                    onChange={e => setNewRate(Number(e.target.value))}
-                    className="w-20"
-                    variant="filled"
-                    inputSize="sm"
-                  />
-                  <Button
-                    onClick={handleUpdateRate}
-                    variant="primary"
-                    size="icon"
-                    className="shrink-0 h-8 w-8"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between gap-4">
-                  <p className="text-sm font-semibold text-foreground">{marketingConfig.referralCommission}% Commission</p>
-                  <Button
-                    onClick={() => setIsEditingRate(true)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary hover:underline font-bold"
-                  >
-                    Edit
-                  </Button>
-                </div>
-              )}
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleProcessLocks}
+              isLoading={processingLocks}
+              variant="secondary"
+              size="sm"
+              className="flex items-center gap-1.5"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Process Lock Periods
+            </Button>
+            <Button onClick={loadData} isLoading={loading} variant="ghost" size="icon">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+            <div className="bg-primary/8 border border-primary/10 rounded-lg px-4 py-2.5 flex items-center gap-3 shadow-sm min-w-[220px]">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
+                <Percent className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex-grow">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-0.5">Commission Rate</p>
+                {isEditingRate ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="commissionRate"
+                      name="commissionRate"
+                      type="number"
+                      value={newRate}
+                      onChange={e => setNewRate(Number(e.target.value))}
+                      className="w-20"
+                      variant="filled"
+                      inputSize="sm"
+                    />
+                    <Button onClick={handleUpdateRate} variant="primary" size="icon" className="shrink-0 h-7 w-7">
+                      <Check className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">{marketingConfig.referralCommission}%</p>
+                    <Button onClick={() => setIsEditingRate(true)} variant="ghost" size="sm" className="text-primary hover:underline font-bold h-auto py-0">
+                      Edit
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         }
       />
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Affiliates',      value: affiliates.length,           icon: Users,      accent: 'bg-amber-500/10 text-amber-600' },
+          { label: 'Total Referrals', value: totalReferrals,              icon: TrendingUp, accent: 'bg-primary/10 text-primary' },
+          { label: 'Available',       value: `$${totalAvailable.toFixed(2)}`, icon: DollarSign, accent: 'bg-emerald-500/10 text-emerald-600' },
+          { label: 'In Lock-up',      value: `$${totalLocked.toFixed(2)}`,    icon: Clock,      accent: 'bg-amber-500/10 text-amber-600' },
+        ].map(s => (
+          <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.accent}`}>
+              <s.icon className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
+              <p className="text-lg font-black text-foreground leading-none">{s.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <DataTable
         columns={columns}

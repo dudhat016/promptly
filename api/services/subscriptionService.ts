@@ -1,6 +1,8 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { sendSuccessEmail } from "../lib/payouts.js";
+import { DunningService } from "./dunningService.js";
+import { triggerFlow } from "./automationEngine.js";
 
 export class SubscriptionService {
 
@@ -179,6 +181,10 @@ export class SubscriptionService {
         'INR'
       );
 
+      triggerFlow(firebase.db, 'subscription_payment_received', userDoc.id, {
+        plan: planData!.name as string, planId, amount: String(data.authAmount || 0), currency: 'INR'
+      }).catch(err => console.error('[Automation] subscription trigger failed:', err.message));
+
       return {
         status: 'PAID',
         orderId: subscriptionId,
@@ -214,11 +220,16 @@ export class SubscriptionService {
     const data: any = await res.json();
 
     // Mark cancel at period end regardless of gateway response
+    const userSnap = await firebase.db.collection("users").doc(userId).get();
     await firebase.db.collection("users").doc(userId).update({
       cancelAtPeriodEnd: true,
       autoPayEnabled: false,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    triggerFlow(firebase.db, 'subscription_cancelled', userId, {
+      plan: userSnap.exists ? (userSnap.data()?.activePlanId || '') : '',
+    }).catch(() => {});
 
     return { success: true, data };
   }
@@ -271,6 +282,30 @@ export class SubscriptionService {
           type: 'renewal',
           createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        // Clear dunning state on successful renewal
+        if (userDoc.data().dunningStatus === 'failing') {
+          await DunningService.handlePaymentRecovery(userDoc.id);
+        }
+
+        triggerFlow(firebase.db, 'subscription_renewed', userDoc.id, {
+          plan: userData.activePlanId || '', amount: String(payment?.amount || 0), currency: 'INR'
+        }).catch(err => console.error('[Automation] subscription_renewed trigger failed:', err.message));
+      }
+    }
+
+    // Failed payment — trigger dunning
+    if (eventType === 'SUBSCRIPTION_PAYMENT_FAILED' || eventType === 'failed_payment' || eventType === 'instrument_failed') {
+      const sub = payload.data?.subscription || payload.subscription;
+      const subscriptionId = sub?.subscriptionId || sub?.subReferenceId;
+      if (subscriptionId) {
+        const usersSnap = await firebase.db.collection("users")
+          .where('subscriptionId', '==', subscriptionId).limit(1).get();
+        if (!usersSnap.empty) {
+          const userDoc = usersSnap.docs[0];
+          const currentAttempt = (userDoc.data().dunningAttempt || 0) + 1;
+          await DunningService.handlePaymentFailure(userDoc.id, 'cashfree', currentAttempt);
+        }
       }
     }
 
@@ -284,11 +319,15 @@ export class SubscriptionService {
           .limit(1).get();
 
         if (!usersSnap.empty) {
-          await usersSnap.docs[0].ref.update({
+          const userDoc = usersSnap.docs[0];
+          await userDoc.ref.update({
             cancelAtPeriodEnd: true,
             autoPayEnabled: false,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
+          triggerFlow(firebase.db, 'subscription_cancelled', userDoc.id, {
+            plan: userDoc.data().activePlanId || '',
+          }).catch(() => {});
         }
       }
     }
@@ -548,11 +587,16 @@ export class SubscriptionService {
       body: JSON.stringify({ reason: 'User requested cancellation' })
     });
 
+    const ppUserSnap = await firebase.db.collection("users").doc(userId).get();
     await firebase.db.collection("users").doc(userId).update({
       cancelAtPeriodEnd: true,
       autoPayEnabled: false,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    triggerFlow(firebase.db, 'subscription_cancelled', userId, {
+      plan: ppUserSnap.exists ? (ppUserSnap.data()?.activePlanId || '') : '',
+    }).catch(() => {});
 
     return { success: true };
   }
@@ -602,6 +646,10 @@ export class SubscriptionService {
           type: 'renewal',
           createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        triggerFlow(firebase.db, 'subscription_renewed', userDoc.id, {
+          plan: userData.activePlanId || '', amount: String(resource.amount?.total || 0), currency: resource.amount?.currency || 'USD'
+        }).catch(err => console.error('[Automation] PayPal renewal trigger failed:', err.message));
       }
     }
 
@@ -612,11 +660,15 @@ export class SubscriptionService {
         .limit(1).get();
 
       if (!usersSnap.empty) {
-        await usersSnap.docs[0].ref.update({
+        const userDoc = usersSnap.docs[0];
+        await userDoc.ref.update({
           cancelAtPeriodEnd: true,
           autoPayEnabled: false,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+        triggerFlow(firebase.db, 'subscription_cancelled', userDoc.id, {
+          plan: userDoc.data().activePlanId || '',
+        }).catch(() => {});
       }
     }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { usePath } from '../hooks/usePath';
-import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, doc, getDoc, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { BlogPost, UserProfile } from '../types';
 import ReactMarkdown from 'react-markdown';
@@ -17,11 +17,16 @@ import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
 
+function readTime(content: string) {
+  return Math.max(1, Math.ceil((content || '').split(/\s+/).length / 200));
+}
+
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { prefix } = usePath();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [author, setAuthor] = useState<UserProfile | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { profile } = useAuth();
@@ -55,6 +60,25 @@ export default function BlogDetailPage() {
             updateDoc(docSnap.ref, { viewsCount: increment(1) }).catch(() => {});
           });
           recordBlogInteraction(postData, INTERACTION_WEIGHTS.VIEW);
+
+          // Fetch related posts by shared tags
+          if (postData.tags && postData.tags.length > 0) {
+            getDocs(query(
+              collection(db, 'blog_posts'),
+              where('status', '==', 'published'),
+              where('tags', 'array-contains-any', postData.tags.slice(0, 10)),
+              orderBy('publishedAt', 'desc'),
+              limit(4)
+            )).then(relSnap => {
+              setRelatedPosts(
+                relSnap.docs
+                  .map(d => ({ id: d.id, ...d.data() } as BlogPost))
+                  .filter(p => p.slug !== postData.slug)
+                  .slice(0, 3)
+              );
+            }).catch(() => {});
+          }
+
           // Only fetch the user profile for community-authored posts
           const isOfficial = postData.authorRole === 'admin' || postData.authorRole === 'staff';
           if (postData.authorId && !isOfficial) {
@@ -289,6 +313,64 @@ export default function BlogDetailPage() {
                   <p className="text-sm text-muted-foreground">
                     Expert in AI prompting and productivity. Writing guides to help you get the most from modern AI tools.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* ── Related posts ── */}
+            {relatedPosts.length > 0 && (
+              <div className="mt-12">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-foreground">Related Articles</h3>
+                  <Link
+                    to={prefix('/blog')}
+                    className="text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+                  >
+                    View all <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {relatedPosts.map(related => (
+                    <Link
+                      key={related.id}
+                      to={prefix(`/blog/${related.slug}`)}
+                      className="group flex flex-col rounded-xl overflow-hidden border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all"
+                    >
+                      <div className="relative aspect-video overflow-hidden bg-muted shrink-0">
+                        {related.coverImage ? (
+                          <img
+                            src={related.coverImage}
+                            alt={related.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Sparkles className="w-8 h-8 text-primary/20" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 flex flex-col flex-grow">
+                        {related.tags && related.tags.length > 0 && (
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">
+                            {related.tags[0]}
+                          </span>
+                        )}
+                        <h4 className="font-bold text-sm text-foreground line-clamp-2 leading-snug mb-2 group-hover:text-primary transition-colors">
+                          {related.title}
+                        </h4>
+                        <div className="mt-auto flex items-center gap-3 text-[10px] font-semibold text-muted-foreground/70 pt-3 border-t border-border">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {readTime(related.content)} min
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {related.viewsCount || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}

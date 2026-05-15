@@ -141,7 +141,13 @@ export default function AdminSettings() {
       defaultTemperature: 0.7,
       maxTokens: 2000,
       freeCreditsDaily: 5
-    }
+    },
+    systemStatus: 'operational',
+    statusText: '',
+    checkoutBenefits: [],
+    moneyBackDays: 0,
+    trustBadges: [],
+    socialProofStats: [],
   });
 
   useEffect(() => {
@@ -352,6 +358,130 @@ export default function AdminSettings() {
                       rows={3}
                       placeholder="Default description for search engines..."
                     />
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Select
+                        label="System Status (shown in footer)"
+                        value={config.systemStatus || 'operational'}
+                        onChange={e => setConfig({ ...config, systemStatus: e.target.value })}
+                        options={[
+                          { value: 'operational', label: '✅ All Systems Operational' },
+                          { value: 'degraded',    label: '⚠️ Partial Outage' },
+                          { value: 'outage',      label: '🔴 Service Disruption' },
+                        ]}
+                      />
+                      <Input
+                        label="Status Text Override (optional)"
+                        value={config.statusText || ''}
+                        onChange={e => setConfig({ ...config, statusText: e.target.value })}
+                        variant="outline"
+                        placeholder="e.g. Scheduled maintenance at 2am UTC"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-1">Checkout Unlock Benefits</p>
+                      <p className="text-xs text-muted-foreground mb-2">Bullet points shown on the checkout page. One per line.</p>
+                      <Textarea
+                        label=""
+                        value={(config.checkoutBenefits || []).join('\n')}
+                        onChange={e => setConfig({ ...config, checkoutBenefits: e.target.value.split('\n').filter(Boolean) })}
+                        variant="outline"
+                        rows={5}
+                        placeholder={"5,000+ expert-engineered AI prompts\nCopy, save & organize unlimited prompts\nNew prompts added every week"}
+                      />
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Input
+                        label="Money-Back Guarantee (days, 0 to hide)"
+                        id="moneyBackDays"
+                        name="moneyBackDays"
+                        type="number"
+                        value={config.moneyBackDays ?? 0}
+                        onChange={e => setConfig({ ...config, moneyBackDays: parseInt(e.target.value) || 0 })}
+                        variant="outline"
+                        placeholder="e.g. 7"
+                      />
+                      <div />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-1">Trust Badges (Pricing Page)</p>
+                      <p className="text-xs text-muted-foreground mb-2">One label per line. Leave empty to use defaults.</p>
+                      <Textarea
+                        label=""
+                        value={(config.trustBadges || []).map((b: any) => b.label || b).join('\n')}
+                        onChange={e => setConfig({ ...config, trustBadges: e.target.value.split('\n').filter(Boolean).map(l => ({ label: l })) })}
+                        variant="outline"
+                        rows={3}
+                        placeholder={"Secure Bank-Level Payments\nCashfree & PayPal Support\nInstant Access After Payment"}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-1">Social Proof Stats (Landing Page)</p>
+                      <p className="text-xs text-muted-foreground mb-2">Format: <code className="bg-muted px-1 rounded text-xs">12,000+ | Expert Prompts</code> — one per line.</p>
+                      <Textarea
+                        label=""
+                        value={(config.socialProofStats || []).map((s: any) => `${s.value} | ${s.label}`).join('\n')}
+                        onChange={e => setConfig({
+                          ...config,
+                          socialProofStats: e.target.value.split('\n').filter(Boolean).map(line => {
+                            const [value, label] = line.split('|').map(s => s.trim());
+                            return { value: value || '', label: label || '' };
+                          })
+                        })}
+                        variant="outline"
+                        rows={4}
+                        placeholder={"12,000+ | Expert Prompts\n5,000+ | Active Users\n20+ | Categories\n4.9★ | Average Rating"}
+                      />
+                    </div>
+
+                    {/* Custom UI Messages */}
+                    <div className="border-t border-border pt-6 space-y-4">
+                      <div>
+                        <p className="text-sm font-bold text-foreground mb-0.5">Custom UI Messages</p>
+                        <p className="text-xs text-muted-foreground mb-4">Override the default toast/error messages shown to users. Leave blank to use defaults.</p>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <Input
+                          label="Sign-in prompt (unlock)"
+                          placeholder="Sign in to unlock prompts"
+                          value={(config as any).msgSignInToUnlock || ''}
+                          onChange={e => setConfig({ ...config, msgSignInToUnlock: e.target.value } as any)}
+                          variant="outline"
+                        />
+                        <Input
+                          label="Out of credits message"
+                          placeholder="Out of credits — upgrade to Pro"
+                          value={(config as any).msgOutOfCredits || ''}
+                          onChange={e => setConfig({ ...config, msgOutOfCredits: e.target.value } as any)}
+                          variant="outline"
+                        />
+                        <Input
+                          label="Prompt unlocked success"
+                          placeholder="Prompt unlocked!"
+                          value={(config as any).msgPromptUnlocked || ''}
+                          onChange={e => setConfig({ ...config, msgPromptUnlocked: e.target.value } as any)}
+                          variant="outline"
+                        />
+                        <Input
+                          label="Unlock failed error"
+                          placeholder="Failed to unlock — try again"
+                          value={(config as any).msgUnlockFailed || ''}
+                          onChange={e => setConfig({ ...config, msgUnlockFailed: e.target.value } as any)}
+                          variant="outline"
+                        />
+                        <Input
+                          label="Low credit nudge threshold"
+                          type="number"
+                          placeholder="5"
+                          helperText="Send a nudge email when credits drop at or below this value."
+                          value={(config as any).lowCreditThreshold ?? ''}
+                          onChange={e => setConfig({ ...config, lowCreditThreshold: e.target.value ? parseInt(e.target.value) : undefined } as any)}
+                          variant="outline"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

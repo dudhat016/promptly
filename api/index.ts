@@ -10,6 +10,10 @@ import marketingRouter from "./routes/marketing.js";
 import supportRouter from "./routes/support.js";
 import locationRouter from "./routes/location.js";
 import dataRouter from "./routes/data.js";
+import nudgesRouter from "./routes/nudges.js";
+import transactionalRouter from "./routes/transactional.js";
+import automationRouter from "./routes/automation.js";
+import cronRouter from "./routes/cron.js";
 import { generalLimiter } from "./middleware/rateLimit.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { authMiddleware, adminOnly, AuthenticatedRequest } from "./middleware/auth.js";
@@ -52,6 +56,10 @@ app.use("/api/payments", paymentsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/support", supportRouter);
 app.use("/api/marketing", marketingRouter);
+app.use("/api/nudges", nudgesRouter);
+app.use("/api/email", transactionalRouter);
+app.use("/api/automation", automationRouter);
+app.use("/api/cron", cronRouter);
 app.use("/", marketingRouter);
 
 // --- Core API Routes ---

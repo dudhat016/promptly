@@ -646,11 +646,21 @@ export default function PromptDetailPage() {
                 <User className="w-3.5 h-3.5 text-primary" /> Creator
               </h4>
               {(() => {
-                const isOfficial = prompt!.creatorRole === 'admin' || prompt!.creatorRole === 'staff';
+                const isOfficial = prompt!.creatorRole === 'admin' || prompt!.creatorRole === 'staff' || prompt!.creatorId === 'system';
                 const displayName = prompt!.creatorName || creator?.displayName || 'Creator';
                 const avatarLetter = displayName.charAt(0).toUpperCase();
+                const profileHref = !isOfficial && prompt!.creatorId ? prefix(`/creator/${prompt!.creatorId}`) : null;
+                const CardWrapper = profileHref
+                  ? ({ children }: { children: React.ReactNode }) => (
+                      <Link to={profileHref} className="flex items-center gap-3 mb-5 group/creator hover:opacity-90 transition-opacity">
+                        {children}
+                      </Link>
+                    )
+                  : ({ children }: { children: React.ReactNode }) => (
+                      <div className="flex items-center gap-3 mb-5">{children}</div>
+                    );
                 return (
-                  <div className="flex items-center gap-3 mb-5">
+                  <CardWrapper>
                     {isOfficial ? (
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center gradient-cta shadow-md shadow-primary/20">
                         <ShieldCheck className="w-6 h-6 text-white" />
@@ -663,7 +673,7 @@ export default function PromptDetailPage() {
                       </div>
                     )}
                     <div>
-                      <div className="font-bold text-foreground">{displayName}</div>
+                      <div className="font-bold text-foreground group-hover/creator:text-primary transition-colors">{displayName}</div>
                       <div className="text-xs font-semibold flex items-center gap-1 text-primary">
                         {isOfficial ? (
                           <><ShieldCheck className="w-3 h-3" /> Official Content</>
@@ -674,7 +684,7 @@ export default function PromptDetailPage() {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </CardWrapper>
                 );
               })()}
               <div className="space-y-0.5">
@@ -690,6 +700,15 @@ export default function PromptDetailPage() {
                   </div>
                 ))}
               </div>
+              {prompt!.creatorId && prompt!.creatorId !== 'system' && (prompt!.creatorRole === 'user' || !prompt!.creatorRole) && (
+                <Link
+                  to={prefix(`/creator/${prompt!.creatorId}`)}
+                  className="mt-4 flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-bold text-primary hover:bg-primary/8 border border-primary/20 hover:border-primary/40 transition-all"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  View Creator Profile
+                </Link>
+              )}
             </div>
 
             <NeuralAdBanner slot="sidebar-ad" format="rectangle" />

@@ -7,6 +7,7 @@ import { useConfig } from '../hooks/useConfig';
 import { cn } from '../lib/utils';
 import { doc, updateDoc, increment, collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { api } from '../lib/api';
 import { toast } from 'react-hot-toast';
 import { useState, useRef, useEffect } from 'react';
 import { usePath } from '../hooks/usePath';
@@ -63,12 +64,12 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
     e.stopPropagation();
 
     if (!user || !profile) {
-      toast.error('Sign in to unlock prompts');
+      toast.error((config as any).msgSignInToUnlock || 'Sign in to unlock prompts');
       navigate(prefix('/login'));
       return;
     }
     if ((profile.credits || 0) < 1) {
-      toast.error('Out of credits — upgrade to Pro');
+      toast.error((config as any).msgOutOfCredits || 'Out of credits — upgrade to Pro');
       navigate(prefix('/pricing'));
       return;
     }
@@ -88,9 +89,16 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
         amount: 1,
         createdAt: new Date(),
       });
-      toast.success('Prompt unlocked!');
+      toast.success((config as any).msgPromptUnlocked || 'Prompt unlocked!');
+
+      // Fire low-credit nudge email if credits drop below threshold (non-blocking)
+      const newCredits = (profile.credits || 0) - 1;
+      const threshold = (config as any).lowCreditThreshold ?? 5;
+      if (newCredits <= threshold && newCredits >= 0) {
+        api.post('/nudges/low-credits', { creditsRemaining: newCredits }).catch(() => {});
+      }
     } catch {
-      toast.error('Failed to unlock — try again');
+      toast.error((config as any).msgUnlockFailed || 'Failed to unlock — try again');
     } finally {
       setIsUnlocking(false);
     }

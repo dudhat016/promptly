@@ -154,7 +154,8 @@ service cloud.firestore {
 
     // Affiliate commission ledger — users read their own rows; admin reads all
     match /referral_commissions/{id} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.referrerId == request.auth.uid);
+      allow get: if isAdmin() || (isSignedIn() && resource.data.referrerId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && request.auth != null);
       allow create: if false; // written server-side only
       allow update: if isAdmin(); // lock-period processing
       allow delete: if false;
@@ -215,6 +216,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Testimonials — public read (landing page), admin write
+    match /testimonials/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Marketing & CRM
     match /marketing_contacts/{id} {
       allow create: if true;
@@ -234,11 +241,15 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Email Logs — signed-in users can create (client-side simulation); admin manages
+    // Email Logs — admin reads/manages; backend writes via Admin SDK (bypasses rules)
     match /email_logs/{id} {
-      allow read: if isAdmin();
+      allow read, update, delete: if isAdmin();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+    }
+
+    // Automation flow instances — admin manages via admin panel
+    match /flow_instances/{id} {
+      allow read, write: if isAdmin();
     }
 
     // Models are public
@@ -300,7 +311,8 @@ service cloud.firestore {
 
     // Orders & Transactions
     match /orders/{orderId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
       allow write: if isAdmin();
     }
 
@@ -320,6 +332,16 @@ service cloud.firestore {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // Coupons — anyone can read for validation; only admin writes
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /coupon_redemptions/{id} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
     }
 
     // Prompt Reports — any user (including anonymous) can create; admin/staff manage

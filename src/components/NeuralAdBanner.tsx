@@ -43,7 +43,9 @@ export default function NeuralAdBanner({ slot, format = 'auto', className = "" }
     <div className={`my-8 ${className}`}>
       {/* Ad Label */}
       <div className="flex items-center gap-2 mb-3 px-4">
-        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground bg-muted px-2 py-1 rounded">Sponsored Content</div>
+        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground bg-muted px-2 py-1 rounded">
+          {marketingConfig.adLabel || 'Sponsored Content'}
+        </div>
         <div className="h-px flex-grow bg-muted" />
       </div>
 
@@ -62,8 +64,12 @@ export default function NeuralAdBanner({ slot, format = 'auto', className = "" }
         {/* Neural Overlay (Visible if ad fails to load or during dev) */}
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-card/90 backdrop-blur-sm">
            <ShieldCheck className="w-8 h-8 text-primary mb-2" />
-           <p className="text-xs font-bold uppercase tracking-widest text-foreground">Neural Protection Active</p>
-           <p className="text-[9px] text-muted-foreground font-medium max-w-[150px] mt-1">Upgrade to PRO to instantly remove all advertisements.</p>
+           <p className="text-xs font-bold uppercase tracking-widest text-foreground">
+             {marketingConfig.adProtectionTitle || 'Neural Protection Active'}
+           </p>
+           <p className="text-[9px] text-muted-foreground font-medium max-w-[150px] mt-1">
+             {marketingConfig.adProtectionSubtitle || 'Upgrade to PRO to instantly remove all advertisements.'}
+           </p>
         </div>
       </div>
     </div>

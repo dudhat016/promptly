@@ -1,17 +1,35 @@
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
-import { Filter } from 'lucide-react';
+import { Filter, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { usePath } from '../../hooks/usePath';
+import { api } from '../../lib/api';
 import { db } from '../../lib/firebase';
 import { Segment } from '../../types';
 import DataTable, { DataTableColumn } from '../admin/DataTable';
 import Badge from '../primitives/Badge';
+import Button from '../primitives/Button';
 
 export default function SegmentManager() {
   const { prefix } = usePath();
   const [segments, setSegments] = useState<Segment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rebuilding, setRebuilding] = useState(false);
+
+  const handleRebuild = async () => {
+    setRebuilding(true);
+    try {
+      const r = await api.post('/marketing/segments/rebuild') as any;
+      toast.success(`Rebuilt ${r.rebuilt} segment${r.rebuilt !== 1 ? 's' : ''}`);
+      // Reload segments to show updated counts
+      const snap = await getDocs(collection(db, 'marketing_segments'));
+      setSegments(snap.docs.map(d => ({ id: d.id, ...d.data() } as Segment)));
+    } catch {
+      toast.error('Rebuild failed');
+    } finally {
+      setRebuilding(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchSegments() {
@@ -74,6 +92,21 @@ export default function SegmentManager() {
     }
   ];
 
+  const toolbar = (
+    <div className="flex items-center gap-2 ml-auto">
+      <Button
+        variant="secondary"
+        size="sm"
+        isLoading={rebuilding}
+        onClick={handleRebuild}
+        className="flex items-center gap-1.5"
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        Rebuild All
+      </Button>
+    </div>
+  );
+
   return (
     <DataTable
       columns={columns}
@@ -89,6 +122,7 @@ export default function SegmentManager() {
       }}
       searchPlaceholder="Search segments..."
       exportFilename="marketing_segments"
+      toolbar={toolbar}
     />
   );
 }

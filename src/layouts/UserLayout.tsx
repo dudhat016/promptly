@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   BookOpen,
   Coins,
   Gift,
@@ -35,12 +36,14 @@ import { NavItem } from '../components/layout/types';
 import PageContainer from '../components/layout/PageContainer';
 
 const USER_NAV_ITEMS: NavItem[] = [
-  { label: 'Marketplace',  icon: Search,      path: '/explore' },
-  { label: 'My Vault',     icon: LayoutGrid,  path: '/dashboard/vault' },
-  { label: 'My Creations', icon: BookOpen,    path: '/dashboard/library' },
-  { label: 'AI Twin Studio', icon: Sparkles,  path: '/dashboard/twin-studio' },
-  { label: 'Favorites',    icon: Heart,       path: '/dashboard/favorites' },
-  { label: 'Partner',      icon: Gift,        path: '/dashboard/affiliate' },
+  { label: 'Home',            icon: BarChart3,  path: '/dashboard' },
+  { label: 'Explore',         icon: Search,     path: '/explore' },
+  { label: 'My Vault',        icon: LayoutGrid, path: '/dashboard/vault' },
+  { label: 'My Creations',    icon: BookOpen,   path: '/dashboard/library' },
+  { label: 'AI Twin Studio',  icon: Sparkles,   path: '/dashboard/twin-studio' },
+  { label: 'Favorites',       icon: Heart,      path: '/dashboard/favorites' },
+  { label: 'Notifications',   icon: Bell,       path: '/notifications' },
+  { label: 'Partner Program', icon: Gift,       path: '/dashboard/affiliate' },
   {
     label: 'Credits',
     icon: Coins,
@@ -48,9 +51,9 @@ const USER_NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'My Balance', path: '/dashboard/credits' },
       { label: 'Usage Logs', path: '/dashboard/usage' },
-    ]
+    ],
   },
-  { label: 'Support',      icon: HelpCircle,  path: '/dashboard/support' },
+  { label: 'Support',         icon: HelpCircle, path: '/dashboard/support' },
 ];
 
 const USER_SETTINGS_ITEMS: NavItem = {
@@ -58,12 +61,12 @@ const USER_SETTINGS_ITEMS: NavItem = {
   icon: Settings,
   path: '/settings',
   children: [
-    { label: 'Profile',       path: '/settings/profile' },
-    { label: 'AI Integration', path: '/settings/ai' },
-    { label: 'Billing',       path: '/settings/billing' },
-    { label: 'Security',      path: '/settings/security' },
-    { label: 'Notifications', path: '/settings/notifications' },
-  ]
+    { label: 'Profile',               path: '/settings/profile' },
+    { label: 'AI Integration',        path: '/settings/ai' },
+    { label: 'Billing',               path: '/settings/billing' },
+    { label: 'Security',              path: '/settings/security' },
+    { label: 'Notification Settings', path: '/settings/notifications' },
+  ],
 };
 
 export default function UserLayout({ children }: { children?: React.ReactNode }) {

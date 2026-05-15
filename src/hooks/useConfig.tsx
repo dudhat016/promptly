@@ -78,6 +78,27 @@ interface GlobalConfig {
   // --- Credit / Vault settings ---
   vaultLimit?: number;
 
+  // --- System Status (shown in footer) ---
+  systemStatus?: 'operational' | 'degraded' | 'outage';
+  statusText?: string;
+
+  // --- Checkout & Pricing ---
+  checkoutBenefits?: string[];
+  trustBadges?: { label: string }[];
+  moneyBackDays?: number;
+
+  // --- Social Proof ---
+  socialProofStats?: { value: string; label: string }[];
+
+  // --- Custom UI messages ---
+  msgSignInToUnlock?: string;
+  msgOutOfCredits?: string;
+  msgPromptUnlocked?: string;
+  msgUnlockFailed?: string;
+
+  // --- Nudge thresholds ---
+  lowCreditThreshold?: number;
+
   // --- Reference data (fetched in parallel on startup) ---
   models: AIModel[];
   categories: Category[];

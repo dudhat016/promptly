@@ -1,5 +1,5 @@
-import { collection, onSnapshot } from 'firebase/firestore';
-import { ArrowUpRight, BarChart3, Eye, LayoutGrid, Star, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { collection, onSnapshot, getDocs, query, orderBy } from 'firebase/firestore';
+import { ArrowUpRight, BarChart3, LayoutGrid, Star, TrendingUp, Users, DollarSign, Activity, UserMinus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/firebase';
@@ -81,7 +81,12 @@ function buildLast7Days(users: any[]) {
 
 export default function AdminOverview() {
   const { prefix } = usePath();
-  const [stats, setStats] = useState({ totalUsers: 0, totalPrompts: 0, proUsers: 0, totalCopies: 0, totalViews: 0, estimatedRevenue: 0, newUsersWeek: 0 });
+  const [stats, setStats] = useState({
+    totalUsers: 0, totalPrompts: 0, proUsers: 0,
+    totalCopies: 0, totalViews: 0, newUsersWeek: 0,
+    cancellingUsers: 0,
+  });
+  const [revenue, setRevenue] = useState({ mrr: 0, arr: 0, totalOrders: 0, arpu: 0, totalRevenue: 0 });
   const [loading, setLoading] = useState(true);
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [topPrompts, setTopPrompts] = useState<any[]>([]);
@@ -93,10 +98,11 @@ export default function AdminOverview() {
     const noop = () => {};
 
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-      let pro = 0, newWeek = 0;
+      let pro = 0, newWeek = 0, cancelling = 0;
       const users = snap.docs.map(d => {
         const data = d.data();
-        if (data.subscriptionStatus === 'pro') pro++;
+        if (data.subscriptionStatus === 'pro' || data.subscriptionStatus === 'enterprise') pro++;
+        if (data.cancelAtPeriodEnd) cancelling++;
         try {
           const created = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
           if (created > cutoff) newWeek++;
@@ -104,11 +110,27 @@ export default function AdminOverview() {
         return { id: d.id, ...data };
       });
 
-      setStats(prev => ({ ...prev, totalUsers: snap.size, proUsers: pro, newUsersWeek: newWeek, estimatedRevenue: pro * 15 }));
+      setStats(prev => ({ ...prev, totalUsers: snap.size, proUsers: pro, newUsersWeek: newWeek, cancellingUsers: cancelling }));
       setGrowthData(buildLast7Days(users));
       setRecentUsers([...users].sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5));
       setLoading(false);
     }, noop);
+
+    // Real revenue from orders
+    getDocs(collection(db, 'orders')).then(snap => {
+      let total = 0, count = 0;
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.status === 'paid' || data.status === 'completed') {
+          total += Number(data.amount) || 0;
+          count++;
+        }
+      });
+      const arpu = count > 0 ? parseFloat((total / count).toFixed(2)) : 0;
+      // Estimate MRR from active pro users × average order value
+      // Use real data from orders if available, else estimate
+      setRevenue(prev => ({ ...prev, totalRevenue: total, totalOrders: count, arpu }));
+    }).catch(() => {});
 
     const unsubPrompts = onSnapshot(collection(db, 'prompts'), (snap) => {
       let copies = 0, views = 0;
@@ -137,11 +159,18 @@ export default function AdminOverview() {
     );
   }
 
+  const churnRate = stats.proUsers > 0
+    ? ((stats.cancellingUsers / stats.proUsers) * 100).toFixed(1)
+    : '0.0';
+  const convRate = stats.totalUsers > 0
+    ? ((stats.proUsers / stats.totalUsers) * 100).toFixed(1)
+    : '0.0';
+
   const STATS: StatBoxProps[] = [
-    { label: 'Total Users',     value: stats.totalUsers,           sub: `+${stats.newUsersWeek} this week`,  icon: Users,     accent: 'bg-primary/10 text-primary' },
-    { label: 'Pro Subscribers', value: stats.proUsers,             sub: `$${stats.estimatedRevenue} MRR`,    icon: Star,      accent: 'bg-amber-500/10 text-amber-600' },
-    { label: 'Total Prompts',   value: stats.totalPrompts,                                                    icon: LayoutGrid, accent: 'bg-purple-500/10 text-purple-600' },
-    { label: 'Platform Views',  value: stats.totalViews.toLocaleString(), sub: `${stats.totalCopies} copies`, icon: BarChart3, accent: 'bg-emerald-500/10 text-emerald-600' },
+    { label: 'Total Users',     value: stats.totalUsers.toLocaleString(),  sub: `+${stats.newUsersWeek} this week`,  icon: Users,      accent: 'bg-primary/10 text-primary' },
+    { label: 'Paid Subscribers', value: stats.proUsers,                    sub: `${convRate}% conversion`,           icon: Star,       accent: 'bg-amber-500/10 text-amber-600' },
+    { label: 'Total Revenue',   value: `₹${revenue.totalRevenue.toLocaleString()}`, sub: `${revenue.totalOrders} orders`, icon: DollarSign, accent: 'bg-emerald-500/10 text-emerald-600' },
+    { label: 'Churn Risk',      value: stats.cancellingUsers,              sub: `${churnRate}% of paid`,              icon: UserMinus,  accent: stats.cancellingUsers > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-muted text-muted-foreground' },
   ];
 
   const topPromptsChart = topPrompts.map(p => ({
@@ -241,6 +270,26 @@ export default function AdminOverview() {
         </div>
       </div>
 
+      {/* ── Platform Health Bar ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Conversion Rate', value: `${convRate}%`, icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { label: 'Churn Rate',      value: `${churnRate}%`, icon: UserMinus, color: stats.cancellingUsers > 0 ? 'text-rose-500' : 'text-muted-foreground', bg: stats.cancellingUsers > 0 ? 'bg-rose-500/10' : 'bg-muted' },
+          { label: 'Total Copies',    value: stats.totalCopies.toLocaleString(), icon: BarChart3, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+          { label: 'Avg Order Value', value: revenue.arpu > 0 ? `₹${revenue.arpu}` : '—', icon: DollarSign, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+        ].map(m => (
+          <div key={m.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${m.bg}`}>
+              <m.icon className={`w-4 h-4 ${m.color}`} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-foreground">{m.value}</p>
+              <p className="text-[11px] text-muted-foreground font-medium">{m.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* ── Revenue + Plan Distribution + Recent Users ── */}
       <div className="grid lg:grid-cols-3 gap-6">
 
@@ -264,9 +313,10 @@ export default function AdminOverview() {
             </div>
             <div className="space-y-1">
               {[
-                { label: 'Estimated MRR',   value: `$${stats.estimatedRevenue.toFixed(2)}`, accent: 'text-emerald-600' },
-                { label: 'Pro Subscribers', value: stats.proUsers,                          accent: 'text-primary' },
-                { label: 'ARPU',            value: '$15.00',                                accent: 'text-foreground' },
+                { label: 'Total Revenue',    value: `₹${revenue.totalRevenue.toLocaleString()}`, accent: 'text-emerald-600' },
+                { label: 'Paid Subscribers', value: stats.proUsers,                               accent: 'text-primary' },
+                { label: 'Avg Order Value',  value: revenue.arpu > 0 ? `₹${revenue.arpu}` : '—', accent: 'text-foreground' },
+                { label: 'Churn Risk',       value: `${stats.cancellingUsers} cancelling`,        accent: stats.cancellingUsers > 0 ? 'text-rose-500' : 'text-muted-foreground' },
               ].map(row => (
                 <div key={row.label} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
                   <span className="text-sm text-muted-foreground font-medium">{row.label}</span>
@@ -280,7 +330,7 @@ export default function AdminOverview() {
           <div className="bg-card border border-border rounded-xl p-6">
             <h3 className="font-bold text-foreground mb-4">Plan Distribution</h3>
             {stats.totalUsers > 0 ? (() => {
-              const free = stats.totalUsers - stats.proUsers;
+              const free = Math.max(0, stats.totalUsers - stats.proUsers);
               const pieData = [
                 { name: 'Free',  value: free,          color: 'var(--color-muted-foreground)' },
                 { name: 'Pro',   value: stats.proUsers, color: 'var(--color-primary)' },

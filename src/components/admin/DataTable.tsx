@@ -61,6 +61,13 @@ export interface DataTableActions<T> {
   }[];
 }
 
+export interface BulkAction<T> {
+  label: string;
+  icon?: React.ElementType;
+  variant?: 'default' | 'danger' | 'warning' | 'success';
+  onClick: (rows: T[]) => void | Promise<void>;
+}
+
 interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   data: T[];
@@ -74,8 +81,9 @@ interface DataTableProps<T> {
   searchPlaceholder?: string;
   selectable?: boolean;
   onBulkDelete?: (rows: T[]) => Promise<void>;
+  bulkActions?: BulkAction<T>[];
   exportFilename?: string;
-  toolbar?: React.ReactNode; // Extra filters or buttons
+  toolbar?: React.ReactNode;
 }
 
 // ─── CSV Export ───────────────────────────────────────────────────────────────
@@ -182,6 +190,7 @@ export default function DataTable<T>({
   searchPlaceholder = 'Search...',
   selectable = false,
   onBulkDelete,
+  bulkActions,
   exportFilename,
   toolbar,
 }: DataTableProps<T>) {
@@ -503,6 +512,23 @@ export default function DataTable<T>({
                 size="sm"
                 leftIcon={action.icon}
                 className={cn("font-bold border border-border", action.className)}
+              >
+                {action.label}
+              </Button>
+            ))}
+            {bulkActions?.map((action, i) => (
+              <Button
+                key={i}
+                onClick={() => action.onClick(selectedRows)}
+                variant={action.variant === 'danger' ? 'danger' : action.variant === 'warning' ? 'white' : action.variant === 'success' ? 'white' : 'white'}
+                size="sm"
+                leftIcon={action.icon}
+                className={cn(
+                  "font-bold border border-border",
+                  action.variant === 'danger' && "bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20",
+                  action.variant === 'warning' && "bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20",
+                  action.variant === 'success' && "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20",
+                )}
               >
                 {action.label}
               </Button>

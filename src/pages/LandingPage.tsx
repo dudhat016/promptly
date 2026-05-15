@@ -1,4 +1,4 @@
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
@@ -113,12 +113,47 @@ export default function LandingPage() {
   const freePlan = config.plans.find(p => p.monthlyPrice === 0);
   const proPlan  = config.plans.find(p => p.monthlyPrice > 0);
 
-  const [livePrompts, setLivePrompts] = useState<Prompt[]>([]);
+  const [livePrompts, setLivePrompts]       = useState<Prompt[]>([]);
+  const [trendingPrompts, setTrendingPrompts] = useState<any[]>([]);
+  const [testimonials, setTestimonials]       = useState<any[]>([]);
+  const [socialStats, setSocialStats]         = useState<{ value: string; label: string }[]>([]);
+
   useEffect(() => {
+    // Hero mock cards — top by views
     getDocs(query(collection(db, 'prompts'), orderBy('viewsCount', 'desc'), limit(4)))
       .then(snap => setLivePrompts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt))))
       .catch(() => {});
+
+    // Trending section — top by copies
+    getDocs(query(collection(db, 'prompts'), orderBy('copiesCount', 'desc'), limit(3)))
+      .then(snap => setTrendingPrompts(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(() => {});
+
+    // Testimonials — featured from Firestore, fallback to statics
+    getDocs(query(collection(db, 'testimonials'), where('featured', '==', true), limit(6)))
+      .then(snap => { if (!snap.empty) setTestimonials(snap.docs.map(d => ({ id: d.id, ...d.data() }))); })
+      .catch(() => {});
   }, []);
+
+  // Social proof stats: prefer admin-configured values from global config
+  useEffect(() => {
+    const cfg = config as any;
+    const stats = cfg.socialProofStats;
+    if (stats && Array.isArray(stats) && stats.length > 0) {
+      setSocialStats(stats);
+    } else {
+      // Compute from live data
+      const promptCount = config.categories.reduce((s: number, c: any) => s + (c.promptCount || 0), 0);
+      setSocialStats([
+        { value: promptCount > 0 ? `${promptCount.toLocaleString()}+` : '12,000+', label: 'Expert Prompts' },
+        { value: '5,000+',  label: 'Active Users'   },
+        { value: config.categories.length > 0 ? `${config.categories.length}+` : '20+', label: 'Categories' },
+        { value: '4.9★',    label: 'Average Rating' },
+      ]);
+    }
+  }, [config]);
+
+  const displayTestimonials = testimonials.length > 0 ? testimonials : TESTIMONIALS;
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,12 +311,7 @@ export default function LandingPage() {
       <div className="border-y border-border bg-muted/20">
         <PageContainer className="py-8" ignoreCustomizer>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {[
-              { value: '12,000+', label: 'Expert Prompts'    },
-              { value: '5,000+',  label: 'Active Users'      },
-              { value: '20+',     label: 'Categories'        },
-              { value: '4.9★',    label: 'Average Rating'    },
-            ].map((s, i) => (
+            {socialStats.map((s, i) => (
               <div key={i}>
                 <div className="text-2xl md:text-3xl font-bold text-foreground mb-1">{s.value}</div>
                 <div className="text-xs text-muted-foreground/70 uppercase tracking-widest font-medium">{s.label}</div>
@@ -430,7 +460,7 @@ export default function LandingPage() {
               <br />serious AI users
             </h2>
             <p className={`${S.sub} max-w-xl mx-auto`}>
-              A curated marketplace of 12,000+ expert-crafted, tested prompts —
+              A curated marketplace of {(socialStats[0]?.value) || '12,000+'} expert-crafted, tested prompts —
               organized by category, searchable by use case, ready to use.
             </p>
           </div>
@@ -592,9 +622,11 @@ export default function LandingPage() {
             </Link>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
-            {TRENDING.map((p, i) => (
+            {(trendingPrompts.length > 0 ? trendingPrompts : TRENDING.map(p => ({
+              id: p.title, title: p.title, tags: [p.tag], description: p.desc, copiesCount: 0, slug: null
+            }))).map((p: any, i: number) => (
               <motion.div
-                key={i}
+                key={p.id || i}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
@@ -602,13 +634,22 @@ export default function LandingPage() {
                 className={`${S.cardHover} p-7 group cursor-pointer`}
               >
                 <div className="flex items-center justify-between mb-5">
-                  <span className={S.tag}>{p.tag}</span>
-                  <TrendingUp className="w-4 h-4 text-muted-foreground/40 group-hover:text-violet-400 transition-colors" />
+                  <span className={S.tag}>{p.tags?.[0] || p.categoryId || 'AI'}</span>
+                  <div className="flex items-center gap-2">
+                    {p.copiesCount > 0 && (
+                      <span className="text-[10px] text-muted-foreground/50 font-medium">{p.copiesCount} copies</span>
+                    )}
+                    <TrendingUp className="w-4 h-4 text-muted-foreground/40 group-hover:text-violet-400 transition-colors" />
+                  </div>
                 </div>
                 <h3 className="font-bold text-foreground mb-2 group-hover:text-violet-300 transition-colors">{p.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-5">{p.desc}</p>
-                <Link to={prefix('/explore')}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-400 group-hover:gap-2.5 transition-all">
+                <p className="text-sm text-muted-foreground leading-relaxed mb-5 line-clamp-2">
+                  {p.description || p.desc || ''}
+                </p>
+                <Link
+                  to={p.slug ? prefix(`/prompt/${p.slug}`) : p.id && trendingPrompts.length > 0 ? prefix(`/prompt/${p.id}`) : prefix('/explore')}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-400 group-hover:gap-2.5 transition-all"
+                >
                   View Prompt <ArrowRight className="w-3 h-3" />
                 </Link>
               </motion.div>
@@ -635,9 +676,9 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
-            {TESTIMONIALS.map((t, i) => (
+            {displayTestimonials.slice(0, 3).map((t: any, i: number) => (
               <motion.div
-                key={i}
+                key={t.id || i}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
@@ -645,16 +686,20 @@ export default function LandingPage() {
                 className={`${S.card} p-7 flex flex-col`}
               >
                 <div className="mb-5">
-                  <Rating value={t.rating} readOnly size="sm" />
+                  <Rating value={t.rating || 5} readOnly size="sm" />
                 </div>
                 <p className="text-foreground/70 text-sm leading-relaxed mb-6 flex-1 italic">"{t.quote}"</p>
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-violet-300 shrink-0"
-                    style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.2)' }}
-                  >
-                    {t.name.split(' ').map(n => n[0]).join('')}
-                  </div>
+                  {t.imageUrl ? (
+                    <img src={t.imageUrl} alt={t.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-border" />
+                  ) : (
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-violet-300 shrink-0"
+                      style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.2)' }}
+                    >
+                      {t.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                    </div>
+                  )}
                   <div>
                     <div className="text-sm font-semibold text-foreground">{t.name}</div>
                     <div className="text-xs text-muted-foreground/70">{t.role}</div>

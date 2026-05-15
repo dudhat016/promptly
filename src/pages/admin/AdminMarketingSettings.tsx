@@ -19,7 +19,10 @@ export default function AdminMarketingSettings() {
     analyticsEnabled: false,
     minWithdrawalAmount: 50,
     fraudScoreThreshold: 70,
-    referralCommission: 25
+    referralCommission: 25,
+    adLabel: '',
+    adProtectionTitle: '',
+    adProtectionSubtitle: ''
   });
 
   useEffect(() => {
@@ -136,6 +139,28 @@ export default function AdminMarketingSettings() {
                 <p className="text-xs text-muted-foreground font-medium leading-relaxed mt-1">Ads are automatically hidden for all users with an active **PRO** or **Enterprise** subscription.</p>
               </div>
             </div>
+            <Input
+              label="Ad Label Text"
+              placeholder="Sponsored Content"
+              value={(config as any).adLabel || ''}
+              onChange={e => setConfig({ ...config, adLabel: e.target.value } as any)}
+              variant="filled"
+              helperText="Text shown above the ad unit"
+            />
+            <Input
+              label="Pro Protection Title"
+              placeholder="Neural Protection Active"
+              value={(config as any).adProtectionTitle || ''}
+              onChange={e => setConfig({ ...config, adProtectionTitle: e.target.value } as any)}
+              variant="filled"
+            />
+            <Input
+              label="Pro Protection Subtitle"
+              placeholder="Upgrade to PRO to remove ads"
+              value={(config as any).adProtectionSubtitle || ''}
+              onChange={e => setConfig({ ...config, adProtectionSubtitle: e.target.value } as any)}
+              variant="filled"
+            />
             <div className="flex items-center justify-between p-4 bg-emerald-500/10 rounded-md border border-emerald-500/20">
               <p className="font-bold text-emerald-600 text-sm">Enable Display Ads</p>
               <Button 
@@ -150,6 +175,57 @@ export default function AdminMarketingSettings() {
                 <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm", config.adsEnabled ? 'left-7' : 'left-1')} />
               </Button>
             </div>
+          </div>
+        </div>
+
+        {/* Social Proof Toaster */}
+        <div className="bg-card rounded-lg border border-border p-10 shadow-sm lg:col-span-2">
+          <h4 className="text-base font-semibold text-foreground mb-8 flex items-center gap-3">
+            <BarChart3 className="w-6 h-6 text-sky-500" />
+            Social Proof Toaster
+          </h4>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Input
+              label="Show Every (ms)"
+              type="number"
+              placeholder="15000"
+              value={(config as any).socialProofIntervalMs ?? 15000}
+              onChange={e => setConfig({ ...config, socialProofIntervalMs: Number(e.target.value) } as any)}
+              variant="filled"
+              helperText="Milliseconds between notifications"
+            />
+            <Input
+              label="Visible Duration (ms)"
+              type="number"
+              placeholder="5000"
+              value={(config as any).socialProofVisibleMs ?? 5000}
+              onChange={e => setConfig({ ...config, socialProofVisibleMs: Number(e.target.value) } as any)}
+              variant="filled"
+              helperText="How long each notification stays visible"
+            />
+            <Input
+              label="Unlock message template"
+              placeholder='just unlocked "{detail}"'
+              value={(config as any).socialProofUnlockTpl || ''}
+              onChange={e => setConfig({ ...config, socialProofUnlockTpl: e.target.value } as any)}
+              variant="filled"
+              helperText='Use {detail} for prompt title. Leave blank for default.'
+            />
+            <Input
+              label="Purchase message template"
+              placeholder='just subscribed to {detail}'
+              value={(config as any).socialProofPurchaseTpl || ''}
+              onChange={e => setConfig({ ...config, socialProofPurchaseTpl: e.target.value } as any)}
+              variant="filled"
+              helperText='Use {detail} for plan name.'
+            />
+            <Input
+              label="Join message template"
+              placeholder="just joined the platform"
+              value={(config as any).socialProofJoinTpl || ''}
+              onChange={e => setConfig({ ...config, socialProofJoinTpl: e.target.value } as any)}
+              variant="filled"
+            />
           </div>
         </div>
 

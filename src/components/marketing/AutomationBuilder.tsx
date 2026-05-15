@@ -1,4 +1,4 @@
-import { cn } from '@/src/lib/utils';
+import { cn } from '../../lib/utils';
 import {
   Activity,
   AlertCircle, Award,
@@ -111,7 +111,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
             />
             <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
               <Play className="w-3 h-3 fill-current" />
-              Trigger: {activeFlow.trigger?.type.replace('_', ' ')}
+              Trigger: {activeFlow.trigger?.type.replace(/_/g, ' ')}
             </p>
           </div>
         </div>
@@ -223,13 +223,13 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                        activeFlow.trigger?.type === 'form_submited' ? `When form ${activeFlow.trigger?.value ? `"${activeFlow.trigger.value}"` : ''} submitted` :
                        activeFlow.trigger?.type === 'contact_created' ? 'When a contact is created' :
                        activeFlow.trigger?.type === 'subscription_changed' ? 'When subscription changes' :
-                       activeFlow.trigger?.type === 'subscription_payment_recived' ? 'When payment is received' :
-                       activeFlow.trigger?.type === 'subscription_cancled' ? 'When subscription is canceled' :
+                       activeFlow.trigger?.type === 'subscription_payment_received' ? 'When payment is received' :
+                       activeFlow.trigger?.type === 'subscription_renewed' ? 'When subscription renews' :
+                       activeFlow.trigger?.type === 'subscription_cancelled' ? 'When subscription is canceled' :
                        activeFlow.trigger?.type === 'prompt_favorite' ? 'When a prompt is favorited' :
                        activeFlow.trigger?.type === 'limit_reached' ? 'When usage limit is reached' :
                        activeFlow.trigger?.type === 'affiliate_commison' ? 'When affiliate commission earned' :
-                       activeFlow.trigger?.type === 'new_register' ? 'When a new registration occurs' :
-                       `When ${activeFlow.trigger?.type?.replace('_', ' ')}`}
+                       `When ${(activeFlow.trigger?.type as string)?.replace(/_/g, ' ')}`}
                     </p>
                   </div>
                 </div>
@@ -492,8 +492,9 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                             { label: 'List Removed', value: 'list_removed', description: 'Triggered when a user is removed from a list' },
                             { label: 'Form Submitted', value: 'form_submited', description: 'Triggered when a specific form is submitted' },
                             { label: 'Subscription Changed', value: 'subscription_changed', description: 'Triggered on plan upgrades or downgrades' },
-                            { label: 'Payment Received', value: 'subscription_payment_recived', description: 'Triggered when a payment is successful' },
-                            { label: 'Subscription Canceled', value: 'subscription_cancled', description: 'Triggered when a plan is canceled' },
+                            { label: 'Payment Received', value: 'subscription_payment_received', description: 'Triggered when a payment is successful' },
+                            { label: 'Subscription Renewed', value: 'subscription_renewed', description: 'Triggered on auto-renewal billing' },
+                            { label: 'Subscription Canceled', value: 'subscription_cancelled', description: 'Triggered when a plan is canceled' },
                             { label: 'Prompt Favorite', value: 'prompt_favorite', description: 'Triggered when a user favorites a prompt' },
                             { label: 'Limit Reached', value: 'limit_reached', description: 'Triggered when usage quotas are met' },
                             { label: 'Affiliate Commission', value: 'affiliate_commison', description: 'Triggered when a commission is earned' }

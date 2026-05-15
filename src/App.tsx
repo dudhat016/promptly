@@ -24,13 +24,18 @@ import ConversionTracking from './components/ConversionTracking';
 import UserLayout from './layouts/UserLayout';
 import HorizontalLayout from './layouts/HorizontalLayout';
 import AdminAffiliates from './pages/admin/AdminAffiliates';
+import AdminAssetManager from './pages/admin/AdminAssetManager';
 import AdminBlog from './pages/admin/AdminBlog';
+import AdminBlogCategories from './pages/admin/AdminBlogCategories';
 import AdminBlogForm from './pages/admin/AdminBlogForm';
+import AdminSitePages from './pages/admin/AdminSitePages';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminCategoryForm from './pages/admin/AdminCategoryForm';
 import AdminEmails from './pages/admin/AdminEmails';
 import AdminEmailSettings from './pages/admin/AdminEmailSettings';
 import AdminFinancials from './pages/admin/AdminFinancials';
+import AdminOrders from './pages/admin/AdminOrders';
+import AdminCoupons from './pages/admin/AdminCoupons';
 import AdminInquiries from './pages/admin/AdminInquiries';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminMarketing from './pages/admin/AdminMarketing';
@@ -63,6 +68,9 @@ import AdminActivityLog from './pages/admin/AdminActivityLog';
 import AdminInvoices from './pages/admin/AdminInvoices';
 import AdminInvoiceForm from './pages/admin/AdminInvoiceForm';
 import AdminReports from './pages/admin/AdminReports';
+import AdminTestimonials from './pages/admin/AdminTestimonials';
+import AdminChangelog from './pages/admin/AdminChangelog';
+import AdminChurn from './pages/admin/AdminChurn';
 import AffiliateInfoPage from './pages/AffiliateInfoPage';
 import AffiliatePage from './pages/AffiliatePage';
 import SupportPage from './pages/SupportPage';
@@ -77,6 +85,12 @@ import AITwinStudioPage from './pages/dashboard/AITwinStudioPage';
 import OnboardingGuard from './guards/OnboardingGuard';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import DMCAPage from './pages/DMCAPage';
+import UnsubscribePage from './pages/UnsubscribePage';
+import NewsletterConfirmPage from './pages/NewsletterConfirmPage';
+import AdminEmailLogs from './pages/admin/AdminEmailLogs';
+import AdminAutomationInstances from './pages/admin/AdminAutomationInstances';
+import AdminEmailBroadcast from './pages/admin/AdminEmailBroadcast';
+import AdminEmailAnalytics from './pages/admin/AdminEmailAnalytics';
 import ChangelogPage from './pages/ChangelogPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -86,6 +100,8 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import BlogDetailPage from './pages/BlogDetailPage';
 import BlogPage from './pages/BlogPage';
+import DashboardPage from './pages/DashboardPage';
+import PublicProfilePage from './pages/PublicProfilePage';
 import CheckoutPage from './pages/CheckoutPage';
 import CheckoutVerifyPage from './pages/CheckoutVerifyPage';
 import CheckoutSuccessPage from './pages/CheckoutSuccessPage';
@@ -236,12 +252,15 @@ function AppContent() {
                   <Route path="blog" element={<BlogPage />} />
                   <Route path="blog/tag/:tagSlug" element={<BlogPage />} />
                   <Route path="blog/:slug" element={<BlogDetailPage />} />
+                  <Route path="creator/:uid" element={<PublicProfilePage />} />
                   <Route path="affiliate" element={<AffiliateInfoPage />} />
                   <Route path="contact" element={<ContactPage />} />
                   <Route path="terms" element={<TermsPage />} />
                   <Route path="privacy" element={<PrivacyPage />} />
                   <Route path="cookies" element={<CookiePolicyPage />} />
                   <Route path="dmca" element={<DMCAPage />} />
+                  <Route path="unsubscribe" element={<UnsubscribePage />} />
+                  <Route path="newsletter/confirm" element={<NewsletterConfirmPage />} />
                   <Route path="faq" element={<FAQPage />} />
                   <Route path="changelog" element={<ChangelogPage />} />
                   <Route path="403" element={<ForbiddenPage />} />
@@ -265,7 +284,7 @@ function AppContent() {
                 {/* Dashboard Layout: Sidebar + Specialized Header */}
                 <Route element={<PrivateRoute><OnboardingGuard><UserLayout /></OnboardingGuard></PrivateRoute>}>
                   <Route path="dashboard" element={<Outlet />}>
-                    <Route index element={<MyVaultPage />} />
+                    <Route index element={<DashboardPage />} />
                     <Route path="vault" element={<MyVaultPage />} />
                     <Route path="favorites" element={<DashboardFavorites />} />
                     <Route path="library" element={<Outlet />}>
@@ -295,6 +314,9 @@ function AppContent() {
                   <Route path="inquiries" element={<SectionRoute section="inquiries"><AdminInquiries /></SectionRoute>} />
                   <Route path="tickets" element={<SectionRoute section="tickets"><AdminTickets /></SectionRoute>} />
                   <Route path="reports" element={<SectionRoute section="reports"><AdminReports /></SectionRoute>} />
+                  <Route path="testimonials" element={<SectionRoute section="content"><AdminTestimonials /></SectionRoute>} />
+                  <Route path="changelog" element={<SectionRoute section="content"><AdminChangelog /></SectionRoute>} />
+                  <Route path="churn" element={<SectionRoute section="revenue"><AdminChurn /></SectionRoute>} />
                   <Route path="prompts" element={<SectionRoute section="prompts"><AdminPrompts /></SectionRoute>} />
                   <Route path="seo" element={<SectionRoute section="seo"><AdminSEO /></SectionRoute>} />
                   <Route path="prompts/new" element={<SectionRoute section="prompts"><AdminPromptForm /></SectionRoute>} />
@@ -321,10 +343,13 @@ function AppContent() {
                   <Route path="marketing/automations/:id/edit" element={<SectionRoute section="marketing"><AdminMarketingAutomationForm /></SectionRoute>} />
                   <Route path="marketing/segments/new" element={<SectionRoute section="marketing"><AdminMarketingSegmentForm /></SectionRoute>} />
                   <Route path="marketing/segments/:id/edit" element={<SectionRoute section="marketing"><AdminMarketingSegmentForm /></SectionRoute>} />
-                  <Route path="templates" element={<SectionRoute section="templates"><AdminTemplates /></SectionRoute>} />
-                  <Route path="templates/new" element={<SectionRoute section="templates"><AdminTemplateForm /></SectionRoute>} />
-                  <Route path="templates/:id/edit" element={<SectionRoute section="templates"><AdminTemplateForm /></SectionRoute>} />
+                  <Route path="emails/templates" element={<SectionRoute section="emails"><AdminTemplates /></SectionRoute>} />
+                  <Route path="emails/templates/new" element={<SectionRoute section="emails"><AdminTemplateForm /></SectionRoute>} />
+                  <Route path="emails/templates/:id/edit" element={<SectionRoute section="emails"><AdminTemplateForm /></SectionRoute>} />
+                  <Route path="assets" element={<SectionRoute section="settings"><AdminAssetManager /></SectionRoute>} />
+                  <Route path="site-pages" element={<SectionRoute section="content"><AdminSitePages /></SectionRoute>} />
                   <Route path="blog" element={<SectionRoute section="blog"><AdminBlog /></SectionRoute>} />
+                  <Route path="blog/categories" element={<SectionRoute section="blog"><AdminBlogCategories /></SectionRoute>} />
                   <Route path="blog/new" element={<SectionRoute section="blog"><AdminBlogForm /></SectionRoute>} />
                   <Route path="blog/:id" element={<SectionRoute section="blog"><AdminBlogForm /></SectionRoute>} />
                   <Route path="subscriptions" element={<SectionRoute section="subscriptions"><AdminSubscriptions /></SectionRoute>} />
@@ -333,7 +358,13 @@ function AppContent() {
                   <Route path="referrals" element={<SectionRoute section="affiliates"><AdminAffiliates /></SectionRoute>} />
                   <Route path="withdrawals" element={<SectionRoute section="withdrawals"><AdminWithdrawals /></SectionRoute>} />
                   <Route path="revenue" element={<SectionRoute section="revenue"><AdminFinancials /></SectionRoute>} />
+                  <Route path="orders" element={<SectionRoute section="revenue"><AdminOrders /></SectionRoute>} />
+                  <Route path="coupons" element={<SectionRoute section="revenue"><AdminCoupons /></SectionRoute>} />
                   <Route path="emails" element={<SectionRoute section="emails"><AdminEmails /></SectionRoute>} />
+                  <Route path="emails/logs" element={<SectionRoute section="emails"><AdminEmailLogs /></SectionRoute>} />
+                  <Route path="emails/automation" element={<SectionRoute section="emails"><AdminAutomationInstances /></SectionRoute>} />
+                  <Route path="emails/broadcast" element={<SectionRoute section="emails"><AdminEmailBroadcast /></SectionRoute>} />
+                  <Route path="emails/analytics" element={<SectionRoute section="emails"><AdminEmailAnalytics /></SectionRoute>} />
                   <Route path="emails/settings" element={<SectionRoute section="emails"><AdminEmailSettings /></SectionRoute>} />
                   <Route path="settings/*" element={<SectionRoute section="settings"><AdminSettings /></SectionRoute>} />
                   <Route path="permissions" element={<SectionRoute section="permissions"><AdminPermissions /></SectionRoute>} />

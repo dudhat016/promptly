@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { getAffinityProfile, mergeCloudAffinity, seedAffinityFromInterests, syncAffinityToCloud } from '../lib/affinity';
 import { auth, db } from '../lib/firebase';
 import { seedDatabase } from '../lib/seed';
+import { api } from '../lib/api';
 import { EmailService } from '../services/emailService';
 import { UserProfile } from '../types';
 
@@ -210,9 +211,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
               }
 
-              // New registration emails
+              // New registration emails (welcome also fires user_signup automation trigger server-side)
               await EmailService.sendWelcomeEmail(user.uid, user.email || '', user.displayName || 'Creator');
               await EmailService.sendAffiliateJoinEmail(user.uid, user.email || '', referralCode);
+
+              // Fire affiliate_join automation trigger
+              if (referralCode) {
+                api.post('/automation/trigger', { triggerType: 'affiliate_join', userId: user.uid, data: { referralCode } }).catch(() => {});
+              }
 
               // Sync to Marketing CRM
               try {

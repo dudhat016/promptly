@@ -1,6 +1,7 @@
 import * as ftp from "basic-ftp";
 import dotenv from "dotenv";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import fs from "fs";
 import multiparty from "multiparty";
 import path from "path";
@@ -13,8 +14,13 @@ import locationRouter from "./api/routes/location";
 import marketingRouter from "./api/routes/marketing";
 import paymentsRouter from "./api/routes/payments";
 import affiliatesRouter from "./api/routes/affiliates";
+import couponsRouter from "./api/routes/coupons";
 import supportRouter from "./api/routes/support";
 import aiRouter from "./api/routes/aiRouter";
+import transactionalRouter from "./api/routes/transactional";
+import automationRouter from "./api/routes/automation";
+import nudgesRouter from "./api/routes/nudges";
+import cronRouter from "./api/routes/cron";
 
 dotenv.config();
 
@@ -26,6 +32,35 @@ const PORT = 3001;
 app.use(express.json({
   verify: (req: any, _res, buf) => { req.rawBody = buf.toString('utf8'); }
 }));
+
+// Rate limiting — protects all API endpoints from abuse
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // Stricter for auth endpoints
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, please try again later.' }
+});
+
+const paymentLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many payment requests, please try again later.' }
+});
+
+app.use('/api', apiLimiter);
+app.use('/api/auth', authLimiter);
+app.use('/api/payments', paymentLimiter);
 
 // Neural Request Logger: Diagnostic tool for routing
 app.use((req, res, next) => {
@@ -42,11 +77,16 @@ console.log("🛰️ [Neural Mount] Registering Modular Routes...");
 app.use("/api/location", locationRouter);
 app.use("/api/payments", paymentsRouter);
 app.use("/api/affiliates", affiliatesRouter);
+app.use("/api/coupons", couponsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/support", supportRouter);
 app.use("/api/data", dataRouter);
 app.use("/api/marketing", marketingRouter);
 app.use("/api/ai", aiRouter);
+app.use("/api/email", transactionalRouter);
+app.use("/api/automation", automationRouter);
+app.use("/api/nudges", nudgesRouter);
+app.use("/api/cron", cronRouter);
 app.use("/", marketingRouter); // Handles /sitemap.xml and /api/test-email
 
 app.get("/api/health", async (req, res) => {

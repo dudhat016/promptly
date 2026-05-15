@@ -1,7 +1,8 @@
 import { Router, json } from "express";
 import { initFirebase } from "../lib/firebase.js";
-import { processExpiredLocks } from "../lib/payouts.js";
+import { processExpiredLocks, awardAffiliateCommission } from "../lib/payouts.js";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth.js";
+import { sendEmail } from "../lib/mailer.js";
 import admin from "firebase-admin";
 
 const router = Router();
@@ -175,6 +176,16 @@ router.post("/approve/:payoutId", authMiddleware, json(), async (req: Authentica
       });
     });
 
+    // Notify affiliate that payout was sent
+    if (payout.userEmail) {
+      await sendEmail(firebase.db, payout.userEmail, 'affiliate_withdrawal_approved', {
+        name:            payout.userName || 'Creator',
+        amount:          String(amount),
+        method:          payout.payoutMethod || 'bank transfer',
+        transaction_ref: transactionRef.trim(),
+      });
+    }
+
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -195,6 +206,58 @@ router.post("/reject/:payoutId", authMiddleware, json(), async (req: Authenticat
       adminNote: adminNote || null,
       processedAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    // Notify affiliate of rejection with the admin note as reason
+    const payoutSnap = await firebase.db.collection("payouts").doc(payoutId).get();
+    const payout = payoutSnap.data();
+    if (payout?.userEmail) {
+      await sendEmail(firebase.db, payout.userEmail, 'affiliate_withdrawal_rejected', {
+        name:       payout.userName   || 'Creator',
+        amount:     String(payout.amount ?? 0),
+        admin_note: adminNote || 'Please contact support for details.',
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: manually award commission for an order (handles missing referredBy at purchase time)
+router.post("/award-commission", authMiddleware, json(), async (req: AuthenticatedRequest, res) => {
+  const { orderId, referralCode } = req.body;
+  if (!orderId || !referralCode) {
+    return res.status(400).json({ error: "orderId and referralCode required" });
+  }
+
+  try {
+    const firebase = await initFirebase();
+    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
+
+    // Prevent double-awarding
+    const existing = await firebase.db.collection("referral_commissions")
+      .where("orderId", "==", orderId).limit(1).get();
+    if (!existing.empty) {
+      return res.status(409).json({ error: "Commission already exists for this order" });
+    }
+
+    const orderSnap = await firebase.db.collection("orders").doc(orderId).get();
+    if (!orderSnap.exists) return res.status(404).json({ error: "Order not found" });
+
+    const order = orderSnap.data()!;
+    // Use stored amountUsd when available; fall back to raw amount for USD orders
+    const amountUsd = order.amountUsd ?? (order.currency === 'USD' ? Number(order.amount) : Number(order.amount));
+    const exchangeRateAtOrder = order.exchangeRateAtOrder ?? 1;
+    await awardAffiliateCommission(
+      order.userId,
+      order.amount,
+      orderId,
+      order.currency || 'INR',
+      referralCode,
+      amountUsd,
+      exchangeRateAtOrder,
+    );
 
     res.json({ success: true });
   } catch (err: any) {

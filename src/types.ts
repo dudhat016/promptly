@@ -30,6 +30,8 @@ export interface UserProfile {
   referredBy?: string;
   staffRole?: string;
   affiliateEarnings?: number;
+  pendingEarnings?: number;
+  withdrawnAmount?: number;
   trialUsed?: boolean;
   trialEndsAt?: any;
   favorites?: string[];
@@ -41,6 +43,8 @@ export interface UserProfile {
   lastCreditsRewardAt?: any;
   lastActiveAt?: any;
   suspended?: boolean;
+  followerCount?: number;
+  following?: string[];
   affinityProfile?: Record<string, number>;
   phoneNumber?: string;
   payoutMethods?: {
@@ -99,11 +103,14 @@ export interface Contact {
   id: string;
   email: string;
   displayName: string;
-  tags: string[]; // List of tag IDs
-  status: 'active' | 'unsubscribed' | 'bounced';
+  userId?: string;
+  tags: string[];
+  status: 'active' | 'unsubscribed' | 'bounced' | 'pending_confirm';
+  subscriptionStatus?: 'free' | 'pro' | 'cancelled';
   lastActivity: any;
   createdAt: any;
-  customFields: Record<string, string>;
+  customFields?: Record<string, string>;
+  notes?: string;
   leadScore?: number;
   lastEngagementAt?: any;
   prediction?: {
@@ -130,7 +137,7 @@ export interface AutomationFlow {
   id: string;
   name: string;
   trigger: {
-    type: 'tag_added' | 'user_signup' | 'subscription_changed' | 'prompt_favorite' | 'limit_reached' | 'list_applied' | 'list_removed' | 'tag_apply' | 'tag_remove' | 'contact_created' | 'form_submited' | 'subscription_payment_recived' | 'subscription_cancled' | 'user_login' | 'new_register' | 'affiliate_commison';
+    type: 'tag_added' | 'tag_remove' | 'user_signup' | 'user_login' | 'contact_created' | 'subscription_changed' | 'subscription_payment_received' | 'subscription_renewed' | 'subscription_cancelled' | 'prompt_favorite' | 'limit_reached' | 'list_applied' | 'list_removed' | 'form_submited' | 'affiliate_commison';
     value?: string;
   };
   steps: {
@@ -318,7 +325,8 @@ export type AdminSection =
   | 'activity'
   | 'settings'
   | 'emails'
-  | 'reports';
+  | 'reports'
+  | 'content';
 
 export interface SectionPermission {
   canView: boolean;

@@ -1,7 +1,8 @@
-import { ArrowRight, Calendar, Check, CreditCard, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { ArrowRight, Calendar, Check, ChevronDown, CreditCard, HelpCircle, RefreshCw, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { usePath } from '../hooks/usePath';
 import { PricingPlan } from '../types';
@@ -9,16 +10,47 @@ import { useConfig } from '../hooks/useConfig';
 import { useCurrency } from '../context/CurrencyContext';
 import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
+import Schema from '../components/SEO/Schema';
+import { db } from '../lib/firebase';
 
 export default function PricingPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { prefix } = usePath();
   const { config, loading: configLoading } = useConfig();
-  const { currency, symbol, exchangeRate } = useCurrency();
+  const { currency, symbol, exchangeRate, setCurrency } = useCurrency();
   const plans = config.plans;
   const [loading] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [billingCycle, setBillingCycle]     = useState<'monthly' | 'yearly'>('monthly');
+  const [faqItems, setFaqItems]             = useState<{ q: string; a: string }[]>([]);
+  const [openFaq, setOpenFaq]               = useState<number | null>(null);
+
+  const DEFAULT_FAQ = [
+    { q: 'Can I cancel anytime?',           a: 'Yes — cancel with one click from your billing settings. You keep Pro access until the end of your billing period with no extra charges.' },
+    { q: 'Is there a free plan?',            a: 'Absolutely. Our Free plan gives you access to the prompt library, vault storage, and AI builder with daily limits — no card required.' },
+    { q: 'What payment methods do you accept?', a: 'We accept all major cards, UPI, and net banking via Cashfree (India), and PayPal for international payments.' },
+    { q: 'Do unused credits roll over?',     a: 'Credits reset monthly. Upgrading mid-cycle gives you a fresh set of credits immediately.' },
+    { q: 'Can I switch between monthly and yearly?', a: 'Yes — you can switch billing cycles anytime from your subscription settings. Yearly billing saves you up to 20%.' },
+    { q: 'Is my payment information secure?', a: 'Yes. We never store your payment details. All transactions are processed by PCI-DSS compliant payment gateways.' },
+  ];
+
+  useEffect(() => {
+    getDoc(doc(db, 'site_content', 'faq'))
+      .then(snap => {
+        if (snap.exists()) {
+          const data = snap.data();
+          // Support both flat array and categories structure
+          const items = Array.isArray(data.categories)
+            ? data.categories.flatMap((c: any) => (c.questions || []).map((q: any) => ({ q: q.question, a: q.answer })))
+            : [];
+          if (items.length > 0) setFaqItems(items);
+          else setFaqItems(DEFAULT_FAQ);
+        } else {
+          setFaqItems(DEFAULT_FAQ);
+        }
+      })
+      .catch(() => setFaqItems(DEFAULT_FAQ));
+  }, []);
 
   const handleSubscribe = (plan: PricingPlan) => {
     const refCode = new URLSearchParams(window.location.search).get('ref') || localStorage.getItem('referralCode');
@@ -34,6 +66,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Schema type="Pricing" data={{ plans, currency }} />
 
       {/* ── Hero ── */}
       <div className="relative pt-24 pb-16 text-center overflow-hidden">
@@ -53,31 +86,50 @@ export default function PricingPage() {
             Start free. Upgrade only when you're ready. No hidden fees, no contracts.
           </p>
 
-          {/* Billing toggle */}
-          <div className="inline-flex items-center p-1 rounded-xl gap-1 bg-muted border border-border">
-            {(['monthly', 'yearly'] as const).map(cycle => (
-              <Button
-                key={cycle}
-                onClick={() => setBillingCycle(cycle)}
-                variant={billingCycle === cycle ? 'white' : 'ghost'}
-                size="md"
-                className="px-8"
-              >
-                {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
-                {cycle === 'yearly' && plans.length > 0 && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md ml-2"
-                    style={{
-                      background: config?.activePromotion === 'yearly_bonus' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.2)',
-                      color: config?.activePromotion === 'yearly_bonus' ? 'rgb(52,211,153)' : 'rgb(167,139,250)',
-                      border: `1px solid ${config?.activePromotion === 'yearly_bonus' ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.3)'}`,
-                    }}>
-                    {config?.activePromotion === 'yearly_bonus'
-                      ? (config.yearlyIncentiveType === 'months' ? `${config.yearlyIncentiveValue}mo Free` : `${config.yearlyIncentiveValue}% Off`)
-                      : 'Save 20%'}
-                  </span>
-                )}
-              </Button>
-            ))}
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            {/* Billing toggle */}
+            <div className="inline-flex items-center p-1 rounded-xl gap-1 bg-muted border border-border">
+              {(['monthly', 'yearly'] as const).map(cycle => (
+                <Button
+                  key={cycle}
+                  onClick={() => setBillingCycle(cycle)}
+                  variant={billingCycle === cycle ? 'white' : 'ghost'}
+                  size="md"
+                  className="px-8"
+                >
+                  {cycle === 'monthly' ? 'Monthly' : 'Yearly'}
+                  {cycle === 'yearly' && plans.length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md ml-2"
+                      style={{
+                        background: config?.activePromotion === 'yearly_bonus' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.2)',
+                        color: config?.activePromotion === 'yearly_bonus' ? 'rgb(52,211,153)' : 'rgb(167,139,250)',
+                        border: `1px solid ${config?.activePromotion === 'yearly_bonus' ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.3)'}`,
+                      }}>
+                      {config?.activePromotion === 'yearly_bonus'
+                        ? (config.yearlyIncentiveType === 'months' ? `${config.yearlyIncentiveValue}mo Free` : `${config.yearlyIncentiveValue}% Off`)
+                        : 'Save 20%'}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
+
+            {/* Currency switcher */}
+            <div className="inline-flex items-center p-1 rounded-xl gap-0.5 bg-muted border border-border">
+              {(['USD', 'INR'] as const).map(c => (
+                <button
+                  key={c}
+                  onClick={() => setCurrency(c)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    currency === c
+                      ? 'bg-card shadow-sm text-foreground border border-border'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {c === 'USD' ? '$ USD' : '₹ INR'}
+                </button>
+              ))}
+            </div>
           </div>
         </PageContainer>
       </div>
@@ -137,6 +189,11 @@ export default function PricingPage() {
       <PageContainer className="pb-20" ignoreCustomizer>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {plans.map((plan, i) => {
+            // Fixed INR prices take priority over live rate conversion.
+            // If inrMonthlyPrice is 0/unset on the plan, fall back to live rate.
+            const inrMonthly = plan.inrMonthlyPrice > 0 ? plan.inrMonthlyPrice : Math.round(plan.monthlyPrice * exchangeRate);
+            const inrYearly  = plan.inrYearlyPrice  > 0 ? plan.inrYearlyPrice  : Math.round(plan.yearlyPrice  * exchangeRate);
+
             const discount = plan.monthlyPrice > 0
               ? Math.round(((plan.monthlyPrice * 12 - plan.yearlyPrice) / (plan.monthlyPrice * 12)) * 100)
               : 0;
@@ -149,8 +206,8 @@ export default function PricingPage() {
                   ? (plan.isPopular ?? false)
                   : false;
             const displayPrice = billingCycle === 'monthly'
-              ? (currency === 'INR' ? Math.round(plan.monthlyPrice * exchangeRate) : plan.monthlyPrice)
-              : (currency === 'INR' ? Math.round((plan.yearlyPrice / 12) * exchangeRate) : Math.floor(plan.yearlyPrice / 12));
+              ? (currency === 'INR' ? inrMonthly : plan.monthlyPrice)
+              : (currency === 'INR' ? Math.round(inrYearly / 12) : Math.floor(plan.yearlyPrice / 12));
 
             return (
               <motion.div
@@ -237,19 +294,81 @@ export default function PricingPage() {
         </div>
 
         {/* ── Trust badges ── */}
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-6 max-w-2xl mx-auto">
-          {[
-            { icon: ShieldCheck, label: 'Secure Bank-Level Payments' },
-            { icon: CreditCard, label: 'Cashfree & PayPal Support' },
-            { icon: Zap,         label: 'Instant Access After Payment' },
-          ].map(({ icon: Icon, label }, i) => (
-            <div key={i} className="flex items-center gap-2.5">
-              <Icon className="w-4 h-4 text-muted-foreground/40" />
-              <span className="text-xs text-muted-foreground/40 uppercase tracking-widest font-medium">{label}</span>
+        {(() => {
+          const configBadges = (config as any).trustBadges as { label: string }[] | undefined;
+          const badges = configBadges?.length
+            ? configBadges.map((b, i) => ({ icon: [ShieldCheck, CreditCard, Zap, RefreshCw][i % 4], label: b.label }))
+            : [
+                { icon: ShieldCheck, label: 'Secure Bank-Level Payments' },
+                { icon: CreditCard,  label: `${[(config as any).cashfreeEnabled ? 'Cashfree' : '', (config as any).paypalEnabled ? 'PayPal' : ''].filter(Boolean).join(' & ') || 'Card & UPI'} Support` },
+                { icon: Zap,         label: 'Instant Access After Payment' },
+                { icon: RefreshCw,   label: 'Cancel Anytime' },
+              ];
+          return (
+            <div className="mt-16 flex flex-wrap items-center justify-center gap-6 max-w-3xl mx-auto">
+              {badges.map(({ icon: Icon, label }, i) => (
+                <div key={i} className="flex items-center gap-2.5">
+                  <Icon className="w-4 h-4 text-muted-foreground/40" />
+                  <span className="text-xs text-muted-foreground/40 uppercase tracking-widest font-medium">{label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          );
+        })()}
+
+        {/* ── Money-back guarantee ── */}
+        {(config as any).moneyBackDays > 0 && (
+          <div className="mt-10 max-w-xl mx-auto rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 flex items-center gap-4 text-center justify-center">
+            <ShieldCheck className="w-8 h-8 text-emerald-500 shrink-0" />
+            <div className="text-left">
+              <p className="font-bold text-foreground text-sm">{(config as any).moneyBackDays}-Day Money-Back Guarantee</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Not happy? Get a full refund within {(config as any).moneyBackDays} days — no questions asked.</p>
+            </div>
+          </div>
+        )}
       </PageContainer>
+
+      {/* ── FAQ Section ── */}
+      {faqItems.length > 0 && (
+        <div className="border-t border-border bg-muted/20 py-20">
+          <PageContainer className="max-w-3xl" ignoreCustomizer>
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-4 bg-primary/10 border border-primary/25 text-primary">
+                <HelpCircle className="w-3.5 h-3.5" /> FAQ
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground">Frequently asked questions</h2>
+            </div>
+            <div className="space-y-2">
+              {faqItems.slice(0, 8).map((item, i) => (
+                <div key={i} className="bg-card border border-border rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-muted/40 transition-colors"
+                  >
+                    <span className="font-semibold text-foreground text-sm pr-4">{item.q}</span>
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
+                  </button>
+                  <AnimatePresence>
+                    {openFaq === i && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed border-t border-border pt-3">
+                          {item.a}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          </PageContainer>
+        </div>
+      )}
     </div>
   );
 }

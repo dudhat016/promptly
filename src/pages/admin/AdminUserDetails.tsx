@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  limit,
 } from 'firebase/firestore';
 import {
   Activity,
@@ -27,6 +28,12 @@ import {
   Users,
   Target,
   Cpu,
+  ShoppingBag,
+  Gift,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  TrendingUp,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -57,7 +64,11 @@ export default function AdminUserDetails() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'security'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'security' | 'orders' | 'affiliate'>('overview');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [commissions, setCommissions] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [affiliateLoading, setAffiliateLoading] = useState(false);
 
   // Credit adjustment state
   const [adjustAmount, setAdjustAmount] = useState(0);
@@ -96,6 +107,26 @@ export default function AdminUserDetails() {
     }
     loadData();
   }, [id, navigate, prefix]);
+
+  // Load orders when that tab is opened
+  useEffect(() => {
+    if (activeTab !== 'orders' || !id || orders.length > 0) return;
+    setOrdersLoading(true);
+    getDocs(query(collection(db, 'orders'), where('userId', '==', id), orderBy('createdAt', 'desc'), limit(50)))
+      .then(snap => setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(() => toast.error('Failed to load orders'))
+      .finally(() => setOrdersLoading(false));
+  }, [activeTab, id]);
+
+  // Load affiliate commissions when that tab is opened
+  useEffect(() => {
+    if (activeTab !== 'affiliate' || !id || commissions.length > 0) return;
+    setAffiliateLoading(true);
+    getDocs(query(collection(db, 'referral_commissions'), where('referrerId', '==', id), orderBy('createdAt', 'desc'), limit(50)))
+      .then(snap => setCommissions(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(() => toast.error('Failed to load commissions'))
+      .finally(() => setAffiliateLoading(false));
+  }, [activeTab, id]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -329,6 +360,8 @@ export default function AdminUserDetails() {
         <Tabs
           tabs={[
             { id: 'overview', label: 'Overview', icon: Users },
+            { id: 'orders', label: 'Orders', icon: ShoppingBag },
+            { id: 'affiliate', label: 'Affiliate', icon: Gift },
             { id: 'activity', label: 'Activity', icon: Activity },
             { id: 'security', label: 'Security', icon: Lock },
           ]}
@@ -437,6 +470,115 @@ export default function AdminUserDetails() {
                   ))}
                 </div>
               </section>
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
+              <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2 uppercase tracking-tight">
+                <ShoppingBag className="w-4 h-4 text-primary" /> Purchase History
+              </h3>
+              {ordersLoading ? (
+                <div className="text-center py-10 text-muted-foreground animate-pulse font-bold text-sm">Loading orders...</div>
+              ) : orders.length === 0 ? (
+                <div className="text-center py-16 bg-muted/20 rounded-xl border-2 border-dashed border-border">
+                  <ShoppingBag className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground font-bold">No orders found for this user.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {orders.map(o => (
+                    <div key={o.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border border-border">
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs text-muted-foreground truncate">{o.orderId}</p>
+                        <p className="font-bold text-foreground text-sm">{o.planName} · {o.billingCycle}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {(() => { try { return o.createdAt?.toDate().toLocaleString(); } catch { return ''; } })()}
+                          {' · '}<span className="uppercase font-bold">{o.gateway}</span>
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <p className="text-xl font-black text-emerald-600">
+                          {o.currency === 'INR' ? '₹' : '$'}{Number(o.amount).toFixed(2)}
+                        </p>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          o.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+                        }`}>{o.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'affiliate' && (
+            <div className="space-y-6">
+              {/* Balance summary */}
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: 'Available Balance', value: `$${(user.affiliateEarnings || 0).toFixed(2)}`, color: 'emerald', icon: TrendingUp },
+                  { label: 'Pending (Locked)', value: `$${(user.pendingEarnings || 0).toFixed(2)}`, color: 'amber', icon: Clock },
+                  { label: 'Total Withdrawn', value: `$${(user.withdrawnAmount || 0).toFixed(2)}`, color: 'primary', icon: Gift },
+                ].map(s => (
+                  <div key={s.label} className="bg-card border border-border rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <s.icon className={`w-4 h-4 ${s.color === 'emerald' ? 'text-emerald-500' : s.color === 'amber' ? 'text-amber-500' : 'text-primary'}`} />
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{s.label}</p>
+                    </div>
+                    <p className={`text-2xl font-black ${s.color === 'emerald' ? 'text-emerald-600' : s.color === 'amber' ? 'text-amber-600' : 'text-primary'}`}>
+                      {s.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Referred by */}
+              {user.referredBy && (
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center gap-3 text-sm">
+                  <AlertCircle className="w-4 h-4 text-primary shrink-0" />
+                  <span>This user was referred by code <strong className="font-mono">{user.referredBy}</strong>. Commissions for their purchases are credited to that referrer.</span>
+                </div>
+              )}
+
+              {/* Commission history */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 uppercase tracking-tight">
+                  <Gift className="w-4 h-4 text-primary" /> Commissions Earned (as Referrer)
+                </h3>
+                {affiliateLoading ? (
+                  <div className="text-center py-8 text-muted-foreground animate-pulse text-sm font-bold">Loading...</div>
+                ) : commissions.length === 0 ? (
+                  <div className="text-center py-10 bg-muted/20 rounded-xl border-2 border-dashed border-border">
+                    <Gift className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground font-bold">No commissions earned yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {commissions.map(c => (
+                      <div key={c.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border border-border">
+                        <div>
+                          <p className="font-mono text-xs text-muted-foreground">{c.orderId}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Sale: {c.currency === 'INR' ? '₹' : '$'}{Number(c.grossSaleAmount).toFixed(2)}
+                            {' · '}Rate: {c.commissionRate}%
+                            {' · '}
+                            {(() => { try { return c.lockUntil?.toDate ? `Unlocks ${c.lockUntil.toDate().toLocaleDateString()}` : ''; } catch { return ''; } })()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-black text-foreground text-base">${Number(c.netCommission).toFixed(2)}</p>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            c.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600' :
+                            c.status === 'paid' ? 'bg-primary/10 text-primary' :
+                            'bg-amber-500/10 text-amber-600'
+                          }`}>{c.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

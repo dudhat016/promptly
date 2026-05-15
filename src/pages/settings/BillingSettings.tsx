@@ -1,9 +1,9 @@
-import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, where, doc, updateDoc, serverTimestamp, addDoc, Timestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { AlertTriangle, CreditCard, FileText, RefreshCw, Shield, X, Zap } from 'lucide-react';
-import { motion } from 'motion/react';
+import { AlertTriangle, Clock, CreditCard, FileText, RefreshCw, Shield, X, Zap, PauseCircle, ArrowDownCircle, Frown, ChevronRight, ToggleLeft, ToggleRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
@@ -17,6 +17,20 @@ export default function BillingSettings() {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showAutoRenewConfirm, setShowAutoRenewConfirm] = useState(false);
+  const [togglingAutoRenew, setTogglingAutoRenew] = useState(false);
+  // Multi-step cancel save flow
+  const [cancelStep, setCancelStep] = useState<'reason' | 'offer' | 'confirm'>('reason');
+  const [cancelReason, setCancelReason] = useState('');
+  const [pauseApplying, setPauseApplying] = useState(false);
+
+  const CANCEL_REASONS = [
+    { id: 'too_expensive', label: 'Too expensive', offer: 'pause' },
+    { id: 'not_using', label: "Not using it enough", offer: 'pause' },
+    { id: 'missing_feature', label: 'Missing a feature I need', offer: 'feedback' },
+    { id: 'switching', label: 'Switching to another tool', offer: null },
+    { id: 'other', label: 'Other reason', offer: null },
+  ];
 
   useEffect(() => {
     if (user?.uid) fetchOrders();
@@ -40,10 +54,77 @@ export default function BillingSettings() {
     }
   }
 
+  function openCancelFlow() {
+    setCancelStep('reason');
+    setCancelReason('');
+    setShowCancelConfirm(true);
+  }
+
+  async function handlePauseSubscription() {
+    if (!user?.uid) return;
+    setPauseApplying(true);
+    try {
+      // Pause = extend currentPeriodEnd by 30 days without charging
+      const pauseUntil = new Date();
+      pauseUntil.setDate(pauseUntil.getDate() + 30);
+      await updateDoc(doc(db, 'users', user.uid), {
+        pausedUntil: pauseUntil,
+        subscriptionStatus: 'pro', // Keep pro during pause
+        autoPayEnabled: false,     // Stop auto-billing during pause
+        updatedAt: serverTimestamp(),
+      });
+      await addDoc(collection(db, 'dunning_events'), {
+        userId: user.uid,
+        userEmail: user.email,
+        event: 'subscription_paused',
+        pauseUntil,
+        cancelReason,
+        createdAt: serverTimestamp(),
+      });
+      toast.success('Subscription paused for 30 days. We\'ll see you back!');
+      setShowCancelConfirm(false);
+    } catch {
+      toast.error('Failed to pause subscription.');
+    } finally {
+      setPauseApplying(false);
+    }
+  }
+
+  async function handleDisableAutoRenew() {
+    if (!user?.uid) return;
+    setTogglingAutoRenew(true);
+    try {
+      // Cancel recurring schedule on gateway — access stays until currentPeriodEnd
+      await PaymentService.cancelSubscription({
+        customerId: user.uid,
+        subscriptionGateway: profile?.subscriptionGateway,
+        subscriptionId: profile?.subscriptionId,
+        paypalSubscriptionId: profile?.paypalSubscriptionId,
+      });
+      setShowAutoRenewConfirm(false);
+      toast.success('Auto-renew turned off. Your access continues until the end of your billing period.');
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to turn off auto-renew. Please contact support.');
+    } finally {
+      setTogglingAutoRenew(false);
+    }
+  }
+
   async function handleCancelSubscription() {
     if (!user?.uid) return;
     setCancelling(true);
     try {
+      // Save cancellation reason for product analytics
+      if (cancelReason) {
+        await addDoc(collection(db, 'cancellation_feedback'), {
+          userId: user.uid,
+          userEmail: user.email,
+          reason: cancelReason,
+          plan: profile?.activePlanId,
+          createdAt: serverTimestamp(),
+        });
+      }
       await PaymentService.cancelSubscription({
         customerId: user.uid,
         subscriptionGateway: profile?.subscriptionGateway,
@@ -64,6 +145,18 @@ export default function BillingSettings() {
     ? profile.currentPeriodEnd.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
 
+  const trialEndsDate: Date | null = (() => {
+    const t = profile?.trialEndsAt;
+    if (!t) return null;
+    if (t instanceof Timestamp) return t.toDate();
+    if (typeof t === 'object' && t.seconds) return new Date(t.seconds * 1000);
+    return null;
+  })();
+  const trialDaysLeft = trialEndsDate
+    ? Math.max(0, Math.ceil((trialEndsDate.getTime() - Date.now()) / 86400000))
+    : null;
+  const isOnTrial = trialDaysLeft !== null && trialDaysLeft >= 0 && isPro;
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <div className="bg-card rounded-lg p-6 border border-border shadow-sm space-y-10 relative overflow-hidden">
@@ -80,6 +173,26 @@ export default function BillingSettings() {
               </span>
             </div>
         </div>
+
+        {/* Trial countdown banner */}
+        {isOnTrial && (
+          <div className="rounded-xl p-4 flex items-start justify-between gap-4 bg-amber-500/8 border border-amber-500/20">
+            <div className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-amber-600">
+                  {trialDaysLeft === 0 ? 'Trial ends today!' : `${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} left in your trial`}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Trial ends {trialEndsDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}. Activate Pro to keep your access.
+                </p>
+              </div>
+            </div>
+            <Button as={Link} to={prefix('/pricing')} variant="primary" size="sm" className="shrink-0">
+              Activate Pro
+            </Button>
+          </div>
+        )}
 
         {!isPro ? (
           <div className="bg-foreground text-background rounded-lg p-6 relative overflow-hidden group shadow-2xl">
@@ -146,12 +259,37 @@ export default function BillingSettings() {
                   >
                     Change Plan
                   </Button>
+
+                  {/* Auto-renew toggle */}
+                  {profile?.autoPayEnabled && !profile?.cancelAtPeriodEnd ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leftIcon={ToggleRight}
+                      className="text-white/60 hover:text-amber-300 font-semibold"
+                      onClick={() => setShowAutoRenewConfirm(true)}
+                    >
+                      Turn off Auto-renew
+                    </Button>
+                  ) : !profile?.cancelAtPeriodEnd && (
+                    <Button
+                      as={Link}
+                      to={prefix('/pricing')}
+                      variant="ghost"
+                      size="sm"
+                      leftIcon={ToggleLeft}
+                      className="text-white/40 hover:text-emerald-300 font-semibold"
+                    >
+                      Re-enable Auto-renew
+                    </Button>
+                  )}
+
                   {!profile?.cancelAtPeriodEnd && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="text-white/40 hover:text-rose-300 uppercase tracking-widest font-bold"
-                      onClick={() => setShowCancelConfirm(true)}
+                      onClick={openCancelFlow}
                     >
                       Cancel Subscription
                     </Button>
@@ -160,41 +298,190 @@ export default function BillingSettings() {
               </div>
             </div>
 
-            {/* Cancel confirmation panel */}
-            {showCancelConfirm && (
-              <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-6 space-y-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-foreground">Cancel your subscription?</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {profile?.autoPayEnabled
-                        ? `Auto-renewal will stop. You keep access until ${nextBillingDate || 'the end of your current period'}.`
-                        : `Your subscription will end on ${nextBillingDate || 'the billing period end'}.`}
-                    </p>
+            {/* Auto-renew disable confirm */}
+            <AnimatePresence>
+              {showAutoRenewConfirm && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 space-y-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <ToggleRight className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-foreground">Turn off auto-renew?</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Your subscription won't renew automatically. You'll keep Pro access until{' '}
+                        <span className="font-semibold text-foreground">{nextBillingDate || 'the end of your billing period'}</span>,
+                        after which your plan will revert to Free.
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleCancelSubscription}
-                    isLoading={cancelling}
-                    variant="secondary"
-                    size="sm"
-                    leftIcon={X}
-                    className="border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
-                  >
-                    Yes, Cancel
-                  </Button>
-                  <Button
-                    onClick={() => setShowCancelConfirm(false)}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    Keep Subscription
-                  </Button>
-                </div>
-              </div>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleDisableAutoRenew}
+                      isLoading={togglingAutoRenew}
+                      variant="secondary"
+                      size="sm"
+                      leftIcon={ToggleLeft}
+                      className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                    >
+                      Yes, Turn off Auto-renew
+                    </Button>
+                    <Button onClick={() => setShowAutoRenewConfirm(false)} variant="ghost" size="sm">
+                      Keep Auto-renew On
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Multi-step cancellation save flow */}
+            <AnimatePresence>
+            {showCancelConfirm && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="rounded-xl border border-rose-500/20 bg-rose-500/5 overflow-hidden"
+              >
+                {/* Step 1: Reason */}
+                {cancelStep === 'reason' && (
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Frown className="w-5 h-5 text-rose-500 shrink-0" />
+                      <p className="font-semibold text-foreground">Before you go — what's the reason?</p>
+                    </div>
+                    <div className="space-y-2">
+                      {CANCEL_REASONS.map(r => (
+                        <button
+                          key={r.id}
+                          onClick={() => setCancelReason(r.id)}
+                          className={`w-full text-left px-4 py-3 rounded-lg border text-sm font-medium transition-all flex items-center justify-between ${
+                            cancelReason === r.id
+                              ? 'border-rose-500/50 bg-rose-500/10 text-foreground'
+                              : 'border-border bg-background/50 text-muted-foreground hover:border-rose-500/30'
+                          }`}
+                        >
+                          {r.label}
+                          {cancelReason === r.id && <ChevronRight className="w-4 h-4 text-rose-500" />}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        onClick={() => {
+                          const reason = CANCEL_REASONS.find(r => r.id === cancelReason);
+                          setCancelStep(reason?.offer ? 'offer' : 'confirm');
+                        }}
+                        disabled={!cancelReason}
+                        variant="secondary"
+                        size="sm"
+                        className="border-rose-500/30 text-rose-500"
+                        rightIcon={ChevronRight}
+                      >
+                        Continue
+                      </Button>
+                      <Button onClick={() => setShowCancelConfirm(false)} variant="ghost" size="sm">
+                        Keep Subscription
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Offer (pause or feedback) */}
+                {cancelStep === 'offer' && (
+                  <div className="p-6 space-y-4">
+                    {CANCEL_REASONS.find(r => r.id === cancelReason)?.offer === 'pause' ? (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <PauseCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                          <p className="font-semibold text-foreground">How about a 30-day pause instead?</p>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          We'll pause your billing for 30 days. Your Pro access stays active, and you won't be charged during the pause.
+                        </p>
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 text-sm text-amber-700 font-medium">
+                          No charge for 30 days · Pro access continues · Resume anytime
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                          <Button
+                            onClick={handlePauseSubscription}
+                            isLoading={pauseApplying}
+                            variant="secondary"
+                            size="sm"
+                            leftIcon={PauseCircle}
+                            className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                          >
+                            Pause for 30 Days
+                          </Button>
+                          <Button onClick={() => setCancelStep('confirm')} variant="ghost" size="sm" className="text-muted-foreground text-xs">
+                            No thanks, still cancel
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <ArrowDownCircle className="w-5 h-5 text-primary shrink-0" />
+                          <p className="font-semibold text-foreground">Tell us what's missing</p>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          We ship new features every week. What would make Promptly worth keeping?
+                        </p>
+                        <textarea
+                          placeholder="e.g. I need better export options, or API access..."
+                          className="w-full bg-background border border-border rounded-lg p-3 text-sm text-foreground resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          onChange={e => setCancelReason(`missing_feature:${e.target.value}`)}
+                        />
+                        <div className="flex gap-3 pt-1">
+                          <Button onClick={() => setCancelStep('confirm')} variant="ghost" size="sm" className="text-rose-500 text-xs">
+                            Still cancel
+                          </Button>
+                          <Button onClick={() => setShowCancelConfirm(false)} variant="secondary" size="sm">
+                            Keep Subscription
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 3: Final confirm */}
+                {cancelStep === 'confirm' && (
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-foreground">Cancel your subscription?</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {profile?.autoPayEnabled
+                            ? `Auto-renewal stops. You keep Pro access until ${nextBillingDate || 'end of billing period'}.`
+                            : `Your subscription ends on ${nextBillingDate || 'the billing period end'}.`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={handleCancelSubscription}
+                        isLoading={cancelling}
+                        variant="secondary"
+                        size="sm"
+                        leftIcon={X}
+                        className="border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
+                      >
+                        Yes, Cancel
+                      </Button>
+                      <Button onClick={() => setShowCancelConfirm(false)} variant="ghost" size="sm">
+                        Keep Subscription
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             )}
+            </AnimatePresence>
           </>
         )}
 

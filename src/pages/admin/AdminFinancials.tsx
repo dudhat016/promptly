@@ -1,29 +1,36 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
-import { UserProfile } from '../../types';
-import { CreditCard, TrendingUp, DollarSign } from 'lucide-react';
+import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
+import { CreditCard, DollarSign, ShoppingBag, TrendingUp, Users } from 'lucide-react';
 import { AdminPageHeader, DataTable } from '../../components/admin';
 import Badge from '../../components/primitives/Badge';
 import type { DataTableColumn } from '../../components/admin';
+import { useConfig } from '../../hooks/useConfig';
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 
-interface SimulatedPayment {
+interface Order {
   id: string;
-  customer: string;
-  email: string;
-  description: string;
+  orderId: string;
+  userId: string;
+  userEmail: string;
+  planName: string;
   amount: number;
+  currency: string;
+  amountUsd?: number;
+  exchangeRateAtOrder?: number;
+  billingCycle: string;
+  gateway: string;
   status: string;
+  createdAt: any;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function buildMRRData(proUsers: UserProfile[]) {
+function buildRevenueData(orders: Order[]) {
   const months = Array.from({ length: 6 }, (_, i) => {
     const d = new Date();
     d.setDate(1);
@@ -32,24 +39,25 @@ function buildMRRData(proUsers: UserProfile[]) {
       label: d.toLocaleDateString('en', { month: 'short', year: '2-digit' }),
       year: d.getFullYear(),
       month: d.getMonth(),
-      newSubs: 0,
+      revenue: 0,
     };
   });
 
-  proUsers.forEach(u => {
+  orders.forEach(o => {
     try {
-      const created = typeof (u.createdAt as any)?.toDate === 'function'
-        ? (u.createdAt as any).toDate()
-        : new Date(u.createdAt as any);
+      const created = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt);
       const bucket = months.find(b => b.year === created.getFullYear() && b.month === created.getMonth());
-      if (bucket) bucket.newSubs++;
+      if (!bucket) return;
+      // Use amountUsd when available; fall back to raw amount for USD-native orders
+      const usd = o.amountUsd ?? (o.currency === 'USD' ? Number(o.amount) : 0);
+      bucket.revenue += usd;
     } catch { /* skip */ }
   });
 
   let cumulative = 0;
   return months.map(m => {
-    cumulative += m.newSubs * 15;
-    return { label: m.label, mrr: cumulative, newRevenue: m.newSubs * 15 };
+    cumulative += m.revenue;
+    return { label: m.label, mrr: parseFloat(cumulative.toFixed(2)), newRevenue: parseFloat(m.revenue.toFixed(2)) };
   });
 }
 
@@ -71,15 +79,56 @@ function ChartTooltip({ active, payload, label }: any) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+interface MrrByPlan { name: string; mrr: number; count: number; }
+
+const PIE_COLORS = ['var(--color-primary)', '#10b981', '#f59e0b', '#6366f1', '#ec4899'];
+
 export default function AdminFinancials() {
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const { config } = useConfig();
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [trueMrr, setTrueMrr] = useState(0);
+  const [activeSubs, setActiveSubs] = useState(0);
+  const [mrrByPlan, setMrrByPlan] = useState<MrrByPlan[]>([]);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const uSnap = await getDocs(collection(db, 'users'));
-        setUsers(uSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
+        const [orderSnap, proSnap] = await Promise.all([
+          getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(200))),
+          getDocs(query(collection(db, 'users'), where('subscriptionStatus', '==', 'pro'))),
+        ]);
+        setOrders(orderSnap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
+        setActiveSubs(proSnap.size);
+
+        // Compute true MRR from active pro subscribers
+        let mrr = 0;
+        const planBuckets: Record<string, { count: number; mrr: number }> = {};
+
+        proSnap.docs.forEach(d => {
+          const user = d.data();
+          const planId = user.activePlanId || 'pro';
+          const cycle = user.billingCycle || 'monthly';
+          const plan = config.plans.find(p => p.id === planId);
+          const monthlyEquiv = plan
+            ? (cycle === 'yearly' ? (plan.yearlyPrice || plan.monthlyPrice * 12) / 12 : plan.monthlyPrice)
+            : 0;
+          mrr += monthlyEquiv;
+          if (!planBuckets[planId]) planBuckets[planId] = { count: 0, mrr: 0 };
+          planBuckets[planId].count++;
+          planBuckets[planId].mrr += monthlyEquiv;
+        });
+
+        setTrueMrr(Math.round(mrr * 100) / 100);
+        setMrrByPlan(
+          Object.entries(planBuckets)
+            .map(([id, v]) => ({
+              name: config.plans.find(p => p.id === id)?.name || id,
+              mrr: Math.round(v.mrr * 100) / 100,
+              count: v.count,
+            }))
+            .sort((a, b) => b.mrr - a.mrr)
+        );
       } catch (err) {
         console.error(err);
       } finally {
@@ -87,68 +136,99 @@ export default function AdminFinancials() {
       }
     }
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const proUsers = users.filter(u => u.subscriptionStatus === 'pro');
-  const estimatedMRR = proUsers.length * 15;
-  const mrrData = buildMRRData(proUsers);
+  // Normalize all order amounts to USD.
+  // New orders have amountUsd; legacy orders without it fall back:
+  //   USD orders → use amount directly
+  //   INR orders without amountUsd → excluded from total (can't safely guess historical rate)
+  const totalRevenue = orders.reduce((sum, o) => {
+    const usd = o.amountUsd ?? (o.currency === 'USD' ? Number(o.amount) : null);
+    return sum + (usd ?? 0);
+  }, 0);
+  const revenueData = buildRevenueData(orders);
 
-  const payments: SimulatedPayment[] = proUsers.slice(0, 50).map(u => ({
-    id: u.uid,
-    customer: u.displayName || u.email || 'Unknown',
-    email: u.email || '',
-    description: 'Pro Plan Subscription',
-    amount: 15,
-    status: 'Success',
-  }));
-
-  const columns: DataTableColumn<SimulatedPayment>[] = [
+  const columns: DataTableColumn<Order>[] = [
     {
       key: 'customer',
       header: 'Customer',
-      searchValue: p => `${p.customer} ${p.email}`,
+      searchValue: o => `${o.userEmail} ${o.orderId}`,
       sortable: true,
-      sortValue: p => p.customer,
-      render: p => (
+      sortValue: o => o.userEmail,
+      render: o => (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-emerald-500/10 text-emerald-600 rounded-lg flex items-center justify-center shrink-0">
             <CreditCard className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-foreground truncate">{p.customer}</p>
-            <p className="text-xs text-muted-foreground truncate">{p.email}</p>
+            <p className="font-bold text-foreground truncate">{o.userEmail}</p>
+            <p className="font-mono text-[10px] text-muted-foreground truncate">{o.orderId}</p>
           </div>
         </div>
       ),
-      csvValue: p => p.customer,
+      csvValue: o => o.userEmail,
     },
     {
-      key: 'description',
-      header: 'Description',
-      render: p => (
-        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{p.description}</p>
+      key: 'plan',
+      header: 'Plan',
+      render: o => (
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+          {o.planName} · {o.billingCycle}
+        </p>
       ),
-      csvValue: p => p.description,
+      csvValue: o => o.planName,
+    },
+    {
+      key: 'gateway',
+      header: 'Gateway',
+      render: o => (
+        <Badge variant={o.gateway === 'cashfree' ? 'info' : 'default'} size="sm">
+          {o.gateway}
+        </Badge>
+      ),
+      csvValue: o => o.gateway,
     },
     {
       key: 'amount',
       header: 'Amount',
       sortable: true,
-      sortValue: p => p.amount,
-      render: p => (
-        <span className="font-bold text-emerald-600">+${p.amount.toFixed(2)}</span>
+      sortValue: o => o.amountUsd ?? (o.currency === 'USD' ? Number(o.amount) : 0),
+      render: o => (
+        <div>
+          <span className="font-bold text-emerald-600">
+            {o.currency === 'INR' ? '₹' : '$'}{Number(o.amount).toFixed(2)}
+          </span>
+          {o.amountUsd != null && o.currency !== 'USD' && (
+            <p className="text-[10px] text-muted-foreground font-mono">${o.amountUsd.toFixed(2)} USD</p>
+          )}
+        </div>
       ),
-      csvValue: p => p.amount,
+      csvValue: o => `${o.currency === 'INR' ? '₹' : '$'}${Number(o.amount).toFixed(2)}${o.amountUsd != null && o.currency !== 'USD' ? ` ($${o.amountUsd} USD)` : ''}`,
     },
     {
       key: 'status',
       header: 'Status',
-      render: p => (
-        <Badge variant="success" size="sm" dot>
-          {p.status}
+      render: o => (
+        <Badge variant={o.status === 'completed' ? 'success' : 'warning'} size="sm" dot>
+          {o.status}
         </Badge>
       ),
-      csvValue: p => p.status,
+      csvValue: o => o.status,
+    },
+    {
+      key: 'date',
+      header: 'Date',
+      sortable: true,
+      sortValue: o => o.createdAt?.toDate?.()?.getTime?.() ?? 0,
+      render: o => (
+        <span className="text-xs text-muted-foreground">
+          {(() => { try { return o.createdAt?.toDate().toLocaleDateString(); } catch { return 'N/A'; } })()}
+        </span>
+      ),
+      csvValue: o => {
+        try { return o.createdAt?.toDate().toLocaleDateString(); } catch { return 'N/A'; }
+      },
     },
   ];
 
@@ -162,11 +242,12 @@ export default function AdminFinancials() {
       />
 
       {/* Stat cards */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { icon: DollarSign,  color: 'emerald', value: `$${estimatedMRR.toFixed(2)}`, label: 'Estimated MRR' },
-          { icon: TrendingUp,  color: 'primary',  value: proUsers.length.toString(),     label: 'Pro Subscribers' },
-          { icon: CreditCard,  color: 'primary',  value: '$15.00',                        label: 'ARPU' },
+          { icon: DollarSign,   color: 'emerald', value: `$${totalRevenue.toFixed(2)}`, label: 'Total Revenue (USD)' },
+          { icon: TrendingUp,   color: 'primary',  value: `$${trueMrr.toFixed(2)}`,     label: 'Est. MRR (USD)' },
+          { icon: Users,        color: 'sky',      value: activeSubs.toString(),          label: 'Active Pro Subscribers' },
+          { icon: CreditCard,   color: 'amber',    value: orders.length > 0 ? `$${(totalRevenue / orders.filter(o => o.amountUsd ?? o.currency === 'USD').length || 1).toFixed(2)}` : '$0', label: 'Avg Order Value (USD)' },
         ].map(card => (
           <div key={card.label} className="bg-card rounded-xl p-6 border border-border shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 p-5 opacity-[0.04]">
@@ -174,7 +255,10 @@ export default function AdminFinancials() {
             </div>
             <div className="relative z-10">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${
-                card.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'
+                card.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-600'
+                : card.color === 'sky' ? 'bg-sky-500/10 text-sky-500'
+                : card.color === 'amber' ? 'bg-amber-500/10 text-amber-500'
+                : 'bg-primary/10 text-primary'
               }`}>
                 <card.icon className="w-5 h-5" />
               </div>
@@ -195,7 +279,7 @@ export default function AdminFinancials() {
             <p className="text-xs text-muted-foreground mt-0.5">Cumulative monthly recurring revenue — last 6 months</p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={mrrData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <AreaChart data={revenueData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="mrrGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="var(--color-primary)" stopOpacity={0.2} />
@@ -227,7 +311,7 @@ export default function AdminFinancials() {
             <p className="text-xs text-muted-foreground mt-0.5">Revenue from new subscriptions each month</p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={mrrData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={24}>
+            <BarChart data={revenueData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={24}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={v => `$${v}`} allowDecimals={false} tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }} axisLine={false} tickLine={false} />
@@ -238,17 +322,54 @@ export default function AdminFinancials() {
         </div>
       </div>
 
-      {/* Payments table */}
+      {/* MRR by Plan */}
+      {mrrByPlan.length > 0 && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-card border border-border rounded-xl p-6">
+            <h3 className="font-bold text-foreground mb-1">MRR by Plan</h3>
+            <p className="text-xs text-muted-foreground mb-5">Monthly recurring revenue split across active plans</p>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={mrrByPlan} dataKey="mrr" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  {mrrByPlan.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v: any) => [`$${v}`, 'MRR']} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-6">
+            <h3 className="font-bold text-foreground mb-1">Subscribers by Plan</h3>
+            <p className="text-xs text-muted-foreground mb-5">Active Pro subscriber count per plan tier</p>
+            <div className="space-y-3 mt-6">
+              {mrrByPlan.map((p, i) => (
+                <div key={p.name} className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="text-sm font-medium text-foreground flex-1">{p.name}</span>
+                  <span className="text-xs text-muted-foreground">{p.count} user{p.count !== 1 ? 's' : ''}</span>
+                  <span className="text-sm font-bold text-emerald-600 min-w-[60px] text-right">${p.mrr.toFixed(0)}/mo</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 pt-4 border-t border-border flex items-center justify-between">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Est. MRR</span>
+              <span className="text-xl font-bold text-foreground">${trueMrr.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Orders table */}
       <DataTable
         columns={columns}
-        data={payments}
-        rowKey={p => p.id}
+        data={orders}
+        rowKey={o => o.id}
         loading={loading}
-        searchPlaceholder="Search by customer or email..."
-        exportFilename="payments"
-        emptyIcon={CreditCard}
-        emptyTitle="No payments found"
-        emptyMessage="No active paid subscriptions yet."
+        searchPlaceholder="Search by email or order ID..."
+        exportFilename="orders"
+        emptyIcon={ShoppingBag}
+        emptyTitle="No orders found"
+        emptyMessage="Orders appear here after successful payments."
       />
     </div>
   );

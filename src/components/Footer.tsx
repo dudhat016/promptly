@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Github, Globe, Linkedin, Sparkles, Twitter, Facebook, Instagram, Youtube } from 'lucide-react';
 import { useConfig } from '../hooks/useConfig';
 import { useParams } from 'react-router-dom';
+import NewsletterSignup from './marketing/NewsletterSignup';
 
 export default function Footer() {
   const { config } = useConfig();
@@ -117,6 +118,15 @@ export default function Footer() {
           ))}
         </div>
 
+        {/* Newsletter strip */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-8 border-b border-border">
+          <div>
+            <p className="text-sm font-bold text-foreground">Get AI prompt tips, weekly.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">New prompts, tools, and workflow ideas. No spam.</p>
+          </div>
+          <NewsletterSignup variant="inline" label="" className="w-full sm:w-auto sm:min-w-[340px]" />
+        </div>
+
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
           <p className="text-xs font-medium text-muted-foreground/50">
@@ -124,9 +134,14 @@ export default function Footer() {
           </p>
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                config.systemStatus === 'degraded' ? 'bg-amber-500' :
+                config.systemStatus === 'outage'   ? 'bg-rose-500'  : 'bg-emerald-500'
+              }`} />
               <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground/40">
-                All systems operational
+                {config.systemStatus === 'degraded' ? 'Partial outage' :
+                 config.systemStatus === 'outage'   ? 'Service disruption' :
+                 config.statusText || 'All systems operational'}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-muted-foreground/40">

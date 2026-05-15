@@ -11,8 +11,8 @@ interface UpgradeModalProps {
   onClose: () => void;
 }
 
-const PERKS = [
-  'Unlimited access to all 5,000+ prompts',
+const DEFAULT_PERKS = [
+  'Unlimited access to all prompts',
   'Copy, save & organize without limits',
   'New prompts added every week',
   'Priority support + feature requests',
@@ -23,6 +23,8 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const navigate = useNavigate();
   const { config } = useConfig();
   const { profile } = useAuth();
+
+  const PERKS: string[] = config.checkoutBenefits?.length ? config.checkoutBenefits : DEFAULT_PERKS;
   const { symbol, exchangeRate, currency } = useCurrency();
 
   const proPlan = config.plans?.find(p => p.isPopular) || config.plans?.[0];
@@ -107,8 +109,12 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               <span className="flex items-center gap-1"><Shield className="w-3 h-3" /> Secure checkout</span>
               <span>•</span>
               <span>Cancel anytime</span>
-              <span>•</span>
-              <span>Instant access</span>
+              {config.moneyBackDays && config.moneyBackDays > 0 && (
+                <>
+                  <span>•</span>
+                  <span>{config.moneyBackDays}-day money-back</span>
+                </>
+              )}
             </div>
           </motion.div>
         </div>

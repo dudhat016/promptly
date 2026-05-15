@@ -2,51 +2,114 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { usePath } from '../hooks/usePath';
 import { db } from '../lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import {
+  doc, getDoc, collection, query, where, getDocs, orderBy,
+  updateDoc, arrayUnion, arrayRemove, increment, addDoc, serverTimestamp,
+} from 'firebase/firestore';
 import { Prompt, UserProfile } from '../types';
-import { User, LayoutGrid, Star, Calendar, ArrowRight, ShieldCheck, Zap, Mail, MessageSquare } from 'lucide-react';
+import {
+  User, LayoutGrid, Star, Calendar, ArrowRight, ShieldCheck, Zap,
+  Heart, Eye, Users, UserCheck, UserPlus,
+} from 'lucide-react';
 import { motion } from 'motion/react';
+import { toast } from 'react-hot-toast';
 import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
+import { useAuth } from '../hooks/useAuth';
 
 export default function PublicProfilePage() {
-  const { uid } = useParams();
+  const { uid } = useParams<{ uid: string }>();
   const { prefix } = usePath();
+  const { user, profile: currentProfile } = useAuth();
   const [targetProfile, setTargetProfile] = useState<UserProfile | null>(null);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [following, setFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  const isOwnProfile = user?.uid === uid;
 
   useEffect(() => {
-    if (uid) {
-      fetchUserData();
-    }
+    if (uid) fetchUserData();
   }, [uid]);
+
+  // Sync follow state from current user's profile
+  useEffect(() => {
+    if (!uid || !currentProfile) return;
+    setFollowing((currentProfile.following || []).includes(uid));
+  }, [uid, currentProfile]);
 
   async function fetchUserData() {
     try {
       const profDoc = await getDoc(doc(db, 'users', uid!));
       if (profDoc.exists()) {
-        setTargetProfile({ uid: profDoc.id, ...profDoc.data() } as UserProfile);
+        const data = { uid: profDoc.id, ...profDoc.data() } as UserProfile;
+        setTargetProfile(data);
+        setFollowerCount(data.followerCount ?? 0);
       }
 
-      const q = query(
-        collection(db, 'prompts'), 
-        where('creatorId', '==', uid),
-        orderBy('createdAt', 'desc')
+      const snap = await getDocs(
+        query(collection(db, 'prompts'), where('creatorId', '==', uid), where('status', '==', 'approved'), orderBy('createdAt', 'desc'))
       );
-      const snap = await getDocs(q);
       setPrompts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt)));
     } catch (err) {
-      console.error("Error fetching public profile:", err);
+      console.error('Error fetching public profile:', err);
     } finally {
       setLoading(false);
     }
   }
 
+  async function handleFollow() {
+    if (!user || !uid) {
+      toast.error('Sign in to follow creators');
+      return;
+    }
+    if (isOwnProfile) return;
+
+    setFollowLoading(true);
+    const optimisticFollow = !following;
+    setFollowing(optimisticFollow);
+    setFollowerCount(c => optimisticFollow ? c + 1 : Math.max(0, c - 1));
+
+    try {
+      // Update follower's following array
+      await updateDoc(doc(db, 'users', user.uid), {
+        following: optimisticFollow ? arrayUnion(uid) : arrayRemove(uid),
+      });
+      // Update creator's follower count
+      await updateDoc(doc(db, 'users', uid), {
+        followerCount: increment(optimisticFollow ? 1 : -1),
+      });
+      // Notify creator on new follow (only when following, not unfollowing)
+      if (optimisticFollow) {
+        await addDoc(collection(db, 'users', uid, 'notifications'), {
+          userId:    uid,
+          title:     'New follower',
+          body:      `${currentProfile?.displayName || 'Someone'} started following you.`,
+          type:      'success',
+          link:      `/creator/${user.uid}`,
+          readAt:    null,
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch {
+      // Rollback optimistic update
+      setFollowing(!optimisticFollow);
+      setFollowerCount(c => optimisticFollow ? Math.max(0, c - 1) : c + 1);
+      toast.error('Failed to update follow status');
+    } finally {
+      setFollowLoading(false);
+    }
+  }
+
+  const totalLikes  = prompts.reduce((s, p) => s + (p.likesCount  || 0), 0);
+  const totalViews  = prompts.reduce((s, p) => s + (p.viewsCount  || 0), 0);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary" />
       </div>
     );
   }
@@ -55,126 +118,166 @@ export default function PublicProfilePage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-background">
         <User className="w-16 h-16 text-muted-foreground/20 mb-6" />
-        <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Vault Not Found</h2>
-        <p className="text-muted-foreground mb-10 max-w-sm">The creator profile you're searching for might have moved or been set to private.</p>
+        <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Creator Not Found</h2>
+        <p className="text-muted-foreground mb-10 max-w-sm">This profile may have been removed or set to private.</p>
         <Button as={Link} to={prefix('/explore')} variant="primary" size="lg">
-          Return to Library
+          Explore Prompts
         </Button>
       </div>
     );
   }
 
+  const isOfficial = targetProfile.role === 'admin' || targetProfile.role === 'staff';
+
   return (
     <div className="min-h-screen bg-background pt-24 pb-20">
       <PageContainer className="px-4 md:px-6" ignoreCustomizer>
-        {/* Profile Header */}
-        <div className="bg-card rounded-lg p-8 md:p-14 border border-border shadow-sm mb-16 relative overflow-hidden">
-           <div className="absolute top-0 left-0 w-full h-40 bg-primary/5 -z-10" />
-           <div className="flex flex-col md:flex-row items-center md:items-end gap-8 md:gap-12 relative z-10">
-              <div className="relative shrink-0">
-                {targetProfile.photoURL ? (
-                  <img 
-                    src={targetProfile.photoURL} 
-                    className="w-32 h-32 md:w-40 md:h-40 rounded-xl md:rounded-lg bg-card border-4 border-card shadow-2xl object-cover" 
-                    alt="" 
-                  />
-                ) : (
-                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl md:rounded-lg bg-muted border-4 border-card shadow-2xl flex items-center justify-center text-4xl font-bold text-muted-foreground/30">
-                    {targetProfile.displayName?.charAt(0) || 'U'}
-                  </div>
-                )}
-                {targetProfile.subscriptionStatus === 'pro' && (
-                  <div className="absolute -top-4 -right-4 bg-primary text-primary-foreground p-3 rounded-md shadow-xl z-20 border-4 border-card">
-                    <Zap className="w-6 h-6 fill-current" />
-                  </div>
-                )}
-              </div>
-              <div className="flex-grow text-center md:text-left space-y-4">
-                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-                   <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tighter leading-none">{targetProfile.displayName || 'Anonymous Creator'}</h1>
-                   {targetProfile.role === 'admin' && (
-                     <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.2em] border border-primary/20">
-                       <ShieldCheck className="w-3.5 h-3.5" />
-                       Engineering Staff
-                     </div>
-                   )}
-                 </div>
-                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-muted-foreground font-bold text-sm">
-                    <div className="flex items-center gap-2">
-                       <Calendar className="w-4 h-4 opacity-50" />
-                       <span>Active since {new Date(targetProfile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <LayoutGrid className="w-4 h-4 opacity-50" />
-                       <span>{prompts.length} Verified Blueprints</span>
-                    </div>
-                 </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                  <Button variant="secondary" size="md" className="flex-grow sm:flex-grow-0">
-                    Follow
-                  </Button>
-                  <Button variant="primary" size="md" leftIcon={MessageSquare} className="flex-grow sm:flex-grow-0">
-                    Connect
-                  </Button>
-              </div>
-           </div>
-        </div>
 
-        {/* Content Tabs */}
-        <div className="flex gap-4 md:gap-12 mb-12 border-b border-border overflow-x-auto scrollbar-hide px-2">
-           <Button variant="ghost" size="lg" className="px-2 py-4 border-b-4 border-primary rounded-none font-bold text-foreground whitespace-nowrap text-sm uppercase tracking-widest hover:bg-transparent">Shared Blueprint</Button>
-           <Button variant="ghost" size="lg" className="px-2 py-4 border-b-4 border-transparent rounded-none font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap text-sm uppercase tracking-widest hover:bg-transparent">Platform Stats</Button>
-           <Button variant="ghost" size="lg" className="px-2 py-4 border-b-4 border-transparent rounded-none font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap text-sm uppercase tracking-widest hover:bg-transparent">Engineering Logic</Button>
-        </div>
+        {/* ── Profile header ── */}
+        <div className="bg-card rounded-2xl p-8 md:p-12 border border-border shadow-sm mb-10 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+          <div className="relative flex flex-col md:flex-row items-center md:items-end gap-8 md:gap-12">
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-           {prompts.map((prompt) => (
-             <motion.div 
-               key={prompt.id}
-               initial={{ opacity: 0, y: 20 }}
-               animate={{ opacity: 1, y: 0 }}
-               className="group bg-card rounded-lg border border-border p-8 shadow-sm hover:shadow-2xl transition-all flex flex-col"
-             >
-                <div className="flex items-center justify-between mb-6">
-                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/20">
-                    {prompt.model}
+            {/* Avatar */}
+            <div className="relative shrink-0">
+              {targetProfile.photoURL ? (
+                <img
+                  src={targetProfile.photoURL}
+                  className="w-32 h-32 md:w-40 md:h-40 rounded-2xl object-cover border-4 border-card shadow-2xl"
+                  alt=""
+                />
+              ) : (
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-primary/15 border-4 border-card shadow-2xl flex items-center justify-center text-5xl font-bold text-primary">
+                  {targetProfile.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+              )}
+              {targetProfile.subscriptionStatus === 'pro' && (
+                <div className="absolute -top-3 -right-3 bg-primary text-primary-foreground p-2.5 rounded-xl shadow-xl border-4 border-card">
+                  <Zap className="w-5 h-5 fill-current" />
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 text-center md:text-left space-y-3">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tighter leading-none">
+                  {targetProfile.displayName || 'Anonymous Creator'}
+                </h1>
+                {isOfficial && (
+                  <span className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-primary/20">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Official
                   </span>
-                  <div className="flex items-center gap-1.5 text-amber-500">
-                    <Star className="w-4 h-4 fill-current" />
-                    <span className="text-xs font-bold">{prompt.likesCount}</span>
-                  </div>
-                </div>
-                <h3 className="font-bold text-2xl text-foreground mb-4 group-hover:text-primary transition-colors line-clamp-1 tracking-tight leading-tight">
-                  {prompt.title}
-                </h3>
-                <p className="text-muted-foreground text-sm mb-8 line-clamp-2 leading-relaxed font-medium">
-                  {prompt.description}
-                </p>
-                <div className="mt-auto pt-6 border-t border-border flex items-center justify-between">
-                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest opacity-60">Engineered {new Date(prompt.createdAt).toLocaleDateString()}</span>
-                    <Button 
-                      as={Link}
-                      to={prefix(`/prompt/${prompt.slug || prompt.id}`)}
-                      variant="primary"
-                      size="icon"
-                      className="w-12 h-12 bg-foreground text-background hover:bg-primary hover:text-primary-foreground shadow-lg"
-                    >
-                      <ArrowRight className="w-5 h-5" />
-                    </Button>
-                </div>
-             </motion.div>
-           ))}
-           {prompts.length === 0 && (
-             <div className="col-span-full py-32 text-center bg-muted/30 rounded-xl border-2 border-dashed border-border">
-               <div className="w-20 h-20 bg-card rounded-lg flex items-center justify-center mx-auto mb-6 shadow-sm">
-                 <LayoutGrid className="w-10 h-10 text-muted-foreground/30" />
-               </div>
-               <h3 className="text-xl font-bold text-foreground mb-2">Vault Empty</h3>
-               <p className="text-muted-foreground font-medium text-sm max-w-xs mx-auto opacity-60 uppercase tracking-widest leading-loose">No public blueprints have been synchronized yet.</p>
-             </div>
-           )}
+                )}
+              </div>
+
+              {/* Stats row */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm font-semibold text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <LayoutGrid className="w-4 h-4 opacity-50" />
+                  {prompts.length} prompts
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 opacity-50" />
+                  {followerCount} followers
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Heart className="w-4 h-4 opacity-50" />
+                  {totalLikes} likes
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Eye className="w-4 h-4 opacity-50" />
+                  {totalViews} views
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 opacity-50" />
+                  Joined {new Date(targetProfile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            {!isOwnProfile && !isOfficial && (
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleFollow}
+                  isLoading={followLoading}
+                  variant={following ? 'outline' : 'primary'}
+                  size="md"
+                  leftIcon={following ? UserCheck : UserPlus}
+                >
+                  {following ? 'Following' : 'Follow'}
+                </Button>
+              </div>
+            )}
+            {isOwnProfile && (
+              <Link
+                to={prefix('/settings/profile')}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+              >
+                <User className="w-4 h-4" /> Edit Profile
+              </Link>
+            )}
+          </div>
         </div>
+
+        {/* ── Prompts grid ── */}
+        <h2 className="text-lg font-black text-foreground mb-6 tracking-tight">
+          Public Prompts
+          {prompts.length > 0 && (
+            <span className="ml-2 text-sm font-bold text-muted-foreground">({prompts.length})</span>
+          )}
+        </h2>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {prompts.map((prompt, i) => (
+            <motion.div
+              key={prompt.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className="group bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-lg hover:border-primary/20 transition-all flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20">
+                  {prompt.model}
+                </span>
+                <div className="flex items-center gap-3 text-muted-foreground text-xs font-semibold">
+                  <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{prompt.likesCount || 0}</span>
+                  <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{prompt.viewsCount || 0}</span>
+                </div>
+              </div>
+              <h3 className="font-bold text-lg text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2 tracking-tight leading-tight">
+                {prompt.title}
+              </h3>
+              <p className="text-muted-foreground text-sm mb-6 line-clamp-2 leading-relaxed flex-1">
+                {prompt.description}
+              </p>
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-50">
+                  {new Date(prompt.createdAt).toLocaleDateString()}
+                </span>
+                <Button
+                  as={Link}
+                  to={prefix(`/prompt/${prompt.slug || prompt.id}`)}
+                  variant="secondary"
+                  size="icon"
+                  className="w-9 h-9 hover:bg-primary hover:text-primary-foreground"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </motion.div>
+          ))}
+          {prompts.length === 0 && (
+            <div className="col-span-full py-24 text-center bg-muted/20 rounded-xl border-2 border-dashed border-border">
+              <LayoutGrid className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-foreground mb-1">No public prompts yet</h3>
+              <p className="text-sm text-muted-foreground">This creator hasn't published any prompts.</p>
+            </div>
+          )}
+        </div>
+
       </PageContainer>
     </div>
   );

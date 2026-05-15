@@ -160,11 +160,12 @@ export default function Header() {
   };
 
   const NAV_LINKS = [
-    { to: prefix('/explore'), label: 'Explore' },
-    { to: prefix('/pricing'), label: 'Pricing' },
-    { to: prefix('/blog'),    label: 'Blog'    },
-    { to: prefix('/affiliate'), label: 'Partner' },
-    { to: prefix('/contact'), label: 'Support' },
+    { to: prefix('/explore'),   label: 'Explore'    },
+    { to: prefix('/pricing'),   label: 'Pricing'    },
+    { to: prefix('/blog'),      label: 'Blog'       },
+    { to: prefix('/changelog'), label: 'Changelog'  },
+    { to: prefix('/affiliate'), label: 'Partner'    },
+    { to: prefix('/contact'),   label: 'Support'    },
   ];
 
   return (

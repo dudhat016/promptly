@@ -1,24 +1,35 @@
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
+  Activity,
   BarChart2,
   BarChart3,
+  BookOpen,
   Cpu,
-  Edit2,
-  FileText,
   Flag,
-  History,
+  GitCommit,
+  Globe,
+  HardDrive,
+  Image as ImageIcon,
+  Layout,
   LayoutGrid,
-  Link as LinkIcon,
-  MessageSquare,
+  LifeBuoy,
+  Mail,
+  MessageCircle,
+  Percent,
+  Receipt,
   Search,
   Send,
   Settings,
+  Share2,
   Shield,
+  ShoppingBag,
+  Star,
   Tag,
+  Target,
+  TrendingDown,
   Users,
   Wallet,
-  Zap,
-  Globe
+  Zap
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -33,16 +44,16 @@ import {
   AdminBreadcrumb,
   AdminGlobalSearch,
   AdminNotificationBell,
-  PageContainer,
-  AdminShortcutsModal
+  AdminShortcutsModal,
+  PageContainer
 } from '../../components/admin';
 import Navbar from '../../components/layout/Navbar';
 import Sidebar from '../../components/layout/Sidebar';
 import { NavItem } from '../../components/layout/types';
 import UserDropdown from '../../components/layout/UserDropdown';
 import Button from '../../components/primitives/Button';
-import { useConfig } from '../../hooks/useConfig';
 import { useAuth } from '../../hooks/useAuth';
+import { useConfig } from '../../hooks/useConfig';
 import { useStaffRoles } from '../../hooks/useStaffRoles';
 
 export default function AdminLayout() {
@@ -60,6 +71,7 @@ export default function AdminLayout() {
   const [openTickets, setOpenTickets] = useState(0);
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const [pendingReports, setPendingReports] = useState(0);
+  const [pendingPrompts, setPendingPrompts] = useState(0);
 
   const isHorizontal = config.orientation === 'horizontal';
   const sidebarWidth = config.sidebarWidth;
@@ -88,35 +100,60 @@ export default function AdminLayout() {
     const unsubT = onSnapshot(query(collection(db, 'tickets'), where('status', '==', 'open')), snap => setOpenTickets(snap.size), noop);
     const unsubI = onSnapshot(collection(db, 'contact_messages'), snap => setUnreadInquiries(snap.docs.filter(d => !d.data().readAt).length), noop);
     const unsubR = onSnapshot(query(collection(db, 'prompt_reports'), where('status', '==', 'pending')), snap => setPendingReports(snap.size), noop);
-    return () => { unsubW(); unsubT(); unsubI(); unsubR(); };
+    const unsubP = onSnapshot(query(collection(db, 'prompts'), where('status', '==', 'pending')), snap => setPendingPrompts(snap.size), noop);
+    return () => { unsubW(); unsubT(); unsubI(); unsubR(); unsubP(); };
   }, []);
 
   const allNavItems: NavItem[] = [
+    // ── Overview ──────────────────────────────
     { sectionTitle: 'Overview' },
     { label: 'Dashboard', icon: BarChart3, path: '/admin', section: 'dashboard' },
-    { label: 'Users', icon: Users, path: '/admin/users', section: 'users' },
 
-    { sectionTitle: 'Content' },
-    { label: 'Prompts', icon: LayoutGrid, path: '/admin/prompts', section: 'prompts' },
+    // ── Users ─────────────────────────────────
+    { sectionTitle: 'Users' },
+    { label: 'All Users', icon: Users, path: '/admin/users', section: 'users' },
+
+    // ── Marketplace ───────────────────────────
+    { sectionTitle: 'Marketplace' },
+    { label: 'Prompts', icon: LayoutGrid, path: '/admin/prompts', section: 'prompts', badge: pendingPrompts, badgeVariant: 'warning' as const },
     { label: 'Categories', icon: Tag, path: '/admin/categories', section: 'categories' },
-    { label: 'Templates', icon: Edit2, path: '/admin/templates', section: 'templates' },
-    { label: 'Media Manager', icon: Cpu, path: '/admin/media', section: 'media' },
-    { label: 'Blog', icon: FileText, path: '/admin/blog', section: 'blog' },
-    { label: 'SEO Audit', icon: Search, path: '/admin/seo', section: 'seo' },
     { label: 'AI Models', icon: Cpu, path: '/admin/models', section: 'ai_models' },
 
+    // ── Content ───────────────────────────────
+    { sectionTitle: 'Content' },
+    {
+      label: 'Blog',
+      icon: BookOpen,
+      path: '/admin/blog',
+      section: 'blog',
+      children: [
+        { label: 'Posts', path: '/admin/blog' },
+        { label: 'Categories & Tags', path: '/admin/blog/categories' },
+      ],
+    },
+    { label: 'Testimonials', icon: Star,      path: '/admin/testimonials', section: 'content' },
+    { label: 'Changelog',    icon: GitCommit,  path: '/admin/changelog',    section: 'content' },
+    { label: 'Media Manager',icon: ImageIcon,  path: '/admin/media',        section: 'media' },
+    { label: 'Site Pages',   icon: Layout,     path: '/admin/site-pages',   section: 'content' },
+
+    // ── Support ───────────────────────────────
     { sectionTitle: 'Support' },
-    { label: 'Inquiries', icon: MessageSquare, path: '/admin/inquiries', badge: unreadInquiries, badgeVariant: 'danger', section: 'inquiries' },
-    { label: 'Tickets', icon: BarChart2, path: '/admin/tickets', badge: openTickets, badgeVariant: 'danger', section: 'tickets' },
-    { label: 'Reports', icon: Flag, path: '/admin/reports', badge: pendingReports, badgeVariant: 'danger', section: 'reports' },
+    { label: 'Inquiries', icon: MessageCircle, path: '/admin/inquiries', badge: unreadInquiries, badgeVariant: 'danger', section: 'inquiries' },
+    { label: 'Tickets',   icon: LifeBuoy,      path: '/admin/tickets',   badge: openTickets,    badgeVariant: 'danger', section: 'tickets' },
+    { label: 'Reports',   icon: Flag,          path: '/admin/reports',   badge: pendingReports, badgeVariant: 'danger', section: 'reports' },
 
+    // ── Revenue ───────────────────────────────
     { sectionTitle: 'Revenue' },
-    { label: 'Plans', icon: Zap, path: '/admin/subscriptions', section: 'subscriptions' },
-    { label: 'Financials', icon: BarChart3, path: '/admin/revenue', section: 'revenue' },
-    { label: 'Invoices', icon: FileText, path: '/admin/invoices', section: 'revenue' },
-    { label: 'Affiliates', icon: LinkIcon, path: '/admin/referrals', section: 'affiliates' },
-    { label: 'Withdrawals', icon: Wallet, path: '/admin/withdrawals', badge: pendingWithdrawals, badgeVariant: 'danger', section: 'withdrawals' },
+    { label: 'Financials',        icon: BarChart2,    path: '/admin/revenue',        section: 'revenue' },
+    { label: 'Plans',             icon: Zap,          path: '/admin/subscriptions',  section: 'subscriptions' },
+    { label: 'Churn & Retention', icon: TrendingDown, path: '/admin/churn',          section: 'revenue' },
+    { label: 'Orders',            icon: ShoppingBag,  path: '/admin/orders',         section: 'revenue' },
+    { label: 'Coupons',           icon: Percent,      path: '/admin/coupons',        section: 'revenue' },
+    { label: 'Invoices',          icon: Receipt,      path: '/admin/invoices',       section: 'revenue' },
+    { label: 'Affiliates',        icon: Share2,       path: '/admin/referrals',      section: 'affiliates' },
+    { label: 'Withdrawals',       icon: Wallet,       path: '/admin/withdrawals',    badge: pendingWithdrawals, badgeVariant: 'danger', section: 'withdrawals' },
 
+    // ── Marketing ─────────────────────────────
     { sectionTitle: 'Marketing' },
     {
       label: 'CRM & Campaigns',
@@ -124,29 +161,54 @@ export default function AdminLayout() {
       path: '/admin/marketing',
       section: 'marketing',
       children: [
-        { label: 'Contacts', path: '/admin/marketing/contacts' },
-        { label: 'Tags', path: '/admin/marketing/tags' },
-        { label: 'Segments', path: '/admin/marketing/segments' },
+        { label: 'Contacts',    path: '/admin/marketing/contacts' },
+        { label: 'Tags',        path: '/admin/marketing/tags' },
+        { label: 'Segments',    path: '/admin/marketing/segments' },
         { label: 'Automations', path: '/admin/marketing/automations' },
-      ]
+      ],
     },
+    {
+      label: 'Emails',
+      icon: Mail,
+      path: '/admin/emails',
+      section: 'emails',
+      children: [
+        { label: 'Overview',    path: '/admin/emails' },
+        { label: 'Templates',   path: '/admin/emails/templates' },
+        { label: 'Email Logs',  path: '/admin/emails/logs' },
+        { label: 'Analytics',   path: '/admin/emails/analytics' },
+        { label: 'Automation',  path: '/admin/emails/automation' },
+        { label: 'Broadcast',   path: '/admin/emails/broadcast' },
+      ],
+    },
+    { label: 'SEO Audit',           icon: Search, path: '/admin/seo',              section: 'seo' },
+    { label: 'Marketing Settings',  icon: Target, path: '/admin/settings/marketing', section: 'settings' },
 
+    // ── System ────────────────────────────────
     { sectionTitle: 'System' },
-    { label: 'Permissions', icon: Shield, path: '/admin/permissions', section: 'permissions' },
-    { label: 'Staff Roles', icon: Globe, path: '/admin/roles', section: 'roles' },
-    { label: 'Activity Log', icon: History, path: '/admin/activity', section: 'activity' },
+    { label: 'Asset Manager', icon: HardDrive, path: '/admin/assets',      section: 'settings' },
+    { label: 'Permissions',   icon: Shield,    path: '/admin/permissions',  section: 'permissions' },
+    { label: 'Staff Roles',   icon: Globe,     path: '/admin/roles',        section: 'roles' },
+    { label: 'Activity Log',  icon: Activity,  path: '/admin/activity',     section: 'activity' },
     {
       label: 'Settings',
       icon: Settings,
       path: '/admin/settings',
       section: 'settings',
       children: [
-        { label: 'General', path: '/admin/settings' },
-        { label: 'Payments', path: '/admin/settings/payments' },
-        { label: 'Email', path: '/admin/settings/email' },
-      ]
+        { label: 'General',        path: '/admin/settings' },
+        { label: 'Branding',       path: '/admin/settings/branding' },
+        { label: 'Authentication', path: '/admin/settings/auth' },
+        { label: 'AI Engine',      path: '/admin/settings/ai' },
+        { label: 'Appearance',     path: '/admin/settings/appearance' },
+        { label: 'Email / SMTP',   path: '/admin/settings/email' },
+        { label: 'Payments',       path: '/admin/settings/payments' },
+        { label: 'Pages & Content',path: '/admin/settings/content' },
+        { label: 'SEO & Analytics',path: '/admin/settings/seo' },
+        { label: 'Security',       path: '/admin/settings/security' },
+        { label: 'Advanced / API', path: '/admin/settings/advanced' },
+      ],
     },
-    { label: 'Emails', icon: Send, path: '/admin/emails', section: 'emails' },
   ];
 
   // For staff users, filter to only their permitted sections

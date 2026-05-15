@@ -10,34 +10,35 @@ export class MarketingService {
     const firebase = await initFirebase();
     if (!firebase) throw new Error("Firebase not connected");
 
-    const promptsSnap = await firebase.db.collection("prompts").where("status", "==", "published").get();
     const baseUrl = process.env.VITE_SITE_URL || 'https://promptly.ai';
-    
-    const urls = promptsSnap.docs.map(doc => {
-      const data = doc.data();
-      return `
-  <url>
-    <loc>${baseUrl}/prompt/${data.slug}</loc>
-    <lastmod>${new Date(data.updatedAt?.seconds * 1000 || Date.now()).toISOString()}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`;
+
+    const [promptsSnap, blogsSnap] = await Promise.all([
+      firebase.db.collection("prompts").where("status", "==", "approved").get(),
+      firebase.db.collection("blog_posts").where("status", "==", "published").get(),
+    ]);
+
+    const toMs = (ts: any) => ts?.seconds ? ts.seconds * 1000 : ts?.toMillis?.() ?? Date.now();
+
+    const promptUrls = promptsSnap.docs.map(d => {
+      const data = d.data();
+      return `  <url>\n    <loc>${baseUrl}/prompt/${data.slug}</loc>\n    <lastmod>${new Date(toMs(data.updatedAt)).toISOString()}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`;
     });
 
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${baseUrl}/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/explore</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  ${urls.join('')}
-</urlset>`;
+    const blogUrls = blogsSnap.docs.map(d => {
+      const data = d.data();
+      return `  <url>\n    <loc>${baseUrl}/blog/${data.slug}</loc>\n    <lastmod>${new Date(toMs(data.updatedAt)).toISOString()}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>`;
+    });
+
+    const staticPages = [
+      { path: '/',          freq: 'daily',   priority: '1.0' },
+      { path: '/explore',   freq: 'daily',   priority: '0.9' },
+      { path: '/blog',      freq: 'weekly',  priority: '0.8' },
+      { path: '/pricing',   freq: 'weekly',  priority: '0.8' },
+      { path: '/affiliate', freq: 'monthly', priority: '0.6' },
+      { path: '/about',     freq: 'monthly', priority: '0.5' },
+    ].map(p => `  <url>\n    <loc>${baseUrl}${p.path}</loc>\n    <changefreq>${p.freq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`);
+
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...staticPages, ...promptUrls, ...blogUrls].join('\n')}\n</urlset>`;
   }
 
   /**

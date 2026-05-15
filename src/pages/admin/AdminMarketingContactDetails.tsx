@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import {
   Activity,
   AlertTriangle,
@@ -34,6 +34,9 @@ export default function AdminMarketingContactDetails() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'timeline' | 'details' | 'marketing'>('timeline');
+  const [note, setNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [emailStats, setEmailStats] = useState({ sent: 0, opens: 0, clicks: 0, lastSentAt: null as any });
 
   useEffect(() => {
     async function loadData() {
@@ -46,7 +49,9 @@ export default function AdminMarketingContactDetails() {
           navigate(prefix('/admin/marketing/contacts'));
           return;
         }
-        setContact({ id: contactDoc.id, ...contactDoc.data() } as Contact);
+        const contactData = { id: contactDoc.id, ...contactDoc.data() } as Contact;
+        setContact(contactData);
+        setNote(contactData.notes || '');
 
         // Fetch Tags for lookup
         const tagsSnap = await getDocs(collection(db, 'marketing_tags'));
@@ -61,6 +66,21 @@ export default function AdminMarketingContactDetails() {
         const activitySnap = await getDocs(q);
         setActivities(activitySnap.docs.map(d => ({ id: d.id, ...d.data() } as ActivityItem)));
 
+        // Fetch real email metrics for this contact
+        const logsSnap = await getDocs(query(
+          collection(db, 'email_logs'),
+          where('recipientEmail', '==', contactData.email),
+          orderBy('sentAt', 'desc'),
+          limit(200)
+        ));
+        const logs = logsSnap.docs.map(d => d.data());
+        setEmailStats({
+          sent:      logs.filter(l => l.status === 'sent').length,
+          opens:     logs.filter(l => (l.opens || 0) > 0).length,
+          clicks:    logs.filter(l => (l.clicks || 0) > 0).length,
+          lastSentAt: logs.length > 0 ? logs[0].sentAt : null,
+        });
+
       } catch (err) {
         console.error(err);
         toast.error('Failed to load contact data');
@@ -70,6 +90,19 @@ export default function AdminMarketingContactDetails() {
     }
     loadData();
   }, [id, navigate]);
+
+  const handleSaveNote = async () => {
+    if (!id) return;
+    setSavingNote(true);
+    try {
+      await updateDoc(doc(db, 'marketing_contacts', id), { notes: note, updatedAt: new Date().toISOString() });
+      toast.success('Note saved');
+    } catch {
+      toast.error('Failed to save note');
+    } finally {
+      setSavingNote(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!id || !confirm('Permanently delete this contact?')) return;
@@ -225,7 +258,7 @@ export default function AdminMarketingContactDetails() {
                     </div>
                     <div className="bg-muted/10 rounded-2xl border border-border/50 p-6 hover:border-primary/20 transition-all">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{activity.type.replace('_', ' ')}</span>
+                        <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{activity.type.replace(/_/g, ' ')}</span>
                         <span className="text-xs font-bold text-muted-foreground flex items-center gap-2">
                           <Calendar className="w-3 h-3" />
                           {activity.timestamp?.toDate().toLocaleString()}
@@ -331,25 +364,35 @@ export default function AdminMarketingContactDetails() {
                      <div className="p-2 bg-background/10 rounded-lg"><MailOpen className="w-4 h-4" /></div>
                      <span className="text-xs font-bold uppercase">Open Rate</span>
                    </div>
-                   <span className="text-xl font-black">24%</span>
+                   <span className="text-xl font-black">
+                     {emailStats.sent > 0 ? `${Math.round((emailStats.opens / emailStats.sent) * 100)}%` : '—'}
+                   </span>
                 </div>
                 <div className="flex items-center justify-between pb-6 border-b border-background/10">
                    <div className="flex items-center gap-3">
                      <div className="p-2 bg-background/10 rounded-lg"><MousePointer2 className="w-4 h-4" /></div>
                      <span className="text-xs font-bold uppercase">Click Rate</span>
                    </div>
-                   <span className="text-xl font-black">8.4%</span>
+                   <span className="text-xl font-black">
+                     {emailStats.sent > 0 ? `${Math.round((emailStats.clicks / emailStats.sent) * 100)}%` : '—'}
+                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-3">
                      <div className="p-2 bg-background/10 rounded-lg"><Calendar className="w-4 h-4" /></div>
                      <span className="text-xs font-bold uppercase">Last Contacted</span>
                    </div>
-                   <span className="text-xs font-bold uppercase">3 Days Ago</span>
+                   <span className="text-xs font-bold uppercase">
+                     {emailStats.lastSentAt
+                       ? (() => { try { const d = emailStats.lastSentAt.toDate ? emailStats.lastSentAt.toDate() : new Date(emailStats.lastSentAt.seconds * 1000); return d.toLocaleDateString(); } catch { return '—'; } })()
+                       : '—'}
+                   </span>
                 </div>
              </div>
 
              <Button
+               as={Link}
+               to={prefix('/admin/emails/broadcast')}
                variant="primary"
                size="lg"
                fullWidth
@@ -366,8 +409,13 @@ export default function AdminMarketingContactDetails() {
                placeholder="Add a private note about this contact..."
                variant="filled"
                className="min-h-[150px]"
+               value={note}
+               onChange={e => setNote(e.target.value)}
              />
              <Button
+                onClick={handleSaveNote}
+                isLoading={savingNote}
+                disabled={!note.trim()}
                 variant="secondary"
                 size="sm"
                 fullWidth
@@ -375,7 +423,6 @@ export default function AdminMarketingContactDetails() {
               >
                 Save Note
               </Button>
-
            </div>
         </div>
       </div>

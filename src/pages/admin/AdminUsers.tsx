@@ -1,15 +1,17 @@
-import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore';
-import { Shield, UserCheck, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { collection, deleteDoc, doc, getDocs, increment, orderBy, query, serverTimestamp, Timestamp, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { Coins, Mail, Shield, UserCheck, Users, TrendingUp, Clock, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import type { DataTableActions, DataTableColumn } from '../../components/admin';
+import type { BulkAction, DataTableActions, DataTableColumn } from '../../components/admin';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Input from '../../components/primitives/Input';
 import { db } from '../../lib/firebase';
 import { UserProfile } from '../../types';
 import { usePath } from '../../hooks/usePath';
 import Badge from '../../components/primitives/Badge';
 import { useStaffRoles } from '../../hooks/useStaffRoles';
+import { useConfig } from '../../hooks/useConfig';
 
 const formatDate = (date: any): string => {
   if (!date) return 'N/A';
@@ -37,17 +39,35 @@ const sortableDate = (date: any): number => {
 export default function AdminUsers() {
   const confirm = useConfirm();
   const { prefix } = usePath();
+  const { config } = useConfig();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ltvMap, setLtvMap] = useState<Record<string, number>>({});
   const { staffRoles } = useStaffRoles();
+
+  // Bulk action modals
+  const [creditModal, setCreditModal] = useState<{ open: boolean; rows: UserProfile[] }>({ open: false, rows: [] });
+  const [planModal, setPlanModal] = useState<{ open: boolean; rows: UserProfile[] }>({ open: false, rows: [] });
+  const [creditAmount, setCreditAmount] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState('');
+  const [bulkWorking, setBulkWorking] = useState(false);
 
   useEffect(() => { fetchUsers(); }, []);
 
   async function fetchUsers() {
     try {
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-      const snap = await getDocs(q);
-      setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
+      const [userSnap, orderSnap] = await Promise.all([
+        getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'))),
+        getDocs(query(collection(db, 'orders'), where('status', 'in', ['paid', 'completed']))),
+      ]);
+      setUsers(userSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
+
+      const ltv: Record<string, number> = {};
+      orderSnap.docs.forEach(d => {
+        const { userId, amount } = d.data();
+        if (userId) ltv[userId] = (ltv[userId] || 0) + (Number(amount) || 0);
+      });
+      setLtvMap(ltv);
     } catch (err) {
       console.error(err);
     } finally {
@@ -93,6 +113,77 @@ export default function AdminUsers() {
     setUsers(prev => prev.filter(u => !rows.some(r => r.uid === u.uid)));
     toast.success(`${rows.length} users deleted`);
   };
+
+  const handleBulkCredits = async () => {
+    const delta = parseInt(creditAmount);
+    if (!delta || isNaN(delta)) { toast.error('Enter a valid amount'); return; }
+    setBulkWorking(true);
+    try {
+      const batch = writeBatch(db);
+      creditModal.rows.forEach(u => {
+        batch.update(doc(db, 'users', u.uid), {
+          credits: increment(delta),
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+      setUsers(prev => prev.map(u =>
+        creditModal.rows.some(r => r.uid === u.uid)
+          ? { ...u, credits: (u.credits || 0) + delta }
+          : u
+      ));
+      toast.success(`${delta > 0 ? '+' : ''}${delta} credits applied to ${creditModal.rows.length} users`);
+      setCreditModal({ open: false, rows: [] });
+      setCreditAmount('');
+    } catch {
+      toast.error('Failed to adjust credits');
+    } finally {
+      setBulkWorking(false);
+    }
+  };
+
+  const handleBulkPlan = async () => {
+    if (!selectedPlan) { toast.error('Select a plan'); return; }
+    setBulkWorking(true);
+    const isUpgrade = selectedPlan === 'pro';
+    try {
+      const batch = writeBatch(db);
+      planModal.rows.forEach(u => {
+        batch.update(doc(db, 'users', u.uid), {
+          subscriptionStatus: selectedPlan,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+      setUsers(prev => prev.map(u =>
+        planModal.rows.some(r => r.uid === u.uid)
+          ? { ...u, subscriptionStatus: selectedPlan as UserProfile['subscriptionStatus'] }
+          : u
+      ));
+      toast.success(`${planModal.rows.length} users moved to ${selectedPlan}`);
+      setPlanModal({ open: false, rows: [] });
+      setSelectedPlan('');
+    } catch {
+      toast.error('Failed to update plans');
+    } finally {
+      setBulkWorking(false);
+    }
+  };
+
+  const bulkActions: BulkAction<UserProfile>[] = [
+    {
+      label: 'Adjust Credits',
+      icon: Coins,
+      variant: 'success',
+      onClick: rows => setCreditModal({ open: true, rows }),
+    },
+    {
+      label: 'Change Plan',
+      icon: Zap,
+      variant: 'warning',
+      onClick: rows => setPlanModal({ open: true, rows }),
+    },
+  ];
 
   const columns: DataTableColumn<UserProfile>[] = [
     {
@@ -197,6 +288,46 @@ export default function AdminUsers() {
       csvValue: u => u.credits ?? 0,
     },
     {
+      key: 'ltv',
+      header: 'LTV',
+      sortable: true,
+      sortValue: u => ltvMap[u.uid] ?? 0,
+      render: u => {
+        const val = ltvMap[u.uid] ?? 0;
+        return (
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className={`w-3.5 h-3.5 shrink-0 ${val > 0 ? 'text-emerald-500' : 'text-muted-foreground/30'}`} />
+            <span className={`font-bold text-sm ${val > 0 ? 'text-emerald-600' : 'text-muted-foreground/40'}`}>
+              {val > 0 ? `$${val.toFixed(2)}` : '—'}
+            </span>
+          </div>
+        );
+      },
+      csvValue: u => ltvMap[u.uid] ?? 0,
+    },
+    {
+      key: 'lastActive',
+      header: 'Last Active',
+      sortable: true,
+      sortValue: u => sortableDate(u.lastActiveAt),
+      render: u => {
+        if (!u.lastActiveAt) return <span className="text-xs text-muted-foreground/40">Never</span>;
+        const d = u.lastActiveAt instanceof Timestamp ? u.lastActiveAt.toDate() : new Date(u.lastActiveAt?.seconds ? u.lastActiveAt.seconds * 1000 : u.lastActiveAt);
+        const now = Date.now();
+        const diff = now - d.getTime();
+        const days = Math.floor(diff / 86400000);
+        const label = days === 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? `${days}d ago` : days < 30 ? `${Math.floor(days / 7)}w ago` : formatDate(u.lastActiveAt);
+        const isRecent = days < 3;
+        return (
+          <div className="flex items-center gap-1.5">
+            <Clock className={`w-3 h-3 shrink-0 ${isRecent ? 'text-emerald-500' : 'text-muted-foreground/40'}`} />
+            <span className={`text-xs font-medium ${isRecent ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+          </div>
+        );
+      },
+      csvValue: u => formatDate(u.lastActiveAt),
+    },
+    {
       key: 'joined',
       header: 'Joined',
       sortable: true,
@@ -258,11 +389,83 @@ export default function AdminUsers() {
         searchPlaceholder="Search by name or email..."
         selectable
         onBulkDelete={handleBulkDelete}
+        bulkActions={bulkActions}
         exportFilename="users"
         emptyIcon={Users}
         emptyTitle="No users found"
         emptyMessage="Users will appear here once they sign up."
       />
+
+      {/* ── Credit Adjust Modal ── */}
+      {creditModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setCreditModal({ open: false, rows: [] })} />
+          <div className="relative z-10 w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
+                <Coins className="w-5 h-5 text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Adjust Credits</h3>
+                <p className="text-xs text-muted-foreground">{creditModal.rows.length} user{creditModal.rows.length !== 1 ? 's' : ''} selected</p>
+              </div>
+            </div>
+            <Input
+              label="Credit amount (use negative to deduct)"
+              type="number"
+              value={creditAmount}
+              onChange={e => setCreditAmount(e.target.value)}
+              placeholder="e.g. 10 or -5"
+              variant="outline"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <Button onClick={() => { setCreditModal({ open: false, rows: [] }); setCreditAmount(''); }} variant="outline" size="sm" fullWidth>Cancel</Button>
+              <Button onClick={handleBulkCredits} isLoading={bulkWorking} variant="primary" size="sm" fullWidth>Apply</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Plan Change Modal ── */}
+      {planModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setPlanModal({ open: false, rows: [] })} />
+          <div className="relative z-10 w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                <Zap className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Change Plan</h3>
+                <p className="text-xs text-muted-foreground">{planModal.rows.length} user{planModal.rows.length !== 1 ? 's' : ''} selected</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-foreground">Select plan</p>
+              <div className="grid grid-cols-2 gap-2">
+                {['free', 'pro', ...(config.plans.map(p => p.id).filter(id => id !== 'free' && id !== 'pro'))].map(planId => (
+                  <button
+                    key={planId}
+                    onClick={() => setSelectedPlan(planId)}
+                    className={`px-3 py-2 rounded-lg border text-sm font-semibold transition-all ${
+                      selectedPlan === planId
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    {planId.charAt(0).toUpperCase() + planId.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={() => { setPlanModal({ open: false, rows: [] }); setSelectedPlan(''); }} variant="outline" size="sm" fullWidth>Cancel</Button>
+              <Button onClick={handleBulkPlan} isLoading={bulkWorking} variant="primary" size="sm" fullWidth disabled={!selectedPlan}>Apply</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

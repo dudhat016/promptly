@@ -2,6 +2,28 @@ import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { getStripe } from "../lib/stripe.js";
 import { awardAffiliateCommission, sendSuccessEmail } from "../lib/payouts.js";
+import { triggerFlow } from "./automationEngine.js";
+
+async function fetchLiveExchangeRate(): Promise<number> {
+  const APIS = [
+    'https://open.er-api.com/v6/latest/USD',
+    'https://api.exchangerate-api.com/v4/latest/USD',
+  ];
+  for (const url of APIS) {
+    try {
+      const res = await fetch(url);
+      const data: any = await res.json();
+      if (data?.rates?.INR) return data.rates.INR;
+    } catch { /* try next */ }
+  }
+  return 83.5; // fallback
+}
+
+function toUsd(amount: number, currency: string, rate: number): number {
+  if (currency === 'USD') return Math.round(amount * 100) / 100;
+  // INR → USD
+  return Math.round((amount / rate) * 100) / 100;
+}
 
 export class PaymentService {
   /**
@@ -48,9 +70,14 @@ export class PaymentService {
       if (billingCycle === 'yearly') expiryDate.setFullYear(expiryDate.getFullYear() + 1);
       else expiryDate.setMonth(expiryDate.getMonth() + 1);
 
+      // Normalize to USD for consistent reporting
+      const exchangeRateAtOrder = await fetchLiveExchangeRate();
+      const amountUsd = toUsd(data.order_amount, data.order_currency, exchangeRateAtOrder);
+
       await userRef.update({
         subscriptionStatus: planId === 'free' ? 'free' : 'pro',
         activePlanId: planId,
+        billingCycle,
         credits: planCredits,
         monthlyLimit: planCredits,
         currentPeriodEnd: admin.firestore.Timestamp.fromDate(expiryDate),
@@ -65,17 +92,43 @@ export class PaymentService {
         planName: planData.name,
         amount: data.order_amount,
         currency: data.order_currency,
+        amountUsd,
+        exchangeRateAtOrder,
         status: 'completed',
         billingCycle: billingCycle,
         gateway: 'cashfree',
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
+      const invoiceNumber = `INV-${Date.now()}`;
+      await firebase.db.collection("invoices").add({
+        invoiceNumber,
+        orderId: data.order_id,
+        userId: customerId,
+        customerEmail: data.customer_details.customer_email,
+        customerName: userData?.displayName || '',
+        planId,
+        planName: planData.name,
+        amount: data.order_amount,
+        currency: data.order_currency,
+        amountUsd,
+        exchangeRateAtOrder,
+        billingCycle,
+        gateway: 'cashfree',
+        status: 'paid',
+        paidAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
       if (userData?.referredBy) {
-        await awardAffiliateCommission(customerId, data.order_amount, data.order_id, data.order_currency, userData.referredBy);
+        await awardAffiliateCommission(customerId, data.order_amount, data.order_id, data.order_currency, userData.referredBy, amountUsd, exchangeRateAtOrder);
       }
 
       sendSuccessEmail(data.customer_details.customer_email, userData?.displayName || 'Creator', planData.name, data.order_id, data.order_amount, data.order_currency);
+
+      triggerFlow(firebase.db, 'subscription_payment_received', customerId, {
+        plan: planData.name, planId, amount: String(data.order_amount), currency: data.order_currency
+      }).catch(err => console.error('[Automation] payment trigger failed:', err.message));
 
       return {
         status: 'PAID',
@@ -83,6 +136,7 @@ export class PaymentService {
         planName: planData.name,
         amount: data.order_amount,
         currency: data.order_currency,
+        amountUsd,
         creditsAdded: planCredits
       };
     }
@@ -146,16 +200,23 @@ export class PaymentService {
       if (billingCycle === 'yearly') expiryDate.setFullYear(expiryDate.getFullYear() + 1);
       else expiryDate.setMonth(expiryDate.getMonth() + 1);
 
+      const ppCapture = captureData.purchase_units[0].payments.captures[0];
+      const nativeAmount = parseFloat(ppCapture.amount.value);
+      const nativeCurrency = ppCapture.amount.currency_code as string;
+
+      // PayPal always charges USD — amountUsd equals the charge; rate = 1
+      const amountUsd = Math.round(nativeAmount * 100) / 100;
+      const exchangeRateAtOrder = 1;
+
       await userRef.update({
         subscriptionStatus: planId === 'free' ? 'free' : 'pro',
         activePlanId: planId,
+        billingCycle,
         credits: planCredits,
         monthlyLimit: planCredits,
         currentPeriodEnd: admin.firestore.Timestamp.fromDate(expiryDate),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-
-      const ppCapture = captureData.purchase_units[0].payments.captures[0];
 
       await firebase.db.collection("orders").doc(orderID).set({
         orderId: orderID,
@@ -163,23 +224,49 @@ export class PaymentService {
         userEmail: customerEmail,
         planId: planId,
         planName: planData.name,
-        amount: ppCapture.amount.value,
-        currency: ppCapture.amount.currency_code,
+        amount: nativeAmount,
+        currency: nativeCurrency,
+        amountUsd,
+        exchangeRateAtOrder,
         status: 'completed',
         billingCycle: billingCycle,
         gateway: 'paypal',
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
+      await firebase.db.collection("invoices").add({
+        invoiceNumber: `INV-${Date.now()}`,
+        orderId: orderID,
+        userId: customerId,
+        customerEmail,
+        customerName: userData?.displayName || '',
+        planId,
+        planName: planData.name,
+        amount: nativeAmount,
+        currency: nativeCurrency,
+        amountUsd,
+        exchangeRateAtOrder,
+        billingCycle,
+        gateway: 'paypal',
+        status: 'paid',
+        paidAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
       if (userData?.referredBy) {
-        await awardAffiliateCommission(customerId, ppCapture.amount.value, orderID, ppCapture.amount.currency_code, userData.referredBy);
+        await awardAffiliateCommission(customerId, nativeAmount, orderID, nativeCurrency, userData.referredBy, amountUsd, exchangeRateAtOrder);
       }
 
-      sendSuccessEmail(customerEmail, userData?.displayName || 'Creator', planData.name, orderID, parseFloat(ppCapture.amount.value), ppCapture.amount.currency_code);
+      sendSuccessEmail(customerEmail, userData?.displayName || 'Creator', planData.name, orderID, nativeAmount, nativeCurrency);
+
+      triggerFlow(firebase.db, 'subscription_payment_received', customerId, {
+        plan: planData.name, planId, amount: String(nativeAmount), currency: nativeCurrency
+      }).catch(err => console.error('[Automation] payment trigger failed:', err.message));
 
       return {
         status: 'COMPLETED',
-        planName: planData.name
+        planName: planData.name,
+        amountUsd,
       };
     }
 

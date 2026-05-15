@@ -7,7 +7,7 @@ export interface NavItem {
   path?: string;
   children?: NavItem[];
   badge?: string | number;
-  badgeVariant?: 'primary' | 'secondary' | 'danger' | 'success';
+  badgeVariant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning';
   adminOnly?: boolean;
   divider?: boolean;
   sectionTitle?: string;
