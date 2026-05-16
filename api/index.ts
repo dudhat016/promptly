@@ -14,6 +14,8 @@ import nudgesRouter from "../server/routes/nudges.js";
 import transactionalRouter from "../server/routes/transactional.js";
 import automationRouter from "../server/routes/automation.js";
 import cronRouter from "../server/routes/cron.js";
+import affiliatesRouter from "../server/routes/affiliates.js";
+import couponsRouter from "../server/routes/coupons.js";
 import { generalLimiter } from "../server/middleware/rateLimit.js";
 import { errorHandler } from "../server/middleware/errorHandler.js";
 import { authMiddleware, adminOnly, AuthenticatedRequest } from "../server/middleware/auth.js";
@@ -61,6 +63,8 @@ app.use("/api/nudges", nudgesRouter);
 app.use("/api/email", transactionalRouter);
 app.use("/api/automation", automationRouter);
 app.use("/api/cron", cronRouter);
+app.use("/api/affiliates", affiliatesRouter);
+app.use("/api/coupons", couponsRouter);
 app.use("/", marketingRouter);
 
 // --- Core API Routes ---
