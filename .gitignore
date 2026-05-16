@@ -10,3 +10,6 @@ coverage/
 .env*.local
 .tmp/
 .reference-tools/
+scratch/
+firebase-b64.txt
+firebase-applet-config.json
