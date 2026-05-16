@@ -110,10 +110,8 @@ export default function SubmitPromptPage() {
     if (!validate() || !user) return;
     setSaving(true);
     try {
-      const id = Date.now().toString();
       await addDoc(collection(db, 'prompts'), {
         ...form,
-        id,
         slug: form.slug || slugify(form.title),
         creatorId: user.uid,
         creatorName: profile?.displayName || user.displayName || user.email || 'Creator',

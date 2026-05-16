@@ -1,8 +1,34 @@
+import React from 'react';
 import { Shield, Mail, Lock, LogOut, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
+import { toast } from 'react-hot-toast';
+import { auth } from '../../lib/firebase';
 import Button from '../../components/primitives/Button';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function SecuritySettings() {
+  const { profile } = useAuth();
+
+  const joinedDate = profile?.createdAt
+    ? (() => {
+        try {
+          const d = typeof (profile.createdAt as any).toDate === 'function'
+            ? (profile.createdAt as any).toDate()
+            : new Date(profile.createdAt as string);
+          return d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+        } catch { return null; }
+      })()
+    : null;
+
+  const handleSignOutAllSessions = async () => {
+    try {
+      await auth.signOut();
+      toast.success('Signed out of all sessions');
+    } catch {
+      toast.error('Failed to sign out');
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
         <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
@@ -18,44 +44,55 @@ export default function SecuritySettings() {
               <span className="text-xs font-bold uppercase tracking-[0.15em]">System Protected</span>
             </div>
           </div>
-          
+
           <div className="space-y-4">
-            <SecurityItem 
-              icon={Mail} 
-              title="Google Authentication" 
-              desc="Your identity is securely verified via your Google Workspace account."
+            <SecurityItem
+              icon={Mail}
+              title="Google Authentication"
+              desc="Your identity is securely verified via your Google account."
               action="Verified"
               actionType="status"
             />
-            <SecurityItem 
-              icon={Lock} 
-              title="Multi-Factor Auth" 
-              desc="Add an extra layer of protection to your prompt library and wallet."
-              action="Enable 2FA"
+            <SecurityItem
+              icon={Lock}
+              title="Multi-Factor Auth"
+              desc="Additional MFA is managed through your Google account security settings."
+              action="Manage in Google"
+              onAction={() => window.open('https://myaccount.google.com/security', '_blank')}
             />
-            <SecurityItem 
-              icon={LogOut} 
-              title="Active Sessions" 
-              desc="Monitor and manage devices where your account is currently logged in."
-              action="Manage"
+            <SecurityItem
+              icon={LogOut}
+              title="Active Sessions"
+              desc="Sign out of all devices immediately. You will need to sign back in."
+              action="Sign Out All"
+              onAction={handleSignOutAllSessions}
             />
           </div>
 
-          <div className="mt-16 p-8 bg-muted rounded-md border border-border flex items-center gap-6">
-            <div className="w-12 h-12 bg-card rounded-md flex items-center justify-center shrink-0 shadow-sm">
-              <ShieldAlert className="w-6 h-6 text-amber-500" />
+          {joinedDate && (
+            <div className="mt-16 p-8 bg-muted rounded-md border border-border flex items-center gap-6">
+              <div className="w-12 h-12 bg-card rounded-md flex items-center justify-center shrink-0 shadow-sm">
+                <ShieldAlert className="w-6 h-6 text-amber-500" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-foreground mb-1">Account Created</h4>
+                <p className="text-xs text-muted-foreground">Your account has been secured since {joinedDate}.</p>
+              </div>
             </div>
-            <div>
-              <h4 className="text-sm font-bold text-foreground mb-1">Last Security Review</h4>
-              <p className="text-xs text-muted-foreground">Your account security was last audited on May 4, 2026. No vulnerabilities were detected.</p>
-            </div>
-          </div>
+          )}
         </div>
     </motion.div>
   );
 }
 
-function SecurityItem({ icon: Icon, title, desc, action, actionType = 'button' }: any) {
+function SecurityItem({ icon: Icon, title, desc, action, actionType = 'button', onAction }: {
+  icon: React.ElementType;
+  title: string;
+  desc: string;
+  action: string;
+  actionType?: 'button' | 'status';
+  onAction?: () => void;
+}) {
   return (
     <div className="flex items-center justify-between p-8 bg-muted/30 rounded-lg border border-transparent hover:border-border hover:bg-muted/50 transition-all group gap-6">
       <div className="flex items-center gap-6">
@@ -73,9 +110,10 @@ function SecurityItem({ icon: Icon, title, desc, action, actionType = 'button' }
           <span className="text-xs font-bold uppercase tracking-[0.2em]">{action}</span>
         </div>
       ) : (
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          onClick={onAction}
+          variant="outline"
+          size="sm"
           className="font-bold uppercase tracking-[0.2em] shadow-sm shrink-0"
         >
           {action}

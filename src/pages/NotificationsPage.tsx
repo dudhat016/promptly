@@ -43,8 +43,8 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-background">
       <PageContainer className="py-12 max-w-4xl">
         {/* Breadcrumb / Back */}
-        <Link 
-          to={prefix('/dashboard/vault')} 
+        <Link
+          to={prefix('/dashboard')}
           className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary mb-8 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -117,8 +117,8 @@ export default function NotificationsPage() {
           <div className="flex-1 text-center md:text-left">
             <h4 className="font-bold text-foreground">Notification Settings</h4>
             <p className="text-sm text-muted-foreground leading-relaxed mt-1">
-              Want to receive these alerts via email too? You can toggle your preference in your 
-              <Link to={prefix('/settings/profile')} className="text-primary hover:underline font-bold ml-1">Account Settings</Link>.
+              Want to receive these alerts via email too? You can toggle your preference in your
+              <Link to={prefix('/settings/notifications')} className="text-primary hover:underline font-bold ml-1">Notification Settings</Link>.
             </p>
           </div>
         </div>

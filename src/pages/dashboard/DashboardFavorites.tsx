@@ -18,6 +18,7 @@ export default function DashboardFavorites() {
   const [favorites, setFavorites] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [truncated, setTruncated] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -31,6 +32,7 @@ export default function DashboardFavorites() {
           const pRef = collection(db, 'prompts');
           const pQuery = query(pRef, where('__name__', 'in', favPromptIds.slice(0, 30)));
           const pSnap = await getDocs(pQuery);
+          if (favPromptIds.length > 30) setTruncated(favPromptIds.length - 30);
 
           const sanitized = pSnap.docs.map(d => {
             const data = d.data();
@@ -117,22 +119,29 @@ export default function DashboardFavorites() {
           <button onClick={() => setSearchTerm('')} className="mt-3 text-sm text-primary hover:underline">Clear search</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence mode="popLayout">
-            {filtered.map(prompt => (
-              <motion.div
-                key={prompt.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.18 }}
-              >
-                <PromptCard prompt={prompt} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence mode="popLayout">
+              {filtered.map(prompt => (
+                <motion.div
+                  key={prompt.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <PromptCard prompt={prompt} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+          {truncated > 0 && (
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              {truncated} more favorite{truncated !== 1 ? 's' : ''} not shown — remove some to view older saves.
+            </p>
+          )}
+        </>
       )}
     </div>
   );

@@ -129,6 +129,7 @@ router.post("/cashfree/create-subscription", authMiddleware, json(), async (req:
     });
     res.json(result);
   } catch (err: any) {
+    console.error('[create-subscription] error:', err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });

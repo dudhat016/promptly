@@ -124,6 +124,13 @@ export default function MyVaultPage() {
             Explore Marketplace
           </Link>
         </motion.div>
+      ) : filteredPrompts.length === 0 && searchTerm ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <p className="font-semibold">No results for "<span className="text-foreground">{searchTerm}</span>"</p>
+          <button onClick={() => setSearchTerm('')} className="mt-3 text-sm text-primary hover:underline">
+            Clear search
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <AnimatePresence mode="popLayout">

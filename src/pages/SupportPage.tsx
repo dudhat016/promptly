@@ -236,15 +236,17 @@ export default function SupportPage() {
               const Icon = cfg.icon;
               const isSelected = selectedTicket?.id === ticket.id;
               return (
-                 <Button 
-                   key={ticket.id} 
+                 <Button
+                   key={ticket.id}
                    onClick={() => setSelectedTicket(ticket)}
-                   variant={isSelected ? 'primary' : 'secondary'}
+                   variant="ghost"
                    size="lg"
                    fullWidth
                    className={cn(
-                     "flex-col items-start h-auto p-4 transition-all",
-                     isSelected ? "bg-primary/5 border-primary/30" : "bg-card border-border hover:bg-muted/30"
+                     "flex-col items-start h-auto p-4 transition-all border rounded-xl",
+                     isSelected
+                       ? "bg-primary/8 border-primary/30 text-foreground hover:bg-primary/10"
+                       : "bg-card border-border text-foreground hover:bg-muted/30"
                    )}
                  >
                    <div className="flex items-center justify-between w-full mb-1.5">

@@ -2,9 +2,9 @@ import {
   collection, getDocs, query, where, orderBy, limit, doc, getDoc, Timestamp
 } from 'firebase/firestore';
 import {
-  Award, Check, Clock, Copy, Database, ExternalLink, Gift, Heart,
-  History, LayoutGrid, RefreshCw, ShieldCheck, Sparkles, TrendingUp,
-  Users, Zap, ArrowRight, CreditCard, Star
+  Bell, Check, Clock, Copy, Database, ExternalLink, Gift, Heart,
+  History, LayoutGrid, PlusCircle, RefreshCw, ShieldCheck, Sparkles, TrendingUp,
+  User, Zap, ArrowRight, CreditCard, Star
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -15,6 +15,7 @@ import Progress from '../components/feedback/Progress';
 import Badge from '../components/primitives/Badge';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
+import { useNotifications } from '../hooks/useNotifications';
 import { db } from '../lib/firebase';
 import { usePath } from '../hooks/usePath';
 import { Prompt } from '../types';
@@ -119,6 +120,8 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const { unreadCount } = useNotifications();
+
   const creditsUsed   = (profile?.monthlyLimit || 50) - (profile?.credits || 0);
   const creditsTotal  = profile?.monthlyLimit || 50;
   const creditsPct    = Math.round((creditsUsed / creditsTotal) * 100);
@@ -179,6 +182,9 @@ export default function DashboardPage() {
             <Button as={Link} to={prefix('/explore')} variant="outline" size="sm" leftIcon={LayoutGrid}>
               Explore
             </Button>
+            <Button as={Link} to={prefix('/dashboard/submit')} variant="outline" size="sm" leftIcon={PlusCircle}>
+              New Prompt
+            </Button>
             {isPro ? (
               <Button as={Link} to={prefix('/settings/billing')} variant="outline" size="sm" leftIcon={CreditCard}>
                 Manage Plan
@@ -197,6 +203,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Nudge Banners ── */}
+      {!profile?.displayName && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm">
+          <User className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="text-amber-700 dark:text-amber-400 font-medium flex-1">
+            Complete your profile to personalise your experience.
+          </span>
+          <Link to={prefix('/settings/profile')} className="text-xs font-bold text-amber-600 dark:text-amber-300 hover:underline shrink-0">
+            Set up →
+          </Link>
+        </div>
+      )}
+      {unreadCount > 0 && (
+        <Link
+          to={prefix('/notifications')}
+          className="flex items-center gap-3 px-4 py-3 bg-primary/8 border border-primary/15 rounded-xl text-sm hover:bg-primary/12 transition-colors"
+        >
+          <Bell className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-foreground font-medium flex-1">
+            You have <span className="font-bold text-primary">{unreadCount}</span> unread notification{unreadCount !== 1 ? 's' : ''}.
+          </span>
+          <span className="text-xs font-bold text-primary shrink-0">View →</span>
+        </Link>
+      )}
+
       {/* ── Quick Stats Row ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -207,6 +238,7 @@ export default function DashboardPage() {
             sub: `${creditsPct}% used of ${creditsTotal}`,
             accent: creditsLow ? 'bg-rose-500/10 text-rose-500' : 'bg-primary/10 text-primary',
             progress: { value: creditsUsed, max: creditsTotal, variant: creditsLow ? 'error' : 'default' as any },
+            href: prefix('/dashboard/usage'),
           },
           {
             icon: Database,
@@ -215,13 +247,15 @@ export default function DashboardPage() {
             sub: isPro ? 'Unlimited prompts' : `${Math.max(0, (vaultMax || 10) - (vaultUsed || 0))} slots free`,
             accent: 'bg-amber-500/10 text-amber-500',
             progress: !isPro ? { value: vaultUsed || 0, max: vaultMax || 10, variant: 'warning' as any } : null,
+            href: prefix('/dashboard/vault'),
           },
           {
             icon: LayoutGrid,
             label: 'My Prompts',
             value: loading ? '—' : myPrompts.length,
-            sub: 'Published to marketplace',
+            sub: 'Your submitted prompts',
             accent: 'bg-purple-500/10 text-purple-500',
+            href: prefix('/dashboard/library'),
           },
           {
             icon: Gift,
@@ -229,24 +263,54 @@ export default function DashboardPage() {
             value: earnings > 0 ? `₹${earnings}` : referralCount,
             sub: earnings > 0 ? `${referralCount} friend${referralCount !== 1 ? 's' : ''} referred` : `Share & earn commissions`,
             accent: 'bg-emerald-500/10 text-emerald-500',
+            href: prefix('/dashboard/affiliate'),
           },
-        ].map(card => (
-          <div key={card.label} className="bg-card border border-border rounded-xl p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${card.accent}`}>
-                <card.icon className="w-4 h-4" />
+        ].map(card => {
+          const inner = (
+            <>
+              <div className="flex items-center justify-between">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${card.accent}`}>
+                  <card.icon className="w-4 h-4" />
+                </div>
+                <span className="text-lg font-bold text-foreground">{card.value}</span>
               </div>
-              <span className="text-lg font-bold text-foreground">{card.value}</span>
+              {card.progress && (
+                <Progress value={card.progress.value} max={card.progress.max} size="xs" variant={card.progress.variant} />
+              )}
+              <div>
+                <p className="text-xs font-semibold text-foreground">{card.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{card.sub}</p>
+              </div>
+            </>
+          );
+          return card.href ? (
+            <Link
+              key={card.label}
+              to={card.href}
+              className="bg-card border border-border rounded-xl p-4 space-y-2 hover:border-primary/30 hover:shadow-sm transition-all"
+            >
+              {inner}
+            </Link>
+          ) : (
+            <div key={card.label} className="bg-card border border-border rounded-xl p-4 space-y-2">
+              {inner}
             </div>
-            {card.progress && (
-              <Progress value={card.progress.value} max={card.progress.max} size="xs" variant={card.progress.variant} />
-            )}
-            <div>
-              <p className="text-xs font-semibold text-foreground">{card.label}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{card.sub}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* ── AI Twin Studio Teaser ── */}
+      <div className="bg-gradient-to-r from-violet-500/10 via-primary/5 to-transparent border border-violet-500/20 rounded-xl p-4 flex items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+          <Sparkles className="w-5 h-5 text-violet-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-foreground">AI Twin Studio</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Train a personal AI on your style and generate custom prompts automatically.</p>
+        </div>
+        <Button as={Link} to={prefix('/dashboard/twin-studio')} variant="outline" size="sm" rightIcon={ArrowRight} className="shrink-0">
+          Try it
+        </Button>
       </div>
 
       {/* ── Middle Row: Referral + Plan ── */}
@@ -384,7 +448,7 @@ export default function DashboardPage() {
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Recent Orders</p>
               {orders.slice(0, 2).map(o => (
                 <div key={o.id} className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{o.planName || o.plan}</span>
+                  <span className="text-muted-foreground">{o.planName || o.plan || 'Subscription'}</span>
                   <span className="font-bold text-foreground">
                     {o.currency === 'INR' ? '₹' : '$'}{o.amount}
                   </span>
@@ -406,11 +470,18 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Recent Activity ── */}
-      {recentActivity.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <History className="w-4 h-4 text-muted-foreground" /> Recent Activity
           </h3>
+          {recentActivity.length > 0 && (
+            <Link to={prefix('/dashboard/credits')} className="text-xs font-bold text-primary hover:underline">
+              View all
+            </Link>
+          )}
+        </div>
+        {recentActivity.length > 0 ? (
           <div className="space-y-2">
             {recentActivity.map(a => (
               <div key={a.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
@@ -432,8 +503,15 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="py-6 text-center">
+            <p className="text-sm text-muted-foreground">No activity yet.</p>
+            <Link to={prefix('/explore')} className="text-xs font-bold text-primary hover:underline mt-1 inline-block">
+              Explore prompts to get started →
+            </Link>
+          </div>
+        )}
+      </div>
 
       {/* ── Tabs ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -442,7 +520,7 @@ export default function DashboardPage() {
             My Library
           </TabButton>
           <TabButton active={activeTab === 'favorites'} onClick={() => handleTabChange('favorites')} icon={Heart}>
-            Favorites ({favorites.length})
+            Favorites ({loading ? '—' : favorites.length})
           </TabButton>
         </div>
         {activeTab === 'library' && (

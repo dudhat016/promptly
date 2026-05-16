@@ -57,8 +57,10 @@ export class SubscriptionService {
         })
       });
       if (!planRes.ok) {
-        const planErr = await planRes.json();
-        throw new Error(planErr.message || "Failed to create Cashfree plan");
+        const planErr = await planRes.json().catch(() => ({}));
+        const detail = planErr.message || planErr.error || planErr.type || JSON.stringify(planErr);
+        console.error('[Cashfree] plan creation failed', planRes.status, detail);
+        throw new Error(`Cashfree plan error (${planRes.status}): ${detail}`);
       }
     }
 
@@ -87,7 +89,11 @@ export class SubscriptionService {
     });
 
     const subData: any = await subRes.json();
-    if (!subRes.ok) throw new Error(subData.message || "Failed to create Cashfree subscription");
+    if (!subRes.ok) {
+      const detail = subData.message || subData.error || subData.type || JSON.stringify(subData);
+      console.error('[Cashfree] subscription creation failed', subRes.status, detail);
+      throw new Error(`Cashfree subscription error (${subRes.status}): ${detail}`);
+    }
 
     // Mark pending subscription in Firestore
     await firebase.db.collection("users").doc(payload.customerId).update({

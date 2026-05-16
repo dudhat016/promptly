@@ -111,6 +111,7 @@ export default function AccountSettings() {
         },
         updatedAt: serverTimestamp()
       });
+      await updateProfile(user, { displayName });
       toast.success('Settings updated successfully!');
       setErrors({});
     } catch (err) {

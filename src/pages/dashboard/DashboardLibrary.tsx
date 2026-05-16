@@ -86,7 +86,7 @@ export default function DashboardLibrary() {
         </div>
         <Button
           as={Link}
-          to={prefix('/dashboard/library/submit')}
+          to={prefix('/dashboard/submit')}
           variant="primary"
           size="sm"
           leftIcon={Plus}
@@ -135,7 +135,7 @@ export default function DashboardLibrary() {
           <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
             Submit a prompt to the marketplace. It'll appear here after our team reviews it.
           </p>
-          <Button as={Link} to={prefix('/dashboard/submit-prompt')} variant="primary" leftIcon={Plus}>
+          <Button as={Link} to={prefix('/dashboard/submit')} variant="primary" leftIcon={Plus}>
             Submit Your First Prompt
           </Button>
         </div>

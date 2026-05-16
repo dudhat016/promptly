@@ -1,5 +1,4 @@
 import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import {
   AlertTriangle,
   Award,
@@ -18,10 +17,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMarketing } from '../hooks/useMarketing';
 import { usePath } from '../hooks/usePath';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
 import Button from '../components/primitives/Button';
 import Progress from '../components/feedback/Progress';
@@ -471,9 +471,9 @@ export default function AffiliatePage() {
                   <p className="font-semibold text-foreground">No payout method saved</p>
                   <p className="text-sm text-muted-foreground">
                     Add your UPI ID, PayPal email, or bank details in{' '}
-                    <a href={prefix('/settings/account')} className="text-primary font-bold hover:underline">
+                    <Link to={prefix('/settings/profile')} className="text-primary font-bold hover:underline">
                       Account Settings
-                    </a>
+                    </Link>
                     .
                   </p>
                 </div>
