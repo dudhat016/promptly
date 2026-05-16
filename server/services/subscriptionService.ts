@@ -1,6 +1,6 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
-import { getAppUrl } from "../lib/config.js";
+import { getLangUrl } from "../lib/config.js";
 import { sendSuccessEmail } from "../lib/payouts.js";
 import { DunningService } from "./dunningService.js";
 import { triggerFlow } from "./automationEngine.js";
@@ -67,7 +67,6 @@ export class SubscriptionService {
 
     // Create subscription
     const subscriptionId = `SUB_${payload.customerId}_${Date.now()}`;
-    const appUrl = getAppUrl();
     const expiresOn = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000)
       .toISOString().replace('T', ' ').slice(0, 19);
 
@@ -84,7 +83,7 @@ export class SubscriptionService {
           customerPhone: payload.customerPhone || '9999999999'
         },
         authAmount: 1,
-        returnUrl: `${appUrl}/checkout/verify?subscription_id=${subscriptionId}`,
+        returnUrl: `${getLangUrl('/checkout/verify')}?subscription_id=${subscriptionId}`,
         expiresOn
       })
     });
@@ -437,8 +436,6 @@ export class SubscriptionService {
       payload.planId, payload.billingCycle, payload.amount
     );
 
-    const appUrl = getAppUrl();
-
     const subRes = await fetch(`${baseUrl}/v1/billing/subscriptions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -452,8 +449,8 @@ export class SubscriptionService {
             payer_selected: 'PAYPAL',
             payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED'
           },
-          return_url: `${appUrl}/checkout/verify?subscription_id=PP_${payload.customerId}&paypal_sub_id={subscriptionId}`,
-          cancel_url: `${appUrl}/pricing`
+          return_url: `${getLangUrl('/checkout/verify')}?subscription_id=PP_${payload.customerId}&paypal_sub_id={subscriptionId}`,
+          cancel_url: getLangUrl('/pricing')
         },
         custom_id: `${payload.customerId}|${payload.planId}|${payload.billingCycle}`
       })

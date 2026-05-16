@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { sendEmail } from "../lib/mailer.js";
-import { getAppUrl } from "../lib/config.js";
+import { getLangUrl } from "../lib/config.js";
 
 const DUNNING_SCHEDULE = [0, 3, 7, 10]; // days after first failure
 const MAX_ATTEMPTS     = 3;
@@ -123,8 +123,7 @@ export class DunningService {
     const retryDateStr = nextRetryDate.toLocaleDateString("en-US", {
       weekday: "long", month: "long", day: "numeric",
     });
-    const appUrl     = getAppUrl();
-    const billingUrl = `${appUrl}/settings/billing`;
+    const billingUrl = getLangUrl('/settings/billing');
 
     const typeMap: Record<number, string> = {
       1: "dunning_attempt_1",

@@ -51,7 +51,7 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
               </span>
             ) : (
               <Link
-                to={prefix(item.item)}
+                to={item.item}
                 className="hover:text-primary transition-colors transition-all shrink-0"
               >
                 {item.name}

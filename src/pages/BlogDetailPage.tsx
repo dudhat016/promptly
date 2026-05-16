@@ -148,8 +148,8 @@ export default function BlogDetailPage() {
           type="Blog" 
           data={{ ...post, authorName: author?.displayName }} 
           breadcrumbs={[
-            { name: 'Blog', item: '/blog' },
-            { name: post.title, item: `/blog/${post.slug}` }
+            { name: 'Blog', item: prefix('/blog') },
+            { name: post.title, item: prefix(`/blog/${post.slug}`) }
           ]}
         />
       )}
@@ -158,11 +158,11 @@ export default function BlogDetailPage() {
 
           {/* ── Article ── */}
           <div className="flex-grow lg:w-2/3 max-w-3xl">
-            <Breadcrumbs 
+            <Breadcrumbs
           items={[
-            { name: 'Blog', item: '/blog' },
-            { name: post.title, item: `/blog/${post.slug}` }
-          ]} 
+            { name: 'Blog', item: prefix('/blog') },
+            { name: post.title, item: prefix(`/blog/${post.slug}`) }
+          ]}
         />
 
         <Link to={prefix('/blog')}

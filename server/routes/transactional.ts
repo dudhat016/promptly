@@ -1,6 +1,6 @@
 import { Router, json } from "express";
 import { initFirebase } from "../lib/firebase.js";
-import { getAppUrl } from "../lib/config.js";
+import { getAppUrl, getLangUrl } from "../lib/config.js";
 import { sendEmail } from "../lib/mailer.js";
 import { EMAIL_TYPE_LIST } from "../lib/emailTypes.js";
 import { triggerFlow } from "../services/automationEngine.js";
@@ -136,7 +136,7 @@ router.post("/newsletter/subscribe", json(), async (req, res) => {
       });
     }
 
-    const confirmLink = `${appUrl}/newsletter/confirm?email=${encodeURIComponent(email)}&token=${token}`;
+    const confirmLink = `${getLangUrl('/newsletter/confirm')}?email=${encodeURIComponent(email)}&token=${token}`;
     await sendEmail(firebase.db, email, 'newsletter_confirm', {
       name: name || email.split('@')[0],
       confirm_link: confirmLink,
@@ -165,18 +165,18 @@ router.get("/newsletter/confirm", async (req, res) => {
       .where("email", "==", email).limit(1).get();
 
     if (snap.empty) {
-      return res.redirect(`${appUrl}/en/newsletter/confirm?status=invalid`);
+      return res.redirect(`${getLangUrl('/newsletter/confirm')}?status=invalid`);
     }
 
     const doc = snap.docs[0];
     const data = doc.data();
 
     if (data.confirmToken !== token) {
-      return res.redirect(`${appUrl}/en/newsletter/confirm?status=invalid`);
+      return res.redirect(`${getLangUrl('/newsletter/confirm')}?status=invalid`);
     }
 
     if (data.status === 'active') {
-      return res.redirect(`${appUrl}/en/newsletter/confirm?status=already`);
+      return res.redirect(`${getLangUrl('/newsletter/confirm')}?status=already`);
     }
 
     await doc.ref.update({
@@ -191,7 +191,7 @@ router.get("/newsletter/confirm", async (req, res) => {
       app_url: appUrl,
     }).catch(() => {});
 
-    res.redirect(`${appUrl}/en/newsletter/confirm?status=confirmed&email=${encodeURIComponent(email)}`);
+    res.redirect(`${getLangUrl('/newsletter/confirm')}?status=confirmed&email=${encodeURIComponent(email)}`);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -284,8 +284,7 @@ router.get("/unsubscribe", async (req, res) => {
       });
     }
 
-    const appUrl = getAppUrl();
-    res.redirect(`${appUrl}/en/unsubscribe?email=${encodeURIComponent(email)}&confirmed=true`);
+    res.redirect(`${getLangUrl('/unsubscribe')}?email=${encodeURIComponent(email)}&confirmed=true`);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
