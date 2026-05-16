@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { sendEmail } from "../lib/mailer.js";
+import { getAppUrl } from "../lib/config.js";
 
 interface AutomationStep {
   id: string;
@@ -287,7 +288,7 @@ export async function tick(db: admin.firestore.Firestore): Promise<{ processed: 
               const promptSnap = await promptQuery.get();
               if (!promptSnap.empty) {
                 const prompt = promptSnap.docs[0].data();
-                const appUrl = process.env.APP_URL || "https://promptly.com";
+                const appUrl = getAppUrl();
                 await sendEmail(db, instance.userEmail, 'new_prompt', {
                   ...vars,
                   prompt_title:       prompt.title       || 'Featured Prompt',

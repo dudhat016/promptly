@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import nodemailer from "nodemailer";
 import { EMAIL_TYPES } from "./emailTypes.js";
+import { getAppUrl } from "./config.js";
 
 // ─── SMTP ─────────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ export async function resolveTemplate(
     // Use defaults — template lookup is best-effort
   }
 
-  const appUrl = process.env.APP_URL || "https://promptly.com";
+  const appUrl = getAppUrl();
   const allVars = { app_url: appUrl, ...vars };
 
   return {
@@ -180,7 +181,7 @@ export async function sendEmail(
   type: string,
   variables: Record<string, string>
 ): Promise<SendResult> {
-  const appUrl = process.env.APP_URL || "https://promptly.com";
+  const appUrl = getAppUrl();
 
   // 1. Check unsubscribe / bounce suppression
   try {

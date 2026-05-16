@@ -1,5 +1,6 @@
 import { initFirebase } from "../lib/firebase.js";
 import { sendEmail } from "../lib/mailer.js";
+import { getAppUrl } from "../lib/config.js";
 
 export class AuthService {
   static async sendPasswordResetEmail(email: string) {
@@ -7,7 +8,7 @@ export class AuthService {
     if (!firebase) throw new Error("Firebase not connected");
 
     const link = await firebase.auth.generatePasswordResetLink(email, {
-      url: process.env.APP_URL || "http://localhost:5173/login",
+      url: `${getAppUrl()}/login`,
     });
 
     // Look up the user's name for personalisation

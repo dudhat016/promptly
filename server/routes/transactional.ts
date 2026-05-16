@@ -1,5 +1,6 @@
 import { Router, json } from "express";
 import { initFirebase } from "../lib/firebase.js";
+import { getAppUrl } from "../lib/config.js";
 import { sendEmail } from "../lib/mailer.js";
 import { EMAIL_TYPE_LIST } from "../lib/emailTypes.js";
 import { triggerFlow } from "../services/automationEngine.js";
@@ -110,7 +111,7 @@ router.post("/newsletter/subscribe", json(), async (req, res) => {
     const firebase = await initFirebase();
     if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
 
-    const appUrl = process.env.APP_URL || "https://promptly.com";
+    const appUrl = getAppUrl();
     const token  = Buffer.from(`${email}:${Date.now()}`).toString('base64url');
 
     // Upsert contact as pending_confirm
@@ -154,7 +155,7 @@ router.get("/newsletter/confirm", async (req, res) => {
   const token = (req.query.token as string) || '';
   if (!email || !token) return res.status(400).json({ error: "email and token required" });
 
-  const appUrl = process.env.APP_URL || "https://promptly.com";
+  const appUrl = getAppUrl();
 
   try {
     const firebase = await initFirebase();
@@ -283,7 +284,7 @@ router.get("/unsubscribe", async (req, res) => {
       });
     }
 
-    const appUrl = process.env.APP_URL || "https://promptly.com";
+    const appUrl = getAppUrl();
     res.redirect(`${appUrl}/en/unsubscribe?email=${encodeURIComponent(email)}&confirmed=true`);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -1,5 +1,6 @@
 import { Router, json } from "express";
 import crypto from "crypto";
+import { getAppUrl } from "../lib/config.js";
 import { initFirebase } from "../lib/firebase.js";
 import { PaymentService } from "../services/paymentService.js";
 import { SubscriptionService } from "../services/subscriptionService.js";
@@ -56,7 +57,7 @@ router.post("/cashfree/create-order", authMiddleware, json(), async (req: Authen
           customer_phone: customerPhone
         },
         order_meta: {
-          return_url: `${(process.env.APP_URL || 'http://localhost:5173').replace('http://', 'https://')}/checkout/verify?order_id={order_id}`
+          return_url: `${getAppUrl()}/checkout/verify?order_id={order_id}`
         },
         order_tags: {
           planId: req.body.planId || 'pro_plan',

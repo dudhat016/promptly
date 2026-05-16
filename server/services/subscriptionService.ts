@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
+import { getAppUrl } from "../lib/config.js";
 import { sendSuccessEmail } from "../lib/payouts.js";
 import { DunningService } from "./dunningService.js";
 import { triggerFlow } from "./automationEngine.js";
@@ -66,7 +67,7 @@ export class SubscriptionService {
 
     // Create subscription
     const subscriptionId = `SUB_${payload.customerId}_${Date.now()}`;
-    const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace('http://', 'https://');
+    const appUrl = getAppUrl();
     const expiresOn = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000)
       .toISOString().replace('T', ' ').slice(0, 19);
 
@@ -436,7 +437,7 @@ export class SubscriptionService {
       payload.planId, payload.billingCycle, payload.amount
     );
 
-    const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace('http://', 'https://');
+    const appUrl = getAppUrl();
 
     const subRes = await fetch(`${baseUrl}/v1/billing/subscriptions`, {
       method: 'POST',

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
+import { getAppUrl } from "../lib/config.js";
 import { initFirebase } from "../lib/firebase.js";
 
 export class GeneralService {
@@ -132,8 +133,8 @@ export class GeneralService {
       payment_method_types: ["card"],
       line_items: [{ price: payload.priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${process.env.APP_URL || 'http://localhost:5173'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.APP_URL || 'http://localhost:5173'}/pricing`,
+      success_url: `${getAppUrl()}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${getAppUrl()}/pricing`,
       customer_email: payload.userEmail,
       metadata: { userId: payload.userId },
     });

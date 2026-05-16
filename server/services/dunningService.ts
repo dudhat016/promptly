@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { sendEmail } from "../lib/mailer.js";
+import { getAppUrl } from "../lib/config.js";
 
 const DUNNING_SCHEDULE = [0, 3, 7, 10]; // days after first failure
 const MAX_ATTEMPTS     = 3;
@@ -122,7 +123,7 @@ export class DunningService {
     const retryDateStr = nextRetryDate.toLocaleDateString("en-US", {
       weekday: "long", month: "long", day: "numeric",
     });
-    const appUrl     = process.env.APP_URL || "https://promptly.com";
+    const appUrl     = getAppUrl();
     const billingUrl = `${appUrl}/settings/billing`;
 
     const typeMap: Record<number, string> = {
