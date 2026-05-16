@@ -1,23 +1,34 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { FolderLock, Lock, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { Database, FolderLock, Lock, Search, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import PromptCard from '../../components/PromptCard';
 import PromptCardSkeleton from '../../components/PromptCardSkeleton';
+import UpgradeModal from '../../components/UpgradeModal';
+import Button from '../../components/primitives/Button';
+import Input from '../../components/primitives/Input';
 import { useAuth } from '../../hooks/useAuth';
+import { useConfig } from '../../hooks/useConfig';
 import { db } from '../../lib/firebase';
 import { Prompt } from '../../types';
-import Input from '../../components/primitives/Input';
 import { X } from 'lucide-react';
 
 export default function MyVaultPage() {
   const { user, profile, isPro, isAdmin } = useAuth();
+  const { config } = useConfig();
   const { prefix } = usePath();
   const [unlockedPrompts, setUnlockedPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [vaultUpgradeOpen, setVaultUpgradeOpen] = useState(false);
+
+  const vaultLimit   = config?.vaultLimit || 10;
+  const vaultUsed    = unlockedPrompts.length;
+  const vaultFillPct = Math.round((vaultUsed / vaultLimit) * 100);
+  const vaultFull    = !isPro && !isAdmin && vaultUsed >= vaultLimit;
+  const vaultNearFull = !isPro && !isAdmin && vaultFillPct >= 70 && !vaultFull;
 
   useEffect(() => {
     async function fetchVault() {
@@ -99,6 +110,22 @@ export default function MyVaultPage() {
         />
       </div>
 
+      {/* Near-limit amber warning */}
+      {!loading && vaultNearFull && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-500/8 border border-amber-500/20 rounded-xl mb-2">
+          <Database className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="text-xs font-medium text-amber-700 dark:text-amber-400 flex-1">
+            <span className="font-bold">{vaultUsed}/{vaultLimit}</span> vault slots used — almost full.
+          </span>
+          <button
+            onClick={() => setVaultUpgradeOpen(true)}
+            className="text-xs font-bold text-amber-600 dark:text-amber-300 hover:underline shrink-0"
+          >
+            Get unlimited →
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(3)].map((_, i) => <PromptCardSkeleton key={i} />)}
@@ -147,8 +174,29 @@ export default function MyVaultPage() {
               </motion.div>
             ))}
           </AnimatePresence>
+
+          {/* Vault-full upgrade wall */}
+          {!loading && vaultFull && (
+            <div className="col-span-full rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02] p-8 text-center">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <FolderLock className="w-6 h-6 text-primary" />
+              </div>
+              <div className="inline-flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full mb-2">
+                {vaultUsed}/{vaultLimit} slots used
+              </div>
+              <p className="text-sm font-bold text-foreground mb-1">Your vault is full</p>
+              <p className="text-[11px] text-muted-foreground mb-4 max-w-xs mx-auto leading-relaxed">
+                Upgrade to Pro for unlimited vault storage. Keep every premium prompt you unlock, forever.
+              </p>
+              <Button onClick={() => setVaultUpgradeOpen(true)} variant="primary" size="sm" leftIcon={Zap}>
+                Upgrade for Unlimited Vault
+              </Button>
+            </div>
+          )}
         </div>
       )}
+
+      <UpgradeModal isOpen={vaultUpgradeOpen} onClose={() => setVaultUpgradeOpen(false)} />
 
       {/* Security Banner */}
       <div className="mt-24 p-8 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-center gap-8 shadow-sm">

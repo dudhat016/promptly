@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   LifeBuoy,
   Mail,
+  Medal,
   MessageCircle,
   Percent,
   Receipt,
@@ -107,7 +108,7 @@ export default function AdminLayout() {
   const allNavItems: NavItem[] = [
     // ── Overview ──────────────────────────────
     { sectionTitle: 'Overview' },
-    { label: 'Dashboard', icon: BarChart3, path: '/admin', section: 'dashboard' },
+    { label: 'Dashboard', icon: BarChart3, path: '/admin', exact: true, section: 'dashboard' },
 
     // ── Users ─────────────────────────────────
     { sectionTitle: 'Users' },
@@ -118,6 +119,7 @@ export default function AdminLayout() {
     { label: 'Prompts', icon: LayoutGrid, path: '/admin/prompts', section: 'prompts', badge: pendingPrompts, badgeVariant: 'warning' as const },
     { label: 'Categories', icon: Tag, path: '/admin/categories', section: 'categories' },
     { label: 'AI Models', icon: Cpu, path: '/admin/models', section: 'ai_models' },
+    { label: 'Badges', icon: Medal, path: '/admin/badges', section: 'badges' as const },
 
     // ── Content ───────────────────────────────
     { sectionTitle: 'Content' },
@@ -127,7 +129,7 @@ export default function AdminLayout() {
       path: '/admin/blog',
       section: 'blog',
       children: [
-        { label: 'Posts', path: '/admin/blog' },
+        { label: 'Posts', path: '/admin/blog', exact: true },
         { label: 'Categories & Tags', path: '/admin/blog/categories' },
       ],
     },
@@ -173,7 +175,7 @@ export default function AdminLayout() {
       path: '/admin/emails',
       section: 'emails',
       children: [
-        { label: 'Overview',    path: '/admin/emails' },
+        { label: 'Overview',    path: '/admin/emails', exact: true },
         { label: 'Templates',   path: '/admin/emails/templates' },
         { label: 'Email Logs',  path: '/admin/emails/logs' },
         { label: 'Analytics',   path: '/admin/emails/analytics' },
@@ -196,17 +198,14 @@ export default function AdminLayout() {
       path: '/admin/settings',
       section: 'settings',
       children: [
-        { label: 'General',        path: '/admin/settings' },
-        { label: 'Branding',       path: '/admin/settings/branding' },
-        { label: 'Authentication', path: '/admin/settings/auth' },
-        { label: 'AI Engine',      path: '/admin/settings/ai' },
-        { label: 'Appearance',     path: '/admin/settings/appearance' },
-        { label: 'Email / SMTP',   path: '/admin/settings/email' },
-        { label: 'Payments',       path: '/admin/settings/payments' },
-        { label: 'Pages & Content',path: '/admin/settings/content' },
-        { label: 'SEO & Analytics',path: '/admin/settings/seo' },
-        { label: 'Security',       path: '/admin/settings/security' },
-        { label: 'Advanced / API', path: '/admin/settings/advanced' },
+        { label: 'General',       path: '/admin/settings',          exact: true },
+        { label: 'Branding',      path: '/admin/settings/branding' },
+        { label: 'Users & Auth',  path: '/admin/settings/auth' },
+        { label: 'Email / SMTP',  path: '/admin/settings/email' },
+        { label: 'Payments',      path: '/admin/settings/payments' },
+        { label: 'AI Engine',     path: '/admin/settings/ai' },
+        { label: 'Content & SEO', path: '/admin/settings/content' },
+        { label: 'Security',      path: '/admin/settings/security' },
       ],
     },
   ];

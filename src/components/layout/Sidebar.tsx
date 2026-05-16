@@ -23,10 +23,10 @@ export default function Sidebar({ items, logo, onClose, isMobile, bottomSection 
   const sidebarWidth = config.sidebarCollapsed && !isMobile ? 80 : config.sidebarWidth;
   const collapsed = config.sidebarCollapsed && !isMobile;
 
-  // Active check for top-level: parent items use startsWith, leaves use exact
-  const checkActive = (path?: string, hasChildren?: boolean) => {
+  const checkActive = (path?: string, hasChildren?: boolean, exact?: boolean) => {
     if (!path) return false;
     const p = prefix(path);
+    if (exact) return location.pathname === p;
     if (hasChildren) return location.pathname.startsWith(p);
     return location.pathname === p || location.pathname.startsWith(p + '/');
   };
@@ -75,7 +75,7 @@ export default function Sidebar({ items, logo, onClose, isMobile, bottomSection 
           <SidebarItem
             key={(item.label || item.sectionTitle || 'item') + idx}
             item={item}
-            isActive={checkActive(item.path, !!(item.children?.length))}
+            isActive={checkActive(item.path, !!(item.children?.length), item.exact)}
             collapsed={collapsed}
             depth={0}
           />
@@ -137,15 +137,15 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
   const location = useLocation();
   const isGradient = config.sidebarTheme === 'gradient';
 
-  // Compute active for any path — exact+trailing-slash for leaves, startsWith for parents
-  const checkActive = (path?: string, hasChildren = false) => {
+  const checkActive = (path?: string, hasChildren = false, exact = false) => {
     if (!path) return false;
     const p = prefix(path);
+    if (exact) return location.pathname === p;
     if (hasChildren) return location.pathname.startsWith(p);
     return location.pathname === p || location.pathname.startsWith(p + '/');
   };
 
-  const anyChildActive = item.children?.some(c => checkActive(c.path, !!(c.children?.length))) ?? false;
+  const anyChildActive = item.children?.some(c => checkActive(c.path, !!(c.children?.length), c.exact)) ?? false;
 
   const [isOpen, setIsOpen] = useState(isActive || anyChildActive);
 
@@ -236,7 +236,7 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
                   <SidebarItem
                     key={(child.label || 'sub') + idx}
                     item={child}
-                    isActive={checkActive(child.path, !!(child.children?.length))}
+                    isActive={checkActive(child.path, !!(child.children?.length), child.exact)}
                     collapsed={false}
                     depth={depth + 1}
                   />
@@ -250,6 +250,14 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
   }
 
   // ── Leaf link ──
+  // "New" spotlight — pulsing green dot for unvisited discovery features
+  const newDot = item.isNew && !isActive && !collapsed ? (
+    <span className="relative flex w-2 h-2 shrink-0">
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+      <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500" />
+    </span>
+  ) : null;
+
   // Children (depth > 0) use softer active style; top-level leaves use full primary
   const leafActiveClass = depth > 0
     ? isGradient
@@ -278,7 +286,8 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{item.label}</span>
-          {item.badge && (
+          {newDot}
+          {item.badge && !item.isNew && (
             <span className={cn(
               "min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[9px] font-bold px-1",
               item.badgeVariant === 'danger' ? 'bg-rose-500 text-white'

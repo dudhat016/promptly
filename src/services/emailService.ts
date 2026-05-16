@@ -45,6 +45,15 @@ export const EmailService = {
     await send('onboarding_complete', { name, interests: interestList });
   },
 
+  async sendBadgeEarnedEmail(
+    _userId: string,
+    _email: string,
+    badgeName: string,
+    badgeDescription: string
+  ) {
+    await send('badge_earned', { badge_name: badgeName, badge_description: badgeDescription });
+  },
+
   // Generic send for template-picker usage in admin
   async sendEmailWithTemplate(
     _userId: string,

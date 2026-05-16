@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
+import { usePath } from '../hooks/usePath';
 import Button from './primitives/Button';
 
 interface UpgradeModalProps {
@@ -23,6 +24,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const navigate = useNavigate();
   const { config } = useConfig();
   const { profile } = useAuth();
+  const { prefix } = usePath();
 
   const PERKS: string[] = config.checkoutBenefits?.length ? config.checkoutBenefits : DEFAULT_PERKS;
   const { symbol, exchangeRate, currency } = useCurrency();
@@ -35,7 +37,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
 
   const handleUpgrade = () => {
     onClose();
-    navigate(proPlan ? `/checkout?plan=${proPlan.id}&cycle=monthly` : '/pricing');
+    navigate(proPlan ? prefix(`/checkout?plan=${proPlan.id}&cycle=monthly`) : prefix('/pricing'));
   };
 
   return (

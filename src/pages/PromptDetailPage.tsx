@@ -1,10 +1,11 @@
-import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, query, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, BookOpen, Check, ChevronRight, Copy, Eye, Flag, Heart, Lock, Share2, ShieldCheck, Sparkles, Star, Terminal, User, Zap } from 'lucide-react';
+import { addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, query, updateDoc, where } from 'firebase/firestore';
+import { ArrowLeft, BookMarked, BookOpen, Check, ChevronRight, Copy, Eye, Flag, FolderPlus, Heart, Lock, Plus, Share2, ShieldCheck, Sparkles, Star, Terminal, User, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import NeuralAdBanner from '../components/NeuralAdBanner';
+import { ProGate } from '../components/ProGate';
 import ReportModal from '../components/ReportModal';
 import Schema from '../components/SEO/Schema';
 import ShareModal from '../components/ShareModal';
@@ -20,7 +21,7 @@ import { useSEO } from '../hooks/useSEO';
 import { INTERACTION_WEIGHTS, recordPromptInteraction } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
-import { Prompt, UserProfile } from '../types';
+import { Prompt, PromptCollection, UserProfile } from '../types';
 import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
@@ -78,6 +79,9 @@ export default function PromptDetailPage() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
+  const [userCollections, setUserCollections] = useState<PromptCollection[]>([]);
+  const [collectionsLoading, setCollectionsLoading] = useState(false);
   const [relatedPrompts, setRelatedPrompts] = useState<Prompt[]>([]);
   const [category, setCategory] = useState<any | null>(null);
   const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
@@ -182,6 +186,36 @@ export default function PromptDetailPage() {
     }, 60000);
     return () => clearInterval(interval);
   }, [prompt?.id]);
+
+  const openCollectionPicker = async () => {
+    if (!user || !isPro && !isAdmin) { setIsUpgradeModalOpen(true); return; }
+    setIsCollectionModalOpen(true);
+    if (userCollections.length === 0) {
+      setCollectionsLoading(true);
+      try {
+        const q = query(collection(db, 'collections'), where('userId', '==', user.uid));
+        const snap = await getDocs(q);
+        setUserCollections(snap.docs.map(d => ({ ...d.data(), id: d.id } as PromptCollection)));
+      } catch {}
+      finally { setCollectionsLoading(false); }
+    }
+  };
+
+  const togglePromptInCollection = async (col: PromptCollection) => {
+    if (!prompt?.id) return;
+    const inCollection = col.promptIds.includes(prompt.id);
+    const ref = doc(db, 'collections', col.id!);
+    await updateDoc(ref, {
+      promptIds: inCollection ? arrayRemove(prompt.id) : arrayUnion(prompt.id),
+      updatedAt: new Date().toISOString(),
+    });
+    setUserCollections(prev => prev.map(c =>
+      c.id === col.id
+        ? { ...c, promptIds: inCollection ? c.promptIds.filter(id => id !== prompt.id) : [...c.promptIds, prompt.id!] }
+        : c
+    ));
+    toast.success(inCollection ? 'Removed from collection' : 'Saved to collection');
+  };
 
   const handleLikeClick = async () => {
     if (!user || !prompt?.id) { navigate(prefix('/login')); return; }
@@ -583,21 +617,27 @@ export default function PromptDetailPage() {
                 </div>
               )}
 
-              {/* ── Usage Guide ── */}
+              {/* ── Usage Guide — Pro gate ── */}
               {isUnlocked && prompt!.usageGuide && (
-                <div className="mb-10 rounded-2xl border border-border overflow-hidden">
-                  <div className="flex items-center gap-2 px-6 py-4 bg-muted border-b border-border">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">How to Use This Prompt</h3>
+                <ProGate
+                  feature="Full Usage Guide"
+                  description="Step-by-step instructions, workflow tips, and variable guidance are available on Pro."
+                  className="mb-10"
+                >
+                  <div className="rounded-2xl border border-border overflow-hidden">
+                    <div className="flex items-center gap-2 px-6 py-4 bg-muted border-b border-border">
+                      <BookOpen className="w-4 h-4 text-primary" />
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">How to Use This Prompt</h3>
+                    </div>
+                    <div className="p-6 bg-card prose prose-neutral dark:prose-invert prose-sm max-w-none
+                      prose-p:text-muted-foreground prose-li:text-muted-foreground
+                      prose-headings:text-foreground prose-strong:text-foreground">
+                      {prompt!.usageGuide.split('\n').map((line, i) => (
+                        <p key={i} className="text-sm leading-relaxed text-muted-foreground mb-2 last:mb-0">{line}</p>
+                      ))}
+                    </div>
                   </div>
-                  <div className="p-6 bg-card prose prose-neutral dark:prose-invert prose-sm max-w-none
-                    prose-p:text-muted-foreground prose-li:text-muted-foreground
-                    prose-headings:text-foreground prose-strong:text-foreground">
-                    {prompt!.usageGuide.split('\n').map((line, i) => (
-                      <p key={i} className="text-sm leading-relaxed text-muted-foreground mb-2 last:mb-0">{line}</p>
-                    ))}
-                  </div>
-                </div>
+                </ProGate>
               )}
 
               {/* ── Action bar ── */}
@@ -610,6 +650,15 @@ export default function PromptDetailPage() {
                   className="w-full sm:w-auto"
                 >
                   Share & Earn
+                </Button>
+                <Button
+                  onClick={openCollectionPicker}
+                  variant="secondary"
+                  size="lg"
+                  leftIcon={BookMarked}
+                  className="w-full sm:w-auto"
+                >
+                  Save to Collection
                 </Button>
                 {!isPro && (
                   <Button
@@ -649,7 +698,7 @@ export default function PromptDetailPage() {
                 const isOfficial = prompt!.creatorRole === 'admin' || prompt!.creatorRole === 'staff' || prompt!.creatorId === 'system';
                 const displayName = prompt!.creatorName || creator?.displayName || 'Creator';
                 const avatarLetter = displayName.charAt(0).toUpperCase();
-                const profileHref = !isOfficial && prompt!.creatorId ? prefix(`/creator/${prompt!.creatorId}`) : null;
+                const profileHref = !isOfficial && prompt!.creatorId ? prefix(`/creator/${creator?.username || prompt!.creatorId}`) : null;
                 const CardWrapper = profileHref
                   ? ({ children }: { children: React.ReactNode }) => (
                       <Link to={profileHref} className="flex items-center gap-3 mb-5 group/creator hover:opacity-90 transition-opacity">
@@ -702,7 +751,7 @@ export default function PromptDetailPage() {
               </div>
               {prompt!.creatorId && prompt!.creatorId !== 'system' && (prompt!.creatorRole === 'user' || !prompt!.creatorRole) && (
                 <Link
-                  to={prefix(`/creator/${prompt!.creatorId}`)}
+                  to={prefix(`/creator/${creator?.username || prompt!.creatorId}`)}
                   className="mt-4 flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-bold text-primary hover:bg-primary/8 border border-primary/20 hover:border-primary/40 transition-all"
                 >
                   <User className="w-3.5 h-3.5" />
@@ -862,6 +911,64 @@ export default function PromptDetailPage() {
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
         />
+      )}
+
+      {/* Collection Picker Modal */}
+      {isCollectionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setIsCollectionModalOpen(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-foreground flex items-center gap-2">
+                <BookMarked className="w-4 h-4 text-primary" /> Save to Collection
+              </h3>
+              <button onClick={() => setIsCollectionModalOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors">
+                ✕
+              </button>
+            </div>
+            {collectionsLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-12 rounded-xl bg-muted animate-pulse" />)}
+              </div>
+            ) : userCollections.length === 0 ? (
+              <div className="text-center py-8">
+                <FolderPlus className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-4">No collections yet. Create one first.</p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={Plus}
+                  onClick={() => { setIsCollectionModalOpen(false); navigate(prefix('/dashboard/collections')); }}
+                >
+                  Create Collection
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {userCollections.map(col => {
+                  const saved = prompt?.id ? col.promptIds.includes(prompt.id) : false;
+                  return (
+                    <button
+                      key={col.id}
+                      onClick={() => togglePromptInCollection(col)}
+                      className={cn(
+                        'w-full flex items-center justify-between px-3 py-3 rounded-xl border text-left transition-all',
+                        saved
+                          ? 'border-primary/30 bg-primary/5 text-primary'
+                          : 'border-border bg-muted/30 hover:border-primary/20 hover:bg-muted/60 text-foreground'
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate">{col.name}</p>
+                        <p className="text-xs text-muted-foreground">{col.promptIds.length} prompts</p>
+                      </div>
+                      {saved && <Check className="w-4 h-4 text-primary shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

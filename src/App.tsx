@@ -70,6 +70,8 @@ import AdminInvoiceForm from './pages/admin/AdminInvoiceForm';
 import AdminReports from './pages/admin/AdminReports';
 import AdminTestimonials from './pages/admin/AdminTestimonials';
 import AdminChangelog from './pages/admin/AdminChangelog';
+import AdminBadges from './pages/admin/AdminBadges';
+import AdminBadgeForm from './pages/admin/AdminBadgeForm';
 import AdminChurn from './pages/admin/AdminChurn';
 import AffiliateInfoPage from './pages/AffiliateInfoPage';
 import AffiliatePage from './pages/AffiliatePage';
@@ -111,6 +113,7 @@ import DashboardFavorites from './pages/dashboard/DashboardFavorites';
 import DashboardLibrary from './pages/dashboard/DashboardLibrary';
 import SubmitPromptPage from './pages/dashboard/SubmitPromptPage';
 import MyVaultPage from './pages/dashboard/MyVaultPage';
+import CollectionsPage from './pages/dashboard/CollectionsPage';
 import ExplorePage from './pages/ExplorePage';
 import LandingPage from './pages/LandingPage';
 import PricingPage from './pages/PricingPage';
@@ -296,8 +299,10 @@ function AppContent() {
                     <Route path="usage" element={<UsagePage />} />
                     <Route path="affiliate" element={<AffiliatePage />} />
                     <Route path="support" element={<SupportPage />} />
+                    <Route path="notifications" element={<NotificationsPage />} />
+                    <Route path="collections" element={<CollectionsPage />} />
                   </Route>
-                  
+
                   <Route path="settings" element={<Outlet />}>
                     <Route index element={<Navigate to="profile" replace />} />
                     <Route path="profile" element={<AccountSettings />} />
@@ -306,7 +311,6 @@ function AppContent() {
                     <Route path="security" element={<SecuritySettings />} />
                     <Route path="notifications" element={<NotificationSettings />} />
                   </Route>
-                  <Route path="notifications" element={<NotificationsPage />} />
                 </Route>
   
                 <Route path="admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
@@ -326,6 +330,9 @@ function AppContent() {
                   <Route path="categories/:id/edit" element={<SectionRoute section="categories"><AdminCategoryForm /></SectionRoute>} />
                   <Route path="users" element={<SectionRoute section="users"><AdminUsers /></SectionRoute>} />
                   <Route path="users/:id" element={<SectionRoute section="users"><AdminUserDetails /></SectionRoute>} />
+                  <Route path="badges" element={<SectionRoute section="badges"><AdminBadges /></SectionRoute>} />
+                  <Route path="badges/new" element={<SectionRoute section="badges"><AdminBadgeForm /></SectionRoute>} />
+                  <Route path="badges/:id/edit" element={<SectionRoute section="badges"><AdminBadgeForm /></SectionRoute>} />
                   <Route path="models" element={<SectionRoute section="ai_models"><AdminModels /></SectionRoute>} />
                   <Route path="models/new" element={<SectionRoute section="ai_models"><AdminModelForm /></SectionRoute>} />
                   <Route path="models/:id/edit" element={<SectionRoute section="ai_models"><AdminModelForm /></SectionRoute>} />

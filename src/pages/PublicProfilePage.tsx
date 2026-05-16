@@ -8,14 +8,17 @@ import {
 } from 'firebase/firestore';
 import { Prompt, UserProfile } from '../types';
 import {
-  User, LayoutGrid, Star, Calendar, ArrowRight, ShieldCheck, Zap,
+  User, LayoutGrid, Calendar, ArrowRight, ShieldCheck, Zap,
   Heart, Eye, Users, UserCheck, UserPlus,
+  MapPin, Globe, Link2, Twitter, Instagram, Github, Youtube,
 } from 'lucide-react';
+import { BADGE_DEFS } from '../lib/badges';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
 import { useAuth } from '../hooks/useAuth';
+import { recordFollowAffinity, recordUnfollowAffinity } from '../lib/affinity';
 
 export default function PublicProfilePage() {
   const { uid } = useParams<{ uid: string }>();
@@ -28,21 +31,36 @@ export default function PublicProfilePage() {
   const [followerCount, setFollowerCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
 
-  const isOwnProfile = user?.uid === uid;
+  const isOwnProfile = !!user && !!targetProfile && user.uid === targetProfile.uid;
 
   useEffect(() => {
     if (uid) fetchUserData();
   }, [uid]);
 
-  // Sync follow state from current user's profile
+  // Sync follow state from current user's profile (use resolved UID, not param)
   useEffect(() => {
-    if (!uid || !currentProfile) return;
-    setFollowing((currentProfile.following || []).includes(uid));
-  }, [uid, currentProfile]);
+    if (!targetProfile || !currentProfile) return;
+    setFollowing((currentProfile.following || []).includes(targetProfile.uid));
+  }, [targetProfile, currentProfile]);
 
   async function fetchUserData() {
     try {
-      const profDoc = await getDoc(doc(db, 'users', uid!));
+      let resolvedUid = uid!;
+
+      // Try direct UID lookup first
+      let profDoc = await getDoc(doc(db, 'users', uid!));
+
+      // If not found, treat the param as a username and resolve it
+      if (!profDoc.exists()) {
+        const byUsername = await getDocs(
+          query(collection(db, 'users'), where('username', '==', uid!.toLowerCase()))
+        );
+        if (!byUsername.empty) {
+          profDoc = byUsername.docs[0] as any;
+          resolvedUid = byUsername.docs[0].id;
+        }
+      }
+
       if (profDoc.exists()) {
         const data = { uid: profDoc.id, ...profDoc.data() } as UserProfile;
         setTargetProfile(data);
@@ -50,7 +68,7 @@ export default function PublicProfilePage() {
       }
 
       const snap = await getDocs(
-        query(collection(db, 'prompts'), where('creatorId', '==', uid), where('status', '==', 'approved'), orderBy('createdAt', 'desc'))
+        query(collection(db, 'prompts'), where('creatorId', '==', resolvedUid), where('status', '==', 'approved'), orderBy('createdAt', 'desc'))
       );
       setPrompts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt)));
     } catch (err) {
@@ -61,12 +79,13 @@ export default function PublicProfilePage() {
   }
 
   async function handleFollow() {
-    if (!user || !uid) {
+    if (!user || !targetProfile) {
       toast.error('Sign in to follow creators');
       return;
     }
     if (isOwnProfile) return;
 
+    const creatorUid = targetProfile.uid;
     setFollowLoading(true);
     const optimisticFollow = !following;
     setFollowing(optimisticFollow);
@@ -75,23 +94,28 @@ export default function PublicProfilePage() {
     try {
       // Update follower's following array
       await updateDoc(doc(db, 'users', user.uid), {
-        following: optimisticFollow ? arrayUnion(uid) : arrayRemove(uid),
+        following: optimisticFollow ? arrayUnion(creatorUid) : arrayRemove(creatorUid),
       });
       // Update creator's follower count
-      await updateDoc(doc(db, 'users', uid), {
+      await updateDoc(doc(db, 'users', creatorUid), {
         followerCount: increment(optimisticFollow ? 1 : -1),
       });
       // Notify creator on new follow (only when following, not unfollowing)
       if (optimisticFollow) {
-        await addDoc(collection(db, 'users', uid, 'notifications'), {
-          userId:    uid,
+        await addDoc(collection(db, 'users', creatorUid, 'notifications'), {
+          userId:    creatorUid,
           title:     'New follower',
           body:      `${currentProfile?.displayName || 'Someone'} started following you.`,
           type:      'success',
-          link:      `/creator/${user.uid}`,
+          link:      `/creator/${currentProfile?.username || user.uid}`,
           readAt:    null,
           createdAt: serverTimestamp(),
         });
+        // Boost follower's affinity from this creator's top topics (non-blocking)
+        recordFollowAffinity(creatorUid);
+      } else {
+        // Reverse the affinity boost that was applied when they followed
+        recordUnfollowAffinity(creatorUid);
       }
     } catch {
       // Rollback optimistic update
@@ -171,28 +195,94 @@ export default function PublicProfilePage() {
                 )}
               </div>
 
+              {targetProfile.username && (
+                <p className="text-sm font-semibold text-muted-foreground">@{targetProfile.username}</p>
+              )}
+
+              {targetProfile.bio && (
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">{targetProfile.bio}</p>
+              )}
+
+              {/* Meta: location + website */}
+              {(targetProfile.location || targetProfile.website) && (
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-muted-foreground">
+                  {targetProfile.location && (
+                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{targetProfile.location}</span>
+                  )}
+                  {targetProfile.website && (
+                    <a href={targetProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-primary transition-colors">
+                      <Globe className="w-3.5 h-3.5" />{targetProfile.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Expertise tags */}
+              {(targetProfile.expertiseTags?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap justify-center md:justify-start gap-1.5">
+                  {targetProfile.expertiseTags!.slice(0, 8).map(tag => (
+                    <span key={tag} className="px-2.5 py-0.5 bg-primary/8 text-primary text-[11px] font-semibold rounded-full border border-primary/15">{tag}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Social links */}
+              {targetProfile.socialLinks && Object.values(targetProfile.socialLinks).some(Boolean) && (
+                <div className="flex items-center justify-center md:justify-start gap-3">
+                  {targetProfile.socialLinks.twitter && (
+                    <a href={targetProfile.socialLinks.twitter} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary flex items-center justify-center transition-colors">
+                      <Twitter className="w-4 h-4" />
+                    </a>
+                  )}
+                  {targetProfile.socialLinks.instagram && (
+                    <a href={targetProfile.socialLinks.instagram} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary flex items-center justify-center transition-colors">
+                      <Instagram className="w-4 h-4" />
+                    </a>
+                  )}
+                  {targetProfile.socialLinks.github && (
+                    <a href={targetProfile.socialLinks.github} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary flex items-center justify-center transition-colors">
+                      <Github className="w-4 h-4" />
+                    </a>
+                  )}
+                  {targetProfile.socialLinks.youtube && (
+                    <a href={targetProfile.socialLinks.youtube} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary flex items-center justify-center transition-colors">
+                      <Youtube className="w-4 h-4" />
+                    </a>
+                  )}
+                  {targetProfile.socialLinks.linkedin && (
+                    <a href={targetProfile.socialLinks.linkedin} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary flex items-center justify-center transition-colors">
+                      <Link2 className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Earned badges */}
+              {(targetProfile.badges?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                  {BADGE_DEFS.filter(b => targetProfile.badges!.includes(b.id)).map(badge => {
+                    const Icon = badge.icon;
+                    return (
+                      <span
+                        key={badge.id}
+                        title={badge.description}
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${badge.color}`}
+                      >
+                        <Icon className="w-3 h-3" />
+                        {badge.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Stats row */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm font-semibold text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <LayoutGrid className="w-4 h-4 opacity-50" />
-                  {prompts.length} prompts
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Users className="w-4 h-4 opacity-50" />
-                  {followerCount} followers
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Heart className="w-4 h-4 opacity-50" />
-                  {totalLikes} likes
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Eye className="w-4 h-4 opacity-50" />
-                  {totalViews} views
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 opacity-50" />
-                  Joined {new Date(targetProfile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                </span>
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm font-semibold text-muted-foreground pt-1">
+                <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4 opacity-50" />{prompts.length} prompts</span>
+                <span className="flex items-center gap-1.5"><Users className="w-4 h-4 opacity-50" />{followerCount} followers</span>
+                <span className="flex items-center gap-1.5"><Heart className="w-4 h-4 opacity-50" />{totalLikes} likes</span>
+                <span className="flex items-center gap-1.5"><Eye className="w-4 h-4 opacity-50" />{totalViews} views</span>
+                <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 opacity-50" />Joined {(targetProfile.createdAt?.toDate ? targetProfile.createdAt.toDate() : new Date(targetProfile.createdAt)).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
               </div>
             </div>
 

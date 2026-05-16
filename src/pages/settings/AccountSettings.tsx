@@ -1,34 +1,136 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { db } from '../../lib/firebase';
-import { auth } from '../../lib/firebase';
-import { doc, updateDoc, serverTimestamp, getDoc, getDocs, collection, query, where, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { db, auth } from '../../lib/firebase';
+import {
+  doc, updateDoc, serverTimestamp,
+  getDoc, getDocs, collection, query, where, orderBy, limit, deleteDoc,
+} from 'firebase/firestore';
 import { updateProfile, deleteUser } from 'firebase/auth';
-import { User, Lock, Coins, ShieldCheck, Zap, Download, Trash2, AlertTriangle } from 'lucide-react';
+import {
+  User, Lock, Coins, MapPin, Globe, Link2,
+  Github, Instagram, Youtube, Twitter,
+  Download, Trash2, AlertTriangle, ShieldCheck, ExternalLink,
+} from 'lucide-react';
 import Input from '../../components/primitives/Input';
 import Textarea from '../../components/primitives/Textarea';
+import TagInput from '../../components/primitives/TagInput';
+import Button from '../../components/primitives/Button';
+import ImageUpload from '../../components/forms/ImageUpload';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
-import ImageUpload from '../../components/forms/ImageUpload';
-import Button from '../../components/primitives/Button';
+
+function SectionCard({ icon: Icon, title, description, children }: {
+  icon: React.ElementType; title: string; description?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-3">
+        <div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0">
+          <Icon className="w-4 h-4" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+        </div>
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
 
 export default function AccountSettings() {
-  const { user, profile, isPro } = useAuth();
+  const { user, profile } = useAuth();
   const { prefix } = usePath();
-  const [isSaving, setIsSaving] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [displayName, setDisplayName] = useState(profile?.displayName || '');
-  const [upiId, setUpiId] = useState(profile?.payoutMethods?.upiId || '');
-  const [paypalEmail, setPaypalEmail] = useState(profile?.payoutMethods?.paypalEmail || '');
-  const [bankDetails, setBankDetails] = useState(profile?.payoutMethods?.bankDetails || '');
 
-  // GDPR state
-  const [exportingData, setExportingData] = useState(false);
+  // Profile fields
+  const [displayName, setDisplayName]     = useState(profile?.displayName || '');
+  const [username,    setUsername]         = useState(profile?.username || '');
+  const [bio,         setBio]              = useState(profile?.bio || '');
+  const [website,     setWebsite]          = useState(profile?.website || '');
+  const [location,    setLocation]         = useState(profile?.location || '');
+  const [expertiseTags, setExpertiseTags]  = useState<string[]>(profile?.expertiseTags || []);
+  const [socialLinks, setSocialLinks]      = useState({
+    twitter:   profile?.socialLinks?.twitter   || '',
+    instagram: profile?.socialLinks?.instagram || '',
+    github:    profile?.socialLinks?.github    || '',
+    youtube:   profile?.socialLinks?.youtube   || '',
+    linkedin:  profile?.socialLinks?.linkedin  || '',
+  });
+
+  // Payout fields
+  const [upiId,        setUpiId]        = useState(profile?.payoutMethods?.upiId || '');
+  const [paypalEmail,  setPaypalEmail]  = useState(profile?.payoutMethods?.paypalEmail || '');
+  const [bankDetails,  setBankDetails]  = useState(profile?.payoutMethods?.bankDetails || '');
+
+  const [isSaving,          setIsSaving]          = useState(false);
+  const [isSavingPayouts,   setIsSavingPayouts]   = useState(false);
+  const [exportingData,     setExportingData]     = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [deleting, setDeleting] = useState(false);
+  const [deleting,          setDeleting]          = useState(false);
+  const [usernameError,     setUsernameError]     = useState('');
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    if (!displayName.trim()) { toast.error('Display name is required'); return; }
+    setUsernameError('');
+
+    const cleanUsername = username.trim().toLowerCase();
+
+    // Uniqueness check
+    if (cleanUsername) {
+      if (!/^[a-z0-9_-]{3,30}$/.test(cleanUsername)) {
+        setUsernameError('3–30 characters: letters, numbers, _ or - only.');
+        return;
+      }
+      const taken = await getDocs(
+        query(collection(db, 'users'), where('username', '==', cleanUsername))
+      );
+      const conflict = taken.docs.find(d => d.id !== user.uid);
+      if (conflict) {
+        setUsernameError('This handle is already taken. Please choose another.');
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        displayName,
+        username:      cleanUsername || null,
+        bio:           bio.trim() || null,
+        website:       website.trim() || null,
+        location:      location.trim() || null,
+        expertiseTags: expertiseTags.length ? expertiseTags : [],
+        socialLinks,
+        updatedAt: serverTimestamp(),
+      });
+      await updateProfile(user, { displayName });
+      toast.success('Profile updated!');
+    } catch {
+      toast.error('Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSavePayouts = async () => {
+    if (!user) return;
+    setIsSavingPayouts(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        payoutMethods: { upiId, paypalEmail, bankDetails },
+        updatedAt: serverTimestamp(),
+      });
+      toast.success('Payout methods saved!');
+    } catch {
+      toast.error('Failed to save payout methods');
+    } finally {
+      setIsSavingPayouts(false);
+    }
+  };
 
   const handleExportData = async () => {
     if (!user) return;
@@ -39,22 +141,18 @@ export default function AccountSettings() {
         getDocs(query(collection(db, 'orders'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'))),
         getDocs(query(collection(db, 'credits_history'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(100))),
       ]);
-
       const exportData = {
         exportedAt: new Date().toISOString(),
         profile: userSnap.exists() ? { ...userSnap.data(), uid: user.uid } : null,
         orders: ordersSnap.docs.map(d => ({ id: d.id, ...d.data() })),
         activity: activitySnap.docs.map(d => ({ id: d.id, ...d.data() })),
       };
-
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `my-data-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Data exported successfully');
+      a.href = url; a.download = `my-data-${new Date().toISOString().split('T')[0]}.json`;
+      a.click(); URL.revokeObjectURL(url);
+      toast.success('Data exported');
     } catch {
       toast.error('Failed to export data');
     } finally {
@@ -66,7 +164,6 @@ export default function AccountSettings() {
     if (!user || deleteConfirmText !== 'DELETE') return;
     setDeleting(true);
     try {
-      // Mark user as deleted in Firestore (soft delete for audit trail)
       await updateDoc(doc(db, 'users', user.uid), {
         deletedAt: serverTimestamp(),
         email: `deleted_${user.uid}@deleted.invalid`,
@@ -75,14 +172,13 @@ export default function AccountSettings() {
         subscriptionStatus: 'free',
         role: 'user',
       });
-      // Delete Firebase Auth account
       await deleteUser(user);
-      toast.success('Account deleted. Sorry to see you go.');
+      toast.success('Account deleted.');
     } catch (err: any) {
       if (err.code === 'auth/requires-recent-login') {
-        toast.error('Please sign out and sign back in, then try again.');
+        toast.error('Sign out and sign back in, then try again.');
       } else {
-        toast.error('Failed to delete account. Please contact support.');
+        toast.error('Failed to delete account. Contact support.');
       }
     } finally {
       setDeleting(false);
@@ -90,260 +186,205 @@ export default function AccountSettings() {
     }
   };
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!displayName.trim()) newErrors.displayName = "Display name is required";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !validate()) return;
-    setIsSaving(true);
-    try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        displayName,
-        payoutMethods: {
-          upiId,
-          paypalEmail,
-          bankDetails
-        },
-        updatedAt: serverTimestamp()
-      });
-      await updateProfile(user, { displayName });
-      toast.success('Settings updated successfully!');
-      setErrors({});
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to update profile');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-      {/* Quick Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-card border border-border rounded-lg p-8 flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Available Credits</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-foreground">{profile?.credits || 0}</span>
-              <span className="text-xs font-bold text-muted-foreground">Tokens</span>
-            </div>
-            <Link to={prefix('/dashboard/credits')} className="text-xs font-bold text-primary hover:underline mt-4 inline-block">View History →</Link>
-          </div>
-          <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center">
-            <Coins className="w-8 h-8 text-primary" />
-          </div>
-        </div>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
 
-        <div className="bg-card border border-border rounded-lg p-8 flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Membership Status</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-foreground">{isPro ? 'Pro Member' : 'Free Tier'}</span>
-              {isPro && <Zap className="w-4 h-4 text-amber-500 fill-current" />}
-            </div>
-            <Link to={prefix('/pricing')} className="text-xs font-bold text-primary hover:underline mt-4 inline-block">Manage Subscription →</Link>
-          </div>
-          <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
-            <ShieldCheck className={`w-8 h-8 ${isPro ? 'text-primary' : 'text-muted-foreground opacity-30'}`} />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Settings Card */}
-      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
-        <h2 className="text-2xl font-bold mb-10 flex items-center gap-3 text-foreground">
-          <div className="w-10 h-10 bg-primary/10 text-primary rounded-md flex items-center justify-center">
-            <User className="w-5 h-5" />
-          </div>
-          Account Settings
-        </h2>
-        
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-12 mb-8 pb-12 border-b border-border">
+      {/* ── Public Profile ───────────────────────────────────── */}
+      <SectionCard icon={User} title="Public Profile" description="Shown on your creator page and marketplace activity.">
+        <div className="flex flex-col sm:flex-row items-start gap-8 mb-8 pb-8 border-b border-border">
           <ImageUpload
             value={profile?.photoURL || undefined}
             onChange={async (url) => {
               if (!user) return;
               try {
-                await updateDoc(doc(db, 'users', user.uid), {
-                  photoURL: url || null,
-                  updatedAt: serverTimestamp()
-                });
-                if (user) await updateProfile(user, { photoURL: url || null });
-                toast.success(url ? 'Profile photo updated!' : 'Profile photo removed');
-              } catch (err) {
-                toast.error('Failed to update profile');
-              }
+                await updateDoc(doc(db, 'users', user.uid), { photoURL: url || null, updatedAt: serverTimestamp() });
+                await updateProfile(user, { photoURL: url || null });
+                toast.success(url ? 'Photo updated' : 'Photo removed');
+              } catch { toast.error('Failed to update photo'); }
             }}
             variant="circle"
             label={profile?.displayName || 'Creator'}
-            description="Your avatar is displayed on your public profile and marketplace activities."
+            description="JPG, PNG or WebP. Shown on your public profile."
             folder="users"
           />
         </div>
 
-        <form onSubmit={handleUpdateProfile} className="space-y-8">
-          <div className="grid md:grid-cols-2 gap-8">
+        <div className="space-y-5">
+          <div className="grid sm:grid-cols-2 gap-5">
             <Input
               label="Display Name"
-              id="displayName"
-              name="displayName"
-              type="text"
-              error={errors.displayName}
               value={displayName}
-              onChange={(e) => {
-                setDisplayName(e.target.value);
-                if (errors.displayName) setErrors({...errors, displayName: ''});
-              }}
-              placeholder="e.g. John Doe"
+              onChange={e => setDisplayName(e.target.value)}
               variant="filled"
+              placeholder="e.g. Jane Doe"
               required
             />
-            <Input 
-              label="Account Email"
-              id="accountEmail"
-              name="accountEmail"
-              type="email"
-              value={profile?.email || ''}
-              readOnly
+            <Input
+              label="Username / Handle"
+              value={username}
+              onChange={e => { setUsername(e.target.value.replace(/[^a-z0-9_-]/gi, '').toLowerCase()); setUsernameError(''); }}
               variant="filled"
-              rightAction={<Lock className="w-4 h-4 opacity-40" />}
+              placeholder="e.g. janedoe"
+              helperText={usernameError || 'Your public URL: /creator/handle'}
+              error={usernameError || undefined}
             />
           </div>
 
-          <div className="pt-8 border-t border-border mt-12">
-            <h3 className="text-xl font-bold mb-8 flex items-center gap-3 text-foreground">
-              <div className="w-10 h-10 bg-emerald-500/10 text-emerald-500 rounded-md flex items-center justify-center">
-                <Coins className="w-5 h-5" />
-              </div>
-              Payout Methods
-            </h3>
-            <div className="grid md:grid-cols-2 gap-8">
-              <Input 
-                label="UPI ID (India)"
-                id="upiId"
-                name="upiId"
-                type="text" 
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                placeholder="e.g. username@okaxis"
-                variant="filled"
-              />
-              <Input 
-                label="PayPal Email (Global)"
-                id="paypalEmail"
-                name="paypalEmail"
-                type="email" 
-                value={paypalEmail}
-                onChange={(e) => setPaypalEmail(e.target.value)}
-                placeholder="e.g. user@example.com"
-                variant="filled"
-              />
-              <Textarea 
-                label="Bank Account Details (Swift/IFSC, A/C No)"
-                id="bankDetails"
-                name="bankDetails"
-                value={bankDetails}
-                onChange={(e) => setBankDetails(e.target.value)}
-                rows={4}
-                placeholder="Enter your full bank account details for direct transfers..."
-                variant="filled"
-                className="md:col-span-2"
-              />
-            </div>
+          <Input
+            label="Account Email"
+            value={profile?.email || ''}
+            readOnly
+            variant="filled"
+            rightAction={<Lock className="w-4 h-4 opacity-40" />}
+          />
+
+          <Textarea
+            label="Bio"
+            value={bio}
+            onChange={e => setBio(e.target.value.slice(0, 280))}
+            variant="filled"
+            rows={3}
+            placeholder="Tell the community about your AI expertise and what you create…"
+            helperText={`${bio.length}/280 characters`}
+          />
+
+          <div className="grid sm:grid-cols-2 gap-5">
+            <Input
+              label="Website"
+              value={website}
+              onChange={e => setWebsite(e.target.value)}
+              variant="filled"
+              placeholder="https://yoursite.com"
+              leftIcon={Globe}
+            />
+            <Input
+              label="Location"
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              variant="filled"
+              placeholder="e.g. San Francisco, CA"
+              leftIcon={MapPin}
+            />
           </div>
 
-          <div className="pt-6 flex items-center gap-6">
-            <Button
-              type="submit"
-              isLoading={isSaving}
-              variant="primary"
+          <TagInput
+            label="Expertise Tags"
+            tags={expertiseTags}
+            onChange={setExpertiseTags}
+            placeholder="Add a skill and press Enter…"
+            helperText="e.g. Copywriting, Marketing, Code, Design — up to 10."
+          />
+        </div>
+
+        <div className="mt-6 flex items-center justify-between gap-4">
+          {user && (
+            <Link
+              to={prefix(`/creator/${profile?.username || user.uid}`)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"
             >
-              Save Settings
+              <ExternalLink className="w-3.5 h-3.5" />
+              View public profile
+            </Link>
+          )}
+          <Button onClick={handleSaveProfile} isLoading={isSaving} variant="primary" size="sm">
+            Save Profile
+          </Button>
+        </div>
+      </SectionCard>
+
+      {/* ── Social Links ─────────────────────────────────────── */}
+      <SectionCard icon={Link2} title="Social Links" description="Displayed on your public creator profile.">
+        <div className="grid sm:grid-cols-2 gap-5">
+          <Input label="X / Twitter" value={socialLinks.twitter} onChange={e => setSocialLinks(p => ({ ...p, twitter: e.target.value }))} variant="filled" placeholder="https://x.com/handle" leftIcon={Twitter} />
+          <Input label="Instagram"   value={socialLinks.instagram} onChange={e => setSocialLinks(p => ({ ...p, instagram: e.target.value }))} variant="filled" placeholder="https://instagram.com/handle" leftIcon={Instagram} />
+          <Input label="GitHub"      value={socialLinks.github} onChange={e => setSocialLinks(p => ({ ...p, github: e.target.value }))} variant="filled" placeholder="https://github.com/handle" leftIcon={Github} />
+          <Input label="YouTube"     value={socialLinks.youtube} onChange={e => setSocialLinks(p => ({ ...p, youtube: e.target.value }))} variant="filled" placeholder="https://youtube.com/@channel" leftIcon={Youtube} />
+          <Input label="LinkedIn"    value={socialLinks.linkedin} onChange={e => setSocialLinks(p => ({ ...p, linkedin: e.target.value }))} variant="filled" placeholder="https://linkedin.com/in/handle" leftIcon={Link2} className="sm:col-span-1" />
+        </div>
+        <div className="mt-6 flex justify-end">
+          <Button onClick={handleSaveProfile} isLoading={isSaving} variant="primary" size="sm">
+            Save Links
+          </Button>
+        </div>
+      </SectionCard>
+
+      {/* ── Creator Payouts ──────────────────────────────────── */}
+      <SectionCard icon={Coins} title="Creator Payouts" description="How you receive earnings from the affiliate and creator programs.">
+        <div className="grid sm:grid-cols-2 gap-5">
+          <Input
+            label="UPI ID (India)"
+            value={upiId}
+            onChange={e => setUpiId(e.target.value)}
+            variant="filled"
+            placeholder="username@okaxis"
+          />
+          <Input
+            label="PayPal Email (Global)"
+            type="email"
+            value={paypalEmail}
+            onChange={e => setPaypalEmail(e.target.value)}
+            variant="filled"
+            placeholder="you@example.com"
+          />
+          <Textarea
+            label="Bank / Wire Details"
+            value={bankDetails}
+            onChange={e => setBankDetails(e.target.value)}
+            rows={3}
+            variant="filled"
+            placeholder="Bank name, account number, IFSC / SWIFT code…"
+            className="sm:col-span-2"
+          />
+        </div>
+        <div className="mt-6 flex justify-end">
+          <Button onClick={handleSavePayouts} isLoading={isSavingPayouts} variant="primary" size="sm">
+            Save Payout Methods
+          </Button>
+        </div>
+      </SectionCard>
+
+      {/* ── Data & Privacy ───────────────────────────────────── */}
+      <SectionCard icon={ShieldCheck} title="Data & Privacy" description="GDPR controls — export or permanently remove your account.">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border border-border">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Download My Data</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Export your profile, orders, and credit history as JSON.</p>
+            </div>
+            <Button onClick={handleExportData} isLoading={exportingData} variant="outline" size="sm" leftIcon={Download} className="shrink-0">
+              Export Data
             </Button>
           </div>
-        </form>
-      </div>
 
-      {/* Data & Privacy (GDPR) */}
-      <div className="bg-card rounded-lg p-6 border border-border shadow-sm space-y-6">
-        <h2 className="text-lg font-bold flex items-center gap-3 text-foreground">
-          <div className="w-8 h-8 bg-sky-500/10 text-sky-500 rounded-md flex items-center justify-center">
-            <ShieldCheck className="w-4 h-4" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-rose-500/5 border border-rose-500/15">
+            <div>
+              <p className="text-sm font-semibold text-rose-600">Delete Account</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Permanently removes your account and all associated data.</p>
+            </div>
+            <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" size="sm" leftIcon={Trash2} className="shrink-0 border-rose-500/30 text-rose-600 hover:bg-rose-500/10">
+              Delete Account
+            </Button>
           </div>
-          Data & Privacy
-        </h2>
-
-        {/* Export */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border border-border">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Download My Data</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Export all your account data, orders, and activity as a JSON file.</p>
-          </div>
-          <Button
-            onClick={handleExportData}
-            isLoading={exportingData}
-            variant="outline"
-            size="sm"
-            leftIcon={Download}
-            className="shrink-0"
-          >
-            Export Data
-          </Button>
         </div>
+      </SectionCard>
 
-        {/* Delete account */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-rose-500/5 border border-rose-500/15">
-          <div>
-            <p className="text-sm font-semibold text-rose-600">Delete Account</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Permanently delete your account and all associated data. This cannot be undone.</p>
-          </div>
-          <Button
-            onClick={() => setShowDeleteConfirm(true)}
-            variant="outline"
-            size="sm"
-            leftIcon={Trash2}
-            className="shrink-0 border-rose-500/30 text-rose-600 hover:bg-rose-500/10"
-          >
-            Delete Account
-          </Button>
-        </div>
-      </div>
-
-      {/* Delete confirmation modal */}
+      {/* ── Delete confirmation modal ─────────────────────────── */}
       <AnimatePresence>
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowDeleteConfirm(false)}
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 12 }}
-              className="relative z-10 w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeleteConfirm(false)} className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }} className="relative z-10 w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center shrink-0">
                   <AlertTriangle className="w-5 h-5 text-rose-500" />
                 </div>
                 <div>
                   <h3 className="font-bold text-foreground">Delete Account</h3>
-                  <p className="text-xs text-muted-foreground">This action is permanent and irreversible.</p>
+                  <p className="text-xs text-muted-foreground">Permanent and irreversible.</p>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
-                This will delete your profile, cancel any active subscriptions, and remove your data. You will lose access immediately.
+                This will delete your profile, cancel active subscriptions, and remove all your data. You'll lose access immediately.
               </p>
               <p className="text-xs font-bold text-foreground mb-2">
                 Type <span className="text-rose-500 font-mono">DELETE</span> to confirm:
@@ -355,17 +396,8 @@ export default function AccountSettings() {
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm mb-4 font-mono focus:outline-none focus:ring-2 focus:ring-rose-500/30"
               />
               <div className="flex gap-3">
-                <Button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }} variant="outline" size="sm" fullWidth>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleDeleteAccount}
-                  isLoading={deleting}
-                  disabled={deleteConfirmText !== 'DELETE'}
-                  size="sm"
-                  fullWidth
-                  className="bg-rose-600 hover:bg-rose-700 text-white border-0 disabled:opacity-40"
-                >
+                <Button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }} variant="outline" size="sm" fullWidth>Cancel</Button>
+                <Button onClick={handleDeleteAccount} isLoading={deleting} disabled={deleteConfirmText !== 'DELETE'} size="sm" fullWidth className="bg-rose-600 hover:bg-rose-700 text-white border-0 disabled:opacity-40">
                   Delete Forever
                 </Button>
               </div>

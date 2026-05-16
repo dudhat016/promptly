@@ -97,7 +97,7 @@ export default function NotificationBell() {
 
                 {/* Footer */}
                 <Link
-                  to={prefix('/notifications')}
+                  to={prefix('/dashboard/notifications')}
                   onClick={() => setOpen(false)}
                   className="block px-4 py-3 text-center text-xs font-bold text-primary bg-primary/5 hover:bg-primary/10 border-t border-border transition-colors"
                 >

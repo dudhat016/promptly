@@ -1,16 +1,14 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
-  BarChart,
-  Code, CreditCard,
+  BarChart, Bell,
   ExternalLink,
-  Globe, Image, Info, Layout,
-  Mail, MessageSquare,
-  Palette, Phone, Plus, Save, Search, Settings, Share2, Shield,
-  Sparkles, Target,
-  Trash2, UserPlus
+  Globe, Image,
+  Link2, Lock, Mail, MessageSquare,
+  Palette, Phone, Plus, Save, Search, Settings, Shield,
+  Sparkles, Target, Trash2, UserPlus, Zap,
 } from 'lucide-react';
-import { useEffect, useState, useId } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { AdminPageHeader } from '../../components/admin';
 import ImageUpload from '../../components/admin/ImageUpload';
@@ -23,14 +21,12 @@ import Textarea from '../../components/primitives/Textarea';
 import { useConfig } from '../../hooks/useConfig';
 import { logAuditEvent } from '../../lib/auditLog';
 import { db } from '../../lib/firebase';
-import { cn } from '../../lib/utils';
-import AdminAssetManager from './AdminAssetManager';
 import AdminEmailSettings from './AdminEmailSettings';
 import AdminMarketingSettings from './AdminMarketingSettings';
 import AdminPaymentSettings from './AdminPaymentSettings';
 import AdminContentSettings from './AdminContentSettings';
 
-type TabType = 'general' | 'branding' | 'auth' | 'ai' | 'contact' | 'social' | 'regional' | 'appearance' | 'email' | 'content' | 'payment' | 'marketing' | 'assets' | 'seo' | 'security' | 'advanced';
+type TabType = 'general' | 'branding' | 'auth' | 'ai' | 'email' | 'payments' | 'content' | 'security' | 'marketing';
 
 interface SitePage {
   id: string;
@@ -42,112 +38,146 @@ interface SitePage {
   path: string;
 }
 
+// ── Aliases: old sub-paths redirect to the new consolidated tab ───────────────
+const TAB_ALIASES: Record<string, TabType> = {
+  appearance: 'branding',
+  contact:    'general',
+  social:     'general',
+  regional:   'general',
+  seo:        'content',
+  advanced:   'security',
+  payment:    'payments',
+  assets:     'security',
+};
+
+// ── Card wrapper ──────────────────────────────────────────────────────────────
+function Card({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+      <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+          <Icon className="w-4 h-4" />
+        </div>
+        <h3 className="font-semibold text-lg text-foreground">{title}</h3>
+      </div>
+      <div className="p-8">{children}</div>
+    </div>
+  );
+}
+
+// ── Toggle row ────────────────────────────────────────────────────────────────
+function ToggleRow({ label, description, value, onToggle, activeLabel = 'Enabled', inactiveLabel = 'Disabled' }: {
+  label: string; description: string; value: boolean;
+  onToggle: () => void; activeLabel?: string; inactiveLabel?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-border">
+      <div>
+        <p className="text-sm font-semibold tracking-wider text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground font-medium mt-0.5">{description}</p>
+      </div>
+      <Button onClick={onToggle} variant={value ? 'success' : 'outline'} size="sm" className="rounded-xl px-4 shrink-0">
+        {value ? activeLabel : inactiveLabel}
+      </Button>
+    </div>
+  );
+}
+
 export default function AdminSettings() {
-  const { "*": subPath } = useParams();
-  const navigate = useNavigate();
+  const { '*': subPath } = useParams();
   const [activeTab, setActiveTab] = useState<TabType>('general');
 
-  // Sync tab with URL
   useEffect(() => {
-    const tabFromUrl = subPath?.split('/')[0];
-    if (tabFromUrl) {
-      // Handle common aliases or typos
-      const normalized = tabFromUrl === 'payments' ? 'payment' : tabFromUrl;
-      setActiveTab(normalized as TabType);
-    } else {
-      setActiveTab('general');
-    }
+    const raw = subPath?.split('/')[0] ?? '';
+    const tab = (TAB_ALIASES[raw] ?? raw) as TabType;
+    setActiveTab(['general','branding','auth','ai','email','payments','content','security','marketing'].includes(tab) ? tab : 'general');
   }, [subPath]);
 
-  const handleTabChange = (tabId: string) => {
-    // Preserve the current language if possible, otherwise use /en/ as default
-    navigate(`/en/admin/settings/${tabId}`);
-  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { config: liveConfig, refreshConfig } = useConfig();
 
-  // Site Pages SEO State
+  // Site Pages SEO state
   const [pages, setPages] = useState<SitePage[]>([]);
   const [editingPage, setEditingPage] = useState<Partial<SitePage> | null>(null);
   const [savingPage, setSavingPage] = useState(false);
 
-  // Dynamic Site Content State
-  const [siteContent, setSiteContent] = useState<any>({
-    terms: '',
-    privacy: '',
-    dmca: '',
-    cookies: '',
-    faq: [],
-  });
-  const [contentLoading, setContentLoading] = useState(false);
+  // Site Content state
+  const [siteContent, setSiteContent] = useState<any>({ terms: '', privacy: '', dmca: '', cookies: '', faq: [] });
   const [savingContent, setSavingContent] = useState(false);
-  const [activeContentPage, setActiveContentPage] = useState('terms');
 
   const defaultPages = [
-    { id: 'home', path: '/', title: 'Promptly - Master AI Prompting' },
+    { id: 'home',    path: '/',        title: 'Promptly - Master AI Prompting' },
     { id: 'explore', path: '/explore', title: 'Explore AI Prompts' },
     { id: 'pricing', path: '/pricing', title: 'Pricing Plans' },
-    { id: 'blog', path: '/blog', title: 'AI Prompting Blog' },
+    { id: 'blog',    path: '/blog',    title: 'AI Prompting Blog' },
     { id: 'contact', path: '/contact', title: 'Contact Us' },
   ];
 
   const [config, setConfig] = useState<any>({
+    // ── Identity ──
     siteName: 'Promptly',
     siteTagline: 'Professional AI Prompt Marketplace',
     siteDescription: '',
+    siteUrl: '',
+    // ── Status ──
+    systemStatus: 'operational',
+    statusText: '',
+    // ── Contact ──
     supportEmail: 'support@techworldproduct.com',
     contactPhone: '',
     whatsapp: '',
     businessAddress: '',
+    // ── Social ──
+    socials: { twitter: '', facebook: '', instagram: '', linkedin: '', github: '', youtube: '', discord: '' },
+    // ── Regional ──
     currency: 'USD',
     currencySymbol: '$',
     currencyFormat: 'before',
     timezone: 'UTC',
     defaultLanguage: 'en',
     taxRate: 0,
-    maintenanceMode: false,
-    maintenanceMessage: '',
+    // ── Checkout & Trust ──
+    checkoutBenefits: [],
+    moneyBackDays: 0,
+    trustBadges: [],
+    socialProofStats: [],
+    // ── Custom messages ──
+    msgSignInToUnlock: '',
+    msgOutOfCredits: '',
+    msgPromptUnlocked: '',
+    msgUnlockFailed: '',
+    lowCreditThreshold: '',
+    // ── Admin notifications ──
+    adminNotify: { newUser: true, newOrder: true, newTicket: false, failedPayment: true },
+    // ── Branding ──
     logoLight: '',
     logoDark: '',
     favicon: '',
     projectIcon: '',
     ogImage: '',
+    appearance: { theme: 'system', primaryColor: '#8B5CF6' },
+    // ── Auth ──
+    allowRegistration: true,
+    requireEmailVerification: false,
+    enableSocialLogin: true,
+    defaultUserRole: 'user',
+    sessionTimeout: 0,
+    maxLoginAttempts: 5,
+    // ── AI ──
+    aiDefaults: { defaultModel: 'gpt-4o', defaultTemperature: 0.7, maxTokens: 2000, freeCreditsDaily: 5 },
+    // ── SEO / Analytics ──
     googleAnalyticsId: '',
     facebookPixelId: '',
     customHeadScripts: '',
     customFooterScripts: '',
-    allowRegistration: true,
-    requireEmailVerification: false,
-    defaultUserRole: 'user',
-    enableSocialLogin: true,
-    socials: {
-      twitter: '',
-      facebook: '',
-      instagram: '',
-      linkedin: '',
-      github: '',
-      youtube: '',
-      discord: ''
-    },
-    appearance: {
-      theme: 'system',
-      primaryColor: '#8B5CF6',
-      borderRadius: '0.75rem',
-      layoutMode: 'boxed'
-    },
-    aiDefaults: {
-      defaultModel: 'gpt-4o',
-      defaultTemperature: 0.7,
-      maxTokens: 2000,
-      freeCreditsDaily: 5
-    },
-    systemStatus: 'operational',
-    statusText: '',
-    checkoutBenefits: [],
-    moneyBackDays: 0,
-    trustBadges: [],
-    socialProofStats: [],
+    // ── Security / Compliance ──
+    maintenanceMode: false,
+    maintenanceMessage: '',
+    cookieConsent: false,
+    cookieConsentText: 'We use cookies to improve your experience and analyse site traffic.',
+    gdprMode: false,
+    webhookUrl: '',
   });
 
   useEffect(() => {
@@ -156,33 +186,30 @@ export default function AdminSettings() {
         const [configSnap, pagesSnap, contentSnap] = await Promise.all([
           getDoc(doc(db, 'configs', 'global')),
           getDocs(collection(db, 'site_pages')),
-          getDocs(collection(db, 'site_content'))
+          getDocs(collection(db, 'site_content')),
         ]);
-
         if (configSnap.exists()) {
           const data = configSnap.data();
           setConfig((prev: any) => ({
             ...prev,
             ...data,
-            socials: { ...prev.socials, ...(data.socials || {}) },
-            appearance: { ...prev.appearance, ...(data.appearance || {}) },
-            aiDefaults: { ...prev.aiDefaults, ...(data.aiDefaults || {}) }
+            socials:    { ...prev.socials,    ...(data.socials    ?? {}) },
+            appearance: { ...prev.appearance, ...(data.appearance ?? {}) },
+            aiDefaults: { ...prev.aiDefaults, ...(data.aiDefaults ?? {}) },
+            adminNotify:{ ...prev.adminNotify,...(data.adminNotify ?? {}) },
           }));
         }
-
-        const fetchedPages = pagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SitePage));
-        setPages(fetchedPages);
-
-        const contentMap: any = {};
-        contentSnap.docs.forEach(d => { contentMap[d.id] = d.data(); });
+        setPages(pagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SitePage)));
+        const cm: any = {};
+        contentSnap.docs.forEach(d => { cm[d.id] = d.data(); });
         setSiteContent((prev: any) => ({
           ...prev,
-          terms: contentMap.terms?.content || '',
-          privacy: contentMap.privacy?.content || '',
-          dmca: contentMap.dmca?.content || '',
-          cookies: contentMap.cookies?.content || '',
-          faq: contentMap.faq?.categories || [],
-          onboarding: contentMap.onboarding || { interests: [], models: [], welcome: { headline: '', description: '' } },
+          terms:      cm.terms?.content    || '',
+          privacy:    cm.privacy?.content  || '',
+          dmca:       cm.dmca?.content     || '',
+          cookies:    cm.cookies?.content  || '',
+          faq:        cm.faq?.categories   || [],
+          onboarding: cm.onboarding        || { interests: [], models: [], welcome: { headline: '', description: '' } },
         }));
       } catch (err) {
         console.error(err);
@@ -193,44 +220,32 @@ export default function AdminSettings() {
     loadAll();
   }, []);
 
-  const handleSaveContent = async (id: string) => {
-    setSavingContent(true);
-    try {
-      let data;
-      if (id === 'faq') {
-        data = { categories: siteContent.faq };
-      } else if (id === 'onboarding') {
-        data = { ...siteContent.onboarding, updatedAt: serverTimestamp() };
-      } else {
-        data = { content: siteContent[id], updatedAt: serverTimestamp() };
-      }
-      
-      await setDoc(doc(db, 'site_content', id), data);
-      toast.success(`${id.toUpperCase()} updated successfully`);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to update content');
-    } finally {
-      setSavingContent(false);
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, 'configs', 'global'), {
-        ...config,
-        updatedAt: serverTimestamp()
-      });
+      await setDoc(doc(db, 'configs', 'global'), { ...config, updatedAt: serverTimestamp() });
       await refreshConfig();
       logAuditEvent({ action: 'settings.updated', entityType: 'config', entityId: 'global' });
-      toast.success('System parameters synchronized!');
+      toast.success('Settings saved!');
     } catch (err) {
       console.error(err);
-      toast.error('Sync failed');
+      toast.error('Save failed');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveContent = async (id: string) => {
+    setSavingContent(true);
+    try {
+      let data: any;
+      if (id === 'faq')        data = { categories: siteContent.faq };
+      else if (id === 'onboarding') data = { ...siteContent.onboarding, updatedAt: serverTimestamp() };
+      else                     data = { content: siteContent[id], updatedAt: serverTimestamp() };
+      await setDoc(doc(db, 'site_content', id), data);
+      toast.success('Content saved');
+    } catch { toast.error('Failed to save content'); }
+    finally { setSavingContent(false); }
   };
 
   const handleSavePage = async () => {
@@ -238,39 +253,17 @@ export default function AdminSettings() {
     setSavingPage(true);
     try {
       await setDoc(doc(db, 'site_pages', editingPage.id), editingPage);
-      toast.success(`${editingPage.id.toUpperCase()} metadata saved!`);
+      toast.success('Page SEO saved');
       const snap = await getDocs(collection(db, 'site_pages'));
       setPages(snap.docs.map(d => ({ id: d.id, ...d.data() } as SitePage)));
       setEditingPage(null);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to save page SEO");
-    } finally {
-      setSavingPage(false);
-    }
+    } catch { toast.error('Failed to save page SEO'); }
+    finally { setSavingPage(false); }
   };
-
-  const tabs = [
-    { id: 'general', label: 'Platform Info', icon: Info },
-    { id: 'branding', label: 'Branding', icon: Image },
-    { id: 'auth', label: 'Authentication', icon: UserPlus },
-    { id: 'ai', label: 'AI Engine', icon: Sparkles },
-    { id: 'contact', label: 'Contact', icon: Phone },
-    { id: 'social', label: 'Social', icon: Share2 },
-    { id: 'regional', label: 'Regional', icon: Globe },
-    { id: 'appearance', label: 'Appearance', icon: Palette },
-    { id: 'email', label: 'Email/SMTP', icon: Mail },
-    { id: 'content', label: 'Pages & Content', icon: Layout },
-    { id: 'payment', label: 'Payments', icon: CreditCard },
-    { id: 'marketing', label: 'Marketing', icon: Target },
-    { id: 'seo', label: 'SEO/Analytics', icon: Search },
-    { id: 'security', label: 'System Control', icon: Shield },
-    { id: 'advanced', label: 'Advanced/API', icon: Code },
-  ];
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
-      <div className="text-muted-foreground font-semibold tracking-[0.4em] animate-pulse">Synchronizing Neural Core...</div>
+      <div className="text-muted-foreground font-semibold tracking-[0.4em] animate-pulse">Loading settings…</div>
     </div>
   );
 
@@ -280,788 +273,383 @@ export default function AdminSettings() {
         label="Configuration"
         labelIcon={Settings}
         title="Global Settings"
-        subtitle="Fine-tune your platform's operational parameters, branding, and core logic."
+        subtitle="Configure your platform identity, branding, payments, and compliance."
         actions={
-          <Button
-            onClick={handleSave}
-            isLoading={saving}
-            variant="primary"
-            leftIcon={Save}
-            size="sm"
-            className="rounded-xl shadow-lg shadow-primary/20"
-          >
-            Sync Config
+          <Button onClick={handleSave} isLoading={saving} variant="primary" leftIcon={Save} size="sm" className="rounded-xl shadow-lg shadow-primary/20">
+            Save Changes
           </Button>
         }
       />
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Tab Navigation */}
-        <div className="lg:w-64 shrink-0">
-          <div className="bg-card rounded-2xl border border-border p-3 shadow-sm space-y-1 sticky top-24">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={cn(
-                    "flex items-center cursor-pointer gap-3 w-full px-4 py-3 rounded-xl text-[14px] font-semibold tracking-widest transition-all",
-                    activeTab === tab.id
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                      : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+        {/* ── GENERAL ──────────────────────────────────────────── */}
+        {activeTab === 'general' && (
+          <div className="space-y-6">
+
+            <Card icon={Globe} title="Platform Identity">
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Input label="Platform Name" value={config.siteName} onChange={e => setConfig({ ...config, siteName: e.target.value })} variant="outline" placeholder="Promptly" />
+                  <Input label="Tagline" value={config.siteTagline} onChange={e => setConfig({ ...config, siteTagline: e.target.value })} variant="outline" placeholder="Expert AI Prompt Marketplace" />
+                </div>
+                <Textarea label="Global Meta Description" value={config.siteDescription} onChange={e => setConfig({ ...config, siteDescription: e.target.value })} variant="outline" rows={2} placeholder="Default description for search engines…" />
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Input label="Site URL" value={config.siteUrl} onChange={e => setConfig({ ...config, siteUrl: e.target.value })} variant="outline" placeholder="https://promptly.com" />
+                  <Select
+                    label="System Status"
+                    value={config.systemStatus || 'operational'}
+                    onChange={e => setConfig({ ...config, systemStatus: e.target.value })}
+                    options={[
+                      { value: 'operational', label: '✅ All Systems Operational' },
+                      { value: 'degraded',    label: '⚠️ Partial Outage' },
+                      { value: 'outage',      label: '🔴 Service Disruption' },
+                    ]}
+                  />
+                </div>
+                <Input label="Status Text Override" value={config.statusText || ''} onChange={e => setConfig({ ...config, statusText: e.target.value })} variant="outline" placeholder="e.g. Scheduled maintenance at 2am UTC" />
+              </div>
+            </Card>
+
+            <Card icon={Phone} title="Contact & Social">
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Input label="Support Email" value={config.supportEmail} onChange={e => setConfig({ ...config, supportEmail: e.target.value })} variant="outline" leftIcon={Mail} />
+                  <Input label="Public Phone" value={config.contactPhone} onChange={e => setConfig({ ...config, contactPhone: e.target.value })} variant="outline" leftIcon={Phone} />
+                  <Input label="WhatsApp" value={config.whatsapp} onChange={e => setConfig({ ...config, whatsapp: e.target.value })} variant="outline" leftIcon={MessageSquare} />
+                </div>
+                <Textarea label="Business Address" value={config.businessAddress} onChange={e => setConfig({ ...config, businessAddress: e.target.value })} variant="outline" rows={2} />
+                <div className="border-t border-border pt-6">
+                  <p className="text-sm font-semibold text-foreground mb-4">Social Links</p>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {(['twitter','facebook','instagram','linkedin','github','youtube','discord'] as const).map(key => (
+                      <Input key={key} label={key.charAt(0).toUpperCase() + key.slice(1)} value={config.socials[key]} onChange={e => setConfig({ ...config, socials: { ...config.socials, [key]: e.target.value } })} variant="outline" placeholder={`https://${key}.com/…`} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card icon={Globe} title="Regional & Localization">
+              <div className="grid md:grid-cols-2 gap-6">
+                <Select label="Primary Language" value={config.defaultLanguage} onChange={val => setConfig({ ...config, defaultLanguage: val })} options={[{ label: 'English (US)', value: 'en' }, { label: 'Hindi', value: 'hi' }, { label: 'Spanish', value: 'es' }]} />
+                <Select label="Timezone" value={config.timezone} onChange={val => setConfig({ ...config, timezone: val })} options={[{ label: 'UTC', value: 'UTC' }, { label: 'IST (India)', value: 'Asia/Kolkata' }, { label: 'EST (US East)', value: 'America/New_York' }, { label: 'PST (US West)', value: 'America/Los_Angeles' }]} />
+                <div className="grid grid-cols-2 gap-4">
+                  <Select label="Currency" value={config.currency} onChange={val => setConfig({ ...config, currency: val })} options={[{ label: 'USD ($)', value: 'USD' }, { label: 'EUR (€)', value: 'EUR' }, { label: 'GBP (£)', value: 'GBP' }, { label: 'INR (₹)', value: 'INR' }]} />
+                  <Input label="Symbol" value={config.currencySymbol} onChange={e => setConfig({ ...config, currencySymbol: e.target.value })} variant="outline" />
+                </div>
+                <Input label="Tax Rate (%)" type="number" value={config.taxRate} onChange={e => setConfig({ ...config, taxRate: Number(e.target.value) })} variant="outline" />
+              </div>
+            </Card>
+
+            <Card icon={Target} title="Checkout & Trust Signals">
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Checkout Unlock Benefits</p>
+                  <p className="text-xs text-muted-foreground mb-2">One benefit per line — shown on the checkout page.</p>
+                  <Textarea label="" value={(config.checkoutBenefits || []).join('\n')} onChange={e => setConfig({ ...config, checkoutBenefits: e.target.value.split('\n').filter(Boolean) })} variant="outline" rows={4} placeholder={"5,000+ expert-engineered AI prompts\nCopy, save & organise unlimited prompts\nNew prompts added every week"} />
+                </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Input label="Money-Back Guarantee (days, 0 to hide)" type="number" value={config.moneyBackDays ?? 0} onChange={e => setConfig({ ...config, moneyBackDays: parseInt(e.target.value) || 0 })} variant="outline" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Trust Badges</p>
+                  <p className="text-xs text-muted-foreground mb-2">One label per line — shown on the pricing page.</p>
+                  <Textarea label="" value={(config.trustBadges || []).map((b: any) => b.label || b).join('\n')} onChange={e => setConfig({ ...config, trustBadges: e.target.value.split('\n').filter(Boolean).map(l => ({ label: l })) })} variant="outline" rows={3} placeholder={"Secure Bank-Level Payments\nCashfree & PayPal Support\nInstant Access After Payment"} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Social Proof Stats</p>
+                  <p className="text-xs text-muted-foreground mb-2">Format: <code className="bg-muted px-1 rounded text-xs">12,000+ | Expert Prompts</code> — one per line.</p>
+                  <Textarea label="" value={(config.socialProofStats || []).map((s: any) => `${s.value} | ${s.label}`).join('\n')} onChange={e => setConfig({ ...config, socialProofStats: e.target.value.split('\n').filter(Boolean).map(line => { const [value, label] = line.split('|').map((s: string) => s.trim()); return { value: value || '', label: label || '' }; }) })} variant="outline" rows={4} placeholder={"12,000+ | Expert Prompts\n5,000+ | Active Users\n20+ | Categories\n4.9★ | Average Rating"} />
+                </div>
+              </div>
+            </Card>
+
+            <Card icon={MessageSquare} title="Custom UI Messages">
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground mb-4">Override default toast and error messages shown to users. Leave blank to use defaults.</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Input label="Sign-in prompt (unlock)" placeholder="Sign in to unlock prompts" value={config.msgSignInToUnlock || ''} onChange={e => setConfig({ ...config, msgSignInToUnlock: e.target.value })} variant="outline" />
+                  <Input label="Out of credits message" placeholder="Out of credits — upgrade to Pro" value={config.msgOutOfCredits || ''} onChange={e => setConfig({ ...config, msgOutOfCredits: e.target.value })} variant="outline" />
+                  <Input label="Prompt unlocked success" placeholder="Prompt unlocked!" value={config.msgPromptUnlocked || ''} onChange={e => setConfig({ ...config, msgPromptUnlocked: e.target.value })} variant="outline" />
+                  <Input label="Unlock failed error" placeholder="Failed to unlock — try again" value={config.msgUnlockFailed || ''} onChange={e => setConfig({ ...config, msgUnlockFailed: e.target.value })} variant="outline" />
+                  <Input label="Low credit nudge threshold" type="number" placeholder="5" helperText="Send a nudge email when credits drop to or below this." value={config.lowCreditThreshold ?? ''} onChange={e => setConfig({ ...config, lowCreditThreshold: e.target.value ? parseInt(e.target.value) : undefined })} variant="outline" />
+                </div>
+              </div>
+            </Card>
+
+            <Card icon={Bell} title="Admin Notifications">
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground mb-4">Send an email to the support address when any of these events occur.</p>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <ToggleRow label="New User Signup" description="Notify when a new account is created." value={config.adminNotify?.newUser ?? true} onToggle={() => setConfig({ ...config, adminNotify: { ...config.adminNotify, newUser: !config.adminNotify?.newUser } })} />
+                  <ToggleRow label="New Order / Purchase" description="Notify on every successful payment." value={config.adminNotify?.newOrder ?? true} onToggle={() => setConfig({ ...config, adminNotify: { ...config.adminNotify, newOrder: !config.adminNotify?.newOrder } })} />
+                  <ToggleRow label="New Support Ticket" description="Notify when a user opens a ticket." value={config.adminNotify?.newTicket ?? false} onToggle={() => setConfig({ ...config, adminNotify: { ...config.adminNotify, newTicket: !config.adminNotify?.newTicket } })} />
+                  <ToggleRow label="Failed Payment" description="Notify on dunning / payment failure events." value={config.adminNotify?.failedPayment ?? true} onToggle={() => setConfig({ ...config, adminNotify: { ...config.adminNotify, failedPayment: !config.adminNotify?.failedPayment } })} />
+                </div>
+              </div>
+            </Card>
+
           </div>
-        </div>
+        )}
 
-        {/* Content Area */}
-        <div className="flex-grow">
-          <div className="h-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* ── BRANDING ─────────────────────────────────────────── */}
+        {activeTab === 'branding' && (
+          <div className="space-y-6">
+            <Card icon={Image} title="Brand Assets">
+              <div className="grid md:grid-cols-2 gap-12">
+                <ImageUpload label="Logo (Light Mode)" value={config.logoLight} onChange={val => setConfig({ ...config, logoLight: val })} helpText="Visible on dark backgrounds." aspectRatio="any" folder="branding" />
+                <ImageUpload label="Logo (Dark Mode)" value={config.logoDark} onChange={val => setConfig({ ...config, logoDark: val })} helpText="Visible on light backgrounds." aspectRatio="any" folder="branding" />
+                <ImageUpload label="Default OG / Social Image" value={config.ogImage} onChange={val => setConfig({ ...config, ogImage: val })} helpText="Used when sharing links on social media." aspectRatio="video" folder="branding" />
+                <ImageUpload label="Favicon / Browser Icon" value={config.favicon} onChange={val => setConfig({ ...config, favicon: val })} helpText="Shown in browser tabs and bookmarks." aspectRatio="square" folder="branding" />
+              </div>
+            </Card>
 
-            {activeTab === 'general' && (
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Layout className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">Platform Identity</h3>
-                  </div>
-                  <div className="p-8 space-y-6">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <Input
-                        label="Platform Name"
-                        value={config.siteName}
-                        onChange={e => setConfig({ ...config, siteName: e.target.value })}
-                        variant="outline"
-                        placeholder="e.g. Promptly"
-                      />
-                      <Input
-                        label="Tagline"
-                        value={config.siteTagline}
-                        onChange={e => setConfig({ ...config, siteTagline: e.target.value })}
-                        variant="outline"
-                        placeholder="Expert AI Prompt Marketplace"
-                      />
-                    </div>
-                    <Textarea
-                      label="Global Meta Description"
-                      value={config.siteDescription}
-                      onChange={e => setConfig({ ...config, siteDescription: e.target.value })}
-                      variant="outline"
-                      rows={3}
-                      placeholder="Default description for search engines..."
-                    />
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <Select
-                        label="System Status (shown in footer)"
-                        value={config.systemStatus || 'operational'}
-                        onChange={e => setConfig({ ...config, systemStatus: e.target.value })}
-                        options={[
-                          { value: 'operational', label: '✅ All Systems Operational' },
-                          { value: 'degraded',    label: '⚠️ Partial Outage' },
-                          { value: 'outage',      label: '🔴 Service Disruption' },
-                        ]}
-                      />
-                      <Input
-                        label="Status Text Override (optional)"
-                        value={config.statusText || ''}
-                        onChange={e => setConfig({ ...config, statusText: e.target.value })}
-                        variant="outline"
-                        placeholder="e.g. Scheduled maintenance at 2am UTC"
-                      />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground mb-1">Checkout Unlock Benefits</p>
-                      <p className="text-xs text-muted-foreground mb-2">Bullet points shown on the checkout page. One per line.</p>
-                      <Textarea
-                        label=""
-                        value={(config.checkoutBenefits || []).join('\n')}
-                        onChange={e => setConfig({ ...config, checkoutBenefits: e.target.value.split('\n').filter(Boolean) })}
-                        variant="outline"
-                        rows={5}
-                        placeholder={"5,000+ expert-engineered AI prompts\nCopy, save & organize unlimited prompts\nNew prompts added every week"}
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <Input
-                        label="Money-Back Guarantee (days, 0 to hide)"
-                        id="moneyBackDays"
-                        name="moneyBackDays"
-                        type="number"
-                        value={config.moneyBackDays ?? 0}
-                        onChange={e => setConfig({ ...config, moneyBackDays: parseInt(e.target.value) || 0 })}
-                        variant="outline"
-                        placeholder="e.g. 7"
-                      />
-                      <div />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-foreground mb-1">Trust Badges (Pricing Page)</p>
-                      <p className="text-xs text-muted-foreground mb-2">One label per line. Leave empty to use defaults.</p>
-                      <Textarea
-                        label=""
-                        value={(config.trustBadges || []).map((b: any) => b.label || b).join('\n')}
-                        onChange={e => setConfig({ ...config, trustBadges: e.target.value.split('\n').filter(Boolean).map(l => ({ label: l })) })}
-                        variant="outline"
-                        rows={3}
-                        placeholder={"Secure Bank-Level Payments\nCashfree & PayPal Support\nInstant Access After Payment"}
-                      />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-foreground mb-1">Social Proof Stats (Landing Page)</p>
-                      <p className="text-xs text-muted-foreground mb-2">Format: <code className="bg-muted px-1 rounded text-xs">12,000+ | Expert Prompts</code> — one per line.</p>
-                      <Textarea
-                        label=""
-                        value={(config.socialProofStats || []).map((s: any) => `${s.value} | ${s.label}`).join('\n')}
-                        onChange={e => setConfig({
-                          ...config,
-                          socialProofStats: e.target.value.split('\n').filter(Boolean).map(line => {
-                            const [value, label] = line.split('|').map(s => s.trim());
-                            return { value: value || '', label: label || '' };
-                          })
-                        })}
-                        variant="outline"
-                        rows={4}
-                        placeholder={"12,000+ | Expert Prompts\n5,000+ | Active Users\n20+ | Categories\n4.9★ | Average Rating"}
-                      />
-                    </div>
-
-                    {/* Custom UI Messages */}
-                    <div className="border-t border-border pt-6 space-y-4">
-                      <div>
-                        <p className="text-sm font-bold text-foreground mb-0.5">Custom UI Messages</p>
-                        <p className="text-xs text-muted-foreground mb-4">Override the default toast/error messages shown to users. Leave blank to use defaults.</p>
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <Input
-                          label="Sign-in prompt (unlock)"
-                          placeholder="Sign in to unlock prompts"
-                          value={(config as any).msgSignInToUnlock || ''}
-                          onChange={e => setConfig({ ...config, msgSignInToUnlock: e.target.value } as any)}
-                          variant="outline"
-                        />
-                        <Input
-                          label="Out of credits message"
-                          placeholder="Out of credits — upgrade to Pro"
-                          value={(config as any).msgOutOfCredits || ''}
-                          onChange={e => setConfig({ ...config, msgOutOfCredits: e.target.value } as any)}
-                          variant="outline"
-                        />
-                        <Input
-                          label="Prompt unlocked success"
-                          placeholder="Prompt unlocked!"
-                          value={(config as any).msgPromptUnlocked || ''}
-                          onChange={e => setConfig({ ...config, msgPromptUnlocked: e.target.value } as any)}
-                          variant="outline"
-                        />
-                        <Input
-                          label="Unlock failed error"
-                          placeholder="Failed to unlock — try again"
-                          value={(config as any).msgUnlockFailed || ''}
-                          onChange={e => setConfig({ ...config, msgUnlockFailed: e.target.value } as any)}
-                          variant="outline"
-                        />
-                        <Input
-                          label="Low credit nudge threshold"
-                          type="number"
-                          placeholder="5"
-                          helperText="Send a nudge email when credits drop at or below this value."
-                          value={(config as any).lowCreditThreshold ?? ''}
-                          onChange={e => setConfig({ ...config, lowCreditThreshold: e.target.value ? parseInt(e.target.value) : undefined } as any)}
-                          variant="outline"
-                        />
-                      </div>
-                    </div>
+            <Card icon={Palette} title="Visual Style">
+              <div className="grid md:grid-cols-2 gap-6">
+                <Select
+                  label="Default Theme"
+                  value={config.appearance.theme}
+                  onChange={val => setConfig({ ...config, appearance: { ...config.appearance, theme: val } })}
+                  options={[{ label: 'System (auto)', value: 'system' }, { label: 'Light', value: 'light' }, { label: 'Dark', value: 'dark' }]}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Primary Brand Color</label>
+                  <div className="flex items-center gap-3">
+                    <input type="color" value={config.appearance.primaryColor} onChange={e => setConfig({ ...config, appearance: { ...config.appearance, primaryColor: e.target.value } })} className="w-11 h-11 rounded-xl border border-border cursor-pointer bg-transparent" />
+                    <Input label="" value={config.appearance.primaryColor} onChange={e => setConfig({ ...config, appearance: { ...config.appearance, primaryColor: e.target.value } })} variant="outline" placeholder="#8B5CF6" />
                   </div>
                 </div>
               </div>
-            )}
+            </Card>
+          </div>
+        )}
 
-            {activeTab === 'branding' && (
+        {/* ── USERS & AUTH ─────────────────────────────────────── */}
+        {activeTab === 'auth' && (
+          <div className="space-y-6">
+            <Card icon={UserPlus} title="User Access Policy">
+              <div className="grid md:grid-cols-2 gap-4">
+                <ToggleRow label="Allow Registration" description="Toggle public signups on or off." value={config.allowRegistration} onToggle={() => setConfig({ ...config, allowRegistration: !config.allowRegistration })} activeLabel="Open" inactiveLabel="Closed" />
+                <ToggleRow label="Email Verification" description="Require users to verify their email." value={config.requireEmailVerification} onToggle={() => setConfig({ ...config, requireEmailVerification: !config.requireEmailVerification })} />
+                <ToggleRow label="Social Auth (Google / GitHub)" description="Enable OAuth sign-in methods." value={config.enableSocialLogin} onToggle={() => setConfig({ ...config, enableSocialLogin: !config.enableSocialLogin })} />
+                <Select label="Default Role for New Users" value={config.defaultUserRole} onChange={val => setConfig({ ...config, defaultUserRole: val })} options={[{ label: 'Customer (Buyer)', value: 'user' }, { label: 'Creator (Seller)', value: 'creator' }]} />
+              </div>
+            </Card>
+
+            <Card icon={Lock} title="Session & Login Security">
+              <div className="grid md:grid-cols-2 gap-6">
+                <Input
+                  label="Session Timeout (minutes, 0 = never)"
+                  type="number"
+                  value={config.sessionTimeout ?? 0}
+                  onChange={e => setConfig({ ...config, sessionTimeout: parseInt(e.target.value) || 0 })}
+                  variant="outline"
+                  helperText="Auto-sign-out inactive users after this period."
+                  placeholder="0"
+                />
+                <Input
+                  label="Max Login Attempts before Lockout"
+                  type="number"
+                  value={config.maxLoginAttempts ?? 5}
+                  onChange={e => setConfig({ ...config, maxLoginAttempts: parseInt(e.target.value) || 5 })}
+                  variant="outline"
+                  helperText="Set to 0 to disable lockout."
+                  placeholder="5"
+                />
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ── EMAIL / SMTP ──────────────────────────────────────── */}
+        {activeTab === 'email' && <AdminEmailSettings />}
+
+        {/* ── PAYMENTS ─────────────────────────────────────────── */}
+        {activeTab === 'payments' && <AdminPaymentSettings />}
+
+        {/* ── AI ENGINE ────────────────────────────────────────── */}
+        {activeTab === 'ai' && (
+          <Card icon={Sparkles} title="AI Intelligence Defaults">
+            <div className="grid md:grid-cols-2 gap-6">
+              <Select
+                label="Default LLM Model"
+                value={config.aiDefaults.defaultModel}
+                onChange={val => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, defaultModel: val } })}
+                options={[
+                  { label: 'GPT-4o (Omni)',        value: 'gpt-4o' },
+                  { label: 'GPT-4 Turbo',          value: 'gpt-4-turbo' },
+                  { label: 'Claude 3.5 Sonnet',    value: 'claude-3-5-sonnet' },
+                  { label: 'Claude 3 Haiku',       value: 'claude-3-haiku' },
+                  { label: 'Gemini 1.5 Pro',       value: 'gemini-1.5-pro' },
+                ]}
+              />
+              <Input label="Daily Free Credits per User" type="number" value={config.aiDefaults.freeCreditsDaily} onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, freeCreditsDaily: Number(e.target.value) } })} variant="outline" />
+              <Input label="Default Temperature (0–2)" type="number" step="0.1" min="0" max="2" value={config.aiDefaults.defaultTemperature} onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, defaultTemperature: Number(e.target.value) } })} variant="outline" />
+              <Input label="Max Output Tokens per Run" type="number" value={config.aiDefaults.maxTokens} onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, maxTokens: Number(e.target.value) } })} variant="outline" />
+            </div>
+          </Card>
+        )}
+
+        {/* ── CONTENT & SEO ────────────────────────────────────── */}
+        {activeTab === 'content' && (
+          <div className="space-y-6">
+            <AdminContentSettings siteContent={siteContent} setSiteContent={setSiteContent} onSave={handleSaveContent} isSaving={savingContent} />
+
+            <Card icon={BarChart} title="Analytics & Tracking Scripts">
               <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Image className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">Brand Assets</h3>
-                  </div>
-                  <div className="p-8 space-y-12">
-                    <div className="grid md:grid-cols-2 gap-12">
-                      <ImageUpload
-                        label="Logo (Light Mode)"
-                        value={config.logoLight}
-                        onChange={val => setConfig({ ...config, logoLight: val })}
-                        helpText="Visible on dark backgrounds."
-                        aspectRatio="any"
-                        folder="branding"
-                      />
-                      <ImageUpload
-                        label="Logo (Dark Mode)"
-                        value={config.logoDark}
-                        onChange={val => setConfig({ ...config, logoDark: val })}
-                        helpText="Visible on light backgrounds."
-                        aspectRatio="any"
-                        folder="branding"
-                      />
-                      <ImageUpload
-                        label="Default OG Image"
-                        value={config.ogImage}
-                        onChange={val => setConfig({ ...config, ogImage: val })}
-                        helpText="Used for social shares by default."
-                        aspectRatio="video"
-                        folder="branding"
-                      />
-                      <ImageUpload
-                        label="Favicon / Icon"
-                        value={config.favicon}
-                        onChange={val => setConfig({ ...config, favicon: val })}
-                        helpText="Platform favicon and browser icon."
-                        aspectRatio="square"
-                        folder="branding"
-                      />
-                    </div>
-                  </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Input label="Google Analytics 4 ID" value={config.googleAnalyticsId} onChange={e => setConfig({ ...config, googleAnalyticsId: e.target.value })} variant="outline" placeholder="G-XXXXXXXXXX" />
+                  <Input label="Facebook / Meta Pixel ID" value={config.facebookPixelId} onChange={e => setConfig({ ...config, facebookPixelId: e.target.value })} variant="outline" placeholder="1234567890" />
+                </div>
+                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
+                  <Textarea label="Global Header Scripts" value={config.customHeadScripts} onChange={e => setConfig({ ...config, customHeadScripts: e.target.value })} variant="outline" rows={5} placeholder="<script>…</script>" helperText="Injected into <head> on every page." />
+                  <Textarea label="Global Footer Scripts" value={config.customFooterScripts} onChange={e => setConfig({ ...config, customFooterScripts: e.target.value })} variant="outline" rows={5} placeholder="<script>…</script>" helperText="Injected before </body> on every page." />
                 </div>
               </div>
-            )}
+            </Card>
 
-            {activeTab === 'auth' && (
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <UserPlus className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">User Access Policy</h3>
-                  </div>
-                  <div className="p-8 grid md:grid-cols-2 gap-6">
-                    <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-border">
-                      <div>
-                        <p className="text-sm font-semibold tracking-wider text-foreground">Allow Registration</p>
-                        <p className="text-xs text-muted-foreground font-medium mt-0.5">Toggle public signups.</p>
-                      </div>
-                      <Button
-                        onClick={() => setConfig({ ...config, allowRegistration: !config.allowRegistration })}
-                        variant={config.allowRegistration ? 'success' : 'outline'}
-                        size="sm"
-                        className="rounded-xl px-4"
-                      >
-                        {config.allowRegistration ? 'Active' : 'Locked'}
-                      </Button>
-                    </div>
-                    <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-border">
-                      <div>
-                        <p className="text-sm font-semibold tracking-wider text-foreground">Email Verification</p>
-                        <p className="text-xs text-muted-foreground font-medium mt-0.5">Require account validation.</p>
-                      </div>
-                      <Button
-                        onClick={() => setConfig({ ...config, requireEmailVerification: !config.requireEmailVerification })}
-                        variant={config.requireEmailVerification ? 'success' : 'outline'}
-                        size="sm"
-                        className="rounded-xl px-4"
-                      >
-                        {config.requireEmailVerification ? 'Enabled' : 'Disabled'}
-                      </Button>
-                    </div>
-                    <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-border">
-                      <div>
-                        <p className="text-sm font-semibold tracking-wider text-foreground">Social Auth</p>
-                        <p className="text-xs text-muted-foreground font-medium mt-0.5">Enable Google/GitHub login.</p>
-                      </div>
-                      <Button
-                        onClick={() => setConfig({ ...config, enableSocialLogin: !config.enableSocialLogin })}
-                        variant={config.enableSocialLogin ? 'success' : 'outline'}
-                        size="sm"
-                        className="rounded-xl px-4"
-                      >
-                        {config.enableSocialLogin ? 'Enabled' : 'Disabled'}
-                      </Button>
-                    </div>
-                    <Select
-                      label="New User Role"
-                      value={config.defaultUserRole}
-                      onChange={val => setConfig({ ...config, defaultUserRole: val })}
-                      options={[
-                        { label: 'Customer (Buyer)', value: 'user' },
-                        { label: 'Creator (Seller)', value: 'creator' }
-                      ]}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'ai' && (
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">AI Intelligence Defaults</h3>
-                  </div>
-                  <div className="p-8 grid md:grid-cols-2 gap-6">
-                    <Select
-                      label="Default LLM Model"
-                      value={config.aiDefaults.defaultModel}
-                      onChange={val => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, defaultModel: val }})}
-                      options={[
-                        { label: 'GPT-4o (Omni)', value: 'gpt-4o' },
-                        { label: 'Claude 3.5 Sonnet', value: 'claude-3-5-sonnet' },
-                        { label: 'GPT-4 Turbo', value: 'gpt-4-turbo' }
-                      ]}
-                    />
-                    <Input
-                      label="Daily Free Credits"
-                      type="number"
-                      value={config.aiDefaults.freeCreditsDaily}
-                      onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, freeCreditsDaily: Number(e.target.value) }})}
-                      variant="outline"
-                    />
-                    <Input
-                      label="Default Temperature"
-                      type="number"
-                      step="0.1"
-                      value={config.aiDefaults.defaultTemperature}
-                      onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, defaultTemperature: Number(e.target.value) }})}
-                      variant="outline"
-                    />
-                    <Input
-                      label="Max Tokens per Run"
-                      type="number"
-                      value={config.aiDefaults.maxTokens}
-                      onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, maxTokens: Number(e.target.value) }})}
-                      variant="outline"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'seo' && (
+            <Card icon={Search} title="Route-Specific SEO">
               <div className="space-y-8">
-                {/* Analytics & Scripts */}
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <BarChart className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">Tracking & Custom Scripts</h3>
+                <div className="flex flex-col md:flex-row items-end gap-4">
+                  <div className="flex-grow">
+                    <Select
+                      label="Select Route to Configure"
+                      placeholder="Choose a site page…"
+                      value={editingPage?.id || ''}
+                      onChange={val => {
+                        const page = pages.find(p => p.id === val) || defaultPages.find(dp => dp.id === val);
+                        setEditingPage(page || null);
+                      }}
+                      options={[
+                        ...(editingPage && !pages.find(p => p.id === editingPage.id) && !defaultPages.find(dp => dp.id === editingPage.id)
+                          ? [{ label: `NEW: ${editingPage.id || 'Untitled'}`, value: editingPage.id, description: 'Draft Route', icon: Plus }]
+                          : []),
+                        ...defaultPages.map(dp => ({
+                          label: `${dp.id.toUpperCase()} (${dp.path})`,
+                          value: dp.id,
+                          description: pages.find(p => p.id === dp.id) ? 'Configured' : 'Using Defaults',
+                          icon: Globe,
+                        })),
+                        ...pages.filter(p => !defaultPages.find(dp => dp.id === p.id)).map(p => ({
+                          label: `${p.id.toUpperCase()} (${p.path})`,
+                          value: p.id,
+                          description: 'Custom Route',
+                          icon: Plus,
+                        })),
+                      ]}
+                    />
                   </div>
-                  <div className="p-8 space-y-6">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <Input
-                        label="Google Analytics 4 ID"
-                        value={config.googleAnalyticsId}
-                        onChange={e => setConfig({ ...config, googleAnalyticsId: e.target.value })}
-                        variant="outline"
-                        placeholder="G-XXXXXXXXXX"
-                      />
-                      <Input
-                        label="Facebook Pixel ID"
-                        value={config.facebookPixelId}
-                        onChange={e => setConfig({ ...config, facebookPixelId: e.target.value })}
-                        variant="outline"
-                        placeholder="1234567890"
-                      />
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
-                      <Textarea
-                        label="Global Header Scripts"
-                        value={config.customHeadScripts}
-                        onChange={e => setConfig({ ...config, customHeadScripts: e.target.value })}
-                        variant="outline"
-                        rows={5}
-                        placeholder="<script>...</script>"
-                        helperText="Injected into <head>."
-                      />
-                      <Textarea
-                        label="Global Footer Scripts"
-                        value={config.customFooterScripts}
-                        onChange={e => setConfig({ ...config, customFooterScripts: e.target.value })}
-                        variant="outline"
-                        rows={5}
-                        placeholder="<script>...</script>"
-                        helperText="Injected before </body>."
-                      />
-                    </div>
-                  </div>
+                  <Button onClick={() => setEditingPage({ id: '', path: '', title: '', description: '' })} variant="outline" size="sm" leftIcon={Plus} className="rounded-xl font-bold">
+                    Add Custom Route
+                  </Button>
+                  {editingPage?.id && !defaultPages.find(dp => dp.id === editingPage.id) && pages.find(p => p.id === editingPage.id) && (
+                    <Button variant="danger" size="sm" className="rounded-xl font-bold" leftIcon={Trash2}
+                      onClick={() => { if (confirm('Delete custom route SEO?')) { deleteDoc(doc(db, 'site_pages', editingPage.id)).then(() => { setPages(pages.filter(pg => pg.id !== editingPage.id)); setEditingPage(null); toast.success('Deleted'); }); } }}>
+                      Delete
+                    </Button>
+                  )}
                 </div>
 
-                {/* Site Pages SEO */}
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                        <Globe className="w-4 h-4" />
+                {editingPage ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><Target className="w-4 h-4" /></div>
+                        <div>
+                          <h4 className="text-sm font-bold text-foreground">SEO Metadata</h4>
+                          <p className="text-xs text-muted-foreground">/{editingPage.id || 'new-route'}</p>
+                        </div>
                       </div>
-                      <h3 className="font-semibold text-lg text-foreground">Route-Specific SEO</h3>
+                      {editingPage.path && (
+                        <a href={editingPage.path} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 border border-border rounded-xl text-xs font-bold hover:text-primary transition-colors">
+                          View Page <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
                     </div>
-                    <Button
-                      onClick={() => setEditingPage({ id: '', path: '', title: '', description: '' })}
-                      variant="outline"
-                      size="sm"
-                      leftIcon={Plus}
-                      className="rounded-xl font-bold"
-                    >
-                      Custom Page
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Input label="Route ID" value={editingPage.id} onChange={e => setEditingPage({ ...editingPage, id: e.target.value })} variant="outline" placeholder="e.g. explore" helperText="Machine-readable identifier." />
+                      <Input label="Route Path" value={editingPage.path} onChange={e => setEditingPage({ ...editingPage, path: e.target.value })} variant="outline" placeholder="/explore" />
+                    </div>
+                    <Input label="Meta Title" value={editingPage.title} onChange={e => setEditingPage({ ...editingPage, title: e.target.value })} variant="outline" placeholder="SEO Optimized Page Title" />
+                    <Textarea label="Meta Description" value={editingPage.description} onChange={e => setEditingPage({ ...editingPage, description: e.target.value })} variant="outline" rows={3} placeholder="Search engine snippet (max 160 characters)…" />
+                    <TagInput label="Keywords" tags={editingPage.keywords ? editingPage.keywords.split(',').map(k => k.trim()).filter(Boolean) : []} onChange={tags => setEditingPage({ ...editingPage, keywords: tags.join(', ') })} placeholder="Add keyword and press Enter…" helperText="Comma-separated internally." />
+                    <ImageUpload label="Social Sharing Image (OG)" value={editingPage.ogImage || ''} onChange={val => setEditingPage({ ...editingPage, ogImage: val })} aspectRatio="video" folder="seo" helpText="Custom preview image for social links." />
+                    <Button onClick={handleSavePage} isLoading={savingPage} variant="primary" fullWidth size="lg" className="rounded-2xl h-14 font-bold shadow-xl shadow-primary/20" leftIcon={Save}>
+                      Save SEO Configuration
                     </Button>
                   </div>
-
-                  <div className="p-8">
-                    <div className="space-y-8">
-                      {/* Page Selection Dropdown */}
-                      <div className="flex flex-col md:flex-row items-end gap-4">
-                        <div className="flex-grow">
-                          <Select
-                            label="Select Route to Configure"
-                            placeholder="Choose a site page..."
-                            value={editingPage?.id || ""}
-                            onChange={(val) => {
-                              const page = pages.find(p => p.id === val) || defaultPages.find(dp => dp.id === val);
-                              setEditingPage(page || null);
-                            }}
-                            options={[
-                              ...(editingPage && !pages.find(p => p.id === editingPage.id) && !defaultPages.find(dp => dp.id === editingPage.id) ? [{
-                                label: `NEW: ${editingPage.id || 'Untitled'}`,
-                                value: editingPage.id,
-                                description: 'Draft Route',
-                                icon: Plus
-                              }] : []),
-                              ...defaultPages.map(dp => ({
-                                label: `${dp.id.toUpperCase()} (${dp.path})`,
-                                value: dp.id,
-                                description: pages.find(p => p.id === dp.id) ? 'Configured' : 'Using Defaults',
-                                icon: Globe
-                              })),
-                              ...pages.filter(p => !defaultPages.find(dp => dp.id === p.id)).map(p => ({
-                                label: `${p.id.toUpperCase()} (${p.path})`,
-                                value: p.id,
-                                description: 'Custom Route',
-                                icon: Plus
-                              }))
-                            ]}
-                          />
-                        </div>
-                        {editingPage?.id && !defaultPages.find(dp => dp.id === editingPage.id) && pages.find(p => p.id === editingPage.id) && (
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            className="rounded-xl h-11 px-6 font-bold"
-                            leftIcon={Trash2}
-                            onClick={() => {
-                              if(confirm('Delete custom page SEO?')) {
-                                deleteDoc(doc(db, 'site_pages', editingPage.id)).then(() => {
-                                  setPages(pages.filter(pg => pg.id !== editingPage.id));
-                                  setEditingPage(null);
-                                  toast.success('Route SEO deleted');
-                                });
-                              }
-                            }}
-                          >
-                            Delete Route
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Edit Area */}
-                        {editingPage ? (
-                          <div className="space-y-8">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                  <Target className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-bold text-foreground">Configure SEO Metadata</h4>
-                                  <p className="text-xs text-muted-foreground font-medium">/{editingPage.id || 'new-route'}</p>
-                                </div>
-                              </div>
-                              <a
-                                href={editingPage.path}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-muted/50 border border-border rounded-xl text-xs font-bold hover:text-primary transition-colors"
-                              >
-                                View Page <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
-                            </div>
-
-                            <div className="grid md:grid-cols-2 gap-8">
-                              <Input
-                                label="Route ID"
-                                value={editingPage.id}
-                                onChange={e => setEditingPage({...editingPage, id: e.target.value})}
-                                variant="outline"
-                                placeholder="e.g. explore"
-                                helperText="Machine-readable identifier."
-                              />
-                              <Input
-                                label="Route Path"
-                                value={editingPage.path}
-                                onChange={e => setEditingPage({...editingPage, path: e.target.value})}
-                                variant="outline"
-                                placeholder="e.g. /explore"
-                                helperText="Relative URL path of the page."
-                              />
-                            </div>
-
-                            <div className="space-y-6 pt-4 border-t border-border/50">
-                              <Input
-                                label="Meta Title"
-                                value={editingPage.title}
-                                onChange={e => setEditingPage({...editingPage, title: e.target.value})}
-                                variant="outline"
-                                placeholder="SEO Optimized Page Title"
-                              />
-                              <Textarea
-                                label="Meta Description"
-                                value={editingPage.description}
-                                onChange={e => setEditingPage({...editingPage, description: e.target.value})}
-                                variant="outline"
-                                rows={4}
-                                placeholder="Search engine snippet (max 160 characters)..."
-                              />
-                              <TagInput
-                                label="Keywords"
-                                tags={editingPage.keywords ? editingPage.keywords.split(',').map(k => k.trim()).filter(Boolean) : []}
-                                onChange={tags => setEditingPage({...editingPage, keywords: tags.join(', ')})}
-                                placeholder="Add keyword and press enter..."
-                                helperText="Search engine keywords (comma-separated internally)."
-                              />
-
-                              <div className="grid md:grid-cols-1 gap-6">
-                                <ImageUpload
-                                  label="Social Sharing (OG Image)"
-                                  value={editingPage.ogImage || ''}
-                                  onChange={val => setEditingPage({...editingPage, ogImage: val})}
-                                  aspectRatio="video"
-                                  folder="seo"
-                                  helpText="Custom preview image for social media links."
-                                />
-                              </div>
-
-                              <div className="pt-8">
-                                <Button
-                                  onClick={handleSavePage}
-                                  isLoading={savingPage}
-                                  variant="primary"
-                                  fullWidth
-                                  size="lg"
-                                  className="rounded-2xl h-14 font-bold text-sm shadow-xl shadow-primary/20"
-                                  leftIcon={Save}
-                                >
-                                  Update SEO Configuration
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="h-[400px] border-2 border-dashed border-border rounded-[2.5rem] flex flex-col items-center justify-center p-12 text-center bg-muted/5">
-                            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/30 mb-6">
-                              <Search className="w-8 h-8" />
-                            </div>
-                            <h5 className="text-sm font-bold text-foreground mb-2">Select a Route to Begin</h5>
-                            <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-                              Choose a page from the dropdown above to audit and refine its meta tags, tracking scripts, and social presence.
-                            </p>
-                          </div>
-                        )}
-                    </div>
+                ) : (
+                  <div className="h-56 border-2 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-center p-8 bg-muted/5">
+                    <Search className="w-8 h-8 text-muted-foreground/30 mb-3" />
+                    <p className="text-sm font-semibold text-foreground">Select a Route to Configure</p>
+                    <p className="text-xs text-muted-foreground mt-1">Choose from the dropdown above or add a custom route.</p>
                   </div>
-                </div>
+                )}
               </div>
-            )}
-
-            {activeTab === 'contact' && (
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Phone className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">Communication Channels</h3>
-                  </div>
-                  <div className="p-8 space-y-6">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <Input label="Support Email" value={config.supportEmail} onChange={e => setConfig({...config, supportEmail: e.target.value})} variant="outline" leftIcon={Mail} />
-                      <Input label="Public Phone" value={config.contactPhone} onChange={e => setConfig({...config, contactPhone: e.target.value})} variant="outline" leftIcon={Phone} />
-                      <Input label="WhatsApp" value={config.whatsapp} onChange={e => setConfig({...config, whatsapp: e.target.value})} variant="outline" leftIcon={MessageSquare} />
-                    </div>
-                    <Textarea label="Business HQ Address" value={config.businessAddress} onChange={e => setConfig({...config, businessAddress: e.target.value})} variant="outline" rows={3} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'social' && (
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Share2 className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">Social Presence</h3>
-                  </div>
-                  <div className="p-8 grid md:grid-cols-2 gap-6">
-                    <Input label="X (Twitter)" value={config.socials.twitter} onChange={e => setConfig({...config, socials: {...config.socials, twitter: e.target.value}})} variant="outline" />
-                    <Input label="Facebook" value={config.socials.facebook} onChange={e => setConfig({...config, socials: {...config.socials, facebook: e.target.value}})} variant="outline" />
-                    <Input label="Instagram" value={config.socials.instagram} onChange={e => setConfig({...config, socials: {...config.socials, instagram: e.target.value}})} variant="outline" />
-                    <Input label="LinkedIn" value={config.socials.linkedin} onChange={e => setConfig({...config, socials: {...config.socials, linkedin: e.target.value}})} variant="outline" />
-                    <Input label="GitHub" value={config.socials.github} onChange={e => setConfig({...config, socials: {...config.socials, github: e.target.value}})} variant="outline" />
-                    <Input label="YouTube" value={config.socials.youtube} onChange={e => setConfig({...config, socials: {...config.socials, youtube: e.target.value}})} variant="outline" />
-                    <Input label="Discord" value={config.socials.discord} onChange={e => setConfig({...config, socials: {...config.socials, discord: e.target.value}})} variant="outline" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'regional' && (
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Globe className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">Localization & Regional</h3>
-                  </div>
-                  <div className="p-8 grid md:grid-cols-2 gap-6">
-                    <Select
-                      label="Primary Language"
-                      value={config.defaultLanguage}
-                      onChange={val => setConfig({...config, defaultLanguage: val})}
-                      options={[{ label: 'English (US)', value: 'en' }, { label: 'Hindi', value: 'hi' }, { label: 'Spanish', value: 'es' }]}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                      <Select
-                        label="Currency"
-                        value={config.currency}
-                        onChange={val => setConfig({...config, currency: val})}
-                        options={[{ label: 'USD', value: 'USD' }, { label: 'EUR', value: 'EUR' }, { label: 'INR', value: 'INR' }]}
-                      />
-                      <Input label="Symbol" value={config.currencySymbol} onChange={e => setConfig({...config, currencySymbol: e.target.value})} variant="outline" />
-                    </div>
-                    <Select
-                      label="Timezone"
-                      value={config.timezone}
-                      onChange={val => setConfig({...config, timezone: val})}
-                      options={[{ label: 'UTC', value: 'UTC' }, { label: 'IST', value: 'Asia/Kolkata' }, { label: 'EST', value: 'America/New_York' }]}
-                    />
-                    <Input label="Tax Rate (%)" type="number" value={config.taxRate} onChange={e => setConfig({...config, taxRate: Number(e.target.value)})} variant="outline" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'content' && (
-              <AdminContentSettings 
-                siteContent={siteContent}
-                setSiteContent={setSiteContent}
-                onSave={handleSaveContent}
-                isSaving={savingContent}
-              />
-            )}
-
-            {activeTab === 'appearance' && (
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Palette className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">Visual Style</h3>
-                  </div>
-                  <div className="p-8 grid md:grid-cols-2 gap-6">
-                    <Select
-                      label="Theme Default"
-                      value={config.appearance.theme}
-                      onChange={val => setConfig({...config, appearance: {...config.appearance, theme: val}})}
-                      options={[{ label: 'System', value: 'system' }, { label: 'Light', value: 'light' }, { label: 'Dark', value: 'dark' }]}
-                    />
-                    <Input
-                      label="Primary Brand Color"
-                      type="color"
-                      value={config.appearance.primaryColor}
-                      onChange={e => setConfig({...config, appearance: {...config.appearance, primaryColor: e.target.value}})}
-                      variant="outline"
-                      className="h-11"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'security' && (
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-                  <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Shield className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-foreground">Platform Governance</h3>
-                  </div>
-                  <div className="p-8 space-y-6">
-                    <div className="flex items-center justify-between p-6 bg-rose-500/5 rounded-3xl border border-rose-500/20">
-                      <div>
-                        <p className="text-[11px] font-semibold tracking-widest text-rose-600">Maintenance Mode</p>
-                        <p className="text-[10px] text-rose-500/60 font-medium mt-1">Restrict public access globally.</p>
-                      </div>
-                      <Button
-                        onClick={() => setConfig({ ...config, maintenanceMode: !config.maintenanceMode })}
-                        variant={config.maintenanceMode ? 'danger' : 'outline'}
-                        size="sm"
-                        className="rounded-2xl px-8"
-                      >
-                        {config.maintenanceMode ? 'System Locked' : 'Platform Live'}
-                      </Button>
-                    </div>
-                    {config.maintenanceMode && (
-                      <Textarea
-                        label="Maintenance Messaging"
-                        value={config.maintenanceMessage}
-                        onChange={e => setConfig({ ...config, maintenanceMessage: e.target.value })}
-                        variant="outline"
-                        rows={3}
-                        placeholder="Explain the downtime to your users..."
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'email' && <AdminEmailSettings />}
-            {activeTab === 'payment' && <AdminPaymentSettings />}
-            {activeTab === 'marketing' && <AdminMarketingSettings />}
-            {activeTab === 'assets' && <AdminAssetManager />}
-
-            {activeTab === 'advanced' && (
-              <div className="bg-card border border-border rounded-3xl p-10 shadow-sm">
-                <Alert variant="error" title="Critical Engine Access" className="mb-8">
-                  Mutating these parameters can disrupt core delivery pipelines and API authentication.
-                </Alert>
-                <div className="flex items-center justify-between p-6 bg-muted/20 rounded-3xl border border-border">
-                  <div>
-                    <p className="font-semibold text-xs tracking-widest text-rose-600">Flush Global Cache</p>
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1">Reset CDN states and serialized data clusters.</p>
-                  </div>
-                  <Button variant="danger" size="sm" className="rounded-2xl">Execute Purge</Button>
-                </div>
-              </div>
-            )}
+            </Card>
           </div>
-        </div>
+        )}
+
+        {/* ── MARKETING ────────────────────────────────────────── */}
+        {activeTab === 'marketing' && <AdminMarketingSettings />}
+
+        {/* ── SECURITY ─────────────────────────────────────────── */}
+        {activeTab === 'security' && (
+          <div className="space-y-6">
+
+            <Card icon={Shield} title="Platform Governance">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-6 bg-rose-500/5 rounded-2xl border border-rose-500/20">
+                  <div>
+                    <p className="text-sm font-semibold tracking-wider text-rose-600">Maintenance Mode</p>
+                    <p className="text-xs text-rose-500/60 font-medium mt-1">Lock the site to the public while you make updates.</p>
+                  </div>
+                  <Button onClick={() => setConfig({ ...config, maintenanceMode: !config.maintenanceMode })} variant={config.maintenanceMode ? 'danger' : 'outline'} size="sm" className="rounded-xl px-6 shrink-0">
+                    {config.maintenanceMode ? 'Site Locked' : 'Site Live'}
+                  </Button>
+                </div>
+                {config.maintenanceMode && (
+                  <Textarea label="Maintenance Message" value={config.maintenanceMessage} onChange={e => setConfig({ ...config, maintenanceMessage: e.target.value })} variant="outline" rows={3} placeholder="We'll be back shortly…" />
+                )}
+              </div>
+            </Card>
+
+            <Card icon={Globe} title="Privacy & Compliance">
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <ToggleRow label="Cookie Consent Banner" description="Show a GDPR-compliant cookie notice to visitors." value={config.cookieConsent ?? false} onToggle={() => setConfig({ ...config, cookieConsent: !config.cookieConsent })} />
+                  <ToggleRow label="GDPR / Privacy Mode" description="Anonymise IP addresses sent to analytics providers." value={config.gdprMode ?? false} onToggle={() => setConfig({ ...config, gdprMode: !config.gdprMode })} />
+                </div>
+                {config.cookieConsent && (
+                  <Textarea label="Cookie Consent Message" value={config.cookieConsentText || ''} onChange={e => setConfig({ ...config, cookieConsentText: e.target.value })} variant="outline" rows={2} placeholder="We use cookies to improve your experience…" />
+                )}
+              </div>
+            </Card>
+
+            <Card icon={Link2} title="Webhooks & Integrations">
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">Send a POST request to an external URL whenever a key platform event fires (new user, new order, failed payment).</p>
+                <Input label="Webhook Endpoint URL" value={config.webhookUrl || ''} onChange={e => setConfig({ ...config, webhookUrl: e.target.value })} variant="outline" placeholder="https://hooks.example.com/events" helperText="Must accept POST with JSON body. Leave blank to disable." />
+              </div>
+            </Card>
+
+            <Card icon={Zap} title="Advanced">
+              <Alert variant="error" title="Danger Zone" className="mb-6">
+                These actions affect live infrastructure and cannot be undone.
+              </Alert>
+              <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-border">
+                <div>
+                  <p className="font-semibold text-sm text-rose-600">Flush Global Cache</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Reset CDN states and serialised data clusters.</p>
+                </div>
+                <Button variant="danger" size="sm" className="rounded-xl shrink-0">Execute Purge</Button>
+              </div>
+            </Card>
+
+          </div>
+        )}
+
       </div>
     </div>
   );

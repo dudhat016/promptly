@@ -1,15 +1,19 @@
 import {
-  collection, getDocs, query, where, orderBy, limit, doc, getDoc, Timestamp
+  arrayUnion, addDoc, collection, getDocs, query, where, orderBy,
+  limit, doc, getDoc, Timestamp, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
 import {
-  Bell, Check, Clock, Copy, Database, ExternalLink, Gift, Heart,
-  History, LayoutGrid, PlusCircle, RefreshCw, ShieldCheck, Sparkles, TrendingUp,
-  User, Zap, ArrowRight, CreditCard, Star
+  BarChart3, Bell, Bot, Check, Clock, Code2, Copy, CreditCard,
+  Database, Download, ExternalLink, FolderKanban, Flame, Gift, Heart,
+  History, LayoutGrid, PlusCircle, RefreshCw, ShieldCheck, Sparkles,
+  Star, Trophy, User, Zap, ArrowRight,
 } from 'lucide-react';
+import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import PromptCard from '../components/PromptCard';
+import { ProGate, ProFeatureCard } from '../components/ProGate';
 import Button from '../components/primitives/Button';
 import Progress from '../components/feedback/Progress';
 import Badge from '../components/primitives/Badge';
@@ -18,6 +22,13 @@ import { useConfig } from '../hooks/useConfig';
 import { useNotifications } from '../hooks/useNotifications';
 import { db } from '../lib/firebase';
 import { usePath } from '../hooks/usePath';
+import { useStreak } from '../hooks/useStreak';
+import { useDynamicBadges } from '../hooks/useDynamicBadges';
+import {
+  BADGE_DEFS, BadgeContext, computeEarnedBadges,
+  computeEarnedBadgesFromDefs, defToBadgeDef,
+} from '../lib/badges';
+import { EmailService } from '../services/emailService';
 import { Prompt } from '../types';
 import { toast } from 'react-hot-toast';
 
@@ -38,14 +49,15 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'library' | 'favorites'>(
     (searchParams.get('tab') as any) === 'favorites' ? 'favorites' : 'library'
   );
-  const [myPrompts, setMyPrompts]     = useState<Prompt[]>([]);
-  const [favorites, setFavorites]     = useState<Prompt[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const [myPrompts, setMyPrompts]         = useState<Prompt[]>([]);
+  const [favorites, setFavorites]         = useState<Prompt[]>([]);
+  const [forYouPrompts, setForYouPrompts] = useState<Prompt[]>([]);
+  const [loading, setLoading]             = useState(true);
   const [referralCount, setReferralCount] = useState(0);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [orders, setOrders]           = useState<any[]>([]);
-  const [copied, setCopied]           = useState(false);
-  const [planData, setPlanData]       = useState<any>(null);
+  const [orders, setOrders]               = useState<any[]>([]);
+  const [copied, setCopied]               = useState(false);
+  const [planData, setPlanData]           = useState<any>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -92,6 +104,26 @@ export default function DashboardPage() {
             if (planSnap.exists()) setPlanData({ id: planSnap.id, ...planSnap.data() });
           } catch { /* optional */ }
         }
+
+        // For You prompts — scored by affinity profile seeded at onboarding
+        if (profile?.interests?.length) {
+          try {
+            const affinityProfile = getAffinityProfile();
+            const fySnap = await getDocs(
+              query(collection(db, 'prompts'), where('status', '==', 'approved'), limit(40))
+            );
+            const fyAll = fySnap.docs
+              .map(d => ({ ...d.data(), id: d.id } as Prompt))
+              .filter(p => p.moderationStatus !== 'hidden');
+            const fyScored = fyAll
+              .map(p => ({ p, score: calculatePromptScore(p, affinityProfile) }))
+              .filter(x => x.score > 0)
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 6)
+              .map(x => x.p);
+            setForYouPrompts(fyScored);
+          } catch { /* optional */ }
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -121,6 +153,86 @@ export default function DashboardPage() {
   };
 
   const { unreadCount } = useNotifications();
+  const { streak, longest, isNewRecord } = useStreak();
+  const { badges: dynamicBadgeDefs, loading: badgesLoading } = useDynamicBadges();
+
+  // Resolve display defs — prefer Firestore, fall back to hardcoded
+  const activeBadgeDefs = dynamicBadgeDefs.length > 0
+    ? dynamicBadgeDefs.map(defToBadgeDef)
+    : BADGE_DEFS;
+
+  // Badge award — runs after data and dynamic defs are loaded
+  useEffect(() => {
+    if (!user || !profile || loading || badgesLoading) return;
+    const totalViews = myPrompts.reduce((s, p) => s + (p.viewsCount || 0), 0);
+    const ctx: BadgeContext = {
+      promptCount: myPrompts.length,
+      totalViews,
+      referralCount,
+      streak,
+    };
+
+    const earned = dynamicBadgeDefs.length > 0
+      ? computeEarnedBadgesFromDefs(dynamicBadgeDefs, profile, ctx)
+      : computeEarnedBadges(profile, ctx);
+
+    const stored = profile.badges || [];
+    const newOnes = earned.filter(id => !stored.includes(id));
+    if (newOnes.length === 0) return;
+
+    // Persist new badges to Firestore
+    updateDoc(doc(db, 'users', user.uid), { badges: arrayUnion(...newOnes) }).catch(() => {});
+
+    newOnes.forEach(async id => {
+      const def = activeBadgeDefs.find(b => b.id === id);
+      if (!def) return;
+
+      // Toast notification
+      toast.success(`🏅 Badge unlocked: ${def.label}!`, { duration: 4000 });
+
+      // In-app notification
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'notifications'), {
+          userId: user.uid,
+          type: 'success',
+          title: `🏅 Badge Earned: ${def.label}`,
+          body: def.description,
+          link: '/dashboard',
+          readAt: null,
+          createdAt: serverTimestamp(),
+        });
+      } catch { /* non-fatal */ }
+
+      // CRM: tag the marketing contact with the badge
+      try {
+        const contactSnap = await getDocs(
+          query(collection(db, 'marketing_contacts'), where('userId', '==', user.uid))
+        );
+        if (!contactSnap.empty) {
+          const contactDoc = contactSnap.docs[0];
+          const existingTags: string[] = contactDoc.data().tags ?? [];
+          const badgeTag = `badge:${id}`;
+          if (!existingTags.includes(badgeTag)) {
+            await updateDoc(contactDoc.ref, { tags: arrayUnion(badgeTag) });
+          }
+          // Log CRM activity
+          await addDoc(collection(db, 'marketing_activities'), {
+            contactId: contactDoc.id,
+            type: 'tag_added',
+            description: `Earned badge: ${def.label}`,
+            metadata: { badgeId: id, badgeName: def.label },
+            timestamp: serverTimestamp(),
+          });
+        }
+      } catch { /* non-fatal */ }
+
+      // Email
+      if (user.email) {
+        EmailService.sendBadgeEarnedEmail(user.uid, user.email, def.label, def.description);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, badgesLoading, myPrompts, referralCount, streak]);
 
   const creditsUsed   = (profile?.monthlyLimit || 50) - (profile?.credits || 0);
   const creditsTotal  = profile?.monthlyLimit || 50;
@@ -163,6 +275,17 @@ export default function DashboardPage() {
                 <Badge variant={isPro ? 'warning' : 'default'} size="sm" dot={isPro}>
                   {profile?.subscriptionStatus?.toUpperCase() || 'FREE'} Plan
                 </Badge>
+                {streak > 1 && (
+                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border ${
+                    isNewRecord
+                      ? 'bg-amber-500/15 text-amber-600 border-amber-500/30 dark:text-amber-400'
+                      : 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400'
+                  }`}>
+                    <Flame className="w-3 h-3" />
+                    {streak}-day streak
+                    {isNewRecord && <Trophy className="w-3 h-3 ml-0.5" />}
+                  </span>
+                )}
                 <span className="text-muted-foreground text-xs flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   Joined {profile?.createdAt ? parseDate(profile.createdAt).toLocaleDateString() : 'recently'}
@@ -182,7 +305,7 @@ export default function DashboardPage() {
             <Button as={Link} to={prefix('/explore')} variant="outline" size="sm" leftIcon={LayoutGrid}>
               Explore
             </Button>
-            <Button as={Link} to={prefix('/dashboard/submit')} variant="outline" size="sm" leftIcon={PlusCircle}>
+            <Button as={Link} to={prefix('/dashboard/library/submit')} variant="outline" size="sm" leftIcon={PlusCircle}>
               New Prompt
             </Button>
             {isPro ? (
@@ -217,7 +340,7 @@ export default function DashboardPage() {
       )}
       {unreadCount > 0 && (
         <Link
-          to={prefix('/notifications')}
+          to={prefix('/dashboard/notifications')}
           className="flex items-center gap-3 px-4 py-3 bg-primary/8 border border-primary/15 rounded-xl text-sm hover:bg-primary/12 transition-colors"
         >
           <Bell className="w-4 h-4 text-primary shrink-0" />
@@ -227,6 +350,54 @@ export default function DashboardPage() {
           <span className="text-xs font-bold text-primary shrink-0">View →</span>
         </Link>
       )}
+
+      {/* ── Referral Progress Bar ── */}
+      {(() => {
+        const REFERRAL_GOAL = 3;
+        const pct = Math.min(100, Math.round((referralCount / REFERRAL_GOAL) * 100));
+        const remaining = Math.max(0, REFERRAL_GOAL - referralCount);
+        const achieved = referralCount >= REFERRAL_GOAL;
+        if (!profile?.referralCode) return null;
+        return (
+          <div className={`flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 rounded-2xl border ${
+            achieved
+              ? 'bg-emerald-500/8 border-emerald-500/20'
+              : 'bg-card border-border'
+          }`}>
+            <div className="flex items-center gap-3 shrink-0">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${achieved ? 'bg-emerald-500/15' : 'bg-primary/10'}`}>
+                <Gift className={`w-4 h-4 ${achieved ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}`} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground uppercase tracking-wide">Referral Reward</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {achieved ? '🎉 Goal reached! Contact support to claim.' : `${remaining} more referral${remaining !== 1 ? 's' : ''} → 1 month free Pro`}
+                </p>
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Progress</span>
+                <span className="text-[10px] font-bold text-foreground">{referralCount}/{REFERRAL_GOAL}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${achieved ? 'bg-emerald-500' : 'bg-primary'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+            {!achieved && (
+              <Link
+                to={prefix('/dashboard/affiliate')}
+                className="shrink-0 text-xs font-bold text-primary hover:underline whitespace-nowrap"
+              >
+                Share link →
+              </Link>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Quick Stats Row ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -298,6 +469,88 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      {/* ── For You ── */}
+      {profile?.interests?.length && (forYouPrompts.length > 0 || loading) && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                Recommended For You
+              </h3>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                {profile.interests.slice(0, 5).map(tag => (
+                  <span key={tag} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <Link to={prefix('/explore')} className="text-xs font-bold text-primary hover:underline shrink-0">
+              View all →
+            </Link>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-44 bg-muted/40 rounded-xl animate-pulse" />
+                ))
+              : forYouPrompts.slice(0, 3).map(p => (
+                  <PromptCard key={p.id} prompt={p} isUnlocked={(profile?.unlockedPrompts || []).includes(p.id!)} />
+                ))
+            }
+          </div>
+        </div>
+      )}
+
+      {/* ── Pro Analytics gate (free users see blurred mock) ── */}
+      {!isPro && (
+        <ProGate
+          feature="Pro Analytics"
+          description="Unlock detailed usage trends, prompt performance rankings, and revenue insights."
+          className="border border-border"
+        >
+          <div className="bg-card rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Usage Analytics</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-bold">Last 14 days</p>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                {['7d','30d','All'].map(l => (
+                  <span key={l} className="text-[10px] font-bold px-2 py-1 rounded bg-muted text-muted-foreground">{l}</span>
+                ))}
+              </div>
+            </div>
+            {/* Mock bar chart */}
+            <div className="h-28 flex items-end gap-1 px-1">
+              {[35,58,42,75,50,88,62,44,70,55,80,48,90,65].map((h, i) => (
+                <div key={i} className="flex-1 rounded-t-sm bg-primary/35 transition-all"
+                  style={{ height: `${h}%` }} />
+              ))}
+            </div>
+            {/* Mock stat tiles */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Prompt Views',  value: '1,284' },
+                { label: 'Copies',        value: '342'   },
+                { label: 'Est. Earnings', value: '₹2,400' },
+              ].map(s => (
+                <div key={s.label} className="bg-muted/50 rounded-lg py-2.5 text-center border border-border">
+                  <p className="text-sm font-bold text-foreground">{s.value}</p>
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ProGate>
+      )}
 
       {/* ── AI Twin Studio Teaser ── */}
       <div className="bg-gradient-to-r from-violet-500/10 via-primary/5 to-transparent border border-violet-500/20 rounded-xl p-4 flex items-center gap-4">
@@ -371,7 +624,7 @@ export default function DashboardPage() {
               {earnings > 0 && (
                 <Button
                   as={Link}
-                  to={prefix('/settings/affiliate')}
+                  to={prefix('/dashboard/affiliate')}
                   variant="outline"
                   size="sm"
                   fullWidth
@@ -468,6 +721,116 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── Unlock with Pro feature grid (free users only) ── */}
+      {!isPro && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              What you unlock with Pro
+            </h3>
+            <Link to={prefix('/pricing')} className="text-xs font-bold text-primary hover:underline">
+              See all features →
+            </Link>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <ProFeatureCard
+              icon={BarChart3}
+              title="Advanced Analytics"
+              description="Daily usage charts, prompt performance rankings, credit breakdown, and revenue trends."
+            />
+            <ProFeatureCard
+              icon={Bot}
+              title="AI Twin Studio"
+              description="Train a personal AI on your writing style and auto-generate custom prompts."
+            />
+            <ProFeatureCard
+              icon={Code2}
+              title="API Access"
+              description="Integrate Promptly into your own tools with full REST API access and rate limits."
+            />
+            <ProFeatureCard
+              icon={FolderKanban}
+              title="Collections & Export"
+              description="Organize prompts into shareable collections and export your full library as CSV."
+            />
+          </div>
+          {/* Soft CTA banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-primary/5 border border-primary/15 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">Get everything. Cancel anytime.</p>
+                <p className="text-[11px] text-muted-foreground">Unlimited prompts · AI Studio · Analytics · API</p>
+              </div>
+            </div>
+            <Button as={Link} to={prefix('/pricing')} variant="primary" size="sm" className="shrink-0 shadow-md shadow-primary/20">
+              Upgrade to Pro
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Achievements ── */}
+      {(() => {
+        const totalViews = myPrompts.reduce((s, p) => s + (p.viewsCount || 0), 0);
+        const ctx: BadgeContext = { promptCount: myPrompts.length, totalViews, referralCount, streak };
+        const earnedIds = new Set(profile?.badges || computeEarnedBadges(profile!, ctx));
+        const earnedCount = activeBadgeDefs.filter(b => earnedIds.has(b.id)).length;
+        return (
+          <div className="bg-card border border-border rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-muted-foreground" /> Achievements
+              </h3>
+              <span className="text-xs text-muted-foreground font-medium">
+                {earnedCount}/{activeBadgeDefs.length} earned
+              </span>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
+              {activeBadgeDefs.map(badge => {
+                const earned = earnedIds.has(badge.id);
+                const Icon = badge.icon;
+                return (
+                  <div
+                    key={badge.id}
+                    title={earned ? `${badge.label}: ${badge.description}` : `Locked — ${badge.hint}`}
+                    className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all cursor-default ${
+                      earned
+                        ? `${badge.color} shadow-sm`
+                        : 'bg-muted/30 border-border text-muted-foreground/30 grayscale'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 shrink-0" />
+                    <span className={`text-[9px] font-bold uppercase tracking-wide text-center leading-tight ${earned ? '' : 'text-muted-foreground/30'}`}>
+                      {badge.label}
+                    </span>
+                    {/* Tooltip on hover */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-36 bg-popover border border-border rounded-lg shadow-lg px-2 py-1.5 text-[10px] text-popover-foreground font-medium text-center opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20 leading-snug">
+                      {earned ? badge.description : `🔒 ${badge.hint}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Progress bar */}
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-700"
+                  style={{ width: `${Math.round((earnedCount / activeBadgeDefs.length) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">
+                {Math.round((earnedCount / activeBadgeDefs.length) * 100)}% complete
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Recent Activity ── */}
       <div className="bg-card border border-border rounded-xl p-5">

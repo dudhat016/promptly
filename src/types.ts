@@ -92,6 +92,21 @@ export interface UserProfile {
     video?: 'gemini' | 'openai' | 'anthropic';
   };
   notificationPrefs?: Partial<NotifPrefs>;
+  currentStreak?: number;
+  badges?: string[];
+  // ── Public creator profile ──
+  username?: string;
+  bio?: string;
+  website?: string;
+  location?: string;
+  expertiseTags?: string[];
+  socialLinks?: {
+    twitter?: string;
+    instagram?: string;
+    github?: string;
+    youtube?: string;
+    linkedin?: string;
+  };
 }
 
 export interface Tag {
@@ -293,6 +308,17 @@ export interface Prompt {
   moderationStatus?: 'active' | 'flagged' | 'hidden';
 }
 
+export interface PromptCollection {
+  id?: string;
+  userId: string;
+  name: string;
+  description?: string;
+  promptIds: string[];
+  isPublic?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PromptReport {
   id?: string;
   promptId: string;
@@ -313,6 +339,30 @@ export interface Category {
   name: string;
   slug: string;
   isPremium?: boolean;
+}
+
+export interface BadgeDefinition {
+  id?: string;
+  name: string;
+  description: string;
+  iconName: string;
+  colorClass: string;
+  hint: string;
+  conditionType:
+    | 'unlocks'
+    | 'power_unlocks'
+    | 'prompts'
+    | 'views'
+    | 'following'
+    | 'streak'
+    | 'referrals'
+    | 'subscription_pro'
+    | 'early_adopter'
+    | 'manual';
+  conditionThreshold: number;
+  isActive: boolean;
+  order: number;
+  createdAt?: string;
 }
 
 export type AdminSection =
@@ -338,7 +388,8 @@ export type AdminSection =
   | 'settings'
   | 'emails'
   | 'reports'
-  | 'content';
+  | 'content'
+  | 'badges';
 
 export interface SectionPermission {
   canView: boolean;

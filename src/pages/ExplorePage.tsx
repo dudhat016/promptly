@@ -1,13 +1,13 @@
 import { limit } from 'firebase/firestore';
-import { ChevronLeft, ChevronRight, SlidersHorizontal, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Users, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ExploreSidebar from '../components/ExploreSidebar';
 import PromptCard from '../components/PromptCard';
 import PromptCardSkeleton from '../components/PromptCardSkeleton';
 import { useAuth } from '../hooks/useAuth';
 import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
-import { toTitleCase } from '../lib/utils';
+import { cn, toTitleCase } from '../lib/utils';
 import { apiService } from '../services/ApiService';
 import { Prompt } from '../types';
 import NeuralAdBanner from '../components/NeuralAdBanner';
@@ -39,12 +39,23 @@ export default function ExplorePage() {
   const initialSearch = searchParams.get('q') || '';
   const [searchTerm, setSearchTerm] = useState(initialSearch);
 
-  // Sort state
-  const [sortBy, setSortBy] = useState<'newest' | 'likes' | 'views' | 'copies' | 'foryou'>('foryou');
+  // Feed mode & sort state
+  const [feedMode, setFeedMode] = useState<'all' | 'foryou' | 'following'>('foryou');
+  const [sortBy, setSortBy] = useState<'newest' | 'likes' | 'views' | 'copies'>('newest');
+  const [activeInterestChips, setActiveInterestChips] = useState<Set<string>>(new Set());
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+
+  const toggleChip = (chip: string) => {
+    setActiveInterestChips(prev => {
+      const next = new Set(prev);
+      if (next.has(chip)) next.delete(chip); else next.add(chip);
+      return next;
+    });
+    setCurrentPage(1);
+  };
 
   // DERIVE FILTERS DIRECTLY FROM URL (Single Source of Truth)
 
@@ -141,31 +152,38 @@ export default function ExplorePage() {
     return true;
   });
 
+  // Feed-mode filter on top of URL filters
+  const followingSet = new Set<string>(profile?.following || []);
+
+  const feedFilteredPrompts = (() => {
+    if (feedMode === 'following') {
+      return filteredPrompts.filter(p => followingSet.has(p.creatorId || ''));
+    }
+    if (feedMode === 'foryou' && activeInterestChips.size > 0) {
+      return filteredPrompts.filter(p => {
+        const allTags = [p.categoryId, ...p.tags].map(t => t.toLowerCase());
+        return Array.from(activeInterestChips).some(chip => allTags.includes(chip));
+      });
+    }
+    return filteredPrompts;
+  })();
+
   // Sorting Logic
-  const sortedPrompts = [...filteredPrompts].sort((a, b) => {
+  const sortedPrompts = [...feedFilteredPrompts].sort((a, b) => {
+    if (feedMode === 'foryou') {
+      const affinityProfile = getAffinityProfile();
+      const hasAffinityData = Object.keys(affinityProfile).length > 0;
+      if (hasAffinityData) return calculatePromptScore(b, affinityProfile) - calculatePromptScore(a, affinityProfile);
+      if (profile?.interests && profile.interests.length > 0) {
+        const coldProfile: Record<string, number> = {};
+        profile.interests.forEach(i => { coldProfile[i.toLowerCase().replace(/\s+/g, '-')] = 5; });
+        return calculatePromptScore(b, coldProfile) - calculatePromptScore(a, coldProfile);
+      }
+      return (b.likesCount || 0) - (a.likesCount || 0);
+    }
     if (sortBy === 'likes') return (b.likesCount || 0) - (a.likesCount || 0);
     if (sortBy === 'views') return (b.viewsCount || 0) - (a.viewsCount || 0);
     if (sortBy === 'copies') return (b.copiesCount || 0) - (a.copiesCount || 0);
-    if (sortBy === 'foryou') {
-      const affinityProfile = getAffinityProfile();
-      const hasAffinityData = Object.keys(affinityProfile).length > 0;
-
-      if (hasAffinityData) {
-        return calculatePromptScore(b, affinityProfile) - calculatePromptScore(a, affinityProfile);
-      }
-
-      // Cold-start: build a temporary profile from stored interests
-      if (profile?.interests && profile.interests.length > 0) {
-        const coldProfile: Record<string, number> = {};
-        profile.interests.forEach(i => {
-          coldProfile[i.toLowerCase().replace(/\s+/g, '-')] = 5;
-        });
-        return calculatePromptScore(b, coldProfile) - calculatePromptScore(a, coldProfile);
-      }
-
-      // No data at all — fall back to likes
-      return (b.likesCount || 0) - (a.likesCount || 0);
-    }
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -177,7 +195,6 @@ export default function ExplorePage() {
 
   const sortOptions = [
     { value: 'newest', label: 'Newest First' },
-    { value: 'foryou', label: 'Recommended for You' },
     { value: 'likes', label: 'Most Liked' },
     { value: 'views', label: 'Most Viewed' },
     { value: 'copies', label: 'Most Copied' },
@@ -186,7 +203,15 @@ export default function ExplorePage() {
   let pageTitle = "Explore Prompts";
   let subtitle = "Discover the best AI prompts for your workflow.";
 
-  if (activeModel !== 'All' && activeCategories.size === 0 && activeTags.size === 0) {
+  const hasUrlFilters = activeModel !== 'All' || activeCategories.size > 0 || activeTags.size > 0 || activePricing.size > 0;
+
+  if (feedMode === 'foryou' && !hasUrlFilters) {
+    pageTitle = "For You";
+    subtitle = "Personalized picks based on your interests and activity.";
+  } else if (feedMode === 'following' && !hasUrlFilters) {
+    pageTitle = "Following";
+    subtitle = "Latest prompts from creators you follow.";
+  } else if (activeModel !== 'All' && activeCategories.size === 0 && activeTags.size === 0) {
     pageTitle = `${activeModel.toUpperCase()} Prompts`;
     subtitle = `Browse all prompts optimized for ${activeModel.toUpperCase()}.`;
   } else if (activeCategories.size === 1 && activeTags.size === 0 && activeModel === 'All') {
@@ -240,20 +265,77 @@ export default function ExplorePage() {
             </div>
           ) : (
             <>
+              {/* Feed Mode Tabs */}
+              <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl border border-border w-fit mb-6">
+                {([
+                  { key: 'all' as const, label: 'All', Icon: null },
+                  { key: 'foryou' as const, label: 'For You', Icon: Sparkles },
+                  { key: 'following' as const, label: `Following${profile?.following?.length ? ` (${profile.following.length})` : ''}`, Icon: Users },
+                ]).map(({ key, label, Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setFeedMode(key); setCurrentPage(1); }}
+                    className={cn(
+                      'flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
+                      feedMode === key
+                        ? 'bg-background text-foreground shadow-sm border border-border'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {Icon && <Icon className="w-3.5 h-3.5" />}
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Interest Chips (For You mode) */}
+              {feedMode === 'foryou' && profile?.interests && profile.interests.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {profile.interests.map(interest => {
+                    const chip = interest.toLowerCase().replace(/\s+/g, '-');
+                    const isActive = activeInterestChips.has(chip);
+                    return (
+                      <button
+                        key={chip}
+                        onClick={() => toggleChip(chip)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                          isActive
+                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                            : 'bg-muted/40 text-muted-foreground border-border hover:border-primary/30 hover:text-foreground'
+                        )}
+                      >
+                        {interest}
+                      </button>
+                    );
+                  })}
+                  {activeInterestChips.size > 0 && (
+                    <button
+                      onClick={() => setActiveInterestChips(new Set())}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold border border-dashed border-muted-foreground/30 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+
               <NeuralAdBanner className="mb-6" slot="explore-top-ad" />
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <h2 className="text-xl font-bold text-foreground">
-                  {filteredPrompts.length} {filteredPrompts.length === 1 ? 'Prompt' : 'Prompts'}
+                  {feedFilteredPrompts.length} {feedFilteredPrompts.length === 1 ? 'Prompt' : 'Prompts'}
                 </h2>
-                <div className="w-full sm:w-64">
-                  <Select
-                    options={sortOptions}
-                    value={sortBy}
-                    onChange={(val) => setSortBy(val as any)}
-                    placeholder="Sort by..."
-                    isSearchable={false}
-                  />
-                </div>
+                {feedMode !== 'foryou' && (
+                  <div className="w-full sm:w-64">
+                    <Select
+                      options={sortOptions}
+                      value={sortBy}
+                      onChange={(val) => setSortBy(val as any)}
+                      placeholder="Sort by..."
+                      isSearchable={false}
+                    />
+                  </div>
+                )}
               </div>
 
               {paginatedPrompts.length > 0 ? (
@@ -262,6 +344,21 @@ export default function ExplorePage() {
                     <PromptCard key={prompt.id} prompt={prompt} />
                   ))}
                 </div>
+              ) : feedMode === 'following' && !followingSet.size ? (
+                <div className="text-center py-24 bg-muted/30 rounded-2xl border border-dashed border-border">
+                  <Users className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-foreground">Not following anyone yet</h3>
+                  <p className="text-muted-foreground max-w-xs mx-auto mt-2">
+                    Follow creators you like to see their latest prompts here.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setFeedMode('all')}
+                    className="mt-6"
+                  >
+                    Browse all prompts
+                  </Button>
+                </div>
               ) : (
                 <div className="text-center py-24 bg-muted/30 rounded-2xl border border-dashed border-border">
                   <Zap className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
@@ -269,10 +366,11 @@ export default function ExplorePage() {
                   <p className="text-muted-foreground max-w-xs mx-auto mt-2">
                     Try adjusting your filters or search terms to find what you're looking for.
                   </p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setSearchTerm('');
+                      setActiveInterestChips(new Set());
                       navigate(prefix('/explore'));
                     }}
                     className="mt-6"

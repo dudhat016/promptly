@@ -9,6 +9,7 @@ import {
   Area, AreaChart, CartesianGrid, Cell, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis
 } from 'recharts';
+import { ProGate } from '../../components/ProGate';
 import Progress from '../../components/feedback/Progress';
 import Skeleton from '../../components/feedback/Skeleton';
 import Button from '../../components/primitives/Button';
@@ -315,7 +316,12 @@ export default function UsagePage() {
         />
       </div>
 
-      {/* Charts Grid */}
+      {/* Charts Grid — Pro gate */}
+      <ProGate
+        feature="Advanced Analytics Charts"
+        description="Detailed credit consumption trends, category breakdowns, and period comparisons are available on Pro."
+        className="rounded-2xl"
+      >
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Usage Area Chart */}
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-8 shadow-sm">
@@ -436,6 +442,7 @@ export default function UsagePage() {
           )}
         </div>
       </div>
+      </ProGate>
 
       {/* Bottom Section */}
       <div className="grid lg:grid-cols-2 gap-6">

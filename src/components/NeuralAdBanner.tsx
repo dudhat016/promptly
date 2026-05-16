@@ -18,26 +18,22 @@ export default function NeuralAdBanner({ slot, format = 'auto', className = "" }
   const { marketingConfig } = useMarketing();
   const adRef = useRef<HTMLModElement>(null);
 
-  // PRO PROTECTION: Do not render anything for Pro or Admin users
-  if (isPro || isAdmin || !marketingConfig.adsEnabled) {
-    return null;
-  }
-
   const activeSlot = slot || marketingConfig.admobSlotId;
 
   useEffect(() => {
-    if (!activeSlot) return;
-
+    if (!activeSlot || isPro || isAdmin || !marketingConfig.adsEnabled) return;
     try {
-      // Push the ad to the Google Adsense/AdMob queue
       const adsbygoogle = (window as any).adsbygoogle || [];
       adsbygoogle.push({});
     } catch (e) {
-      console.error("❌ [Neural Ads] Ad injection failed:", e);
+      console.error('Ad injection failed:', e);
     }
-  }, [activeSlot]);
+  }, [activeSlot, isPro, isAdmin, marketingConfig.adsEnabled]);
 
-  if (!activeSlot) return null;
+  // PRO PROTECTION: Do not render anything for Pro or Admin users
+  if (isPro || isAdmin || !marketingConfig.adsEnabled || !activeSlot) {
+    return null;
+  }
 
   return (
     <div className={`my-8 ${className}`}>

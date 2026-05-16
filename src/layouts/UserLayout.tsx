@@ -1,6 +1,7 @@
 import {
   Activity,
   Bell,
+  BookMarked,
   BookOpen,
   Coins,
   Gift,
@@ -13,11 +14,11 @@ import {
   LogOut,
   Search,
   Settings,
-  ShieldCheck,
   Sparkles,
+  User,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useUI } from '../contexts/UIProvider';
@@ -37,18 +38,18 @@ import { NavItem } from '../components/layout/types';
 import PageContainer from '../components/layout/PageContainer';
 
 const USER_NAV_ITEMS: NavItem[] = [
-  { label: 'Home',            icon: LayoutDashboard, path: '/dashboard' },
-  { label: 'Explore',         icon: Search,          path: '/explore' },
+  { label: 'Home',            icon: LayoutDashboard, path: '/dashboard', exact: true },
   { divider: true },
   { label: 'My Vault',        icon: LayoutGrid,      path: '/dashboard/vault' },
   { label: 'My Creations',    icon: BookOpen,        path: '/dashboard/library' },
   { label: 'AI Twin Studio',  icon: Sparkles,        path: '/dashboard/twin-studio' },
   { label: 'Favorites',       icon: Heart,           path: '/dashboard/favorites' },
+  { label: 'Collections',     icon: BookMarked,      path: '/dashboard/collections', badge: 'PRO', badgeVariant: 'warning' },
   { divider: true },
   { label: 'Credits',         icon: Coins,           path: '/dashboard/credits' },
   { label: 'Usage',           icon: Activity,        path: '/dashboard/usage' },
   { label: 'Partner Program', icon: Gift,            path: '/dashboard/affiliate' },
-  { label: 'Notifications',   icon: Bell,            path: '/notifications' },
+  { label: 'Notifications',   icon: Bell,            path: '/dashboard/notifications' },
   { label: 'Support',         icon: HelpCircle,      path: '/dashboard/support' },
 ];
 
@@ -72,7 +73,34 @@ export default function UserLayout({ children }: { children?: React.ReactNode })
   const { prefix } = usePath();
   const { config: globalConfig } = useConfig();
   const { config } = useUI();
-  
+  const location = useLocation();
+
+  // Feature discovery: track which nav paths the user has visited
+  const DISCOVERY_PATHS = [
+    '/dashboard/collections',
+    '/dashboard/twin-studio',
+    '/dashboard/affiliate',
+    '/dashboard/usage',
+  ];
+  const SEEN_KEY = 'promptly_seen_nav';
+  const [seenPaths, setSeenPaths] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); }
+    catch { return new Set(); }
+  });
+
+  useEffect(() => {
+    const current = DISCOVERY_PATHS.find(p => location.pathname.startsWith(p));
+    if (current && !seenPaths.has(current)) {
+      setSeenPaths(prev => {
+        const next = new Set(prev);
+        next.add(current);
+        localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(next)));
+        return next;
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   const isHorizontal = config.orientation === 'horizontal';
   const sidebarWidth = config.sidebarCollapsed ? 80 : config.sidebarWidth;
 
@@ -101,9 +129,19 @@ export default function UserLayout({ children }: { children?: React.ReactNode })
     );
   }
 
-  const navItems = isAdmin
-    ? [...USER_NAV_ITEMS, USER_SETTINGS_ITEMS, { label: 'Admin Panel', icon: ShieldCheck, path: '/admin' }]
-    : [...USER_NAV_ITEMS, USER_SETTINGS_ITEMS];
+  const profileItem: NavItem | null = profile?.uid
+    ? { label: 'My Profile', icon: User, path: `/creator/${profile.username || profile.uid}` }
+    : null;
+
+  const navItems: NavItem[] = [
+    ...USER_NAV_ITEMS.map(item =>
+      item.path && DISCOVERY_PATHS.includes(item.path) && !seenPaths.has(item.path)
+        ? { ...item, isNew: true }
+        : item
+    ),
+    ...(profileItem ? [profileItem] : []),
+    USER_SETTINGS_ITEMS,
+  ];
 
   return (
     <div className={cn(
@@ -126,7 +164,17 @@ export default function UserLayout({ children }: { children?: React.ReactNode })
           onMenuClick={() => setMobileOpen(true)}
           rightActions={
             <>
-               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/8 text-primary rounded border border-primary/12 text-xs font-semibold mr-1">
+              {/* Search trigger */}
+              <button
+                onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))}
+                className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-muted hover:bg-border rounded-lg border border-border text-xs text-muted-foreground font-medium transition-colors mr-1"
+                title="Search (Ctrl+K)"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Search</span>
+                <kbd className="ml-1 px-1 py-0.5 rounded bg-background border border-border text-[9px] font-bold">⌘K</kbd>
+              </button>
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/8 text-primary rounded border border-primary/12 text-xs font-semibold mr-1">
                 <Coins className="w-3.5 h-3.5" />
                 <span>{isPro ? '∞' : profile?.credits ?? 0}</span>
               </div>

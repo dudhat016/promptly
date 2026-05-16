@@ -9,7 +9,11 @@ export const INTERACTION_WEIGHTS = {
   UNLOCK: 8,
   VAULT_ADD: 3,
   ONBOARDING_SEED: 5,
+  FOLLOW: 15,
 } as const;
+
+// Maps creatorUid → tags boosted when the user followed them (for unfollow cleanup)
+const FOLLOW_BOOSTS_KEY = 'user_follow_boosts';
 
 const AFFINITY_KEY = 'user_affinity_profile';
 const LAST_VISITED_KEY = 'user_affinity_last_visited';
@@ -205,6 +209,88 @@ export const seedAffinityFromInterests = (interests: string[], score = INTERACTI
   });
   localStorage.setItem(AFFINITY_KEY, JSON.stringify(profile));
   if (auth.currentUser) syncAffinityToCloud(auth.currentUser.uid);
+};
+
+// When a user follows a creator, extract that creator's top topic tags and boost
+// the follower's affinity profile at FOLLOW weight (15 — highest signal).
+// The boosted tags are saved per-creator so they can be reversed on unfollow.
+export const recordFollowAffinity = async (creatorUid: string): Promise<void> => {
+  try {
+    const { getDocs: _getDocs, query: _query, collection: _collection, where: _where, limit: _limit } = await import('firebase/firestore');
+    const { db: _db } = await import('./firebase');
+
+    const snap = await _getDocs(
+      _query(_collection(_db, 'prompts'),
+        _where('creatorId', '==', creatorUid),
+        _where('status', '==', 'approved'),
+        _limit(15)
+      )
+    );
+
+    // Tally tag frequency — categoryId counts double (broader signal)
+    const tally: Record<string, number> = {};
+    snap.docs.forEach(d => {
+      const p = d.data();
+      if (p.categoryId) {
+        const k = (p.categoryId as string).toLowerCase();
+        tally[k] = (tally[k] || 0) + 2;
+      }
+      if (Array.isArray(p.tags)) {
+        (p.tags as string[]).forEach(tag => {
+          const k = tag.toLowerCase().replace(/\s+/g, '-');
+          tally[k] = (tally[k] || 0) + 1;
+        });
+      }
+    });
+
+    const topTags = Object.entries(tally)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([key]) => key);
+
+    if (topTags.length === 0) return;
+
+    // Boost affinity profile
+    const profile = getAffinityProfile();
+    topTags.forEach(tag => {
+      profile[tag] = (profile[tag] || 0) + INTERACTION_WEIGHTS.FOLLOW;
+    });
+    localStorage.setItem(AFFINITY_KEY, JSON.stringify(profile));
+
+    // Remember which tags were boosted for this creator so unfollow can reverse them
+    const followBoosts: Record<string, string[]> = JSON.parse(localStorage.getItem(FOLLOW_BOOSTS_KEY) || '{}');
+    followBoosts[creatorUid] = topTags;
+    localStorage.setItem(FOLLOW_BOOSTS_KEY, JSON.stringify(followBoosts));
+
+    if (auth.currentUser) syncAffinityToCloud(auth.currentUser.uid);
+  } catch (err) {
+    console.error('recordFollowAffinity failed:', err);
+  }
+};
+
+// Reverses the affinity boost applied when the user followed this creator.
+export const recordUnfollowAffinity = (creatorUid: string): void => {
+  try {
+    const followBoosts: Record<string, string[]> = JSON.parse(localStorage.getItem(FOLLOW_BOOSTS_KEY) || '{}');
+    const boostedTags = followBoosts[creatorUid] || [];
+    if (boostedTags.length === 0) return;
+
+    const profile = getAffinityProfile();
+    boostedTags.forEach(tag => {
+      if (profile[tag] !== undefined) {
+        profile[tag] = Math.max(0, profile[tag] - INTERACTION_WEIGHTS.FOLLOW);
+        if (profile[tag] < 0.1) delete profile[tag];
+      }
+    });
+    localStorage.setItem(AFFINITY_KEY, JSON.stringify(profile));
+
+    delete followBoosts[creatorUid];
+    localStorage.setItem(FOLLOW_BOOSTS_KEY, JSON.stringify(followBoosts));
+
+    if (auth.currentUser) syncAffinityToCloud(auth.currentUser.uid);
+  } catch (err) {
+    console.error('recordUnfollowAffinity failed:', err);
+  }
 };
 
 // Return the top N affinity keys sorted by score — used for email personalisation and UI labels.
