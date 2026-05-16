@@ -25,19 +25,19 @@
   "crons": [
     {
       "path": "/api/cron/automation-tick",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/nudges",
-      "schedule": "0 * * * *"
+      "schedule": "0 1 * * *"
     },
     {
       "path": "/api/cron/segment-rebuild",
-      "schedule": "0 * * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/cron/process-locks",
-      "schedule": "0 2 * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
