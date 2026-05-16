@@ -2,7 +2,7 @@ import { collection, getDocs, orderBy, query, where, doc, updateDoc, serverTimes
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { AlertTriangle, Clock, CreditCard, FileText, RefreshCw, Shield, X, Zap, PauseCircle, ArrowDownCircle, Frown, ChevronRight, ToggleLeft, ToggleRight } from 'lucide-react';
+import { AlertTriangle, Clock, CreditCard, FileText, RefreshCw, Shield, Sparkles, X, Zap, PauseCircle, ArrowDownCircle, Frown, ChevronRight, ToggleLeft, ToggleRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
@@ -519,7 +519,7 @@ export default function BillingSettings() {
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-1 text-sm font-bold text-foreground">
-                            {order.currency === 'INR' ? 'â‚¹' : '$'}{order.amount}
+                            {order.currency === 'INR' ? '₹' : '$'}{order.amount}
                           </div>
                         </td>
                         <td className="px-6 py-5">
@@ -545,25 +545,3 @@ export default function BillingSettings() {
   );
 }
 
-function Sparkles(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-      <path d="M5 3v4" />
-      <path d="M19 17v4" />
-      <path d="M3 5h4" />
-      <path d="M17 19h4" />
-    </svg>
-  );
-}
