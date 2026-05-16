@@ -1,5 +1,10 @@
 export type EmailGroup = 'auth' | 'onboarding' | 'billing' | 'dunning' | 'affiliate' | 'nudge' | 'newsletter';
 
+// Maps to NotifPrefs keys; null = always send (system-critical, bypasses pref check)
+export type NotifPrefKey =
+  | 'securityAlerts' | 'billing' | 'onboarding'
+  | 'nudges' | 'affiliate' | 'newsletter' | 'promotions' | 'productUpdates';
+
 export interface EmailVar {
   name: string;
   description: string;
@@ -10,6 +15,7 @@ export interface EmailTypeDefinition {
   type: string;
   name: string;
   group: EmailGroup;
+  prefKey: NotifPrefKey | null;  // null = always send (bypasses user pref check)
   variables: EmailVar[];
   defaultSubject: string;
   defaultBody: string;
@@ -21,6 +27,7 @@ const welcome: EmailTypeDefinition = {
   type: 'welcome',
   name: 'Welcome Email',
   group: 'auth',
+  prefKey: 'onboarding',
   variables: [
     { name: 'name',    description: 'User display name',  example: 'Sarah' },
     { name: 'email',   description: 'User email address', example: 'sarah@example.com' },
@@ -44,6 +51,7 @@ const login_alert: EmailTypeDefinition = {
   type: 'login_alert',
   name: 'Login Alert',
   group: 'auth',
+  prefKey: 'securityAlerts',
   variables: [
     { name: 'name',  description: 'User display name', example: 'Sarah' },
     { name: 'email', description: 'User email',        example: 'sarah@example.com' },
@@ -67,6 +75,7 @@ const password_reset: EmailTypeDefinition = {
   type: 'password_reset',
   name: 'Password Reset',
   group: 'auth',
+  prefKey: null,
   variables: [
     { name: 'name',       description: 'User display name',        example: 'Sarah' },
     { name: 'reset_link', description: 'One-time reset URL',       example: 'https://...' },
@@ -92,6 +101,7 @@ const onboarding_complete: EmailTypeDefinition = {
   type: 'onboarding_complete',
   name: 'Onboarding Complete',
   group: 'onboarding',
+  prefKey: 'onboarding',
   variables: [
     { name: 'name',      description: 'User display name',           example: 'Sarah' },
     { name: 'interests', description: 'User interests bullet list',  example: '• Marketing\n• Coding' },
@@ -115,6 +125,7 @@ const onboarding_d1_nudge: EmailTypeDefinition = {
   type: 'onboarding_d1_nudge',
   name: 'Onboarding Day 1 Nudge',
   group: 'onboarding',
+  prefKey: 'onboarding',
   variables: [
     { name: 'name',         description: 'User display name',  example: 'Sarah' },
     { name: 'explore_link', description: 'Link to explore page', example: 'https://promptly.com/explore' },
@@ -135,6 +146,7 @@ const onboarding_d3_prompt: EmailTypeDefinition = {
   type: 'onboarding_d3_prompt',
   name: 'Onboarding Day 3 — Personalised Pick',
   group: 'onboarding',
+  prefKey: 'onboarding',
   variables: [
     { name: 'name',         description: 'User display name',       example: 'Sarah' },
     { name: 'category',     description: 'Top interest category',   example: 'Marketing' },
@@ -156,6 +168,7 @@ const onboarding_d7_expiry: EmailTypeDefinition = {
   type: 'onboarding_d7_expiry',
   name: 'Onboarding Day 7 — Credits Expiry',
   group: 'onboarding',
+  prefKey: 'onboarding',
   variables: [
     { name: 'name',         description: 'User display name',    example: 'Sarah' },
     { name: 'credits_left', description: 'Remaining credits',    example: '43' },
@@ -181,6 +194,7 @@ const purchase_confirmation: EmailTypeDefinition = {
   type: 'purchase_confirmation',
   name: 'Purchase Confirmation',
   group: 'billing',
+  prefKey: 'billing',
   variables: [
     { name: 'name',         description: 'User display name',       example: 'Sarah' },
     { name: 'plan',         description: 'Plan name',               example: 'Pro' },
@@ -214,6 +228,7 @@ const subscription_renewed: EmailTypeDefinition = {
   type: 'subscription_renewed',
   name: 'Subscription Renewed',
   group: 'billing',
+  prefKey: 'billing',
   variables: [
     { name: 'name',            description: 'User display name',    example: 'Sarah' },
     { name: 'plan',            description: 'Plan name',            example: 'Pro' },
@@ -241,6 +256,7 @@ const trial_started: EmailTypeDefinition = {
   type: 'trial_started',
   name: 'Free Trial Started',
   group: 'billing',
+  prefKey: 'billing',
   variables: [
     { name: 'name',           description: 'User display name',   example: 'Sarah' },
     { name: 'trial_end_date', description: 'Trial expiry date',   example: 'May 22, 2026' },
@@ -269,6 +285,7 @@ const dunning_attempt_1: EmailTypeDefinition = {
   type: 'dunning_attempt_1',
   name: 'Payment Failed — 1st Notice',
   group: 'dunning',
+  prefKey: 'billing',
   variables: [
     { name: 'name',        description: 'User display name',    example: 'Sarah' },
     { name: 'amount',      description: 'Amount that failed',   example: '19.00' },
@@ -292,6 +309,7 @@ const dunning_attempt_2: EmailTypeDefinition = {
   type: 'dunning_attempt_2',
   name: 'Payment Failed — 2nd Notice',
   group: 'dunning',
+  prefKey: 'billing',
   variables: [
     { name: 'name',        description: 'User display name',    example: 'Sarah' },
     { name: 'amount',      description: 'Amount that failed',   example: '19.00' },
@@ -314,6 +332,7 @@ const dunning_attempt_3: EmailTypeDefinition = {
   type: 'dunning_attempt_3',
   name: 'Payment Failed — Final Notice',
   group: 'dunning',
+  prefKey: 'billing',
   variables: [
     { name: 'name',        description: 'User display name',    example: 'Sarah' },
     { name: 'amount',      description: 'Amount that failed',   example: '19.00' },
@@ -336,6 +355,7 @@ const dunning_recovered: EmailTypeDefinition = {
   type: 'dunning_recovered',
   name: 'Payment Recovered',
   group: 'dunning',
+  prefKey: 'billing',
   variables: [
     { name: 'name',    description: 'User display name',  example: 'Sarah' },
     { name: 'plan',    description: 'Plan name',          example: 'Pro' },
@@ -357,6 +377,7 @@ const subscription_ended: EmailTypeDefinition = {
   type: 'subscription_ended',
   name: 'Subscription Ended (Dunning)',
   group: 'dunning',
+  prefKey: 'billing',
   variables: [
     { name: 'name',        description: 'User display name',   example: 'Sarah' },
     { name: 'app_url',     description: 'App base URL',        example: 'https://promptly.com' },
@@ -381,6 +402,7 @@ const low_credits: EmailTypeDefinition = {
   type: 'low_credits',
   name: 'Low Credits Nudge',
   group: 'nudge',
+  prefKey: 'nudges',
   variables: [
     { name: 'name',              description: 'User display name',   example: 'Sarah' },
     { name: 'credits_remaining', description: 'Credits left',        example: '3' },
@@ -403,6 +425,7 @@ const trial_expiry: EmailTypeDefinition = {
   type: 'trial_expiry',
   name: 'Trial Expiry Nudge',
   group: 'nudge',
+  prefKey: 'nudges',
   variables: [
     { name: 'name',            description: 'User display name',  example: 'Sarah' },
     { name: 'days_left',       description: 'Days until expiry',  example: '2' },
@@ -428,6 +451,7 @@ const renewal_reminder: EmailTypeDefinition = {
   type: 'renewal_reminder',
   name: 'Renewal Reminder',
   group: 'nudge',
+  prefKey: 'nudges',
   variables: [
     { name: 'name',         description: 'User display name',    example: 'Sarah' },
     { name: 'renewal_date', description: 'Renewal date',         example: 'May 18, 2026' },
@@ -452,6 +476,7 @@ const affiliate_join: EmailTypeDefinition = {
   type: 'affiliate_join',
   name: 'Affiliate Welcome',
   group: 'affiliate',
+  prefKey: 'affiliate',
   variables: [
     { name: 'name',          description: 'User display name',      example: 'Sarah' },
     { name: 'email',         description: 'User email',             example: 'sarah@example.com' },
@@ -479,6 +504,7 @@ const affiliate_commission_unlocked: EmailTypeDefinition = {
   type: 'affiliate_commission_unlocked',
   name: 'Commission Unlocked',
   group: 'affiliate',
+  prefKey: 'affiliate',
   variables: [
     { name: 'name',          description: 'Affiliate name',          example: 'Sarah' },
     { name: 'amount',        description: 'Commission amount (USD)', example: '5.70' },
@@ -503,6 +529,7 @@ const affiliate_withdrawal_approved: EmailTypeDefinition = {
   type: 'affiliate_withdrawal_approved',
   name: 'Withdrawal Approved',
   group: 'affiliate',
+  prefKey: 'affiliate',
   variables: [
     { name: 'name',            description: 'Affiliate name',         example: 'Sarah' },
     { name: 'amount',          description: 'Withdrawal amount (USD)', example: '42.50' },
@@ -528,6 +555,7 @@ const affiliate_withdrawal_rejected: EmailTypeDefinition = {
   type: 'affiliate_withdrawal_rejected',
   name: 'Withdrawal Rejected',
   group: 'affiliate',
+  prefKey: 'affiliate',
   variables: [
     { name: 'name',       description: 'Affiliate name',           example: 'Sarah' },
     { name: 'amount',     description: 'Requested amount (USD)',   example: '42.50' },
@@ -554,6 +582,7 @@ const affiliate_first_conversion: EmailTypeDefinition = {
   type: 'affiliate_first_conversion',
   name: 'First Referral Converted',
   group: 'affiliate',
+  prefKey: 'affiliate',
   variables: [
     { name: 'name',       description: 'Affiliate name',          example: 'Sarah' },
     { name: 'commission', description: 'Commission earned (USD)', example: '5.70' },
@@ -579,6 +608,7 @@ const newsletter_confirm: EmailTypeDefinition = {
   type: 'newsletter_confirm',
   name: 'Newsletter Confirm Subscription',
   group: 'newsletter',
+  prefKey: null,
   variables: [
     { name: 'name',         description: 'Subscriber name',     example: 'Sarah' },
     { name: 'confirm_link', description: 'Confirmation URL',    example: 'https://...' },
@@ -600,6 +630,7 @@ const newsletter_welcome: EmailTypeDefinition = {
   type: 'newsletter_welcome',
   name: 'Newsletter Welcome',
   group: 'newsletter',
+  prefKey: 'newsletter',
   variables: [
     { name: 'name',             description: 'Subscriber name',    example: 'Sarah' },
     { name: 'unsubscribe_link', description: 'Unsubscribe URL',    example: 'https://...' },
@@ -621,6 +652,7 @@ const new_prompt: EmailTypeDefinition = {
   type: 'new_prompt',
   name: 'New Prompt Published',
   group: 'auth',
+  prefKey: 'onboarding',
   variables: [
     { name: 'name',  description: 'Creator name',    example: 'Sarah' },
     { name: 'title', description: 'Prompt title',    example: 'SEO Blog Writer' },

@@ -179,7 +179,8 @@ export async function sendEmail(
   db: admin.firestore.Firestore,
   to: string,
   type: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  userId?: string
 ): Promise<SendResult> {
   const appUrl = getAppUrl();
 
@@ -196,10 +197,27 @@ export async function sendEmail(
     // Non-fatal — proceed if CRM check fails
   }
 
-  // 2. Resolve template (Firestore → default fallback)
+  // 2. Check user notification preferences (only when userId is known)
+  const typeInfo = EMAIL_TYPES[type];
+  if (userId && typeInfo?.prefKey) {
+    try {
+      const userSnap = await db.collection("users").doc(userId).get();
+      if (userSnap.exists) {
+        const prefs = userSnap.data()?.notificationPrefs ?? {};
+        // Default true if the pref key hasn't been set yet
+        if (prefs[typeInfo.prefKey] === false) {
+          return { sent: false, reason: "user_preference_disabled" };
+        }
+      }
+    } catch {
+      // Non-fatal — proceed if pref check fails
+    }
+  }
+
+  // 3. Resolve template (Firestore → default fallback)
   const { subject, bodyText } = await resolveTemplate(db, type, variables);
 
-  // 3. Pre-create the log entry to get logId for tracking pixel
+  // 4. Pre-create the log entry to get logId for tracking pixel
   const expireAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
   let logRef: admin.firestore.DocumentReference | null = null;
   let logId: string | undefined;
@@ -220,10 +238,10 @@ export async function sendEmail(
     logId = logRef.id;
   } catch { /* non-fatal */ }
 
-  // 4. Build branded HTML with tracking pixel + click wrapping
+  // 5. Build branded HTML with tracking pixel + click wrapping
   const html = buildBrandedHtml(bodyText, to, appUrl, logId);
 
-  // 5. Send via SMTP
+  // 6. Send via SMTP
   const smtp = await getSmtpTransport(db);
   if (!smtp) {
     await logRef?.update({ status: "failed", error: "smtp_not_configured" }).catch(() => {});
@@ -249,7 +267,7 @@ export async function sendEmail(
     }
   }
 
-  // 6. Update log with final status
+  // 7. Update log with final status
   try {
     await logRef?.update({
       status: result.sent ? "sent" : "failed",

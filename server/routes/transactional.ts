@@ -224,7 +224,7 @@ router.post("/send", authMiddleware, json(), async (req: AuthenticatedRequest, r
       ...variables,
     };
 
-    const result = await sendEmail(firebase.db, userEmail, type, enriched);
+    const result = await sendEmail(firebase.db, userEmail, type, enriched, uid);
 
     // Fire automation trigger on welcome email (user_signup event)
     if (type === 'welcome' && result.sent) {

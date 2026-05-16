@@ -24,7 +24,7 @@ export class NudgeService {
     const result = await sendEmail(db, user.email, "low_credits", {
       name:              user.displayName || "Creator",
       credits_remaining: String(creditsRemaining),
-    });
+    }, userId);
 
     if (result.sent) {
       await userRef.update({ lowCreditNudgeSentAt: admin.firestore.FieldValue.serverTimestamp() });
@@ -66,7 +66,7 @@ export class NudgeService {
           days_left:      String(daysLeft),
           urgency_label:  urgencyLabel,
           trial_end_date: trialEndDate,
-        });
+        }, docSnap.id);
 
         if (result.sent) {
           await db.collection("users").doc(docSnap.id).update({
@@ -120,7 +120,7 @@ export class NudgeService {
           name:         user.displayName || "Creator",
           renewal_date: renewDate,
           days_left:    String(daysLeft),
-        });
+        }, docSnap.id);
 
         if (result.sent) {
           await db.collection("users").doc(docSnap.id).update({

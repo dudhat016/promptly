@@ -7,6 +7,17 @@ export enum OperationType {
   WRITE = 'write',
 }
 
+export interface NotifPrefs {
+  securityAlerts: boolean;  // login alerts, password reset — locked on
+  billing: boolean;          // purchase, renewal, dunning — locked on
+  onboarding: boolean;       // welcome, onboarding emails, new prompt published
+  nudges: boolean;           // low credits, trial expiry, renewal reminder
+  affiliate: boolean;        // commission, withdrawal, referral milestones
+  newsletter: boolean;       // newsletter broadcasts
+  promotions: boolean;       // promotional offers and deals
+  productUpdates: boolean;   // feature announcements
+}
+
 export interface UserProfile {
   uid: string;
   hasCompletedOnboarding?: boolean;
@@ -80,6 +91,7 @@ export interface UserProfile {
     image?: 'gemini' | 'openai' | 'anthropic';
     video?: 'gemini' | 'openai' | 'anthropic';
   };
+  notificationPrefs?: Partial<NotifPrefs>;
 }
 
 export interface Tag {

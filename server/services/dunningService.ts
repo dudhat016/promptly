@@ -45,7 +45,7 @@ export class DunningService {
       return;
     }
 
-    await DunningService.sendDunningEmail(user, attempt, nextRetryDate, db);
+    await DunningService.sendDunningEmail(user, userId, attempt, nextRetryDate, db);
   }
 
   static async handlePaymentRecovery(userId: string) {
@@ -78,7 +78,7 @@ export class DunningService {
       await sendEmail(db, user.email, "dunning_recovered", {
         name: user.displayName || "Creator",
         plan: user.activePlanId || "Pro",
-      });
+      }, userId);
     }
   }
 
@@ -108,12 +108,13 @@ export class DunningService {
     if (user.email) {
       await sendEmail(db, user.email, "subscription_ended", {
         name: user.displayName || "Creator",
-      });
+      }, userId);
     }
   }
 
   private static async sendDunningEmail(
     user: any,
+    userId: string,
     attempt: number,
     nextRetryDate: Date,
     db: admin.firestore.Firestore
@@ -138,6 +139,6 @@ export class DunningService {
       retry_date:  retryDateStr,
       cancel_date: retryDateStr,
       billing_url: billingUrl,
-    });
+    }, userId);
   }
 }
