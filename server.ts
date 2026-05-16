@@ -5,22 +5,22 @@ import rateLimit from "express-rate-limit";
 import fs from "fs";
 import multiparty from "multiparty";
 import path from "path";
-import { initFirebase } from "./api/lib/firebase";
+import { initFirebase } from "./server/lib/firebase";
 
 // Import Modular Routes
-import authRouter from "./api/routes/auth";
-import dataRouter from "./api/routes/data";
-import locationRouter from "./api/routes/location";
-import marketingRouter from "./api/routes/marketing";
-import paymentsRouter from "./api/routes/payments";
-import affiliatesRouter from "./api/routes/affiliates";
-import couponsRouter from "./api/routes/coupons";
-import supportRouter from "./api/routes/support";
-import aiRouter from "./api/routes/aiRouter";
-import transactionalRouter from "./api/routes/transactional";
-import automationRouter from "./api/routes/automation";
-import nudgesRouter from "./api/routes/nudges";
-import cronRouter from "./api/routes/cron";
+import authRouter from "./server/routes/auth";
+import dataRouter from "./server/routes/data";
+import locationRouter from "./server/routes/location";
+import marketingRouter from "./server/routes/marketing";
+import paymentsRouter from "./server/routes/payments";
+import affiliatesRouter from "./server/routes/affiliates";
+import couponsRouter from "./server/routes/coupons";
+import supportRouter from "./server/routes/support";
+import aiRouter from "./server/routes/aiRouter";
+import transactionalRouter from "./server/routes/transactional";
+import automationRouter from "./server/routes/automation";
+import nudgesRouter from "./server/routes/nudges";
+import cronRouter from "./server/routes/cron";
 
 dotenv.config();
 
