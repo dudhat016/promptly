@@ -1,0 +1,61 @@
+name: Cron Jobs
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # every 10 min — triggers all jobs; nudges/segments skip unless on the hour
+    - cron: '0 * * * *'     # every hour — ensures nudges + segment-rebuild fire exactly on the hour
+  workflow_dispatch:         # allow manual trigger from GitHub UI
+
+env:
+  APP_URL: ${{ secrets.VERCEL_APP_URL }}
+  AUTH: "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+jobs:
+  automation-tick:
+    name: Automation Tick (every 10 min)
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/automation-tick
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/automation-tick" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "Response: $STATUS"
+          [ "$STATUS" = "200" ] || [ "$STATUS" = "304" ] || exit 1
+
+  nudges:
+    name: Nudges (every hour)
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/nudges
+        run: |
+          MINUTE=$(date +%M)
+          if [ "$MINUTE" = "00" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/nudges" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -H "Content-Type: application/json")
+            echo "Response: $STATUS"
+            [ "$STATUS" = "200" ] || exit 1
+          else
+            echo "Skipping — not on the hour (minute=$MINUTE)"
+          fi
+
+  segment-rebuild:
+    name: Segment Rebuild (every hour)
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/segment-rebuild
+        run: |
+          MINUTE=$(date +%M)
+          if [ "$MINUTE" = "00" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/segment-rebuild" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -H "Content-Type: application/json")
+            echo "Response: $STATUS"
+            [ "$STATUS" = "200" ] || exit 1
+          else
+            echo "Skipping — not on the hour (minute=$MINUTE)"
+          fi
