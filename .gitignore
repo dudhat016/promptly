@@ -9,7 +9,7 @@ coverage/
 .vercel
 .env*.local
 .tmp/
-.reference-tools/
+reference-tools/
 scratch/
 firebase-b64.txt
 firebase-applet-config.json
