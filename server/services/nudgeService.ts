@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { sendEmail } from "../lib/mailer.js";
+import { triggerFlow } from "./automationEngine.js";
 
 export class NudgeService {
 
@@ -41,13 +42,14 @@ export class NudgeService {
     const in3Days = now + 3 * 86_400_000;
 
     const usersSnap = await db.collection("users")
-      .where("subscriptionStatus", "!=", "pro")
+      .where("trialUsed", "==", true)
       .get();
 
     let sent = 0, skipped = 0, errors = 0;
 
     for (const docSnap of usersSnap.docs) {
       const user = docSnap.data();
+      if (user.subscriptionStatus !== 'pro') { skipped++; continue; }
       if (!user.trialEndsAt || !user.email) { skipped++; continue; }
 
       const trialEnds = user.trialEndsAt?.toDate?.() ?? new Date(user.trialEndsAt.seconds * 1000);
@@ -137,5 +139,55 @@ export class NudgeService {
     }
 
     return { sent, skipped, errors };
+  }
+
+  static async expireTrials(): Promise<{ expired: number; skipped: number; errors: number }> {
+    const firebase = await initFirebase();
+    if (!firebase) return { expired: 0, skipped: 0, errors: 0 };
+    const db = firebase.db;
+
+    const now = admin.firestore.Timestamp.now();
+
+    const usersSnap = await db.collection("users")
+      .where("subscriptionStatus", "==", "pro")
+      .get();
+
+    let expired = 0, skipped = 0, errors = 0;
+
+    for (const docSnap of usersSnap.docs) {
+      const user = docSnap.data();
+
+      if (!user.trialUsed || !user.trialEndsAt) { skipped++; continue; }
+      if (user.autoPayEnabled) { skipped++; continue; }
+
+      const trialEnds = user.trialEndsAt?.toDate?.() ?? new Date(user.trialEndsAt.seconds * 1000);
+      if (trialEnds.getTime() > Date.now()) { skipped++; continue; }
+
+      try {
+        await docSnap.ref.update({
+          subscriptionStatus: 'free',
+          credits: 50,
+          monthlyLimit: 50,
+          activePlanId: admin.firestore.FieldValue.delete(),
+          trialExpiredAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        if (user.email) {
+          sendEmail(db, user.email, "trial_expired", {
+            name: user.displayName || "Creator",
+          }, docSnap.id).catch(() => {});
+        }
+
+        triggerFlow(db, "trial_expired", docSnap.id, {}).catch(() => {});
+
+        expired++;
+      } catch (err) {
+        console.error(`Trial expiry failed for ${docSnap.id}:`, err);
+        errors++;
+      }
+    }
+
+    return { expired, skipped, errors };
   }
 }

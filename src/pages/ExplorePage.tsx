@@ -1,4 +1,4 @@
-import { limit } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { ChevronLeft, ChevronRight, Sparkles, Users, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -7,11 +7,12 @@ import PromptCard from '../components/PromptCard';
 import PromptCardSkeleton from '../components/PromptCardSkeleton';
 import { useAuth } from '../hooks/useAuth';
 import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
+import { db } from '../lib/firebase';
 import { cn, toTitleCase } from '../lib/utils';
-import { apiService } from '../services/ApiService';
 import { Prompt } from '../types';
 import NeuralAdBanner from '../components/NeuralAdBanner';
 import { usePath } from '../hooks/usePath';
+import { useSEO } from '../hooks/useSEO';
 import { Button, Select } from '../components/primitives';
 import PageContainer from '../components/layout/PageContainer';
 
@@ -24,7 +25,7 @@ export default function ExplorePage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const { tagSlug, categorySlug, modelSlug } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
 
   // DERIVE FILTERS DIRECTLY FROM URL (Single Source of Truth)
@@ -84,19 +85,22 @@ export default function ExplorePage() {
     async function fetchPrompts() {
       setLoading(true);
       try {
-        const allPrompts = await apiService.getCollection<Prompt>('prompts');
-
-        // Filter: only approved prompts that aren't hidden by moderation
-        const fetchedPrompts = allPrompts.filter(p =>
-          (p.status === 'approved' || !p.status) &&
-          p.moderationStatus !== 'hidden'
+        const q = query(
+          collection(db, 'prompts'),
+          orderBy('createdAt', 'desc'),
+          limit(500)
         );
+        const snap = await getDocs(q);
+        const fetchedPrompts = snap.docs
+          .map(d => ({ ...d.data(), id: d.id } as Prompt))
+          // Show approved prompts + legacy prompts that have no status field (created before workflow)
+          .filter(p => !p.status || p.status === 'approved')
+          .filter(p => p.moderationStatus !== 'hidden');
 
-        // SECURITY: Proactively scrub content for paid prompts
+        // SECURITY: scrub content field for locked paid prompts
         const promptsWithSecurity = fetchedPrompts.map(p => {
           const isUnlocked = (profile?.unlockedPrompts || []).includes(p.id!);
           const hasAccess = isPro || isAdmin || isUnlocked || !p.isPaid;
-
           if (!hasAccess) {
             const { content, ...safePrompt } = p;
             return safePrompt as Prompt;
@@ -107,14 +111,25 @@ export default function ExplorePage() {
         setPrompts(promptsWithSecurity);
         setFetchError(null);
       } catch (err) {
-        console.error("Explore Fetch Error:", err);
-        setFetchError("Service synchronization issue. Please check your network or try again.");
+        console.error('Explore fetch error:', err);
+        setFetchError('Failed to load prompts. Please try again.');
       } finally {
         setLoading(false);
       }
     }
     fetchPrompts();
   }, [isPro, isAdmin, profile?.unlockedPrompts]);
+
+  // Sync search term to URL so searches are shareable
+  useEffect(() => {
+    setCurrentPage(1);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (searchTerm) next.set('q', searchTerm);
+      else next.delete('q');
+      return next;
+    }, { replace: true });
+  }, [searchTerm]);
 
   // Filtering Logic
   const filteredPrompts = prompts.filter(p => {
@@ -232,16 +247,17 @@ export default function ExplorePage() {
     subtitle = `Showing prompts for: ${filterParts.join(' + ')}`;
   }
 
-  useEffect(() => {
-    document.title = `${pageTitle} | Promptly`;
-  }, [pageTitle]);
+  useSEO({
+    title: pageTitle,
+    description: subtitle || 'Browse hundreds of AI prompts for ChatGPT, Claude, Gemini and more. Filter by category, model, and pricing.',
+  });
 
   return (
-    <PageContainer className="py-12" ignoreCustomizer>
+    <PageContainer className="pt-20 pb-12" ignoreCustomizer>
       {/* Header */}
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold tracking-tight mb-2 text-foreground">{pageTitle}</h1>
-        <p className="text-muted-foreground text-lg">{subtitle}</p>
+      <div className="mb-8 md:mb-12">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-2 text-foreground">{pageTitle}</h1>
+        <p className="text-muted-foreground text-sm md:text-base">{subtitle}</p>
       </div>
 
       {/* Main Layout */}

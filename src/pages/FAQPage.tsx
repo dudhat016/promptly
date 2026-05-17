@@ -4,7 +4,7 @@ import { HelpCircle, ChevronDown, Search, MessageSquare, Loader2 } from 'lucide-
 import { Link, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useSiteContent } from '../hooks/useSiteContent';
-
+import { useMarketing } from '../hooks/useMarketing';
 import PageContainer from '../components/layout/PageContainer';
 
 interface FAQItem {
@@ -18,106 +18,59 @@ interface FAQCategory {
   items: FAQItem[];
 }
 
-const FAQ_DATA: FAQCategory[] = [
-  {
-    label: 'Getting Started',
-    icon: '🚀',
-    items: [
-      {
-        q: 'What is Promptly?',
-        a: 'Promptly is a premium AI prompt marketplace where you can discover, save, and use thousands of curated prompts for ChatGPT, Claude, Midjourney, and other AI tools. Build your own vault, collaborate, and supercharge your AI workflows.',
-      },
-      {
-        q: 'Do I need an account to browse prompts?',
-        a: 'No! You can browse the prompt library without signing up. However, to save prompts, build your vault, or purchase premium prompts, you\'ll need a free account.',
-      },
-      {
-        q: 'Is Promptly free to use?',
-        a: 'Yes — Promptly has a generous free tier that gives you access to thousands of community prompts. Pro and Enterprise plans unlock premium prompts, unlimited vault storage, team features, and API access.',
-      },
-      {
-        q: 'Which AI models does Promptly support?',
-        a: 'Prompts on Promptly are tagged by compatible AI model: ChatGPT (GPT-4 / GPT-4o), Claude, Gemini, Midjourney, DALL·E, Stable Diffusion, and more. You can filter by model on the Explore page.',
-      },
-    ],
-  },
-  {
-    label: 'Plans & Billing',
-    icon: '💳',
-    items: [
-      {
-        q: 'What do Pro plans include?',
-        a: 'Pro plans include unlimited prompt vault storage, access to all premium prompts, priority support, early access to new features, and API access for integrations.',
-      },
-      {
-        q: 'Can I cancel my subscription anytime?',
-        a: 'Absolutely. You can cancel at any time from your Billing Settings. Your Pro access remains active until the end of the current billing period — no questions asked.',
-      },
-      {
-        q: 'Do you offer refunds?',
-        a: 'We offer a 7-day money-back guarantee on all paid plans. If you\'re not satisfied, contact our support team within 7 days of purchase for a full refund.',
-      },
-      {
-        q: 'Are there discounts for annual billing?',
-        a: 'Yes! Annual billing saves you up to 40% compared to monthly billing. The discount is applied automatically when you select the annual option at checkout.',
-      },
-    ],
-  },
-  {
-    label: 'Credits & Usage',
-    icon: '⚡',
-    items: [
-      {
-        q: 'What are credits?',
-        a: 'Credits are used to unlock and download premium prompts. Free accounts receive 10 credits/month. Pro accounts get unlimited usage. Credits are also earned through the Affiliate Program.',
-      },
-      {
-        q: 'Do unused credits roll over?',
-        a: 'Free plan credits do not roll over. Pro plan members have unlimited access and don\'t need to worry about credits at all.',
-      },
-      {
-        q: 'How do I earn bonus credits?',
-        a: 'You can earn credits by referring friends via your Affiliate link, submitting quality prompts that get approved, and through special promotions. Check the Affiliate page for your unique link.',
-      },
-    ],
-  },
-  {
-    label: 'Prompts & Vault',
-    icon: '📦',
-    items: [
-      {
-        q: 'Can I submit my own prompts?',
-        a: 'Yes! You can submit prompts via the Builder tool in your dashboard. Submitted prompts go through a brief review process and can be set to free, paid, or private.',
-      },
-      {
-        q: 'What is My Vault?',
-        a: 'My Vault is your personal library of saved and purchased prompts. Organize them with tags, search instantly, and copy to clipboard with one click.',
-      },
-      {
-        q: 'Can I share prompts with my team?',
-        a: 'Team sharing is available on the Enterprise plan. It allows multiple users to access a shared prompt library, manage collections collaboratively, and control access permissions.',
-      },
-    ],
-  },
-  {
-    label: 'Affiliate Program',
-    icon: '🤝',
-    items: [
-      {
-        q: 'How does the Affiliate Program work?',
-        a: 'Share your unique affiliate link. When someone signs up and upgrades using your link, you earn a commission — paid directly to your connected payout account.',
-      },
-      {
-        q: 'What is the commission rate?',
-        a: 'Affiliates earn 30% recurring commission on every subscription payment made by referred users, for as long as they remain subscribed.',
-      },
-      {
-        q: 'When do I get paid?',
-        a: 'Payouts are processed on the 1st of each month for the previous month\'s verified commissions. Minimum payout threshold is $20.',
-      },
-    ],
-  },
-];
+function buildFaqData(commission: number, minPayout: number): FAQCategory[] {
+  return [
+    {
+      label: 'Getting Started',
+      icon: '🚀',
+      items: [
+        { q: 'What is Promptly?', a: 'Promptly is a premium AI prompt marketplace where you can discover, save, and use thousands of curated prompts for ChatGPT, Claude, Gemini, and other AI tools. Build your personal vault, organize collections, and supercharge your AI workflows.' },
+        { q: 'Do I need an account to browse prompts?', a: "No! You can browse the entire prompt library without signing up. To save prompts to your vault, unlock premium content, or submit your own prompts, you'll need a free account." },
+        { q: 'Is Promptly free to use?', a: 'Yes — Promptly has a generous free tier giving you access to thousands of prompts. Pro plans unlock premium prompts, unlimited vault storage, AI Twin Studio, and team features.' },
+        { q: 'Which AI models does Promptly support?', a: 'Prompts are tagged by compatible model: ChatGPT (GPT-4 / GPT-4o), Claude, Gemini, Llama, Mistral, Midjourney, DALL·E, and more. Filter by model on the Explore page.' },
+      ],
+    },
+    {
+      label: 'Plans & Billing',
+      icon: '💳',
+      items: [
+        { q: 'What do Pro plans include?', a: 'Pro includes unlimited vault storage, all premium prompt categories, AI Twin Studio, Smart Collections, unlimited AI builder usage, and priority support.' },
+        { q: 'Can I cancel my subscription anytime?', a: 'Absolutely. Cancel with one click from Billing Settings. Your Pro access stays active until the end of the billing period — no extra charges, no questions asked.' },
+        { q: 'Do you offer refunds?', a: "We offer a 7-day money-back guarantee on all paid plans. If you're not satisfied, contact support within 7 days for a full refund." },
+        { q: 'Are there discounts for annual billing?', a: 'Yes — annual billing saves you up to 40% vs monthly. The discount is applied automatically when you select the annual option at checkout.' },
+      ],
+    },
+    {
+      label: 'Credits & Usage',
+      icon: '⚡',
+      items: [
+        { q: 'What are credits?', a: 'Credits unlock premium prompts. Free accounts receive credits monthly. Pro accounts get unlimited access. You also earn bonus credits through the Affiliate Program and by submitting approved prompts.' },
+        { q: 'Do unused credits roll over?', a: "Free plan credits reset monthly and don't roll over. Pro members have unlimited access and don't need to manage credits at all." },
+        { q: 'How do I earn bonus credits?', a: 'Earn credits by referring friends via your affiliate link, submitting quality prompts that get approved, and through special promotions. Check your Affiliate Dashboard for your unique link.' },
+      ],
+    },
+    {
+      label: 'Prompts & Vault',
+      icon: '📦',
+      items: [
+        { q: 'Can I submit my own prompts?', a: 'Yes! Submit prompts via the Builder in your dashboard. Submitted prompts go through a brief review, and can be set to free, paid, or private.' },
+        { q: 'What is My Vault?', a: 'Your Vault is a personal library of saved and unlocked prompts. Organize with tags, search instantly, and copy to clipboard with one click — accessible from any device.' },
+        { q: 'What are Collections?', a: 'Collections let you group related prompts into shareable bundles. Perfect for organizing workflows, sharing with teammates, or building topic-specific libraries.' },
+        { q: 'What is AI Twin Studio?', a: 'AI Twin Studio lets you build custom AI personas trained on your tone and style. Get consistent, on-brand output from any AI model — every time. Available on Pro.' },
+      ],
+    },
+    {
+      label: 'Affiliate Program',
+      icon: '🤝',
+      items: [
+        { q: 'How does the Affiliate Program work?', a: 'Share your unique referral link. When someone signs up and upgrades, you earn a recurring commission — paid automatically to your payout account every month they stay subscribed.' },
+        { q: 'What is the commission rate?', a: `Affiliates earn ${commission}% recurring commission on every subscription payment — monthly or annual — for the entire lifetime of the subscription. No expiry, no cap.` },
+        { q: 'When do I get paid?', a: `Payouts are processed on the 1st of each month for the previous month's verified commissions. Minimum payout threshold is $${minPayout}. We pay via PayPal or UPI.` },
+        { q: 'Do I need technical skills or a big audience?', a: 'None at all. Your referral link works anywhere — a tweet, a newsletter, a YouTube description, or a WhatsApp message. If you can share a link, you can earn.' },
+      ],
+    },
+  ];
+}
 
 function FAQAccordion({ items }: { items: FAQItem[] }) {
   const [open, setOpen] = useState<number | null>(null);
@@ -163,7 +116,12 @@ export default function FAQPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const { content: dynamicContent, loading } = useSiteContent('faq');
+  const { marketingConfig } = useMarketing();
 
+  const FAQ_DATA = buildFaqData(
+    marketingConfig.referralCommission ?? 25,
+    marketingConfig.minWithdrawalAmount ?? 50
+  );
   const faqSource = dynamicContent?.categories || FAQ_DATA;
 
   const query = search.toLowerCase().trim();
@@ -191,40 +149,41 @@ export default function FAQPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border py-20 px-6 text-center">
-        <div
-          className="absolute inset-0 opacity-10 dark:opacity-20"
-          style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(var(--primary)) 0%, transparent 70%)' }}
-        />
-        <div className="relative max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-bold uppercase tracking-widest text-primary mb-6">
-            <HelpCircle className="w-3.5 h-3.5" />
-            FAQ
-          </div>
-          <h1 className="text-4xl font-black text-foreground mb-4">Frequently Asked Questions</h1>
-          <p className="text-muted-foreground text-lg mb-8">
-            Everything you need to know about Promptly. Can't find an answer?{' '}
-            <Link to={`/${lng}/contact`} className="text-primary underline-offset-4 hover:underline">
-              Contact us
-            </Link>
-            .
-          </p>
-
-          {/* Search */}
-          <div className="relative max-w-md mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search questions…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
-        </div>
+      <section className="relative overflow-hidden border-b border-border pt-24 pb-14 md:pb-20 text-center">
+        <div className="absolute inset-0 opacity-10 dark:opacity-20"
+          style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(var(--primary)) 0%, transparent 70%)' }} />
+        <PageContainer className="relative z-10" ignoreCustomizer>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-bold uppercase tracking-widest text-primary mb-5 md:mb-6">
+              <HelpCircle className="w-3.5 h-3.5" />
+              Help Center
+            </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tight">
+              Frequently Asked Questions
+            </h1>
+            <p className="text-muted-foreground text-base md:text-lg mb-7 md:mb-8 max-w-xl mx-auto px-2">
+              Everything you need to know about Promptly. Can't find an answer?{' '}
+              <Link to={`/${lng}/contact`} className="text-primary underline-offset-4 hover:underline font-semibold">
+                Contact us
+              </Link>
+              .
+            </p>
+            {/* Search */}
+            <div className="relative max-w-md mx-auto px-4 sm:px-0">
+              <Search className="absolute left-7 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search questions…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 md:py-3.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors text-sm"
+              />
+            </div>
+          </motion.div>
+        </PageContainer>
       </section>
 
-      <PageContainer className="py-16" ignoreCustomizer>
+      <PageContainer className="py-12 md:py-16" ignoreCustomizer>
         {/* Category filter pills */}
         <div className="flex flex-wrap gap-2 mb-10 justify-center">
           <button
@@ -276,20 +235,34 @@ export default function FAQPage() {
         )}
 
         {/* Still need help CTA */}
-        <div className="mt-16 rounded-2xl border border-border bg-muted/30 p-10 text-center">
-          <MessageSquare className="w-10 h-10 text-primary mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-foreground mb-2">Still have questions?</h3>
-          <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          className="mt-12 md:mt-16 rounded-2xl border border-border bg-muted/30 px-6 py-10 md:p-12 text-center"
+        >
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
+            <MessageSquare className="w-6 h-6 text-primary" />
+          </div>
+          <h3 className="text-lg md:text-xl font-bold text-foreground mb-2">Still have questions?</h3>
+          <p className="text-muted-foreground text-sm md:text-base mb-6 max-w-sm mx-auto">
             Our support team is here to help. Open a ticket and we'll get back to you within 24 hours.
           </p>
-          <Link
-            to={`/${lng}/dashboard/support`}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-widest gradient-cta transition-all hover:opacity-90"
-          >
-            <MessageSquare className="w-4 h-4" />
-            Open a Support Ticket
-          </Link>
-        </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              to={`/${lng}/dashboard/support`}
+              className="inline-flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-sm font-bold uppercase tracking-widest gradient-cta transition-all hover:opacity-90 w-full sm:w-auto justify-center"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Open a Support Ticket
+            </Link>
+            <Link
+              to={`/${lng}/contact`}
+              className="inline-flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-sm font-semibold border border-border text-muted-foreground hover:text-foreground transition-all w-full sm:w-auto justify-center"
+            >
+              Contact Us
+            </Link>
+          </div>
+        </motion.div>
       </PageContainer>
     </div>
   );

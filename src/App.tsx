@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
+import { collection, getDocs, increment, limit, query, updateDoc, where } from 'firebase/firestore';
+import { db } from './lib/firebase';
 import { Toaster } from 'react-hot-toast';
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import Footer from './components/Footer';
@@ -23,107 +25,125 @@ import ReferralModal from './components/marketing/ReferralModal';
 import ConversionTracking from './components/ConversionTracking';
 import UserLayout from './layouts/UserLayout';
 import HorizontalLayout from './layouts/HorizontalLayout';
-import AdminAffiliates from './pages/admin/AdminAffiliates';
-import AdminAssetManager from './pages/admin/AdminAssetManager';
-import AdminBlog from './pages/admin/AdminBlog';
-import AdminBlogCategories from './pages/admin/AdminBlogCategories';
-import AdminBlogForm from './pages/admin/AdminBlogForm';
-import AdminSitePages from './pages/admin/AdminSitePages';
-import AdminCategories from './pages/admin/AdminCategories';
-import AdminCategoryForm from './pages/admin/AdminCategoryForm';
-import AdminEmails from './pages/admin/AdminEmails';
-import AdminEmailSettings from './pages/admin/AdminEmailSettings';
-import AdminFinancials from './pages/admin/AdminFinancials';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminCoupons from './pages/admin/AdminCoupons';
-import AdminInquiries from './pages/admin/AdminInquiries';
 import AdminLayout from './pages/admin/AdminLayout';
-import AdminMarketing from './pages/admin/AdminMarketing';
-import AdminMarketingContactDetails from './pages/admin/AdminMarketingContactDetails';
-import AdminMarketingContactForm from './pages/admin/AdminMarketingContactForm';
-import AdminMarketingTagForm from './pages/admin/AdminMarketingTagForm';
-import AdminMarketingTagFormEdit from './pages/admin/AdminMarketingTagForm'; // Assuming this is correct based on surrounding context
-import AdminMarketingAutomationForm from './pages/admin/AdminMarketingAutomationForm';
-import AdminMarketingSegmentForm from './pages/admin/AdminMarketingSegmentForm';
-import AdminModelForm from './pages/admin/AdminModelForm';
-import AdminModels from './pages/admin/AdminModels';
-import AdminOverview from './pages/admin/AdminOverview';
-import AdminPermissions from './pages/admin/AdminPermissions';
-import AdminRoles from './pages/admin/AdminRoles';
-import AdminRoleForm from './pages/admin/AdminRoleForm';
-import AdminPromptForm from './pages/admin/AdminPromptForm';
-import AdminPrompts from './pages/admin/AdminPrompts';
-import AdminSEO from './pages/admin/AdminSEO';
-import AdminSubscriptionForm from './pages/admin/AdminSubscriptionForm';
-import AdminSubscriptions from './pages/admin/AdminSubscriptions';
-import AdminTemplateForm from './pages/admin/AdminTemplateForm';
-import AdminTemplates from './pages/admin/AdminTemplates';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminUserDetails from './pages/admin/AdminUserDetails';
-import AdminTickets from './pages/admin/AdminTickets';
-import AdminWithdrawals from './pages/admin/AdminWithdrawals';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminMedia from './pages/admin/AdminMedia';
-import AdminActivityLog from './pages/admin/AdminActivityLog';
-import AdminInvoices from './pages/admin/AdminInvoices';
-import AdminInvoiceForm from './pages/admin/AdminInvoiceForm';
-import AdminReports from './pages/admin/AdminReports';
-import AdminTestimonials from './pages/admin/AdminTestimonials';
-import AdminChangelog from './pages/admin/AdminChangelog';
-import AdminBadges from './pages/admin/AdminBadges';
-import AdminBadgeForm from './pages/admin/AdminBadgeForm';
-import AdminChurn from './pages/admin/AdminChurn';
-import AffiliateInfoPage from './pages/AffiliateInfoPage';
-import AffiliatePage from './pages/AffiliatePage';
-import SupportPage from './pages/SupportPage';
-import FAQPage from './pages/FAQPage';
-import ForbiddenPage from './pages/error/ForbiddenPage';
-import ServerErrorPage from './pages/error/ServerErrorPage';
-import MaintenancePage from './pages/error/MaintenancePage';
-import ComingSoonPage from './pages/error/ComingSoonPage';
-import OnboardingPage from './pages/OnboardingPage';
-import UsagePage from './pages/dashboard/UsagePage';
-import AITwinStudioPage from './pages/dashboard/AITwinStudioPage';
 import OnboardingGuard from './guards/OnboardingGuard';
-import CookiePolicyPage from './pages/CookiePolicyPage';
-import DMCAPage from './pages/DMCAPage';
-import UnsubscribePage from './pages/UnsubscribePage';
-import NewsletterConfirmPage from './pages/NewsletterConfirmPage';
-import AdminEmailLogs from './pages/admin/AdminEmailLogs';
-import AdminAutomationInstances from './pages/admin/AdminAutomationInstances';
-import AdminEmailBroadcast from './pages/admin/AdminEmailBroadcast';
-import AdminEmailAnalytics from './pages/admin/AdminEmailAnalytics';
-import ChangelogPage from './pages/ChangelogPage';
-import NotFoundPage from './pages/NotFoundPage';
-import PrivacyPage from './pages/PrivacyPage';
-import TermsPage from './pages/TermsPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import BlogDetailPage from './pages/BlogDetailPage';
-import BlogPage from './pages/BlogPage';
-import DashboardPage from './pages/DashboardPage';
-import PublicProfilePage from './pages/PublicProfilePage';
-import CheckoutPage from './pages/CheckoutPage';
-import CheckoutVerifyPage from './pages/CheckoutVerifyPage';
-import CheckoutSuccessPage from './pages/CheckoutSuccessPage';
-import ContactPage from './pages/ContactPage';
-import CreditHistoryPage from './pages/dashboard/CreditHistoryPage';
-import DashboardFavorites from './pages/dashboard/DashboardFavorites';
-import DashboardLibrary from './pages/dashboard/DashboardLibrary';
-import SubmitPromptPage from './pages/dashboard/SubmitPromptPage';
-import MyVaultPage from './pages/dashboard/MyVaultPage';
-import CollectionsPage from './pages/dashboard/CollectionsPage';
-import ExplorePage from './pages/ExplorePage';
-import LandingPage from './pages/LandingPage';
-import PricingPage from './pages/PricingPage';
-import PromptDetailPage from './pages/PromptDetailPage';
-import AccountSettings from './pages/settings/AccountSettings';
-import BillingSettings from './pages/settings/BillingSettings';
-import NotificationSettings from './pages/settings/NotificationSettings';
-import SecuritySettings from './pages/settings/SecuritySettings';
-import AIIntegrationPage from './pages/settings/AIIntegrationPage';
-import NotificationsPage from './pages/NotificationsPage';
+
+// ── Page lazy imports (code-split per route) ──────────────────────────────────
+// Admin
+const AdminAffiliates         = lazy(() => import('./pages/admin/AdminAffiliates'));
+const AdminAssetManager       = lazy(() => import('./pages/admin/AdminAssetManager'));
+const AdminBlog               = lazy(() => import('./pages/admin/AdminBlog'));
+const AdminBlogCategories     = lazy(() => import('./pages/admin/AdminBlogCategories'));
+const AdminBlogForm           = lazy(() => import('./pages/admin/AdminBlogForm'));
+const AdminSitePages          = lazy(() => import('./pages/admin/AdminSitePages'));
+const AdminCategories         = lazy(() => import('./pages/admin/AdminCategories'));
+const AdminCategoryForm       = lazy(() => import('./pages/admin/AdminCategoryForm'));
+const AdminEmails             = lazy(() => import('./pages/admin/AdminEmails'));
+const AdminEmailSettings      = lazy(() => import('./pages/admin/AdminEmailSettings'));
+const AdminEmailLogs          = lazy(() => import('./pages/admin/AdminEmailLogs'));
+const AdminEmailBroadcast     = lazy(() => import('./pages/admin/AdminEmailBroadcast'));
+const AdminEmailAnalytics     = lazy(() => import('./pages/admin/AdminEmailAnalytics'));
+const AdminAutomationInstances = lazy(() => import('./pages/admin/AdminAutomationInstances'));
+const AdminFinancials         = lazy(() => import('./pages/admin/AdminFinancials'));
+const AdminOrders             = lazy(() => import('./pages/admin/AdminOrders'));
+const AdminCoupons            = lazy(() => import('./pages/admin/AdminCoupons'));
+const AdminInquiries          = lazy(() => import('./pages/admin/AdminInquiries'));
+const AdminMarketing          = lazy(() => import('./pages/admin/AdminMarketing'));
+const AdminMarketingContactDetails = lazy(() => import('./pages/admin/AdminMarketingContactDetails'));
+const AdminMarketingContactForm    = lazy(() => import('./pages/admin/AdminMarketingContactForm'));
+const AdminMarketingTagForm        = lazy(() => import('./pages/admin/AdminMarketingTagForm'));
+const AdminMarketingAutomationForm = lazy(() => import('./pages/admin/AdminMarketingAutomationForm'));
+const AdminMarketingSegmentForm    = lazy(() => import('./pages/admin/AdminMarketingSegmentForm'));
+const AdminModelForm          = lazy(() => import('./pages/admin/AdminModelForm'));
+const AdminModels             = lazy(() => import('./pages/admin/AdminModels'));
+const AdminOverview           = lazy(() => import('./pages/admin/AdminOverview'));
+const AdminPermissions        = lazy(() => import('./pages/admin/AdminPermissions'));
+const AdminRoles              = lazy(() => import('./pages/admin/AdminRoles'));
+const AdminRoleForm           = lazy(() => import('./pages/admin/AdminRoleForm'));
+const AdminPromptForm         = lazy(() => import('./pages/admin/AdminPromptForm'));
+const AdminPrompts            = lazy(() => import('./pages/admin/AdminPrompts'));
+const AdminSEO                = lazy(() => import('./pages/admin/AdminSEO'));
+const AdminSubscriptionForm   = lazy(() => import('./pages/admin/AdminSubscriptionForm'));
+const AdminSubscriptions      = lazy(() => import('./pages/admin/AdminSubscriptions'));
+const AdminTemplateForm       = lazy(() => import('./pages/admin/AdminTemplateForm'));
+const AdminTemplates          = lazy(() => import('./pages/admin/AdminTemplates'));
+const AdminUsers              = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminUserDetails        = lazy(() => import('./pages/admin/AdminUserDetails'));
+const AdminTickets            = lazy(() => import('./pages/admin/AdminTickets'));
+const AdminWithdrawals        = lazy(() => import('./pages/admin/AdminWithdrawals'));
+const AdminSettings           = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminMedia              = lazy(() => import('./pages/admin/AdminMedia'));
+const AdminActivityLog        = lazy(() => import('./pages/admin/AdminActivityLog'));
+const AdminInvoices           = lazy(() => import('./pages/admin/AdminInvoices'));
+const AdminInvoiceForm        = lazy(() => import('./pages/admin/AdminInvoiceForm'));
+const AdminReports            = lazy(() => import('./pages/admin/AdminReports'));
+const AdminTestimonials       = lazy(() => import('./pages/admin/AdminTestimonials'));
+const AdminChangelog          = lazy(() => import('./pages/admin/AdminChangelog'));
+const AdminBadges             = lazy(() => import('./pages/admin/AdminBadges'));
+const AdminBadgeForm          = lazy(() => import('./pages/admin/AdminBadgeForm'));
+const AdminChurn              = lazy(() => import('./pages/admin/AdminChurn'));
+const AdminReviews            = lazy(() => import('./pages/admin/AdminReviews'));
+// Public pages
+const LandingPage             = lazy(() => import('./pages/LandingPage'));
+const ExplorePage             = lazy(() => import('./pages/ExplorePage'));
+const PromptDetailPage        = lazy(() => import('./pages/PromptDetailPage'));
+const PricingPage             = lazy(() => import('./pages/PricingPage'));
+const BlogPage                = lazy(() => import('./pages/BlogPage'));
+const BlogDetailPage          = lazy(() => import('./pages/BlogDetailPage'));
+const PublicProfilePage       = lazy(() => import('./pages/PublicProfilePage'));
+const AffiliateInfoPage       = lazy(() => import('./pages/AffiliateInfoPage'));
+const ContactPage             = lazy(() => import('./pages/ContactPage'));
+const TermsPage               = lazy(() => import('./pages/TermsPage'));
+const PrivacyPage             = lazy(() => import('./pages/PrivacyPage'));
+const CookiePolicyPage        = lazy(() => import('./pages/CookiePolicyPage'));
+const DMCAPage                = lazy(() => import('./pages/DMCAPage'));
+const UnsubscribePage         = lazy(() => import('./pages/UnsubscribePage'));
+const NewsletterConfirmPage   = lazy(() => import('./pages/NewsletterConfirmPage'));
+const FAQPage                 = lazy(() => import('./pages/FAQPage'));
+const ChangelogPage           = lazy(() => import('./pages/ChangelogPage'));
+const SupportPage             = lazy(() => import('./pages/SupportPage'));
+const NotFoundPage            = lazy(() => import('./pages/NotFoundPage'));
+// Auth
+const LoginPage               = lazy(() => import('./pages/auth/LoginPage'));
+const RegisterPage            = lazy(() => import('./pages/auth/RegisterPage'));
+const ForgotPasswordPage      = lazy(() => import('./pages/auth/ForgotPasswordPage'));
+// Error
+const ForbiddenPage           = lazy(() => import('./pages/error/ForbiddenPage'));
+const ServerErrorPage         = lazy(() => import('./pages/error/ServerErrorPage'));
+const MaintenancePage         = lazy(() => import('./pages/error/MaintenancePage'));
+const ComingSoonPage          = lazy(() => import('./pages/error/ComingSoonPage'));
+// Checkout / onboarding
+const CheckoutPage            = lazy(() => import('./pages/CheckoutPage'));
+const CheckoutVerifyPage      = lazy(() => import('./pages/CheckoutVerifyPage'));
+const CheckoutSuccessPage     = lazy(() => import('./pages/CheckoutSuccessPage'));
+const OnboardingPage          = lazy(() => import('./pages/OnboardingPage'));
+// Dashboard
+const DashboardPage           = lazy(() => import('./pages/DashboardPage'));
+const MyVaultPage             = lazy(() => import('./pages/dashboard/MyVaultPage'));
+const DashboardFavorites      = lazy(() => import('./pages/dashboard/DashboardFavorites'));
+const DashboardLibrary        = lazy(() => import('./pages/dashboard/DashboardLibrary'));
+const SubmitPromptPage        = lazy(() => import('./pages/dashboard/SubmitPromptPage'));
+const CreditHistoryPage       = lazy(() => import('./pages/dashboard/CreditHistoryPage'));
+const AITwinStudioPage        = lazy(() => import('./pages/dashboard/AITwinStudioPage'));
+const UsagePage               = lazy(() => import('./pages/dashboard/UsagePage'));
+const AffiliatePage           = lazy(() => import('./pages/AffiliatePage'));
+const NotificationsPage       = lazy(() => import('./pages/NotificationsPage'));
+const CollectionsPage         = lazy(() => import('./pages/dashboard/CollectionsPage'));
+const SavedPromptsPage        = lazy(() => import('./pages/dashboard/SavedPromptsPage'));
+// Settings
+const AccountSettings         = lazy(() => import('./pages/settings/AccountSettings'));
+const BillingSettings         = lazy(() => import('./pages/settings/BillingSettings'));
+const NotificationSettings    = lazy(() => import('./pages/settings/NotificationSettings'));
+const SecuritySettings        = lazy(() => import('./pages/settings/SecuritySettings'));
+const AIIntegrationPage       = lazy(() => import('./pages/settings/AIIntegrationPage'));
+
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -137,7 +157,14 @@ function ReferralCapture() {
   const { search } = useLocation();
   useEffect(() => {
     const ref = new URLSearchParams(search).get('ref');
-    if (ref) localStorage.setItem('referralCode', ref.toUpperCase());
+    if (!ref) return;
+    const code = ref.toUpperCase();
+    localStorage.setItem('referralCode', code);
+    // Increment click counter on the referrer's user doc (fire-and-forget)
+    const snap = query(collection(db, 'users'), where('referralCode', '==', code), limit(1));
+    getDocs(snap).then(s => {
+      if (!s.empty) updateDoc(s.docs[0].ref, { referralClicks: increment(1) }).catch(() => {});
+    }).catch(() => {});
   }, [search]);
   return null;
 }
@@ -242,6 +269,7 @@ function AppContent() {
                 isOpen={isReferralModalOpen} 
                 onClose={() => setReferralModalOpen(false)} 
               />
+              <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/en" replace />} />
                 <Route path="/:lng" element={<LanguageGuard><MaintenanceGuard><Outlet /></MaintenanceGuard></LanguageGuard>}>
@@ -301,6 +329,7 @@ function AppContent() {
                     <Route path="support" element={<SupportPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="collections" element={<CollectionsPage />} />
+                    <Route path="saved" element={<SavedPromptsPage />} />
                   </Route>
 
                   <Route path="settings" element={<Outlet />}>
@@ -318,6 +347,7 @@ function AppContent() {
                   <Route path="inquiries" element={<SectionRoute section="inquiries"><AdminInquiries /></SectionRoute>} />
                   <Route path="tickets" element={<SectionRoute section="tickets"><AdminTickets /></SectionRoute>} />
                   <Route path="reports" element={<SectionRoute section="reports"><AdminReports /></SectionRoute>} />
+                  <Route path="reviews" element={<SectionRoute section="reviews"><AdminReviews /></SectionRoute>} />
                   <Route path="testimonials" element={<SectionRoute section="content"><AdminTestimonials /></SectionRoute>} />
                   <Route path="changelog" element={<SectionRoute section="content"><AdminChangelog /></SectionRoute>} />
                   <Route path="churn" element={<SectionRoute section="revenue"><AdminChurn /></SectionRoute>} />
@@ -390,6 +420,7 @@ function AppContent() {
                 </Route>
                 <Route path="*" element={<Navigate to="/en" replace />} />
               </Routes>
+              </Suspense>
             </Router>
             </ConfirmProvider>
           </AuthProvider>

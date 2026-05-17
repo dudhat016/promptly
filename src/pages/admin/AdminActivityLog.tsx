@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { LucideIcon, History, User, FileText, CreditCard, Shield, Settings, Trash2, Edit, LogIn } from 'lucide-react';
+import { LucideIcon, History, User, FileText, CreditCard, Shield, Settings, Trash2, Edit, LogIn, CheckCircle, XCircle, AlertTriangle, EyeOff, Flag } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { Timeline, type TimelineItem } from '../../components/data';
 import Badge from '../../components/primitives/Badge';
@@ -28,6 +28,12 @@ const ACTION_META: Record<string, { icon: LucideIcon; color: string; label: stri
   'settings.updated':     { icon: Settings, color: 'text-amber-600 bg-amber-500/10',   label: 'Settings Updated' },
   'commission.updated':   { icon: CreditCard, color: 'text-purple-600 bg-purple-500/10', label: 'Commission Rate' },
   'admin.login':          { icon: LogIn,    color: 'text-primary bg-primary/10',       label: 'Admin Login' },
+  'prompt.approved':      { icon: CheckCircle,   color: 'text-emerald-600 bg-emerald-500/10', label: 'Prompt Approved' },
+  'prompt.rejected':      { icon: XCircle,       color: 'text-rose-600 bg-rose-500/10',       label: 'Prompt Rejected' },
+  'report.warn_creator':  { icon: AlertTriangle, color: 'text-amber-600 bg-amber-500/10',     label: 'Creator Warned' },
+  'report.hide_prompt':   { icon: EyeOff,        color: 'text-rose-600 bg-rose-500/10',       label: 'Prompt Hidden' },
+  'report.delete_prompt': { icon: Trash2,        color: 'text-rose-700 bg-rose-600/10',       label: 'Prompt Deleted (Report)' },
+  'report.dismissed':     { icon: Flag,          color: 'text-muted-foreground bg-muted',     label: 'Report Dismissed' },
 };
 
 function getActionMeta(action: string) {

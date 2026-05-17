@@ -54,6 +54,97 @@ export const EmailService = {
     await send('badge_earned', { badge_name: badgeName, badge_description: badgeDescription });
   },
 
+  async sendPromptApprovedEmail(
+    creatorId: string,
+    creatorEmail: string,
+    displayName: string,
+    promptTitle: string,
+    isPaid: boolean
+  ) {
+    try {
+      await api.post('/email/send-to', {
+        to: creatorEmail,
+        type: 'prompt_approved',
+        userId: creatorId,
+        variables: {
+          name: displayName,
+          prompt_title: promptTitle,
+          prompt_type: isPaid ? 'premium' : 'free',
+          dashboard_url: `${window.location.origin}/dashboard/library`,
+        },
+      });
+    } catch (err) {
+      console.warn('[EmailService] prompt_approved send failed:', err);
+    }
+  },
+
+  async sendPromptRejectedEmail(
+    creatorId: string,
+    creatorEmail: string,
+    displayName: string,
+    promptTitle: string,
+    reason: string
+  ) {
+    try {
+      await api.post('/email/send-to', {
+        to: creatorEmail,
+        type: 'prompt_rejected',
+        userId: creatorId,
+        variables: {
+          name: displayName,
+          prompt_title: promptTitle,
+          rejection_reason: reason,
+          dashboard_url: `${window.location.origin}/dashboard/library`,
+        },
+      });
+    } catch (err) {
+      console.warn('[EmailService] prompt_rejected send failed:', err);
+    }
+  },
+
+  async sendPromptWarningEmail(
+    creatorId: string,
+    creatorEmail: string,
+    displayName: string,
+    promptTitle: string
+  ) {
+    try {
+      await api.post('/email/send-to', {
+        to: creatorEmail,
+        type: 'prompt_warning',
+        userId: creatorId,
+        variables: { name: displayName, prompt_title: promptTitle, dashboard_url: `${window.location.origin}/dashboard/library` },
+      });
+    } catch (err) {
+      console.warn('[EmailService] prompt_warning send failed:', err);
+    }
+  },
+
+  async sendPromptHiddenEmail(
+    creatorId: string,
+    creatorEmail: string,
+    displayName: string,
+    promptTitle: string
+  ) {
+    try {
+      await api.post('/email/send-to', {
+        to: creatorEmail,
+        type: 'prompt_hidden',
+        userId: creatorId,
+        variables: { name: displayName, prompt_title: promptTitle, dashboard_url: `${window.location.origin}/dashboard/library` },
+      });
+    } catch (err) {
+      console.warn('[EmailService] prompt_hidden send failed:', err);
+    }
+  },
+
+  async sendPromptSubmittedEmail(_userId: string, promptTitle: string) {
+    await send('prompt_submitted', {
+      prompt_title: promptTitle,
+      dashboard_url: `${window.location.origin}/dashboard/library`,
+    });
+  },
+
   // Generic send for template-picker usage in admin
   async sendEmailWithTemplate(
     _userId: string,

@@ -12,6 +12,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import { EmailService } from '../../services/emailService';
 import { Category, AIModel } from '../../types';
 
 const DIFFICULTY_OPTIONS = [
@@ -129,6 +130,7 @@ export default function SubmitPromptPage() {
         difficulty: form.difficulty || undefined,
       });
       toast.success('Prompt submitted for review!');
+      EmailService.sendPromptSubmittedEmail(user.uid, form.title).catch(() => {});
       navigate(prefix('/dashboard/library'));
     } catch (err) {
       console.error(err);

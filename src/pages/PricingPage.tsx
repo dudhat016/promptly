@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePath } from '../hooks/usePath';
 import { PricingPlan } from '../types';
 import { useConfig } from '../hooks/useConfig';
+import { useSEO } from '../hooks/useSEO';
 import { useCurrency } from '../context/CurrencyContext';
 import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
@@ -19,6 +20,11 @@ export default function PricingPage() {
   const { prefix } = usePath();
   const { config, loading: configLoading } = useConfig();
   const { currency, symbol, exchangeRate, setCurrency } = useCurrency();
+
+  useSEO({
+    title: 'Pricing',
+    description: 'Simple, transparent pricing for AI prompt creators. Start free — upgrade when you need more credits, storage, and pro features.',
+  });
   const plans = config.plans;
   const [loading] = useState(false);
   const [billingCycle, setBillingCycle]     = useState<'monthly' | 'yearly'>('monthly');
@@ -69,20 +75,20 @@ export default function PricingPage() {
       <Schema type="Pricing" data={{ plans, currency }} />
 
       {/* ── Hero ── */}
-      <div className="relative pt-24 pb-16 text-center overflow-hidden">
+      <div className="relative pt-24 pb-12 md:pb-16 text-center overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] pointer-events-none"
           style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.14) 0%, transparent 70%)' }} />
 
         <PageContainer className="relative z-10" ignoreCustomizer>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 bg-primary/10 border border-primary/25 text-primary">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-5 md:mb-6 bg-primary/10 border border-primary/25 text-primary">
             <Sparkles className="w-3.5 h-3.5" />
             Simple, transparent pricing
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4 tracking-tight leading-[1.1]">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-foreground mb-3 md:mb-4 tracking-tight leading-[1.1]">
             Invest in better<br />
             <span className="gradient-text">AI results</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-10">
+          <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto px-2 mb-8 md:mb-10">
             Start free. Upgrade only when you're ready. No hidden fees, no contracts.
           </p>
 
@@ -186,7 +192,7 @@ export default function PricingPage() {
       </AnimatePresence>
 
       {/* ── Plan cards ── */}
-      <PageContainer className="pb-20" ignoreCustomizer>
+      <PageContainer className="pb-16 md:pb-20" ignoreCustomizer>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {plans.map((plan, i) => {
             // Fixed INR prices take priority over live rate conversion.
@@ -330,7 +336,7 @@ export default function PricingPage() {
 
       {/* ── FAQ Section ── */}
       {faqItems.length > 0 && (
-        <div className="border-t border-border bg-muted/20 py-20">
+        <div className="border-t border-border bg-muted/20 py-14 md:py-20">
           <PageContainer className="max-w-3xl" ignoreCustomizer>
             <div className="text-center mb-12">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-4 bg-primary/10 border border-primary/25 text-primary">

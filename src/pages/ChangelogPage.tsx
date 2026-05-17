@@ -68,24 +68,24 @@ export default function ChangelogPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <div className="relative pt-24 pb-16 overflow-hidden border-b border-border bg-muted/20">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,_var(--primary)_0%,_transparent_70%)] opacity-[0.03] pointer-events-none" />
-        
+      <div className="relative pt-24 pb-12 md:pb-16 overflow-hidden border-b border-border bg-muted/20">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.1) 0%, transparent 70%)' }} />
         <PageContainer ignoreCustomizer className="text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest mb-5 md:mb-6">
             <History className="w-3.5 h-3.5" />
             Product Updates
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground tracking-tight mb-4">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-foreground tracking-tight mb-3 md:mb-4">
             See what's <span className="gradient-text">new</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            We're constantly shipping updates to make Promptly the best place for AI creators.
+          <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto px-2">
+            We ship fast. Here's every update, improvement, and fix — newest first.
           </p>
         </PageContainer>
       </div>
 
-      <PageContainer ignoreCustomizer className="py-20 max-w-4xl">
+      <PageContainer ignoreCustomizer className="py-14 md:py-20 max-w-4xl">
         {loading ? (
           <div className="py-20 text-center">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />

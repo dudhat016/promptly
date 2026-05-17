@@ -3,6 +3,7 @@ import {
   Bell,
   BookMarked,
   BookOpen,
+  Bookmark,
   Coins,
   Gift,
   Heart,
@@ -36,6 +37,8 @@ import UpgradeCard from '../components/layout/UpgradeCard';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { NavItem } from '../components/layout/types';
 import PageContainer from '../components/layout/PageContainer';
+import NotificationBell from '../components/notifications/NotificationBell';
+import { useNotifications } from '../hooks/useNotifications';
 
 const USER_NAV_ITEMS: NavItem[] = [
   { label: 'Home',            icon: LayoutDashboard, path: '/dashboard', exact: true },
@@ -44,6 +47,7 @@ const USER_NAV_ITEMS: NavItem[] = [
   { label: 'My Creations',    icon: BookOpen,        path: '/dashboard/library' },
   { label: 'AI Twin Studio',  icon: Sparkles,        path: '/dashboard/twin-studio' },
   { label: 'Favorites',       icon: Heart,           path: '/dashboard/favorites' },
+  { label: 'Unlock Queue',    icon: Bookmark,        path: '/dashboard/saved' },
   { label: 'Collections',     icon: BookMarked,      path: '/dashboard/collections', badge: 'PRO', badgeVariant: 'warning' },
   { divider: true },
   { label: 'Credits',         icon: Coins,           path: '/dashboard/credits' },
@@ -68,6 +72,7 @@ const USER_SETTINGS_ITEMS: NavItem = {
 
 export default function UserLayout({ children }: { children?: React.ReactNode }) {
   const { profile, isAdmin, isPro } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [isMobileOpen, setMobileOpen] = useState(false);
   const { prefix } = usePath();
@@ -134,11 +139,13 @@ export default function UserLayout({ children }: { children?: React.ReactNode })
     : null;
 
   const navItems: NavItem[] = [
-    ...USER_NAV_ITEMS.map(item =>
-      item.path && DISCOVERY_PATHS.includes(item.path) && !seenPaths.has(item.path)
-        ? { ...item, isNew: true }
-        : item
-    ),
+    ...USER_NAV_ITEMS.map(item => {
+      const isDiscovery = item.path && DISCOVERY_PATHS.includes(item.path) && !seenPaths.has(item.path);
+      if (item.path === '/dashboard/notifications' && unreadCount > 0) {
+        return { ...item, badge: unreadCount > 99 ? '99+' : unreadCount, badgeVariant: 'danger' as const };
+      }
+      return isDiscovery ? { ...item, isNew: true } : item;
+    }),
     ...(profileItem ? [profileItem] : []),
     USER_SETTINGS_ITEMS,
   ];
@@ -178,6 +185,7 @@ export default function UserLayout({ children }: { children?: React.ReactNode })
                 <Coins className="w-3.5 h-3.5" />
                 <span>{isPro ? '∞' : profile?.credits ?? 0}</span>
               </div>
+              <NotificationBell />
               <ThemeToggle />
               <UserDropdown isAdmin={isAdmin} />
             </>

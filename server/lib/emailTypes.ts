@@ -447,6 +447,31 @@ As a Pro member you get: unlimited unlocks, all premium prompts, priority suppor
 — The Promptly Team`,
 };
 
+const trial_expired: EmailTypeDefinition = {
+  type: 'trial_expired',
+  name: 'Trial Expired',
+  group: 'billing',
+  prefKey: 'billing',
+  variables: [
+    { name: 'name',    description: 'User display name', example: 'Sarah' },
+    { name: 'app_url', description: 'App base URL',      example: 'https://promptly.com' },
+  ],
+  defaultSubject: 'Your Promptly free trial has ended',
+  defaultBody: `Hi {{name}},
+
+Your free trial has ended and your account has been moved to the Free plan.
+
+You still have access to Promptly — but premium prompts, unlimited unlocks, and Pro-only features are now locked.
+
+Upgrade to Pro any time to get full access back instantly.
+
+→ Reactivate Pro: {{app_url}}/pricing
+
+We hope you enjoyed your trial. If you have any questions, just reply to this email.
+
+— The Promptly Team`,
+};
+
 const renewal_reminder: EmailTypeDefinition = {
   type: 'renewal_reminder',
   name: 'Renewal Reminder',
@@ -670,6 +695,170 @@ Other creators can discover and unlock your prompt. You'll earn credits when the
 — The Promptly Team`,
 };
 
+// ─── MODERATION & BADGES ────────────────────────────────────────────────────
+
+const prompt_submitted: EmailTypeDefinition = {
+  type: 'prompt_submitted',
+  name: 'Prompt Received',
+  group: 'onboarding',
+  prefKey: 'onboarding',
+  variables: [
+    { name: 'name',          description: 'Creator name',   example: 'Sarah' },
+    { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
+    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://promptly.com/dashboard/library' },
+  ],
+  defaultSubject: '✅ We received your prompt — review in progress',
+  defaultBody: `Hi {{name}},
+
+Thanks for submitting **"{{prompt_title}}"** to Promptly!
+
+Our team reviews submissions within 24–48 hours. You'll get an email as soon as it's approved or if we need any changes.
+
+You can track the status in your Creator Library at any time.
+
+→ [View My Library]({{dashboard_url}})
+
+— The Promptly Team`,
+};
+
+const prompt_approved: EmailTypeDefinition = {
+  type: 'prompt_approved',
+  name: 'Prompt Approved',
+  group: 'onboarding',
+  prefKey: null, // always send — important transactional
+  variables: [
+    { name: 'name',          description: 'Creator name',   example: 'Sarah' },
+    { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
+    { name: 'prompt_type',   description: 'free or premium', example: 'premium' },
+    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://promptly.com/dashboard/library' },
+  ],
+  defaultSubject: '🎉 Your prompt "{{prompt_title}}" is now live!',
+  defaultBody: `Hi {{name}},
+
+Great news — **"{{prompt_title}}"** has been approved and is live on the marketplace as a **{{prompt_type}}** prompt!
+
+Share it on social media to drive views and earn through the Partner Program.
+
+→ [View Your Library]({{dashboard_url}})
+
+— The Promptly Team`,
+};
+
+const prompt_rejected: EmailTypeDefinition = {
+  type: 'prompt_rejected',
+  name: 'Prompt Needs Revision',
+  group: 'onboarding',
+  prefKey: null, // always send — important transactional
+  variables: [
+    { name: 'name',             description: 'Creator name',      example: 'Sarah' },
+    { name: 'prompt_title',     description: 'Prompt title',      example: 'SEO Blog Writer' },
+    { name: 'rejection_reason', description: 'Feedback from admin', example: 'Content too short' },
+    { name: 'dashboard_url',    description: 'Dashboard link',    example: 'https://promptly.com/dashboard/library' },
+  ],
+  defaultSubject: '📝 Your prompt "{{prompt_title}}" needs a few changes',
+  defaultBody: `Hi {{name}},
+
+Thanks for submitting your prompt. After review, our team found a few things to improve.
+
+**Prompt:** {{prompt_title}}
+**Feedback:** {{rejection_reason}}
+
+Please update your prompt and resubmit — we'd love to feature it.
+
+→ [Edit in Dashboard]({{dashboard_url}})
+
+— The Promptly Team`,
+};
+
+const prompt_warning: EmailTypeDefinition = {
+  type: 'prompt_warning',
+  name: 'Content Guidelines Reminder',
+  group: 'nudge',
+  prefKey: 'nudges',
+  variables: [
+    { name: 'name',          description: 'Creator name',   example: 'Sarah' },
+    { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
+    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://promptly.com/dashboard/library' },
+  ],
+  defaultSubject: '⚠️ Community guidelines reminder for "{{prompt_title}}"',
+  defaultBody: `Hi {{name}},
+
+Your prompt **"{{prompt_title}}"** received a community report. No action was taken, but please review our content guidelines to avoid future issues.
+
+→ [View Your Prompts]({{dashboard_url}})
+
+— The Moderation Team`,
+};
+
+const prompt_hidden: EmailTypeDefinition = {
+  type: 'prompt_hidden',
+  name: 'Prompt Hidden',
+  group: 'nudge',
+  prefKey: 'nudges',
+  variables: [
+    { name: 'name',          description: 'Creator name',   example: 'Sarah' },
+    { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
+    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://promptly.com/dashboard/library' },
+  ],
+  defaultSubject: '🔒 Your prompt "{{prompt_title}}" has been removed from Explore',
+  defaultBody: `Hi {{name}},
+
+Following multiple community reports, **"{{prompt_title}}"** has been temporarily hidden from the marketplace. You can still access and edit it from your dashboard. Reply to this email if you think this was an error.
+
+→ [View Your Library]({{dashboard_url}})
+
+— The Moderation Team`,
+};
+
+const badge_earned: EmailTypeDefinition = {
+  type: 'badge_earned',
+  name: 'Badge Earned',
+  group: 'nudge',
+  prefKey: 'nudges',
+  variables: [
+    { name: 'name',              description: 'User name',          example: 'Sarah' },
+    { name: 'badge_name',        description: 'Badge label',        example: 'First Unlock' },
+    { name: 'badge_description', description: 'Badge description',  example: 'Unlocked your first premium prompt' },
+    { name: 'dashboard_url',     description: 'Dashboard link',     example: 'https://promptly.com/dashboard' },
+  ],
+  defaultSubject: '🏅 You just earned the {{badge_name}} badge!',
+  defaultBody: `Hi {{name}},
+
+Congratulations — you've earned the **{{badge_name}}** badge!
+
+> {{badge_description}}
+
+Keep exploring to unlock more achievements.
+
+→ [View My Dashboard]({{dashboard_url}})
+
+— The Promptly Team`,
+};
+
+const weekly_digest: EmailTypeDefinition = {
+  type: 'weekly_digest',
+  name: 'Weekly Creator Digest',
+  group: 'newsletter',
+  prefKey: 'newsletter',
+  variables: [
+    { name: 'name',          description: 'User name',           example: 'Sarah' },
+    { name: 'week',          description: 'Week label',          example: 'May 12, 2026' },
+    { name: 'top_prompts',   description: 'Top prompts list',    example: '• SEO Writer\n• Cold Email' },
+    { name: 'dashboard_url', description: 'Dashboard link',      example: 'https://promptly.com/dashboard' },
+  ],
+  defaultSubject: '📬 Your Promptly weekly digest — {{week}}',
+  defaultBody: `Hi {{name}},
+
+Here's your weekly Promptly digest for the week of **{{week}}**.
+
+## 🔥 Top Prompts This Week
+{{top_prompts}}
+
+→ [Go to Dashboard]({{dashboard_url}})
+
+— The Promptly Team`,
+};
+
 // ─── REGISTRY ────────────────────────────────────────────────────────────────
 
 export const EMAIL_TYPES: Record<string, EmailTypeDefinition> = {
@@ -683,6 +872,7 @@ export const EMAIL_TYPES: Record<string, EmailTypeDefinition> = {
   purchase_confirmation,
   subscription_renewed,
   trial_started,
+  trial_expired,
   dunning_attempt_1,
   dunning_attempt_2,
   dunning_attempt_3,
@@ -699,6 +889,13 @@ export const EMAIL_TYPES: Record<string, EmailTypeDefinition> = {
   newsletter_confirm,
   newsletter_welcome,
   new_prompt,
+  prompt_submitted,
+  prompt_approved,
+  prompt_rejected,
+  prompt_warning,
+  prompt_hidden,
+  badge_earned,
+  weekly_digest,
 };
 
 export const EMAIL_TYPE_LIST = Object.values(EMAIL_TYPES);

@@ -2,11 +2,12 @@ import {
   arrayUnion, addDoc, collection, getDocs, query, where, orderBy,
   limit, doc, getDoc, Timestamp, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
+import { sendEmailVerification } from 'firebase/auth';
 import {
   BarChart3, Bell, Bot, Check, Clock, Code2, Copy, CreditCard,
   Database, Download, ExternalLink, FolderKanban, Flame, Gift, Heart,
-  History, LayoutGrid, PlusCircle, RefreshCw, ShieldCheck, Sparkles,
-  Star, Trophy, User, Zap, ArrowRight,
+  History, LayoutGrid, MailCheck, PlusCircle, RefreshCw, ShieldCheck, Sparkles,
+  Star, Trophy, User, Zap, ArrowRight, AlertCircle,
 } from 'lucide-react';
 import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
 import { AnimatePresence, motion } from 'motion/react';
@@ -20,12 +21,19 @@ import Badge from '../components/primitives/Badge';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { useNotifications } from '../hooks/useNotifications';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { usePath } from '../hooks/usePath';
 import { useStreak } from '../hooks/useStreak';
+import { useDailyCredits } from '../hooks/useDailyCredits';
 import { useDynamicBadges } from '../hooks/useDynamicBadges';
+import { useFeaturedPrompt } from '../hooks/useFeaturedPrompt';
+import ProfileCompletionCard from '../components/dashboard/ProfileCompletionCard';
+import NearBadgeCard from '../components/dashboard/NearBadgeCard';
+import FeaturedPromptBanner from '../components/dashboard/FeaturedPromptBanner';
+import FollowingFeedCard from '../components/dashboard/FollowingFeedCard';
+import BadgeMilestoneModal from '../components/dashboard/BadgeMilestoneModal';
 import {
-  BADGE_DEFS, BadgeContext, computeEarnedBadges,
+  BadgeDef, BADGE_DEFS, BadgeContext, computeEarnedBadges,
   computeEarnedBadgesFromDefs, defToBadgeDef,
 } from '../lib/badges';
 import { EmailService } from '../services/emailService';
@@ -58,6 +66,12 @@ export default function DashboardPage() {
   const [orders, setOrders]               = useState<any[]>([]);
   const [copied, setCopied]               = useState(false);
   const [planData, setPlanData]           = useState<any>(null);
+  const [milestoneQueue, setMilestoneQueue] = useState<BadgeDef[]>([]);
+  const [verifCooldown, setVerifCooldown] = useState(() => {
+    const sent = parseInt(localStorage.getItem('verifEmailSentAt') || '0', 10);
+    const elapsed = Math.floor((Date.now() - sent) / 1000);
+    return Math.max(0, 60 - elapsed);
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -155,6 +169,15 @@ export default function DashboardPage() {
   const { unreadCount } = useNotifications();
   const { streak, longest, isNewRecord } = useStreak();
   const { badges: dynamicBadgeDefs, loading: badgesLoading } = useDynamicBadges();
+  const { featured } = useFeaturedPrompt();
+  useDailyCredits();
+
+  // Tick down the email verification cooldown
+  useEffect(() => {
+    if (verifCooldown <= 0) return;
+    const id = setInterval(() => setVerifCooldown(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [verifCooldown]);
 
   // Resolve display defs — prefer Firestore, fall back to hardcoded
   const activeBadgeDefs = dynamicBadgeDefs.length > 0
@@ -183,12 +206,16 @@ export default function DashboardPage() {
     // Persist new badges to Firestore
     updateDoc(doc(db, 'users', user.uid), { badges: arrayUnion(...newOnes) }).catch(() => {});
 
+    // Show milestone modal for all new badges at once
+    const newDefs = newOnes.map(id => activeBadgeDefs.find(b => b.id === id)).filter(Boolean) as BadgeDef[];
+    if (newDefs.length > 0) setMilestoneQueue(newDefs);
+
     newOnes.forEach(async id => {
       const def = activeBadgeDefs.find(b => b.id === id);
       if (!def) return;
 
-      // Toast notification
-      toast.success(`🏅 Badge unlocked: ${def.label}!`, { duration: 4000 });
+      // Toast notification (backup for when modal is dismissed)
+      toast.success(`🏅 Badge unlocked: ${def.label}!`, { duration: 2000 });
 
       // In-app notification
       try {
@@ -252,6 +279,43 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Email Verification Banner ── */}
+      {user && !user.emailVerified && (
+        <div className="flex items-center gap-3 px-5 py-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-amber-700 flex-1">
+            Please verify your email address to unlock all features.
+          </p>
+          {verifCooldown > 0 ? (
+            <span className="flex items-center gap-1.5 text-amber-600 font-semibold text-xs whitespace-nowrap">
+              <MailCheck className="w-4 h-4" /> Sent — resend in {verifCooldown}s
+            </span>
+          ) : (
+            <button
+              onClick={async () => {
+                if (!auth.currentUser) return;
+                try {
+                  await sendEmailVerification(auth.currentUser);
+                  localStorage.setItem('verifEmailSentAt', String(Date.now()));
+                  setVerifCooldown(60);
+                  toast.success('Verification email sent!');
+                } catch (err: any) {
+                  if (err?.code === 'auth/too-many-requests') {
+                    toast.error('Too many attempts — please wait a minute before trying again.');
+                    setVerifCooldown(60);
+                  } else {
+                    toast.error('Failed to send verification email.');
+                  }
+                }
+              }}
+              className="text-amber-700 font-semibold underline underline-offset-2 hover:text-amber-800 whitespace-nowrap"
+            >
+              Resend email
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Welcome Banner ── */}
       <div className="bg-card rounded-2xl p-6 border border-border shadow-sm relative overflow-hidden">
@@ -326,6 +390,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Featured Daily Prompt ── */}
+      {featured && <FeaturedPromptBanner featured={featured} />}
+
       {/* ── Nudge Banners ── */}
       {!profile?.displayName && (
         <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm">
@@ -394,6 +461,27 @@ export default function DashboardPage() {
               >
                 Share link →
               </Link>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── Profile Completion + Near Badge ── */}
+      {profile && user && (() => {
+        const totalViews = myPrompts.reduce((s, p) => s + (p.viewsCount || 0), 0);
+        const ctx: BadgeContext = { promptCount: myPrompts.length, totalViews, referralCount, streak };
+        const earnedIds = new Set(profile.badges || []);
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ProfileCompletionCard profile={profile} userId={user.uid} />
+            {!badgesLoading && activeBadgeDefs.length > 0 && (
+              <NearBadgeCard
+                defs={activeBadgeDefs}
+                earnedIds={earnedIds}
+                profile={profile}
+                ctx={ctx}
+                dynamicDefs={dynamicBadgeDefs}
+              />
             )}
           </div>
         );
@@ -502,6 +590,11 @@ export default function DashboardPage() {
             }
           </div>
         </div>
+      )}
+
+      {/* ── Following Feed ── */}
+      {(profile?.following?.length ?? 0) > 0 && (
+        <FollowingFeedCard following={profile?.following ?? []} />
       )}
 
       {/* ── Pro Analytics gate (free users see blurred mock) ── */}
@@ -875,6 +968,14 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── Badge Milestone Modal ── */}
+      {milestoneQueue.length > 0 && (
+        <BadgeMilestoneModal
+          badges={milestoneQueue}
+          onClose={() => setMilestoneQueue([])}
+        />
+      )}
 
       {/* ── Tabs ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

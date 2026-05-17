@@ -83,37 +83,32 @@ export default function ContactPage() {
     <div className="min-h-screen bg-background">
 
       {/* ── Hero ── */}
-      <div className="relative pt-24 pb-20 text-center overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] pointer-events-none"
+      <div className="relative pt-24 pb-12 md:pb-16 text-center overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] md:w-[700px] h-[350px] md:h-[450px] pointer-events-none"
           style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.12) 0%, transparent 70%)' }} />
-        <div
-          className="absolute inset-0 pointer-events-none opacity-30"
-          style={{
-            backgroundImage: 'radial-gradient(circle, hsl(var(--muted-foreground)/0.15) 1px, transparent 1px)',
-            backgroundSize: '32px 32px',
-          }}
-        />
+        <div className="absolute inset-0 pointer-events-none opacity-30"
+          style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--muted-foreground)/0.15) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
         <PageContainer className="relative z-10" ignoreCustomizer>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 bg-primary/10 border border-primary/25 text-primary">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-5 md:mb-6 bg-primary/10 border border-primary/25 text-primary">
               <Sparkles className="w-3.5 h-3.5" />
               We typically respond within 2 hours
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4 tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-foreground mb-3 md:mb-4 tracking-tight">
               Get in Touch
             </h1>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+            <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto px-2">
               Have a question, idea, or just want to say hi? We'd love to hear from you.
             </p>
           </motion.div>
         </PageContainer>
       </div>
 
-      <PageContainer className="pb-24" ignoreCustomizer>
-        <div className="grid lg:grid-cols-5 gap-8">
+      <PageContainer className="pb-16 md:pb-24" ignoreCustomizer>
+        <div className="grid lg:grid-cols-5 gap-6 md:gap-8">
 
           {/* ── Info sidebar ── */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3 md:space-y-4">
             {[
               {
                 icon: Mail,
@@ -176,7 +171,7 @@ export default function ContactPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="lg:col-span-3 rounded-2xl p-8 bg-card border border-border"
+            className="lg:col-span-3 rounded-2xl p-6 md:p-8 bg-card border border-border"
           >
             {sent ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">

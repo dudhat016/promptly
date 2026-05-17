@@ -1,4 +1,4 @@
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, collectionGroup, onSnapshot, query, where } from 'firebase/firestore';
 import {
   Activity,
   BarChart2,
@@ -73,6 +73,7 @@ export default function AdminLayout() {
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const [pendingReports, setPendingReports] = useState(0);
   const [pendingPrompts, setPendingPrompts] = useState(0);
+  const [pendingReviews, setPendingReviews] = useState(0);
 
   const isHorizontal = config.orientation === 'horizontal';
   const sidebarWidth = config.sidebarWidth;
@@ -102,7 +103,8 @@ export default function AdminLayout() {
     const unsubI = onSnapshot(collection(db, 'contact_messages'), snap => setUnreadInquiries(snap.docs.filter(d => !d.data().readAt).length), noop);
     const unsubR = onSnapshot(query(collection(db, 'prompt_reports'), where('status', '==', 'pending')), snap => setPendingReports(snap.size), noop);
     const unsubP = onSnapshot(query(collection(db, 'prompts'), where('status', '==', 'pending')), snap => setPendingPrompts(snap.size), noop);
-    return () => { unsubW(); unsubT(); unsubI(); unsubR(); unsubP(); };
+    const unsubRev = onSnapshot(query(collectionGroup(db, 'reviews'), where('moderationStatus', '==', 'pending')), snap => setPendingReviews(snap.size), noop);
+    return () => { unsubW(); unsubT(); unsubI(); unsubR(); unsubP(); unsubRev(); };
   }, []);
 
   const allNavItems: NavItem[] = [
@@ -117,6 +119,7 @@ export default function AdminLayout() {
     // ── Marketplace ───────────────────────────
     { sectionTitle: 'Marketplace' },
     { label: 'Prompts', icon: LayoutGrid, path: '/admin/prompts', section: 'prompts', badge: pendingPrompts, badgeVariant: 'warning' as const },
+    { label: 'Reviews', icon: Star, path: '/admin/reviews', section: 'reviews' as const, ...(pendingReviews > 0 ? { badge: pendingReviews, badgeVariant: 'warning' as const } : {}) },
     { label: 'Categories', icon: Tag, path: '/admin/categories', section: 'categories' },
     { label: 'AI Models', icon: Cpu, path: '/admin/models', section: 'ai_models' },
     { label: 'Badges', icon: Medal, path: '/admin/badges', section: 'badges' as const },

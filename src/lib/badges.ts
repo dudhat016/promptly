@@ -1,5 +1,5 @@
 import {
-  Award, Bell, Bookmark, Coffee, Crown, Diamond, Flame, Gem, Gift,
+  Award, Bell, Bookmark, CheckCircle, Coffee, Crown, Diamond, Flame, Gem, Gift,
   Globe, Heart, Medal, Rocket, ShieldCheck, Star, Target,
   Trophy, Unlock, Users, Zap,
 } from 'lucide-react';
@@ -24,7 +24,7 @@ export interface BadgeContext {
 
 // Icon registry for dynamic icon rendering from Firestore name strings
 export const BADGE_ICON_MAP: Record<string, LucideIcon> = {
-  Award, Bell, Bookmark, Coffee, Crown, Diamond, Flame, Gem, Gift,
+  Award, Bell, Bookmark, CheckCircle, Coffee, Crown, Diamond, Flame, Gem, Gift,
   Globe, Heart, Medal, Rocket, ShieldCheck, Star, Target,
   Trophy, Unlock, Users, Zap,
 };

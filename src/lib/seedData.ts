@@ -118,6 +118,18 @@ const SEED_BADGES = [
     isActive: true,
     order: 8,
   },
+  {
+    id: 'profile_complete',
+    name: 'All Set',
+    description: 'Completed 100% of your profile',
+    iconName: 'CheckCircle',
+    colorClass: 'bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30',
+    hint: 'Complete all profile steps',
+    conditionType: 'manual',
+    conditionThreshold: 0,
+    isActive: true,
+    order: 9,
+  },
 ] as const;
 
 export async function seedBadges(): Promise<{ created: number; skipped: number }> {
@@ -479,6 +491,138 @@ Ready to start? Browse prompts matched to your profile on the Explore page.
 
 The Promptly Team`,
     variables: ['name', 'interests', 'explore_url'],
+  },
+  {
+    id: 'prompt_warning',
+    name: 'Content Warning',
+    type: 'prompt_warning',
+    group: 'nudge',
+    subject: '⚠️ Community guidelines reminder for "{{prompt_title}}"',
+    body: `Hi {{name}},
+
+Your prompt **"{{prompt_title}}"** has received a community report. After review, no action was taken — however, we want to remind you of our content guidelines to avoid future issues.
+
+Please ensure your prompts are:
+- Original and not misleading
+- Free from harmful, illegal, or inappropriate content
+- Categorised correctly
+
+[Review Your Prompts]({{dashboard_url}})
+
+Thanks for contributing to Promptly.
+
+The Moderation Team`,
+    variables: ['name', 'prompt_title', 'dashboard_url'],
+  },
+  {
+    id: 'prompt_hidden',
+    name: 'Prompt Hidden',
+    type: 'prompt_hidden',
+    group: 'nudge',
+    subject: '🔒 Your prompt "{{prompt_title}}" has been removed from Explore',
+    body: `Hi {{name}},
+
+After reviewing multiple community reports, we've temporarily hidden your prompt **"{{prompt_title}}"** from the Explore marketplace.
+
+You can still access and edit it from your dashboard. If you believe this was in error, please reply to this email and we'll review it.
+
+[View Your Library]({{dashboard_url}})
+
+The Moderation Team`,
+    variables: ['name', 'prompt_title', 'dashboard_url'],
+  },
+  {
+    id: 'prompt_approved',
+    name: 'Prompt Approved',
+    type: 'prompt_approved',
+    group: 'nudge',
+    subject: '🎉 Your prompt "{{prompt_title}}" is now live!',
+    body: `Hi {{name}},
+
+Great news — your prompt has been reviewed and approved!
+
+**"{{prompt_title}}"** is now live on the Promptly marketplace as a **{{prompt_type}}** prompt.
+
+Creators and AI power users can now discover and use your work. Share it on social media to get more views and earn more from the Partner Program.
+
+[View Your Prompt Library]({{dashboard_url}})
+
+Keep creating,
+The Promptly Team`,
+    variables: ['name', 'prompt_title', 'prompt_type', 'dashboard_url'],
+  },
+  {
+    id: 'prompt_rejected',
+    name: 'Prompt Needs Revision',
+    type: 'prompt_rejected',
+    group: 'nudge',
+    subject: '📝 Your prompt "{{prompt_title}}" needs a few changes',
+    body: `Hi {{name}},
+
+Thanks for submitting your prompt to Promptly. After review, our team found a few things to improve before it can go live.
+
+**Prompt:** {{prompt_title}}
+**Feedback:** {{rejection_reason}}
+
+Please update your prompt and resubmit — we'd love to feature it on the marketplace.
+
+[Edit Your Prompt]({{dashboard_url}})
+
+Any questions? Just reply to this email.
+
+The Promptly Team`,
+    variables: ['name', 'prompt_title', 'rejection_reason', 'dashboard_url'],
+  },
+  {
+    id: 'trial_expired',
+    name: 'Trial Expired',
+    type: 'trial_expired',
+    group: 'billing',
+    subject: 'Your Promptly free trial has ended',
+    body: `Hi {{name}},
+
+Your free trial has ended and your account has been moved to the Free plan.
+
+You still have access to Promptly — but premium prompts, unlimited unlocks, and Pro-only features are now locked.
+
+Upgrade to Pro any time to get full access back instantly.
+
+→ Reactivate Pro: {{app_url}}/pricing
+
+We hope you enjoyed your trial. If you have any questions, just reply to this email.
+
+— The Promptly Team`,
+    variables: ['name', 'app_url'],
+  },
+  {
+    id: 'weekly_digest',
+    name: 'Weekly Creator Digest',
+    type: 'weekly_digest',
+    group: 'newsletter',
+    subject: '📬 Your Promptly weekly digest — {{week}}',
+    body: `Hi {{name}},
+
+Here's what's happening on Promptly this week:
+
+## 🔥 Top Prompts This Week
+{{top_prompts}}
+
+## 📊 Your Progress
+- Credits used this week: **{{credits_used}}**
+- Prompts viewed: **{{prompts_viewed}}**
+- Current streak: **{{streak}} days** 🔥
+
+## 💡 Featured Prompt
+**{{featured_title}}** — {{featured_description}}
+[Explore it]({{featured_url}})
+
+---
+Keep building, keep creating.
+
+[Go to Dashboard]({{dashboard_url}}) · [Unsubscribe]({{unsubscribe_url}})
+
+The Promptly Team`,
+    variables: ['name', 'week', 'top_prompts', 'credits_used', 'prompts_viewed', 'streak', 'featured_title', 'featured_description', 'featured_url', 'dashboard_url', 'unsubscribe_url'],
   },
 ] as const;
 

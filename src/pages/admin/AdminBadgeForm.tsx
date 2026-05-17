@@ -179,16 +179,22 @@ export default function AdminBadgeForm() {
                 isSearchable={false}
               />
               {needsThreshold && (
-                <Input
-                  label={form.conditionType === 'early_adopter' ? 'Cutoff Date (Unix ms)' : 'Threshold (N)'}
-                  id="badge-threshold"
-                  name="threshold"
-                  type="number"
-                  value={String(form.conditionThreshold)}
-                  onChange={e => set('conditionThreshold', Number(e.target.value))}
-                  placeholder={form.conditionType === 'early_adopter' ? '1748736000000' : '1'}
-                  hint={form.conditionType === 'early_adopter' ? 'e.g. 1748736000000 = 2025-06-01 UTC' : undefined}
-                />
+                <div>
+                  <Input
+                    label={form.conditionType === 'early_adopter' ? 'Cutoff Date (Unix ms)' : 'Threshold (N)'}
+                    id="badge-threshold"
+                    name="threshold"
+                    type="number"
+                    value={String(form.conditionThreshold)}
+                    onChange={e => set('conditionThreshold', Number(e.target.value))}
+                    placeholder={form.conditionType === 'early_adopter' ? '1748736000000' : '1'}
+                  />
+                  {form.conditionType === 'early_adopter' && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      e.g. 1748736000000 = 2025-06-01 UTC
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

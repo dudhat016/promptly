@@ -13,11 +13,13 @@ import {
   MapPin, Globe, Link2, Twitter, Instagram, Github, Youtube,
 } from 'lucide-react';
 import { BADGE_DEFS } from '../lib/badges';
+import { AFFILIATE_MILESTONES } from '../lib/milestones';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
 import { useAuth } from '../hooks/useAuth';
+import { useSEO } from '../hooks/useSEO';
 import { recordFollowAffinity, recordUnfollowAffinity } from '../lib/affinity';
 
 export default function PublicProfilePage() {
@@ -32,6 +34,12 @@ export default function PublicProfilePage() {
   const [followLoading, setFollowLoading] = useState(false);
 
   const isOwnProfile = !!user && !!targetProfile && user.uid === targetProfile.uid;
+
+  useSEO(targetProfile ? {
+    title: targetProfile.displayName || 'Creator Profile',
+    description: targetProfile.bio || `Explore prompts by ${targetProfile.displayName} on Promptly.`,
+    image: targetProfile.photoURL || undefined,
+  } : { title: 'Creator Profile' });
 
   useEffect(() => {
     if (uid) fetchUserData();
@@ -276,13 +284,29 @@ export default function PublicProfilePage() {
                 </div>
               )}
 
+              {/* Affiliate milestone badges */}
+              {(targetProfile.milestones?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                  {AFFILIATE_MILESTONES.filter(m => targetProfile.milestones!.includes(m.label)).map(m => (
+                    <span
+                      key={m.label}
+                      title={m.desc}
+                      className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-amber-500/10 text-amber-600 border-amber-500/20"
+                    >
+                      <span>{m.icon}</span>
+                      {m.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Stats row */}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm font-semibold text-muted-foreground pt-1">
                 <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4 opacity-50" />{prompts.length} prompts</span>
                 <span className="flex items-center gap-1.5"><Users className="w-4 h-4 opacity-50" />{followerCount} followers</span>
                 <span className="flex items-center gap-1.5"><Heart className="w-4 h-4 opacity-50" />{totalLikes} likes</span>
                 <span className="flex items-center gap-1.5"><Eye className="w-4 h-4 opacity-50" />{totalViews} views</span>
-                <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 opacity-50" />Joined {(targetProfile.createdAt?.toDate ? targetProfile.createdAt.toDate() : new Date(targetProfile.createdAt)).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+                <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 opacity-50" />Joined {((ca: any) => ca?.toDate ? ca.toDate() : new Date(ca))(targetProfile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Prompt } from '../types';
-import { ArrowRight, Copy, Eye, Flag, Heart, Lock, MoreHorizontal, Sparkles, Unlock, Zap } from 'lucide-react';
+import { ArrowRight, Bookmark, Copy, Eye, Flag, Heart, Lock, MoreHorizontal, Sparkles, Unlock, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
@@ -11,6 +11,7 @@ import { api } from '../lib/api';
 import { toast } from 'react-hot-toast';
 import { useState, useRef, useEffect } from 'react';
 import { usePath } from '../hooks/usePath';
+import { useSavedPrompts } from '../hooks/useSavedPrompts';
 import Button from './primitives/Button';
 import Rating from './feedback/Rating';
 import ReportModal from './ReportModal';
@@ -34,6 +35,7 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const { isSaved, toggle: toggleSaved } = useSavedPrompts();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -185,7 +187,19 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
               <MoreHorizontal className="w-4 h-4" />
             </Button>
             {menuOpen && (
-              <div className="absolute top-full left-0 mt-1 w-36 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+              <div className="absolute top-full left-0 mt-1 w-40 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                {user && prompt.id && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      toggleSaved(prompt.id!, prompt.title, prompt.slug);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-muted/60 transition-colors"
+                  >
+                    <Bookmark className={cn('w-3.5 h-3.5', isSaved(prompt.id!) && 'fill-current text-primary')} />
+                    {isSaved(prompt.id!) ? 'Remove from Queue' : 'Save to Queue'}
+                  </button>
+                )}
                 <button
                   onClick={() => { setMenuOpen(false); setReportOpen(true); }}
                   className="flex items-center gap-2 w-full px-3 py-2.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 transition-colors"
@@ -209,11 +223,11 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
                 {prompt.difficulty}
               </span>
             )}
-            <Rating 
-              value={prompt.likesCount ? Math.min(5, 4.2 + (prompt.likesCount / 200)) : 4.5} 
+            <Rating
+              value={prompt.avgRating ?? (prompt.likesCount ? Math.min(5, 4.2 + (prompt.likesCount / 200)) : 4.5)}
               precision={0.5}
-              readOnly 
-              size="sm" 
+              readOnly
+              size="sm"
             />
           </div>
           <h3 className="font-semibold text-base leading-snug mb-1.5 text-foreground group-hover:text-primary transition-colors line-clamp-1 font-display">

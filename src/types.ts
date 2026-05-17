@@ -51,6 +51,7 @@ export interface UserProfile {
   totalUsedCredits?: number;
   monthlyLimit?: number;
   unlockedPrompts?: string[];
+  milestones?: string[];
   lastCreditsRewardAt?: any;
   lastActiveAt?: any;
   suspended?: boolean;
@@ -292,6 +293,8 @@ export interface Prompt {
   likesCount: number;
   viewsCount?: number;
   copiesCount?: number;
+  avgRating?: number;
+  reviewCount?: number;
   createdAt: string;
   updatedAt: string;
   sampleOutput?: string;
@@ -306,6 +309,22 @@ export interface Prompt {
   // Moderation
   reportCount?: number;
   moderationStatus?: 'active' | 'flagged' | 'hidden';
+}
+
+export interface PromptReview {
+  id: string;
+  promptId: string;
+  promptTitle?: string;
+  promptSlug?: string;
+  userId: string;
+  displayName: string;
+  photoURL?: string | null;
+  rating: number;
+  comment: string;
+  createdAt: any;
+  moderationStatus?: 'pending' | 'approved' | 'rejected';
+  reviewedAt?: any;
+  reviewedBy?: string;
 }
 
 export interface PromptCollection {
@@ -389,7 +408,8 @@ export type AdminSection =
   | 'emails'
   | 'reports'
   | 'content'
-  | 'badges';
+  | 'badges'
+  | 'reviews';
 
 export interface SectionPermission {
   canView: boolean;

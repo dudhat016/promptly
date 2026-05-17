@@ -1,5 +1,5 @@
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
-import { Mail, Plus, Wand2 } from 'lucide-react';
+import { Mail, Plus, Send, Wand2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -10,6 +10,7 @@ import Button from '../../components/primitives/Button';
 import { db } from '../../lib/firebase';
 import { api } from '../../lib/api';
 import { usePath } from '../../hooks/usePath';
+import { seedEmailTemplates } from '../../lib/seedData';
 import { EmailTemplate } from '../../types';
 
 const GROUP_LABELS: Record<string, string> = {
@@ -27,6 +28,8 @@ export default function AdminTemplates() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading]     = useState(true);
   const [seeding, setSeeding]     = useState(false);
+  const [digestSending, setDigestSending] = useState(false);
+  const [digestPreview, setDigestPreview] = useState<number | null>(null);
 
   useEffect(() => { fetchTemplates(); }, []);
 
@@ -63,12 +66,47 @@ export default function AdminTemplates() {
     setSeeding(true);
     const toastId = toast.loading('Seeding default templates…');
     try {
-      const r = await api.post('/email/seed-templates');
-      const { created = 0, skipped = 0 } = (r as any);
-      toast.success(`${created} created, ${skipped} already existed`, { id: toastId });
-      if (created > 0) await fetchTemplates();
+      // Server-side seed (core transactional templates)
+      let serverCreated = 0;
+      let serverSkipped = 0;
+      try {
+        const r = await api.post('/email/seed-templates');
+        serverCreated = (r as any).created ?? 0;
+        serverSkipped = (r as any).skipped ?? 0;
+      } catch { /* server seed optional */ }
+
+      // Client-side seed (badge_earned + any templates not covered server-side)
+      const { created: clientCreated, skipped: clientSkipped } = await seedEmailTemplates();
+
+      const totalCreated = serverCreated + clientCreated;
+      const totalSkipped = serverSkipped + clientSkipped;
+      toast.success(`${totalCreated} created, ${totalSkipped} already existed`, { id: toastId });
+      if (totalCreated > 0) await fetchTemplates();
     } catch { toast.error('Seed failed', { id: toastId }); }
     finally { setSeeding(false); }
+  };
+
+  useEffect(() => {
+    api.get('/email/broadcast/preview').then((r: any) => setDigestPreview(r.total ?? 0)).catch(() => {});
+  }, []);
+
+  const handleSendDigest = async () => {
+    const hasTemplate = templates.some(t => (t as any).type === 'weekly_digest');
+    if (!hasTemplate) {
+      toast.error('weekly_digest template not found — run Seed Defaults first');
+      return;
+    }
+    setDigestSending(true);
+    const toastId = toast.loading('Sending weekly digest…');
+    try {
+      const week = new Date().toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' });
+      const r: any = await api.post('/email/broadcast', {
+        type: 'weekly_digest',
+        variables: { week, dashboard_url: window.location.origin + '/dashboard' },
+      });
+      toast.success(`Digest sent to ${r.sent} contacts (${r.skipped} skipped, ${r.failed} failed)`, { id: toastId });
+    } catch { toast.error('Broadcast failed', { id: toastId }); }
+    finally { setDigestSending(false); }
   };
 
   // Stats by group
@@ -234,6 +272,34 @@ export default function AdminTemplates() {
         emptyTitle="No templates yet"
         emptyMessage="Click 'Seed Defaults' to populate all 26 system emails, or 'New Template' to create one from scratch."
       />
+
+      {/* ── Weekly Digest Broadcast ── */}
+      <div className="bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0">
+            <Send className="w-5 h-5 text-blue-500" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-foreground">Weekly Creator Digest</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Broadcast the <code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">weekly_digest</code> template to all active contacts.
+              {digestPreview !== null && (
+                <span className="ml-1 font-medium text-foreground">{digestPreview} recipients</span>
+              )}
+            </p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          leftIcon={Send}
+          isLoading={digestSending}
+          onClick={handleSendDigest}
+          className="shrink-0"
+        >
+          Send This Week's Digest
+        </Button>
+      </div>
     </div>
   );
 }

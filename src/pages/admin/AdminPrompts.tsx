@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, updateDoc, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { CheckCircle, Clock, Eye, Heart, LayoutGrid, Plus, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -12,6 +12,7 @@ import { usePath } from '../../hooks/usePath';
 import { logAuditEvent } from '../../lib/auditLog';
 import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
+import { EmailService } from '../../services/emailService';
 import { Prompt } from '../../types';
 
 type Tab = 'all' | 'pending' | 'approved' | 'rejected';
@@ -72,7 +73,7 @@ export default function AdminPrompts() {
         moderationStatus: 'active',
         updatedAt: serverTimestamp(),
       });
-      // Notify creator
+      // In-app notification
       await addDoc(collection(db, 'users', prompt.creatorId, 'notifications'), {
         type: 'prompt_approved',
         title: 'Your prompt was approved!',
@@ -81,6 +82,18 @@ export default function AdminPrompts() {
         read: false,
         createdAt: serverTimestamp(),
       });
+      // Email notification — look up creator email
+      getDoc(doc(db, 'users', prompt.creatorId)).then(snap => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.email) {
+          EmailService.sendPromptApprovedEmail(
+            prompt.creatorId, data.email,
+            data.displayName || 'Creator',
+            prompt.title, isPaid,
+          );
+        }
+      }).catch(() => {});
       setPrompts(prev => prev.map(p => p.id === prompt.id ? { ...p, status: 'approved', isPaid, approvedBy: user?.uid } : p));
       logAuditEvent({ action: 'prompt.approved', entityType: 'prompt', entityId: prompt.id, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { title: prompt.title, isPaid } });
       toast.success(`Approved as ${isPaid ? 'Premium' : 'Free'}!`);
@@ -103,7 +116,7 @@ export default function AdminPrompts() {
         rejectionReason: rejectReason,
         updatedAt: serverTimestamp(),
       });
-      // Notify creator
+      // In-app notification
       await addDoc(collection(db, 'users', rejectModalPrompt.creatorId, 'notifications'), {
         type: 'prompt_rejected',
         title: 'Your prompt needs revision',
@@ -112,6 +125,20 @@ export default function AdminPrompts() {
         read: false,
         createdAt: serverTimestamp(),
       });
+      // Email notification — look up creator email
+      const rejected = rejectModalPrompt;
+      const reason   = rejectReason;
+      getDoc(doc(db, 'users', rejected.creatorId)).then(snap => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.email) {
+          EmailService.sendPromptRejectedEmail(
+            rejected.creatorId, data.email,
+            data.displayName || 'Creator',
+            rejected.title, reason,
+          );
+        }
+      }).catch(() => {});
       setPrompts(prev => prev.map(p => p.id === rejectModalPrompt.id ? { ...p, status: 'rejected', rejectionReason: rejectReason } : p));
       logAuditEvent({ action: 'prompt.rejected', entityType: 'prompt', entityId: rejectModalPrompt.id, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { title: rejectModalPrompt.title, reason: rejectReason } });
       toast.success('Prompt rejected');

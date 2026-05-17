@@ -21,7 +21,7 @@ export default function PageContainer({ children, className, ignoreCustomizer }:
   const maxWidth = effectiveWidth === 'compact' ? "max-w-[var(--content-max-width)]" : "max-w-full";
 
   return (
-    <div className={cn(maxWidth, "w-full mx-auto", className)}>
+    <div className={cn(maxWidth, "w-full mx-auto", ignoreCustomizer && "px-4 sm:px-6 lg:px-8", className)}>
       {children}
     </div>
   );

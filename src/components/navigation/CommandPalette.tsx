@@ -1,25 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Search, Command, X, ArrowRight, Sparkles, 
-  LayoutGrid, User, Settings, ShieldCheck, 
-  CreditCard, MessageSquare, BookOpen, Clock
+import {
+  Search, Command, ArrowRight, Sparkles,
+  LayoutGrid, User, ShieldCheck,
+  CreditCard, Clock
 } from 'lucide-react';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useConfig } from '../../hooks/useConfig';
 import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
+import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
-import { apiService } from '../../services/ApiService';
 import { Prompt } from '../../types';
 
 export default function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  
+  const promptCacheRef = useRef<Prompt[]>([]);
+  const cacheLoadedRef = useRef(false);
+
   const { config } = useConfig();
   const { isAdmin, user } = useAuth();
   const { prefix } = usePath();
@@ -39,43 +42,43 @@ export default function CommandPalette() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Focus input when opened
+  // Load prompt cache once when palette opens
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 10);
-      setQuery('');
-      setSelectedIndex(0);
-    }
+    if (!isOpen) return;
+    setTimeout(() => inputRef.current?.focus(), 10);
+    setSearchQuery('');
+    setSelectedIndex(0);
+    setResults([]);
+
+    if (cacheLoadedRef.current) return;
+    const q = query(
+      collection(db, 'prompts'),
+      where('status', '==', 'approved'),
+      orderBy('viewsCount', 'desc'),
+      limit(60)
+    );
+    getDocs(q).then(snap => {
+      promptCacheRef.current = snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt));
+      cacheLoadedRef.current = true;
+    }).catch(() => {});
   }, [isOpen]);
 
-  // Search logic
+  // Client-side filter against cached results
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      try {
-        // Simple search logic - could be replaced with a real search API
-        const q = query.toLowerCase();
-        const allPrompts = await apiService.getCollection<Prompt>('prompts');
-        const filtered = allPrompts.filter(p => 
-          p.title.toLowerCase().includes(q) || 
-          p.description?.toLowerCase().includes(q) ||
-          p.tags?.some(t => t.toLowerCase().includes(q))
-        ).slice(0, 5);
-        setResults(filtered);
-      } catch (err) {
-        console.error('Search failed:', err);
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
-
+    const term = searchQuery.trim().toLowerCase();
+    if (!term) { setResults([]); return; }
+    setLoading(true);
+    const timer = setTimeout(() => {
+      const filtered = promptCacheRef.current.filter(p =>
+        p.title.toLowerCase().includes(term) ||
+        p.description?.toLowerCase().includes(term) ||
+        p.tags?.some(t => t.toLowerCase().includes(term))
+      ).slice(0, 6);
+      setResults(filtered);
+      setLoading(false);
+    }, 150);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [searchQuery]);
 
   const handleSelect = (to: string) => {
     navigate(to);
@@ -136,8 +139,8 @@ export default function CommandPalette() {
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   ref={inputRef}
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={onKeyDown}
                   placeholder="Search prompts, categories, or actions..."
                   className="w-full h-16 pl-14 pr-16 bg-transparent text-lg font-medium text-foreground outline-none placeholder:text-muted-foreground/60"
@@ -150,7 +153,7 @@ export default function CommandPalette() {
               {/* Content */}
               <div className="max-h-[60vh] overflow-y-auto p-2 space-y-4">
                 {/* Initial / Static actions */}
-                {!query && (
+                {!searchQuery && (
                   <div>
                     <h4 className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Quick Access</h4>
                     <div className="space-y-1">
@@ -168,7 +171,7 @@ export default function CommandPalette() {
                 )}
 
                 {/* Results */}
-                {query && (
+                {searchQuery && (
                   <div>
                     <div className="flex items-center justify-between px-3 py-2">
                       <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
@@ -194,7 +197,7 @@ export default function CommandPalette() {
                 )}
 
                 {/* Footer / Categories */}
-                {!query && (
+                {!searchQuery && (
                   <div>
                     <h4 className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Categories</h4>
                     <div className="grid grid-cols-2 gap-1 px-1">

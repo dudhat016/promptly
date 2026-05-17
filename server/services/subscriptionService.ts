@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { getLangUrl } from "../lib/config.js";
-import { sendSuccessEmail } from "../lib/payouts.js";
+import { sendSuccessEmail, awardAffiliateCommission } from "../lib/payouts.js";
 import { DunningService } from "./dunningService.js";
 import { triggerFlow } from "./automationEngine.js";
 
@@ -289,6 +289,26 @@ export class SubscriptionService {
           createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
+        // Award affiliate commission on each Cashfree billing cycle
+        const cfReferredBy = userData.referredBy as string | undefined;
+        if (cfReferredBy) {
+          const cfPaymentAmount = parseFloat(payment?.amount || '0');
+          if (cfPaymentAmount > 0) {
+            // Look up plan USD price for consistent USD-based accounting
+            const cfPlanSnap = await firebase.db.collection("plans")
+              .doc(userData.activePlanId || 'pro_plan').get();
+            const cfPlan = cfPlanSnap.exists ? cfPlanSnap.data() : null;
+            const cycle = userData.billingCycle || 'monthly';
+            const planUsd = (cycle === 'yearly' ? cfPlan?.yearlyPrice : cfPlan?.monthlyPrice) || 0;
+            const planInr = (cycle === 'yearly' ? cfPlan?.inrYearlyPrice : cfPlan?.inrMonthlyPrice) || 0;
+            const rate    = planInr > 0 && planUsd > 0 ? planInr / planUsd : 84;
+            const amountUsd = planUsd > 0 ? planUsd : cfPaymentAmount / rate;
+            awardAffiliateCommission(
+              userDoc.id, cfPaymentAmount, paymentId, 'INR', cfReferredBy, amountUsd, rate
+            ).catch(err => console.error('[Affiliate] Cashfree renewal commission error:', err.message));
+          }
+        }
+
         // Clear dunning state on successful renewal
         if (userDoc.data().dunningStatus === 'failing') {
           await DunningService.handlePaymentRecovery(userDoc.id);
@@ -556,6 +576,15 @@ export class SubscriptionService {
         'USD'
       );
 
+      // Award affiliate commission on first PayPal payment
+      const referredBy = userData!.referredBy as string | undefined;
+      const firstPayment = parseFloat(subData.billing_info?.last_payment?.amount?.value || '0');
+      if (referredBy && firstPayment > 0) {
+        awardAffiliateCommission(
+          userId, firstPayment, subscriptionId, 'USD', referredBy, firstPayment, 1
+        ).catch(err => console.error('[Affiliate] PayPal activation commission error:', err.message));
+      }
+
       return {
         status: 'PAID',
         orderId: subscriptionId,
@@ -650,6 +679,18 @@ export class SubscriptionService {
           type: 'renewal',
           createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        // Award affiliate commission on each PayPal billing cycle
+        const ppReferredBy = userData.referredBy as string | undefined;
+        if (ppReferredBy) {
+          const ppAmount = parseFloat(resource.amount?.total || resource.amount?.value || '0');
+          if (ppAmount > 0) {
+            awardAffiliateCommission(
+              userDoc.id, ppAmount, paymentId, resource.amount?.currency || 'USD',
+              ppReferredBy, ppAmount, 1
+            ).catch(err => console.error('[Affiliate] PayPal renewal commission error:', err.message));
+          }
+        }
 
         triggerFlow(firebase.db, 'subscription_renewed', userDoc.id, {
           plan: userData.activePlanId || '', amount: String(resource.amount?.total || 0), currency: resource.amount?.currency || 'USD'

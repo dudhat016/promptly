@@ -238,16 +238,16 @@ router.post("/send", authMiddleware, json(), async (req: AuthenticatedRequest, r
   }
 });
 
-// POST /api/email/send-to — admin-only: send to an arbitrary email
+// POST /api/email/send-to — send to an arbitrary email; pass userId to enforce notif prefs
 router.post("/send-to", authMiddleware, json(), async (req: AuthenticatedRequest, res) => {
-  const { to, type, variables = {} } = req.body;
+  const { to, type, variables = {}, userId } = req.body;
   if (!to || !type) return res.status(400).json({ error: "to and type are required" });
 
   try {
     const firebase = await initFirebase();
     if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
 
-    const result = await sendEmail(firebase.db, to, type, variables);
+    const result = await sendEmail(firebase.db, to, type, variables, userId || undefined);
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

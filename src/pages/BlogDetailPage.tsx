@@ -142,7 +142,7 @@ export default function BlogDetailPage() {
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-16 bg-background">
+    <div className="min-h-screen pt-24 pb-12 md:pb-16 bg-background">
       {post && (
         <Schema 
           type="Blog" 
@@ -187,7 +187,7 @@ export default function BlogDetailPage() {
               )}
 
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
-                <h1 className="text-4xl md:text-5xl font-bold text-foreground leading-tight tracking-tight">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight">
                   {post.title}
                 </h1>
                 <Button
@@ -284,11 +284,11 @@ export default function BlogDetailPage() {
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link to={prefix('/explore')}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm gradient-cta transition-all">
+                    className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-sm gradient-cta transition-all">
                     Explore Prompts <ArrowRight className="w-4 h-4" />
                   </Link>
                   <Link to={prefix('/pricing')}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/70">
+                    className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-sm transition-all bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/70">
                     View Pricing
                   </Link>
                 </div>
@@ -297,7 +297,7 @@ export default function BlogDetailPage() {
 
             {/* ── Author bio ── */}
             {author && (
-              <div className="mt-10 rounded-2xl p-7 flex items-start gap-5 bg-card border border-border">
+              <div className="mt-10 rounded-2xl p-5 md:p-7 flex items-start gap-4 md:gap-5 bg-card border border-border">
                 <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
                   {author.photoURL ? (
                     <img src={author.photoURL} alt={author.displayName || 'Author'} className="w-full h-full object-cover" />

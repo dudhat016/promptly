@@ -96,4 +96,19 @@ router.post("/process-locks", async (req, res) => {
   }
 });
 
+// POST /api/cron/expire-trials
+// Schedule: daily at 03:00 UTC — downgrades trial users whose trial period has ended with no payment method
+router.post("/expire-trials", async (req, res) => {
+  if (!verifyCronSecret(req, res)) return;
+
+  try {
+    const result = await NudgeService.expireTrials();
+    console.log(`[Cron] expire-trials: ${result.expired} expired`);
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    console.error("[Cron] expire-trials error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

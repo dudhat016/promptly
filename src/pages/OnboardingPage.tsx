@@ -1,5 +1,5 @@
 import confetti from 'canvas-confetti';
-import { collection, getDocs, query, updateDoc, where, doc } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, where, doc } from 'firebase/firestore';
 import {
   Briefcase, Check, ChevronLeft, ChevronRight, Cpu,
   Loader2, MapPin, Rocket, Star, Target, User, Zap,
@@ -215,6 +215,20 @@ export default function OnboardingPage() {
             tags:      Array.from(new Set([...(existing.tags || []), ...interestTags])),
             interests: form.interests,
             role:      form.role,
+          });
+        } else if (user.email) {
+          // Create CRM contact on first onboarding completion
+          await addDoc(collection(db, 'marketing_contacts'), {
+            userId:    user.uid,
+            email:     user.email,
+            name:      form.displayName || user.displayName || '',
+            status:    'active',
+            source:    'onboarding',
+            tags:      interestTags,
+            interests: form.interests,
+            role:      form.role,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
           });
         }
       } catch {}

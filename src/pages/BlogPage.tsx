@@ -12,6 +12,7 @@ import { cn } from '../lib/utils';
 import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
 import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
+import { useSEO } from '../hooks/useSEO';
 
 function readTime(content: string) {
   return Math.max(1, Math.ceil((content || '').split(/\s+/).length / 200));
@@ -26,6 +27,11 @@ export default function BlogPage() {
   const navigate = useNavigate();
   const { prefix } = usePath();
   const tagFilter = tagSlug || searchParams.get('tag');
+
+  useSEO({
+    title: tagFilter ? `#${tagFilter} — Blog` : 'Blog',
+    description: 'Tips, guides, and AI prompt inspiration from the Promptly team.',
+  });
 
   const profile = getAffinityProfile();
   const hasAffinityProfile = Object.keys(profile).length > 0;
@@ -89,26 +95,28 @@ export default function BlogPage() {
     <div className="min-h-screen bg-background">
 
       {/* ── Hero ── */}
-      <div className="relative pt-24 pb-16 overflow-hidden">
+      <div className="relative pt-24 pb-12 md:pb-16 overflow-hidden border-b border-border">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[350px] pointer-events-none"
           style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.1) 0%, transparent 70%)' }} />
         <PageContainer className="text-center relative z-10" ignoreCustomizer>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-5 bg-primary/10 border border-primary/25 text-primary">
-            <Sparkles className="w-3.5 h-3.5" />
-            Insights & Resources
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3 tracking-tight">
-            The Promptly Blog
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Prompt engineering guides, AI trends, and product updates from our team.
-          </p>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-5 md:mb-6 bg-primary/10 border border-primary/25 text-primary">
+              <Sparkles className="w-3.5 h-3.5" />
+              Insights & Resources
+            </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-3 md:mb-4 tracking-tight">
+              The Promptly Blog
+            </h1>
+            <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto px-2">
+              Prompt engineering guides, AI trends, and product updates from our team.
+            </p>
+          </motion.div>
         </PageContainer>
       </div>
 
       {/* ── Featured Hero Post (non-filtered view only) ── */}
       {!tagFilter && !loading && sortedPosts.length > 0 && (
-        <PageContainer className="max-w-7xl mb-12" ignoreCustomizer>
+        <PageContainer className="max-w-7xl mt-8 md:mt-12 mb-8 md:mb-12" ignoreCustomizer>
           <Link to={prefix(`/blog/${sortedPosts[0].slug}`)} className="group block rounded-2xl overflow-hidden border border-border bg-card transition-all hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5">
             <div className="grid md:grid-cols-2">
               <div className="relative aspect-video md:aspect-auto min-h-[240px] overflow-hidden">
@@ -162,7 +170,7 @@ export default function BlogPage() {
         </PageContainer>
       )}
 
-      <PageContainer className="max-w-7xl pb-24" ignoreCustomizer>
+      <PageContainer className="max-w-7xl pb-16 md:pb-24" ignoreCustomizer>
         <div className="flex flex-col lg:flex-row gap-10">
 
           {/* ── Main content ── */}

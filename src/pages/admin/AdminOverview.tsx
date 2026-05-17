@@ -1,6 +1,7 @@
-import { collection, onSnapshot, getDocs, query, orderBy } from 'firebase/firestore';
-import { ArrowUpRight, BarChart3, LayoutGrid, Star, TrendingUp, Users, DollarSign, Activity, UserMinus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { collection, onSnapshot, getDocs, query, orderBy, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { ArrowUpRight, BarChart3, Flame, LayoutGrid, Star, TrendingUp, Users, DollarSign, Activity, UserMinus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { AdminPageHeader } from '../../components/admin';
@@ -91,6 +92,17 @@ export default function AdminOverview() {
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [topPrompts, setTopPrompts] = useState<any[]>([]);
   const [growthData, setGrowthData] = useState<{ label: string; signups: number }[]>([]);
+
+  // Featured prompt
+  const [featuredForm, setFeaturedForm] = useState({ promptSlug: '', promptTitle: '', description: '', hours: '24' });
+  const [savingFeatured, setSavingFeatured] = useState(false);
+  const [currentFeatured, setCurrentFeatured] = useState<any>(null);
+
+  useEffect(() => {
+    getDoc(doc(db, 'configs', 'featured_prompt')).then(snap => {
+      if (snap.exists()) setCurrentFeatured(snap.data());
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -428,6 +440,96 @@ export default function AdminOverview() {
         </div>
 
       </div>
+
+      {/* ── Featured Prompt Setter ── */}
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center shrink-0">
+            <Flame className="w-4 h-4 text-amber-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Set Today's Featured Prompt</h3>
+            <p className="text-xs text-muted-foreground">Pinned on every user's dashboard with a countdown timer.</p>
+          </div>
+        </div>
+        {currentFeatured && (
+          <div className="text-xs bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 text-amber-700 dark:text-amber-300 font-medium">
+            Currently featured: <span className="font-bold">{currentFeatured.promptTitle}</span>
+          </div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Prompt Title</label>
+            <input
+              value={featuredForm.promptTitle}
+              onChange={e => setFeaturedForm(p => ({ ...p, promptTitle: e.target.value }))}
+              placeholder="e.g. The Perfect Cold Email"
+              className="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Prompt Slug</label>
+            <input
+              value={featuredForm.promptSlug}
+              onChange={e => setFeaturedForm(p => ({ ...p, promptSlug: e.target.value }))}
+              placeholder="e.g. the-perfect-cold-email"
+              className="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <label className="text-xs font-medium text-muted-foreground">Tagline (optional)</label>
+            <input
+              value={featuredForm.description}
+              onChange={e => setFeaturedForm(p => ({ ...p, description: e.target.value }))}
+              placeholder="Short description shown on the banner"
+              className="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Duration (hours)</label>
+            <input
+              type="number"
+              value={featuredForm.hours}
+              onChange={e => setFeaturedForm(p => ({ ...p, hours: e.target.value }))}
+              min={1}
+              max={168}
+              className="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        </div>
+        <Button
+          size="sm"
+          isLoading={savingFeatured}
+          leftIcon={Flame}
+          onClick={async () => {
+            if (!featuredForm.promptTitle || !featuredForm.promptSlug) {
+              toast.error('Title and slug are required');
+              return;
+            }
+            setSavingFeatured(true);
+            try {
+              const hours = Math.max(1, parseInt(featuredForm.hours) || 24);
+              await setDoc(doc(db, 'configs', 'featured_prompt'), {
+                promptId: featuredForm.promptSlug,
+                promptTitle: featuredForm.promptTitle,
+                promptSlug: featuredForm.promptSlug,
+                description: featuredForm.description,
+                expiresAt: new Date(Date.now() + hours * 3600000).toISOString(),
+                updatedAt: serverTimestamp(),
+              });
+              setCurrentFeatured({ promptTitle: featuredForm.promptTitle });
+              toast.success('Featured prompt updated!');
+            } catch {
+              toast.error('Failed to update featured prompt');
+            } finally {
+              setSavingFeatured(false);
+            }
+          }}
+        >
+          Set as Featured
+        </Button>
+      </div>
+
     </div>
   );
 }

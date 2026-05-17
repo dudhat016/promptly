@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, updateDoc, where, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, updateDoc, where, serverTimestamp, addDoc } from 'firebase/firestore';
 import { AlertTriangle, CheckCircle, Eye, EyeOff, Flag, MessageSquare, Trash2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -11,6 +11,7 @@ import { usePath } from '../../hooks/usePath';
 import { logAuditEvent } from '../../lib/auditLog';
 import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
+import { EmailService } from '../../services/emailService';
 import { PromptReport } from '../../types';
 
 type Tab = 'pending' | 'reviewed' | 'dismissed' | 'actioned';
@@ -96,6 +97,11 @@ export default function AdminReports() {
         read: false,
         createdAt: serverTimestamp(),
       });
+      getDoc(doc(db, 'users', report.promptCreatorId)).then(snap => {
+        if (!snap.exists()) return;
+        const d = snap.data();
+        if (d.email) EmailService.sendPromptWarningEmail(report.promptCreatorId, d.email, d.displayName || 'Creator', report.promptTitle);
+      }).catch(() => {});
       setSelectedReport(null);
       setAdminNote('');
       logAuditEvent({ action: 'report.warn_creator', entityType: 'prompt', entityId: report.promptId, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { reportId: report.id } });
@@ -119,6 +125,11 @@ export default function AdminReports() {
         read: false,
         createdAt: serverTimestamp(),
       });
+      getDoc(doc(db, 'users', report.promptCreatorId)).then(snap => {
+        if (!snap.exists()) return;
+        const d = snap.data();
+        if (d.email) EmailService.sendPromptHiddenEmail(report.promptCreatorId, d.email, d.displayName || 'Creator', report.promptTitle);
+      }).catch(() => {});
       setSelectedReport(null);
       setAdminNote('');
       logAuditEvent({ action: 'report.hide_prompt', entityType: 'prompt', entityId: report.promptId, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { reportId: report.id } });

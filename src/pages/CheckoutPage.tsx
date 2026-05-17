@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { AlertCircle, ArrowLeft, Check, CheckCircle2, CreditCard, Heart, Lock, RefreshCw, ShieldCheck, Sparkles, Tag, TrendingUp, X, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -209,34 +209,6 @@ export default function CheckoutPage() {
         await redeemCoupon(idToken);
       }
 
-      const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode');
-      if (refCode && !isTrial && price > 0) {
-        const commissionRate = (marketingConfig.referralCommission ?? 25) / 100;
-        const paymentFeeRate = (marketingConfig.paymentFeePercent ?? 2) / 100;
-        const platformFeeRate = (marketingConfig.platformFeePercent ?? 0) / 100;
-        const paymentFee = price * paymentFeeRate;
-        const netAmount = price - paymentFee;
-        const grossCommission = netAmount * commissionRate;
-        const platformFee = grossCommission * platformFeeRate;
-        const commission = Math.max(0, Math.floor(grossCommission - platformFee));
-        if (commission > 0) {
-          const q = query(collection(db, 'users'), where('referralCode', '==', refCode));
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            const affiliateDoc = snap.docs[0];
-            await updateDoc(affiliateDoc.ref, { affiliateEarnings: increment(commission) });
-            await addDoc(collection(db, 'referrals'), {
-              referrerId: affiliateDoc.id, buyerId: finalUid, buyerEmail: user?.email,
-              grossSaleAmount: price, paymentFee, platformFee,
-              grossCommission, netCommission: commission,
-              commissionRate: commissionRate * 100,
-              purchaseAmount: price, planId: plan.id,
-              status: 'completed', createdAt: serverTimestamp()
-            });
-          }
-        }
-      }
-
       try {
         const contactRef = collection(db, 'marketing_contacts');
         const q = query(contactRef, where('email', '==', user?.email));
@@ -244,9 +216,12 @@ export default function CheckoutPage() {
         if (!snap.empty) {
           const contactDoc = snap.docs[0];
           const existingTags = contactDoc.data().tags || [];
-          const newTags = Array.from(new Set([...existingTags, 'paying_customer', 'active_subscriber']));
-          await updateDoc(contactDoc.ref, { tags: newTags, lastPurchaseAt: serverTimestamp(), subscriptionStatus: status });
-          const freshTags = ['paying_customer', 'active_subscriber'].filter(t => !existingTags.includes(t));
+          const tagsToAdd = isTrial ? ['trialing'] : ['paying_customer', 'active_subscriber'];
+          const newTags = Array.from(new Set([...existingTags, ...tagsToAdd]));
+          const updatePayload: Record<string, any> = { tags: newTags, subscriptionStatus: status };
+          if (!isTrial) updatePayload.lastPurchaseAt = serverTimestamp();
+          await updateDoc(contactDoc.ref, updatePayload);
+          const freshTags = tagsToAdd.filter(t => !existingTags.includes(t));
           if (freshTags.length > 0) await syncMarketingTags(freshTags);
         }
       } catch (crmErr) { /* non-blocking */ }

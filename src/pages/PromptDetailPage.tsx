@@ -1,5 +1,5 @@
-import { addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, query, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, BookMarked, BookOpen, Check, ChevronRight, Copy, Eye, Flag, FolderPlus, Heart, Lock, Plus, Share2, ShieldCheck, Sparkles, Star, Terminal, User, Zap } from 'lucide-react';
+import { addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { ArrowLeft, BookMarked, BookOpen, Check, ChevronRight, Copy, Eye, Flag, FolderPlus, Heart, Lock, MessageSquare, Plus, Share2, ShieldCheck, Sparkles, Star, Terminal, Trash2, User, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -21,7 +21,9 @@ import { useSEO } from '../hooks/useSEO';
 import { INTERACTION_WEIGHTS, recordPromptInteraction } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
-import { Prompt, PromptCollection, UserProfile } from '../types';
+import Rating from '../components/feedback/Rating';
+import Textarea from '../components/primitives/Textarea';
+import { Prompt, PromptCollection, PromptReview, UserProfile } from '../types';
 import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
@@ -85,6 +87,12 @@ export default function PromptDetailPage() {
   const [relatedPrompts, setRelatedPrompts] = useState<Prompt[]>([]);
   const [category, setCategory] = useState<any | null>(null);
   const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<PromptReview[]>([]);
+  const [userReview, setUserReview] = useState<PromptReview | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [myRating, setMyRating] = useState(0);
+  const [myComment, setMyComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const unlockedKey = JSON.stringify(profile?.unlockedPrompts || []);
   const isLiked = prompt?.id ? isFavorited(prompt.id) : false;
@@ -180,6 +188,26 @@ export default function PromptDetailPage() {
   }, [slug, unlockedKey, isPro, isAdmin, authLoading, permsLoading]);
 
   useEffect(() => {
+    if (!prompt?.id) return;
+    setReviewsLoading(true);
+    getDocs(query(
+      collection(db, 'prompts', prompt.id, 'reviews'),
+      orderBy('createdAt', 'desc'),
+      limit(30)
+    )).then(snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as PromptReview));
+      const mine = user ? all.find(r => r.userId === user.uid) ?? null : null;
+      setUserReview(mine);
+      // Only show approved reviews publicly; fall back to showing unmoderated ones for backwards compat
+      setReviews(
+        all
+          .filter(r => r.userId !== user?.uid)
+          .filter(r => r.moderationStatus === 'approved' || !r.moderationStatus)
+      );
+    }).catch(() => {}).finally(() => setReviewsLoading(false));
+  }, [prompt?.id, user?.uid]);
+
+  useEffect(() => {
     if (!prompt) return;
     const interval = setInterval(() => {
       if (!document.hidden) recordPromptInteraction(prompt, INTERACTION_WEIGHTS.VIEW, false);
@@ -198,6 +226,73 @@ export default function PromptDetailPage() {
         setUserCollections(snap.docs.map(d => ({ ...d.data(), id: d.id } as PromptCollection)));
       } catch {}
       finally { setCollectionsLoading(false); }
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!user || !prompt?.id || myRating === 0) return;
+    setSubmittingReview(true);
+    try {
+      const existing = await getDocs(
+        query(collection(db, 'prompts', prompt.id, 'reviews'), where('userId', '==', user.uid))
+      );
+      if (!existing.empty) { toast.error('You already reviewed this prompt.'); return; }
+
+      await addDoc(collection(db, 'prompts', prompt.id, 'reviews'), {
+        promptId: prompt.id,
+        promptTitle: prompt.title,
+        promptSlug: prompt.slug,
+        userId: user.uid,
+        displayName: profile?.displayName || 'Anonymous',
+        photoURL: profile?.photoURL ?? null,
+        rating: myRating,
+        comment: myComment.trim(),
+        moderationStatus: 'pending',
+        createdAt: serverTimestamp(),
+      });
+
+      const newCount = (prompt.reviewCount || 0) + 1;
+      const newAvg = parseFloat((((prompt.avgRating || 0) * (prompt.reviewCount || 0) + myRating) / newCount).toFixed(1));
+      await updateDoc(doc(db, 'prompts', prompt.id), { reviewCount: increment(1), avgRating: newAvg });
+
+      const newReview: PromptReview = {
+        id: 'pending',
+        promptId: prompt.id,
+        userId: user.uid,
+        displayName: profile?.displayName || 'Anonymous',
+        photoURL: profile?.photoURL ?? null,
+        rating: myRating,
+        comment: myComment.trim(),
+        createdAt: new Date(),
+      };
+      setUserReview(newReview);
+      setPrompt({ ...prompt, reviewCount: newCount, avgRating: newAvg });
+      setMyRating(0);
+      setMyComment('');
+      toast.success('Review submitted!');
+    } catch {
+      toast.error('Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    if (!user || !prompt?.id || !userReview || userReview.id === 'pending') return;
+    try {
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'prompts', prompt.id, 'reviews', userReview.id));
+      const newCount = Math.max(0, (prompt.reviewCount || 1) - 1);
+      const newAvg = newCount === 0 ? 0 : parseFloat((((prompt.avgRating || 0) * (prompt.reviewCount || 1) - userReview.rating) / newCount).toFixed(1));
+      await updateDoc(doc(db, 'prompts', prompt.id), {
+        reviewCount: increment(-1),
+        ...(newCount > 0 ? { avgRating: newAvg } : {}),
+      });
+      setUserReview(null);
+      setPrompt({ ...prompt, reviewCount: newCount, avgRating: newCount > 0 ? newAvg : undefined });
+      toast.success('Review deleted.');
+    } catch {
+      toast.error('Failed to delete review');
     }
   };
 
@@ -362,7 +457,7 @@ export default function PromptDetailPage() {
           ]}
         />
       )}
-      <PageContainer className="py-12" ignoreCustomizer>
+      <PageContainer className="pt-20 pb-12 md:pb-16" ignoreCustomizer>
         <Breadcrumbs
           items={[
             { name: 'Library', item: prefix('/explore') },
@@ -381,7 +476,7 @@ export default function PromptDetailPage() {
           Back to Library
         </Button>
 
-        <div className="grid lg:grid-cols-3 gap-12">
+        <div className="grid lg:grid-cols-3 gap-8 md:gap-12">
 
           {/* ── Main column ── */}
           <div className="lg:col-span-2">
@@ -431,7 +526,7 @@ export default function PromptDetailPage() {
               </div>
 
               {/* ── Title ── */}
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-5 md:mb-6 leading-[1.1] tracking-tight">
                 {prompt!.title}
               </h1>
 
@@ -868,6 +963,155 @@ export default function PromptDetailPage() {
             </div>
           </div>
         )}
+
+        {/* ── Community Reviews ── */}
+        <div className="mt-12 pt-12 border-t border-border">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[0.2em] text-xs mb-2">
+                <MessageSquare className="w-4 h-4" />
+                Community
+              </div>
+              <h2 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-3">
+                Reviews
+                {(prompt!.reviewCount || 0) > 0 && (
+                  <span className="text-base font-semibold text-muted-foreground">({prompt!.reviewCount})</span>
+                )}
+              </h2>
+              {(prompt!.avgRating || 0) > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <Rating value={prompt!.avgRating!} readOnly size="sm" precision={0.5} />
+                  <span className="text-sm font-semibold text-muted-foreground">{prompt!.avgRating!.toFixed(1)} / 5</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Write a review — only for users who have unlocked the prompt */}
+          {user && isUnlocked && !userReview && (
+            <div className="bg-card border border-border rounded-2xl p-6 mb-8">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Write a Review</h3>
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Your Rating</p>
+                <Rating value={myRating} onChange={setMyRating} size="lg" />
+              </div>
+              <Textarea
+                label=""
+                id="review-comment"
+                name="review-comment"
+                value={myComment}
+                onChange={e => setMyComment(e.target.value)}
+                placeholder="Share your experience — how did this prompt work for you?"
+                rows={3}
+              />
+              <Button
+                onClick={handleSubmitReview}
+                isLoading={submittingReview}
+                disabled={myRating === 0}
+                variant="primary"
+                size="sm"
+                className="mt-4"
+              >
+                Submit Review
+              </Button>
+            </div>
+          )}
+
+          {/* Reviewer's own review */}
+          {userReview && (
+            <div className="bg-primary/[0.04] border border-primary/20 rounded-2xl p-5 mb-8">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {userReview.photoURL ? (
+                    <img src={userReview.photoURL} className="w-9 h-9 rounded-xl object-cover border border-border" alt="" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center font-bold text-primary text-sm">
+                      {(userReview.displayName || 'Y').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-bold text-foreground">Your Review</p>
+                      {(userReview.moderationStatus === 'pending' || !userReview.moderationStatus) && userReview.id !== 'pending' && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-600 border border-amber-500/20">
+                          Under Review
+                        </span>
+                      )}
+                      {userReview.moderationStatus === 'rejected' && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-600 border border-rose-500/20">
+                          Not Approved
+                        </span>
+                      )}
+                    </div>
+                    <Rating value={userReview.rating} readOnly size="sm" />
+                  </div>
+                </div>
+                <button
+                  onClick={handleDeleteReview}
+                  className="p-1.5 rounded-md text-muted-foreground/30 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+                  title="Delete review"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              {userReview.comment && (
+                <p className="mt-3 text-sm text-muted-foreground leading-relaxed pl-12">{userReview.comment}</p>
+              )}
+            </div>
+          )}
+
+          {/* Review list */}
+          {reviewsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="animate-pulse flex gap-4 p-5 rounded-2xl bg-muted/40">
+                  <div className="w-9 h-9 rounded-xl bg-muted shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-1/4 rounded bg-muted" />
+                    <div className="h-3 w-3/4 rounded bg-muted" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : reviews.length === 0 && !userReview ? (
+            <div className="py-16 flex flex-col items-center text-center rounded-2xl border border-dashed border-border">
+              <Star className="w-8 h-8 text-muted-foreground/20 mb-3" />
+              <p className="text-sm font-semibold text-muted-foreground">No reviews yet</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                {isUnlocked ? 'Be the first to leave a review.' : 'Unlock this prompt to leave a review.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map(r => (
+                <div key={r.id} className="flex gap-4 p-5 rounded-2xl bg-card border border-border">
+                  {r.photoURL ? (
+                    <img src={r.photoURL} className="w-9 h-9 rounded-xl object-cover border border-border shrink-0 mt-0.5" alt="" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center font-bold text-foreground text-sm shrink-0 mt-0.5">
+                      {(r.displayName || '?').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-sm font-bold text-foreground truncate">{r.displayName}</p>
+                      <span className="text-[10px] font-medium text-muted-foreground/50 shrink-0">
+                        {(() => {
+                          const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                        })()}
+                      </span>
+                    </div>
+                    <Rating value={r.rating} readOnly size="sm" />
+                    {r.comment && (
+                      <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{r.comment}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* ── Recently viewed ── */}
         {recentlyViewed.filter(p => p.id !== prompt?.id).length > 0 && (
