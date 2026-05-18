@@ -1,7 +1,7 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
   BookOpen, CheckCircle, Clock, Copy, Eye, Heart,
-  Plus, TrendingUp, XCircle, Zap,
+  Pencil, Plus, TrendingUp, XCircle, Zap,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
@@ -236,12 +236,33 @@ export default function DashboardLibrary() {
               )}
               {/* Per-prompt stats */}
               {p.status === 'approved' && <PromptStats prompt={p} />}
-              {/* Rejection reason */}
-              {p.status === 'rejected' && p.rejectionReason && (
-                <div className="mt-2 p-3 bg-rose-500/5 border border-rose-500/20 rounded-lg">
-                  <p className="text-xs text-rose-600 font-medium">
-                    <span className="font-bold">Rejection reason:</span> {p.rejectionReason}
-                  </p>
+              {/* Rejection reason + edit CTA */}
+              {p.status === 'rejected' && (
+                <div className="mt-2 space-y-2">
+                  {p.rejectionReason && (
+                    <div className="p-3 bg-rose-500/5 border border-rose-500/20 rounded-lg">
+                      <p className="text-xs text-rose-600 font-medium">
+                        <span className="font-bold">Rejection reason:</span> {p.rejectionReason}
+                      </p>
+                    </div>
+                  )}
+                  <Link
+                    to={prefix(`/dashboard/library/submit?edit=${p.id}`)}
+                    className="flex items-center gap-1.5 w-full justify-center py-2 rounded-lg text-xs font-semibold text-primary border border-primary/20 hover:bg-primary/5 transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit & Resubmit
+                  </Link>
+                </div>
+              )}
+              {/* Edit button for pending prompts */}
+              {p.status === 'pending' && (
+                <div className="mt-2">
+                  <Link
+                    to={prefix(`/dashboard/library/submit?edit=${p.id}`)}
+                    className="flex items-center gap-1.5 w-full justify-center py-2 rounded-lg text-xs font-semibold text-muted-foreground border border-border hover:text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit Submission
+                  </Link>
                 </div>
               )}
             </div>

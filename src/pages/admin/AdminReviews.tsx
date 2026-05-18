@@ -2,7 +2,7 @@ import {
   collectionGroup, doc, onSnapshot, orderBy, query,
   serverTimestamp, updateDoc, deleteDoc, where,
 } from 'firebase/firestore';
-import { CheckCircle, MessageSquare, Star, Trash2, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, MessageSquare, Star, Trash2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -39,6 +39,7 @@ export default function AdminReviews() {
   const { prefix } = usePath();
   const [reviews, setReviews]         = useState<PromptReview[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [queryError, setQueryError]   = useState<string | null>(null);
   const [activeTab, setActiveTab]     = useState<StatusFilter>('pending');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -46,8 +47,13 @@ export default function AdminReviews() {
     const q = query(collectionGroup(db, 'reviews'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, snap => {
       setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() } as PromptReview)));
+      setQueryError(null);
       setLoading(false);
-    }, () => setLoading(false));
+    }, (err) => {
+      console.error('[AdminReviews] collectionGroup query failed:', err);
+      setQueryError(err.message);
+      setLoading(false);
+    });
     return unsub;
   }, []);
 
@@ -124,6 +130,20 @@ export default function AdminReviews() {
         title="Reviews"
         subtitle="Moderate user-submitted prompt reviews before they appear publicly."
       />
+
+      {/* ── Index error banner ── */}
+      {queryError && (
+        <div className="flex items-start gap-3 p-4 bg-rose-500/5 border border-rose-500/20 rounded-xl text-sm">
+          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-rose-600">Firestore query failed — index missing</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Run <code className="bg-muted px-1 py-0.5 rounded text-[11px]">firebase deploy --only firestore:indexes</code> to create the required collection-group index, then reload.
+            </p>
+            <p className="text-[10px] text-muted-foreground/60 mt-1 font-mono">{queryError}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg border border-border w-fit">

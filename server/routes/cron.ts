@@ -1,4 +1,5 @@
 import { Router } from "express";
+import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { tick, rebuildSegments } from "../services/automationEngine.js";
 import { NudgeService } from "../services/nudgeService.js";
@@ -27,10 +28,25 @@ function verifyCronSecret(req: any, res: any): boolean {
   return true;
 }
 
+async function writeHealthRecord(jobId: string, status: 'ok' | 'error', result: Record<string, any>, durationMs: number) {
+  try {
+    const firebase = await initFirebase();
+    if (!firebase) return;
+    await firebase.db.collection("system_health").doc(jobId).set({
+      jobId,
+      lastRunAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastStatus: status,
+      lastResult: result,
+      durationMs,
+    }, { merge: true });
+  } catch { /* non-fatal */ }
+}
+
 // POST /api/cron/automation-tick
 // Schedule: every 10 minutes — processes due automation flow instances
 router.post("/automation-tick", async (req, res) => {
   if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
 
   try {
     const firebase = await initFirebase();
@@ -38,9 +54,11 @@ router.post("/automation-tick", async (req, res) => {
 
     const result = await tick(firebase.db);
     console.log(`[Cron] automation-tick: ${result.processed} processed, ${result.errors} errors`);
+    await writeHealthRecord("automation-tick", "ok", result, Date.now() - t0);
     res.json({ ok: true, ...result });
   } catch (err: any) {
     console.error("[Cron] automation-tick error:", err.message);
+    await writeHealthRecord("automation-tick", "error", { error: err.message }, Date.now() - t0);
     res.status(500).json({ error: err.message });
   }
 });
@@ -49,16 +67,20 @@ router.post("/automation-tick", async (req, res) => {
 // Schedule: every hour — trial expiry + renewal reminders
 router.post("/nudges", async (req, res) => {
   if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
 
   try {
     const [trial, renewal] = await Promise.all([
       NudgeService.runTrialExpiryNudges(),
       NudgeService.runSubscriptionRenewalReminders(),
     ]);
+    const result = { trial, renewal };
     console.log(`[Cron] nudges: trial=${trial.sent} renewal=${renewal.sent}`);
-    res.json({ ok: true, trial, renewal });
+    await writeHealthRecord("nudges", "ok", result, Date.now() - t0);
+    res.json({ ok: true, ...result });
   } catch (err: any) {
     console.error("[Cron] nudges error:", err.message);
+    await writeHealthRecord("nudges", "error", { error: err.message }, Date.now() - t0);
     res.status(500).json({ error: err.message });
   }
 });
@@ -67,6 +89,7 @@ router.post("/nudges", async (req, res) => {
 // Schedule: every hour — re-evaluates segment filters against live contacts
 router.post("/segment-rebuild", async (req, res) => {
   if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
 
   try {
     const firebase = await initFirebase();
@@ -74,39 +97,62 @@ router.post("/segment-rebuild", async (req, res) => {
 
     const result = await rebuildSegments(firebase.db);
     console.log(`[Cron] segment-rebuild: ${result.rebuilt} rebuilt, ${result.errors} errors`);
+    await writeHealthRecord("segment-rebuild", "ok", result, Date.now() - t0);
     res.json({ ok: true, ...result });
   } catch (err: any) {
     console.error("[Cron] segment-rebuild error:", err.message);
+    await writeHealthRecord("segment-rebuild", "error", { error: err.message }, Date.now() - t0);
     res.status(500).json({ error: err.message });
   }
 });
 
 // POST /api/cron/process-locks
-// Schedule: daily at 02:00 UTC — approves affiliate commissions past lock period
+// Schedule: daily at 03:00 UTC — approves affiliate commissions past lock period
 router.post("/process-locks", async (req, res) => {
   if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
 
   try {
     const result = await processExpiredLocks();
     console.log(`[Cron] process-locks: ${result.processed} commissions approved`);
+    await writeHealthRecord("process-locks", "ok", result, Date.now() - t0);
     res.json({ ok: true, ...result });
   } catch (err: any) {
     console.error("[Cron] process-locks error:", err.message);
+    await writeHealthRecord("process-locks", "error", { error: err.message }, Date.now() - t0);
     res.status(500).json({ error: err.message });
   }
 });
 
 // POST /api/cron/expire-trials
-// Schedule: daily at 03:00 UTC — downgrades trial users whose trial period has ended with no payment method
+// Schedule: daily at 04:00 UTC — downgrades trial users whose trial period has ended with no payment method
 router.post("/expire-trials", async (req, res) => {
   if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
 
   try {
     const result = await NudgeService.expireTrials();
     console.log(`[Cron] expire-trials: ${result.expired} expired`);
+    await writeHealthRecord("expire-trials", "ok", result, Date.now() - t0);
     res.json({ ok: true, ...result });
   } catch (err: any) {
     console.error("[Cron] expire-trials error:", err.message);
+    await writeHealthRecord("expire-trials", "error", { error: err.message }, Date.now() - t0);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/cron/health — returns last-run status for all jobs (admin use only)
+router.get("/health", async (req, res) => {
+  if (!verifyCronSecret(req, res)) return;
+  try {
+    const firebase = await initFirebase();
+    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
+
+    const snap = await firebase.db.collection("system_health").get();
+    const jobs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json({ ok: true, jobs });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });

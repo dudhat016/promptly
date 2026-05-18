@@ -20,6 +20,7 @@ import {
   Receipt,
   Search,
   Send,
+  Server,
   Settings,
   Share2,
   Shield,
@@ -195,6 +196,7 @@ export default function AdminLayout() {
     { label: 'Permissions',   icon: Shield,    path: '/admin/permissions',  section: 'permissions' },
     { label: 'Staff Roles',   icon: Globe,     path: '/admin/roles',        section: 'roles' },
     { label: 'Activity Log',  icon: Activity,  path: '/admin/activity',     section: 'activity' },
+    { label: 'System Health', icon: Server,    path: '/admin/system',        section: 'settings' },
     {
       label: 'Settings',
       icon: Settings,

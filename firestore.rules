@@ -129,7 +129,7 @@ service cloud.firestore {
       // Admins can change status/moderationStatus; creators can update their own pending prompts; anyone can increment viewsCount/likesCount/reportCount
       allow update: if isAdmin() || request.auth.token.email == 'learnwithdudhat016@gmail.com' ||
                     (isSignedIn() && isEmailVerified() && isValidPrompt(incoming()) && incoming().updatedAt == request.time &&
-                     existing().creatorId == request.auth.uid && existing().status == 'pending') ||
+                     existing().creatorId == request.auth.uid && (existing().status == 'pending' || existing().status == 'rejected')) ||
                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount', 'likesCount'])) ||
                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount', 'moderationStatus'])) ||
                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['copiesCount'])) ||

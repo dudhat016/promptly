@@ -1,7 +1,7 @@
-import { collection, addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
-import { BookOpen, ChevronDown, ImageIcon, Info, Send } from 'lucide-react';
+import { addDoc, collection, doc, getDoc, getDocs, increment, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { BookOpen, ChevronDown, ImageIcon, Info, Pencil, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import TagInput from '../../components/TagInput';
 import Button from '../../components/primitives/Button';
@@ -33,13 +33,19 @@ export default function SubmitPromptPage() {
   const { user, profile } = useAuth();
   const { prefix } = usePath();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('edit');
+  const isEditing = !!editId;
+
   const { uploadImage, isUploading } = useImageUpload();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [models, setModels] = useState<AIModel[]>([]);
   const [saving, setSaving] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(isEditing);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [seoOpen, setSeoOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     title: '', slug: '', description: '', content: '',
@@ -59,9 +65,44 @@ export default function SubmitPromptPage() {
       ]);
       setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
       setModels(modSnap.docs.map(d => ({ id: d.id, ...d.data() } as AIModel)));
+
+      if (editId) {
+        try {
+          const snap = await getDoc(doc(db, 'prompts', editId));
+          if (!snap.exists()) { toast.error('Prompt not found'); navigate(prefix('/dashboard/library')); return; }
+          const data = snap.data();
+          if (data.creatorId !== user?.uid) { toast.error('Not your prompt'); navigate(prefix('/dashboard/library')); return; }
+          if (data.status === 'approved') { toast.error('Published prompts cannot be edited — submit a new prompt instead'); navigate(prefix('/dashboard/library')); return; }
+          setForm({
+            title: data.title || '',
+            slug: data.slug || '',
+            description: data.description || '',
+            content: data.content || '',
+            imageUrl: data.imageUrl || '',
+            categoryId: data.categoryId || '',
+            model: data.model || '',
+            tags: data.tags || [],
+            difficulty: data.difficulty || '',
+            sampleOutput: data.sampleOutput || '',
+            usageGuide: data.usageGuide || '',
+            metaTitle: data.metaTitle || '',
+            metaDescription: data.metaDescription || '',
+            metaKeywords: data.metaKeywords || '',
+          });
+          setManualSlug(!!data.slug);
+          if (data.status === 'rejected' && data.rejectionReason) {
+            setRejectionReason(data.rejectionReason);
+          }
+        } catch {
+          toast.error('Failed to load prompt');
+          navigate(prefix('/dashboard/library'));
+        } finally {
+          setLoadingEdit(false);
+        }
+      }
     }
     load();
-  }, []);
+  }, [editId, user?.uid]);
 
   const set = (key: keyof typeof form, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -111,30 +152,47 @@ export default function SubmitPromptPage() {
     if (!validate() || !user) return;
     setSaving(true);
     try {
-      await addDoc(collection(db, 'prompts'), {
-        ...form,
-        slug: form.slug || slugify(form.title),
-        creatorId: user.uid,
-        creatorName: profile?.displayName || user.displayName || user.email || 'Creator',
-        creatorRole: 'user',
-        status: 'pending',
-        moderationStatus: 'active',
-        isPaid: false,
-        likesCount: 0,
-        viewsCount: 0,
-        copiesCount: 0,
-        reportCount: 0,
-        submittedAt: new Date().toISOString(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        difficulty: form.difficulty || undefined,
-      });
-      toast.success('Prompt submitted for review!');
-      EmailService.sendPromptSubmittedEmail(user.uid, form.title).catch(() => {});
+      if (isEditing && editId) {
+        await updateDoc(doc(db, 'prompts', editId), {
+          ...form,
+          slug: form.slug || slugify(form.title),
+          status: 'pending',
+          moderationStatus: 'active',
+          submittedAt: new Date().toISOString(),
+          updatedAt: serverTimestamp(),
+          difficulty: form.difficulty || null,
+          rejectionReason: null,
+          previousRejectionReason: rejectionReason || null,
+          resubmissionCount: increment(1),
+        });
+        toast.success('Prompt resubmitted for review!');
+        EmailService.sendPromptSubmittedEmail(user.uid, form.title).catch(() => {});
+      } else {
+        await addDoc(collection(db, 'prompts'), {
+          ...form,
+          slug: form.slug || slugify(form.title),
+          creatorId: user.uid,
+          creatorName: profile?.displayName || user.displayName || user.email || 'Creator',
+          creatorRole: 'user',
+          status: 'pending',
+          moderationStatus: 'active',
+          isPaid: false,
+          likesCount: 0,
+          viewsCount: 0,
+          copiesCount: 0,
+          reportCount: 0,
+          submittedAt: new Date().toISOString(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          difficulty: form.difficulty || undefined,
+        });
+        toast.success('Prompt submitted for review!');
+        EmailService.sendPromptSubmittedEmail(user.uid, form.title).catch(() => {});
+      }
       navigate(prefix('/dashboard/library'));
     } catch (err) {
       console.error(err);
-      toast.error('Failed to submit prompt');
+      toast.error(`Failed to ${isEditing ? 'update' : 'submit'} prompt`);
     } finally {
       setSaving(false);
     }
@@ -149,32 +207,60 @@ export default function SubmitPromptPage() {
     ...models.map(m => ({ value: (m as any).name || m.id, label: (m as any).displayName || (m as any).name || m.id })),
   ];
 
+  if (loadingEdit) {
+    return (
+      <div className="max-w-3xl mx-auto py-16">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-1/3 bg-muted rounded-lg" />
+          <div className="h-64 bg-muted rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
         <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[0.2em] text-xs mb-2">
-          <Send className="w-4 h-4" />
-          Marketplace Submission
+          {isEditing ? <Pencil className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+          {isEditing ? 'Edit Submission' : 'Marketplace Submission'}
         </div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Submit a Prompt</h1>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">
+          {isEditing ? 'Edit Prompt' : 'Submit a Prompt'}
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Your submission will be reviewed by our team before appearing on the marketplace.
+          {isEditing
+            ? 'Update your prompt and resubmit it for review.'
+            : 'Your submission will be reviewed by our team before appearing on the marketplace.'}
         </p>
       </div>
 
-      {/* Guidelines */}
-      <div className="flex gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl mb-8">
-        <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p className="font-semibold text-foreground">Submission guidelines</p>
-          <ul className="space-y-0.5 list-disc list-inside">
-            <li>Title ≥ 10 characters, content ≥ 150 characters</li>
-            <li>Cover image and at least 2 tags are required</li>
-            <li>Do not submit prompts that have already been published</li>
-            <li>Review takes 24–48 hours — you'll see the status in My Creations</li>
-          </ul>
+      {/* Rejection reason banner */}
+      {rejectionReason && (
+        <div className="flex gap-3 p-4 bg-rose-500/5 border border-rose-500/20 rounded-xl mb-6">
+          <Info className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="font-semibold text-rose-600 mb-0.5">Previous rejection reason</p>
+            <p className="text-muted-foreground">{rejectionReason}</p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Guidelines */}
+      {!isEditing && (
+        <div className="flex gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl mb-8">
+          <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-foreground">Submission guidelines</p>
+            <ul className="space-y-0.5 list-disc list-inside">
+              <li>Title ≥ 10 characters, content ≥ 150 characters</li>
+              <li>Cover image and at least 2 tags are required</li>
+              <li>Do not submit prompts that have already been published</li>
+              <li>Review takes 24–48 hours — you'll see the status in My Creations</li>
+            </ul>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Core fields */}
@@ -363,10 +449,12 @@ export default function SubmitPromptPage() {
             variant="primary"
             size="lg"
             isLoading={saving || isUploading}
-            leftIcon={Send}
+            leftIcon={isEditing ? Pencil : Send}
             className="flex-1 shadow-lg shadow-primary/20"
           >
-            {saving ? 'Submitting...' : 'Submit for Review'}
+            {saving
+              ? (isEditing ? 'Saving...' : 'Submitting...')
+              : (isEditing ? 'Save & Resubmit' : 'Submit for Review')}
           </Button>
         </div>
       </form>

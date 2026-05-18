@@ -306,6 +306,8 @@ export interface Prompt {
   approvedBy?: string;
   approvedAt?: string;
   rejectionReason?: string;
+  previousRejectionReason?: string;
+  resubmissionCount?: number;
   // Moderation
   reportCount?: number;
   moderationStatus?: 'active' | 'flagged' | 'hidden';

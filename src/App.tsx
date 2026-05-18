@@ -74,6 +74,7 @@ const AdminWithdrawals        = lazy(() => import('./pages/admin/AdminWithdrawal
 const AdminSettings           = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminMedia              = lazy(() => import('./pages/admin/AdminMedia'));
 const AdminActivityLog        = lazy(() => import('./pages/admin/AdminActivityLog'));
+const AdminSystemHealth       = lazy(() => import('./pages/admin/AdminSystemHealth'));
 const AdminInvoices           = lazy(() => import('./pages/admin/AdminInvoices'));
 const AdminInvoiceForm        = lazy(() => import('./pages/admin/AdminInvoiceForm'));
 const AdminReports            = lazy(() => import('./pages/admin/AdminReports'));
@@ -92,6 +93,7 @@ const BlogPage                = lazy(() => import('./pages/BlogPage'));
 const BlogDetailPage          = lazy(() => import('./pages/BlogDetailPage'));
 const PublicProfilePage       = lazy(() => import('./pages/PublicProfilePage'));
 const AffiliateInfoPage       = lazy(() => import('./pages/AffiliateInfoPage'));
+const LeaderboardPage         = lazy(() => import('./pages/LeaderboardPage'));
 const ContactPage             = lazy(() => import('./pages/ContactPage'));
 const TermsPage               = lazy(() => import('./pages/TermsPage'));
 const PrivacyPage             = lazy(() => import('./pages/PrivacyPage'));
@@ -285,6 +287,7 @@ function AppContent() {
                   <Route path="blog/:slug" element={<BlogDetailPage />} />
                   <Route path="creator/:uid" element={<PublicProfilePage />} />
                   <Route path="affiliate" element={<AffiliateInfoPage />} />
+                  <Route path="leaderboard" element={<LeaderboardPage />} />
                   <Route path="contact" element={<ContactPage />} />
                   <Route path="terms" element={<TermsPage />} />
                   <Route path="privacy" element={<PrivacyPage />} />
@@ -409,6 +412,7 @@ function AppContent() {
                   <Route path="roles/new" element={<SectionRoute section="roles"><AdminRoleForm /></SectionRoute>} />
                   <Route path="roles/:id" element={<SectionRoute section="roles"><AdminRoleForm /></SectionRoute>} />
                   <Route path="activity" element={<SectionRoute section="activity"><AdminActivityLog /></SectionRoute>} />
+                  <Route path="system"   element={<SectionRoute section="settings"><AdminSystemHealth /></SectionRoute>} />
                   <Route path="media" element={<SectionRoute section="media"><AdminMedia /></SectionRoute>} />
                   <Route path="invoices" element={<SectionRoute section="revenue"><AdminInvoices /></SectionRoute>} />
                   <Route path="invoices/new" element={<SectionRoute section="revenue"><AdminInvoiceForm /></SectionRoute>} />

@@ -1,5 +1,5 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, updateDoc, where, addDoc, serverTimestamp } from 'firebase/firestore';
-import { CheckCircle, Clock, Eye, Heart, LayoutGrid, Plus, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Eye, Heart, LayoutGrid, Plus, RefreshCw, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -15,7 +15,7 @@ import { cn } from '../../lib/utils';
 import { EmailService } from '../../services/emailService';
 import { Prompt } from '../../types';
 
-type Tab = 'all' | 'pending' | 'approved' | 'rejected';
+type Tab = 'all' | 'pending' | 'resubmit' | 'approved' | 'rejected';
 
 export default function AdminPrompts() {
   const confirm = useConfirm();
@@ -152,10 +152,12 @@ export default function AdminPrompts() {
   };
 
   const pendingCount = prompts.filter(p => p.status === 'pending').length;
+  const resubmitCount = prompts.filter(p => p.status === 'pending' && (p.resubmissionCount ?? 0) > 0).length;
 
   const filteredPrompts = prompts.filter(p => {
     if (activeTab === 'all') return true;
     if (activeTab === 'pending') return p.status === 'pending';
+    if (activeTab === 'resubmit') return p.status === 'pending' && (p.resubmissionCount ?? 0) > 0;
     if (activeTab === 'approved') return p.status === 'approved' || !p.status;
     if (activeTab === 'rejected') return p.status === 'rejected';
     return true;
@@ -170,8 +172,22 @@ export default function AdminPrompts() {
         <div className="flex items-center gap-3 min-w-0">
           <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.isPaid ? 'bg-amber-400' : 'bg-emerald-400'}`} />
           <div className="min-w-0">
-            <p className="font-bold text-foreground truncate">{p.title}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-bold text-foreground truncate">{p.title}</p>
+              {(p.resubmissionCount ?? 0) > 0 && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-500 border border-violet-500/20 shrink-0">
+                  <RefreshCw className="w-2.5 h-2.5" />
+                  Resubmit #{p.resubmissionCount}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">{p.description}</p>
+            {p.previousRejectionReason && p.status === 'pending' && (
+              <p className="text-[10px] text-rose-500/80 mt-0.5 line-clamp-1">
+                <AlertCircle className="w-2.5 h-2.5 inline mr-0.5 -mt-px" />
+                Prev. reason: {p.previousRejectionReason}
+              </p>
+            )}
           </div>
         </div>
       ),
@@ -254,7 +270,7 @@ export default function AdminPrompts() {
     },
   ];
 
-  const displayColumns = activeTab === 'pending' ? pendingColumns : baseColumns;
+  const displayColumns = (activeTab === 'pending' || activeTab === 'resubmit') ? pendingColumns : baseColumns;
 
   const actions: DataTableActions<Prompt> = {
     view: p => prefix(`/prompt/${p.slug || p.id}`),
@@ -263,10 +279,11 @@ export default function AdminPrompts() {
   };
 
   const TABS: { key: Tab; label: string; count?: number }[] = [
-    { key: 'pending', label: 'Pending Review', count: pendingCount },
-    { key: 'approved', label: 'Approved' },
-    { key: 'rejected', label: 'Rejected' },
-    { key: 'all', label: 'All Prompts' },
+    { key: 'pending',   label: 'Pending Review', count: pendingCount },
+    { key: 'resubmit',  label: 'Resubmissions',  count: resubmitCount },
+    { key: 'approved',  label: 'Approved' },
+    { key: 'rejected',  label: 'Rejected' },
+    { key: 'all',       label: 'All Prompts' },
   ];
 
   return (
