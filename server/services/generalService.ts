@@ -7,7 +7,7 @@ import { getStripe } from "../lib/stripe.js";
 import { getLangUrl } from "../lib/config.js";
 
 export class GeneralService {
-  static async uploadFtp(file: any, folder: string): Promise<{ url: string }> {
+  static async uploadFtp(file: any, folder: string): Promise<{ success: boolean; url: string; name: string }> {
     const firebase = await initFirebase();
     if (!firebase) throw new Error("Firebase not connected");
 
@@ -38,7 +38,7 @@ export class GeneralService {
         ? `${publicUrl.replace(/\/$/, "")}/${subPath}${filename}`
         : remotePath;
 
-      return { url };
+      return { success: true, url, name: filename };
     } finally {
       client.close();
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);

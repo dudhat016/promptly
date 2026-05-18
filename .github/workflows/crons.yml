@@ -17,12 +17,12 @@ jobs:
     steps:
       - name: POST /api/cron/automation-tick
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
             -X POST "$APP_URL/api/cron/automation-tick" \
             -H "$AUTH" \
             -H "Content-Type: application/json")
           echo "Response: $STATUS"
-          [ "$STATUS" = "200" ] || [ "$STATUS" = "304" ] || exit 1
+          [ "$STATUS" = "200" ] || exit 1
 
   nudges:
     name: Nudges (every hour)
@@ -32,7 +32,7 @@ jobs:
         run: |
           MINUTE=$(date +%M)
           if [ "$MINUTE" = "00" ]; then
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
               -X POST "$APP_URL/api/cron/nudges" \
               -H "$AUTH" \
               -H "Content-Type: application/json")
@@ -50,7 +50,7 @@ jobs:
         run: |
           MINUTE=$(date +%M)
           if [ "$MINUTE" = "00" ]; then
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
               -X POST "$APP_URL/api/cron/segment-rebuild" \
               -H "$AUTH" \
               -H "Content-Type: application/json")
@@ -69,7 +69,7 @@ jobs:
           HOUR=$(date -u +%H)
           MINUTE=$(date +%M)
           if [ "$HOUR" = "03" ] && [ "$MINUTE" = "00" ]; then
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
               -X POST "$APP_URL/api/cron/process-locks" \
               -H "$AUTH" \
               -H "Content-Type: application/json")
@@ -88,7 +88,7 @@ jobs:
           HOUR=$(date -u +%H)
           MINUTE=$(date +%M)
           if [ "$HOUR" = "04" ] && [ "$MINUTE" = "00" ]; then
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
               -X POST "$APP_URL/api/cron/expire-trials" \
               -H "$AUTH" \
               -H "Content-Type: application/json")
@@ -107,7 +107,7 @@ jobs:
           HOUR=$(date -u +%H)
           MINUTE=$(date +%M)
           if [ "$HOUR" = "05" ] && [ "$MINUTE" = "00" ]; then
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
               -X POST "$APP_URL/api/cron/auto-payouts" \
               -H "$AUTH" \
               -H "Content-Type: application/json")

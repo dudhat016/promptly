@@ -132,6 +132,7 @@ const AffiliatePage           = lazy(() => import('./pages/AffiliatePage'));
 const NotificationsPage       = lazy(() => import('./pages/NotificationsPage'));
 const CollectionsPage         = lazy(() => import('./pages/dashboard/CollectionsPage'));
 const SavedPromptsPage        = lazy(() => import('./pages/dashboard/SavedPromptsPage'));
+const DeveloperPage           = lazy(() => import('./pages/dashboard/DeveloperPage'));
 // Settings
 const AccountSettings         = lazy(() => import('./pages/settings/AccountSettings'));
 const BillingSettings         = lazy(() => import('./pages/settings/BillingSettings'));
@@ -333,6 +334,7 @@ function AppContent() {
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="collections" element={<CollectionsPage />} />
                     <Route path="saved" element={<SavedPromptsPage />} />
+                    <Route path="developer" element={<DeveloperPage />} />
                   </Route>
 
                   <Route path="settings" element={<Outlet />}>

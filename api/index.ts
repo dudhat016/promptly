@@ -19,6 +19,9 @@ import { generalLimiter, authLimiter, checkoutLimiter, contactLimiter } from "..
 import { errorHandler } from "../server/middleware/errorHandler.js";
 import { authMiddleware, adminOnly } from "../server/middleware/auth.js";
 import type { AuthenticatedRequest } from "../server/middleware/auth.js";
+import { apiKeyAuth } from "../server/middleware/apiKeyAuth.js";
+import v1Router from "../server/routes/v1/index.js";
+import developerRouter from "../server/routes/developer.js";
 import { GeneralService } from "../server/services/generalService.js";
 import { initFirebase } from "../server/lib/firebase.js";
 
@@ -51,6 +54,12 @@ app.use(cors({
 
 app.use(generalLimiter);
 app.use(express.json({ limit: '10mb' }));
+
+// --- Public Developer API (API key auth) ---
+app.use("/api/v1", apiKeyAuth, v1Router);
+
+// --- Developer Key Management (Firebase JWT auth) ---
+app.use("/api/developer", authLimiter, developerRouter);
 
 // --- Routes ---
 app.use("/api/location", locationRouter);

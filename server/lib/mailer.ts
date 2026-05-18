@@ -203,20 +203,32 @@ export async function sendEmail(
     // Non-fatal — proceed if CRM check fails
   }
 
-  // 2. Check user notification preferences (only when userId is known)
+  // 2. Check user notification preferences + server-side dedup (single user fetch)
   const typeInfo = EMAIL_TYPES[type];
-  if (userId && typeInfo?.prefKey) {
+  if (userId && (typeInfo?.prefKey || typeInfo?.dedupWindowMs)) {
     try {
       const userSnap = await db.collection("users").doc(userId).get();
       if (userSnap.exists) {
-        const prefs = userSnap.data()?.notificationPrefs ?? {};
-        // Default true if the pref key hasn't been set yet
-        if (prefs[typeInfo.prefKey] === false) {
-          return { sent: false, reason: "user_preference_disabled" };
+        const userData = userSnap.data()!;
+
+        // Notification preference check
+        if (typeInfo?.prefKey) {
+          const prefs = userData.notificationPrefs ?? {};
+          if (prefs[typeInfo.prefKey] === false) {
+            return { sent: false, reason: "user_preference_disabled" };
+          }
+        }
+
+        // Dedup check — suppress if same type was sent within the dedup window
+        if (typeInfo?.dedupWindowMs) {
+          const lastSent: Date | null = userData.emailDedup?.[type]?.toDate?.() ?? null;
+          if (lastSent && Date.now() - lastSent.getTime() < typeInfo.dedupWindowMs) {
+            return { sent: false, reason: "dedup" };
+          }
         }
       }
     } catch {
-      // Non-fatal — proceed if pref check fails
+      // Non-fatal — proceed if check fails
     }
   }
 
@@ -280,6 +292,13 @@ export async function sendEmail(
       error: result.reason || null,
     });
   } catch { /* non-fatal */ }
+
+  // 8. Stamp dedup timestamp on the user doc so the next call within the window is suppressed
+  if (result.sent && userId && typeInfo?.dedupWindowMs) {
+    db.collection("users").doc(userId).update({
+      [`emailDedup.${type}`]: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(() => {});
+  }
 
   return result;
 }

@@ -224,6 +224,23 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Developer API Keys — users manage their own; admin can view all
+    match /api_keys/{keyId} {
+      // Users list/read their own keys; admin reads all
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      // Users create keys for themselves only
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.active == true;
+      // Users can only flip active→false (revoke) or update name on their own keys; admin can do anything
+      allow update: if isAdmin()
+                    || (isSignedIn()
+                        && resource.data.userId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['active', 'name', 'revokedAt']));
+      allow delete: if false; // soft-delete only (active: false)
+    }
+
     // Audit logs — append-only by admins/staff, immutable once written
     match /audit_logs/{logId} {
       allow read: if isAdminOrStaff();

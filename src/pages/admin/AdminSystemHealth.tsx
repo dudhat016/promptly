@@ -46,6 +46,7 @@ const JOB_META: Record<string, { label: string; schedule: string; description: s
   'segment-rebuild': { label: 'Segment Rebuild',   schedule: 'Hourly',        description: 'Re-evaluates CRM segment filters' },
   'process-locks':   { label: 'Process Locks',     schedule: 'Daily 03:00',   description: 'Approves affiliate commissions past lock period' },
   'expire-trials':   { label: 'Expire Trials',     schedule: 'Daily 04:00',   description: 'Downgrades expired trial users to free plan' },
+  'auto-payouts':    { label: 'Auto Payouts',      schedule: 'Daily 05:00',   description: 'Auto-pays eligible affiliates via PayPal Payouts API' },
 };
 
 function formatRelative(seconds: number): string {

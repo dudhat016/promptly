@@ -4,6 +4,7 @@ import {
   BookMarked,
   BookOpen,
   Bookmark,
+  Code2,
   Coins,
   Gift,
   Heart,
@@ -55,6 +56,8 @@ const USER_NAV_ITEMS: NavItem[] = [
   { label: 'Partner Program', icon: Gift,            path: '/dashboard/affiliate' },
   { label: 'Notifications',   icon: Bell,            path: '/dashboard/notifications' },
   { label: 'Support',         icon: HelpCircle,      path: '/dashboard/support' },
+  { divider: true },
+  { label: 'Developer API',   icon: Code2,           path: '/dashboard/developer' },
 ];
 
 const USER_SETTINGS_ITEMS: NavItem = {

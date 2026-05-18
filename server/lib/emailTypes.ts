@@ -16,6 +16,7 @@ export interface EmailTypeDefinition {
   name: string;
   group: EmailGroup;
   prefKey: NotifPrefKey | null;  // null = always send (bypasses user pref check)
+  dedupWindowMs?: number;        // if set, duplicate sends within this window are suppressed server-side
   variables: EmailVar[];
   defaultSubject: string;
   defaultBody: string;
@@ -28,6 +29,7 @@ const welcome: EmailTypeDefinition = {
   name: 'Welcome Email',
   group: 'auth',
   prefKey: 'onboarding',
+  dedupWindowMs: 7 * 24 * 60 * 60 * 1000, // 7 days — should only ever be sent once
   variables: [
     { name: 'name',    description: 'User display name',  example: 'Sarah' },
     { name: 'email',   description: 'User email address', example: 'sarah@example.com' },
@@ -52,6 +54,7 @@ const login_alert: EmailTypeDefinition = {
   name: 'Login Alert',
   group: 'auth',
   prefKey: 'securityAlerts',
+  dedupWindowMs: 8 * 60 * 60 * 1000, // 8 hours — matches the frontend localStorage guard
   variables: [
     { name: 'name',  description: 'User display name', example: 'Sarah' },
     { name: 'email', description: 'User email',        example: 'sarah@example.com' },
@@ -102,6 +105,7 @@ const onboarding_complete: EmailTypeDefinition = {
   name: 'Onboarding Complete',
   group: 'onboarding',
   prefKey: 'onboarding',
+  dedupWindowMs: 7 * 24 * 60 * 60 * 1000, // 7 days — once per user
   variables: [
     { name: 'name',      description: 'User display name',           example: 'Sarah' },
     { name: 'interests', description: 'User interests bullet list',  example: '• Marketing\n• Coding' },
@@ -502,6 +506,7 @@ const affiliate_join: EmailTypeDefinition = {
   name: 'Affiliate Welcome',
   group: 'affiliate',
   prefKey: 'affiliate',
+  dedupWindowMs: 7 * 24 * 60 * 60 * 1000, // 7 days — sent once on registration
   variables: [
     { name: 'name',          description: 'User display name',      example: 'Sarah' },
     { name: 'email',         description: 'User email',             example: 'sarah@example.com' },
@@ -702,6 +707,7 @@ const prompt_submitted: EmailTypeDefinition = {
   name: 'Prompt Received',
   group: 'onboarding',
   prefKey: 'onboarding',
+  dedupWindowMs: 5 * 60 * 1000, // 5 minutes — prevents double-send on accidental double-submit
   variables: [
     { name: 'name',          description: 'Creator name',   example: 'Sarah' },
     { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
