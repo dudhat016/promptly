@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { adminCache } from '../../lib/adminCache';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, query, orderBy, limit, where, Timestamp } from 'firebase/firestore';
 import { TrendingUp, UserMinus, UserCheck, Clock, AlertTriangle, RefreshCw, Send, CreditCard } from 'lucide-react';
@@ -96,6 +97,21 @@ export default function AdminChurn() {
   }
 
   async function loadData() {
+    type ChurnCache = {
+      cancellations: CancellationRecord[];
+      trialUsers: TrialUser[];
+      dunningUsers: DunningUser[];
+      stats: { totalCancelled: number; thisMonth: number; trialCount: number; trialConverted: number; dunningCount: number };
+    };
+    const cached = adminCache.get<ChurnCache>('admin_churn');
+    if (cached) {
+      setCancellations(cached.cancellations);
+      setTrialUsers(cached.trialUsers);
+      setDunningUsers(cached.dunningUsers);
+      setStats(cached.stats);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const now = Date.now();
@@ -108,15 +124,12 @@ export default function AdminChurn() {
       ]);
 
       const cancelList: CancellationRecord[] = cancelSnap.docs.map(d => ({ id: d.id, ...d.data() } as CancellationRecord));
-      setCancellations(cancelList);
 
-      // Count this-month cancellations
       const thisMonth = cancelList.filter(c => {
         const d = parseDate(c.createdAt);
         return d && d >= monthStart;
       }).length;
 
-      // Find active trial users + track conversions
       const trials: TrialUser[] = [];
       let converted = 0;
       userSnap.docs.forEach(d => {
@@ -132,7 +145,7 @@ export default function AdminChurn() {
           }
         }
       });
-      setTrialUsers(trials.sort((a, b) => a.daysLeft - b.daysLeft));
+      const sortedTrials = trials.sort((a, b) => a.daysLeft - b.daysLeft);
 
       const dunningList: DunningUser[] = dunningSnap.docs.map(d => {
         const data = d.data();
@@ -146,9 +159,14 @@ export default function AdminChurn() {
           dunningNextRetryAt: data.dunningNextRetryAt,
         };
       });
-      setDunningUsers(dunningList);
 
-      setStats({ totalCancelled: cancelList.length, thisMonth, trialCount: trials.length, trialConverted: converted, dunningCount: dunningList.length });
+      const computedStats = { totalCancelled: cancelList.length, thisMonth, trialCount: sortedTrials.length, trialConverted: converted, dunningCount: dunningList.length };
+
+      adminCache.set<ChurnCache>('admin_churn', { cancellations: cancelList, trialUsers: sortedTrials, dunningUsers: dunningList, stats: computedStats });
+      setCancellations(cancelList);
+      setTrialUsers(sortedTrials);
+      setDunningUsers(dunningList);
+      setStats(computedStats);
     } catch (e) {
       console.error(e);
     } finally {

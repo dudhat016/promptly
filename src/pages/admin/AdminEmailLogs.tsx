@@ -18,7 +18,7 @@ interface EmailLog {
   sentAt: any;
 }
 
-const TYPE_GROUP: Record<string, 'auth'|'onboarding'|'billing'|'dunning'|'affiliate'|'nudge'|'newsletter'> = {
+const TYPE_GROUP: Record<string, 'auth'|'onboarding'|'billing'|'dunning'|'affiliate'|'nudge'|'newsletter'|'moderation'> = {
   welcome: 'onboarding', login_alert: 'auth', password_reset: 'auth',
   onboarding_complete: 'onboarding', onboarding_d1_nudge: 'onboarding',
   onboarding_d3_prompt: 'onboarding', onboarding_d7_expiry: 'onboarding',
@@ -30,10 +30,13 @@ const TYPE_GROUP: Record<string, 'auth'|'onboarding'|'billing'|'dunning'|'affili
   affiliate_withdrawal_approved: 'affiliate', affiliate_withdrawal_rejected: 'affiliate',
   affiliate_first_conversion: 'affiliate', newsletter_confirm: 'newsletter',
   newsletter_welcome: 'newsletter', new_prompt: 'newsletter',
+  prompt_approved: 'moderation', prompt_rejected: 'moderation', prompt_submitted: 'moderation',
+  prompt_warning: 'moderation', prompt_hidden: 'moderation', badge_earned: 'moderation',
 };
 const GROUP_VARIANT: Record<string, 'soft'|'success'|'warning'|'error'|'info'> = {
   auth: 'soft', onboarding: 'success', billing: 'info',
   dunning: 'error', affiliate: 'warning', nudge: 'soft', newsletter: 'info',
+  moderation: 'warning',
 };
 
 const PAGE_SIZE = 50;

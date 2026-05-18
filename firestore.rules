@@ -137,6 +137,7 @@ service cloud.firestore {
       allow delete: if isAdmin() || isOwner(existing().creatorId);
 
       // Reviews subcollection — public read; owner create/delete; admin moderate
+      // Note: collectionGroup reads are handled by the top-level /{path=**}/reviews/{reviewId} rule below
       match /reviews/{reviewId} {
         allow read: if true;
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -392,6 +393,24 @@ service cloud.firestore {
       allow create: if isAdmin() || isSignedIn(); // system writes via SDK
       allow update: if isOwner(userId); // user can mark as read
       allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Collection-group wildcard for reviews — required for collectionGroup(db,'reviews') queries in admin panel.
+    // Firebase only allows collectionGroup queries when a /{path=**}/collection/{doc} rule exists.
+    match /{path=**}/reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() ||
+                    (isSignedIn() && resource.data.userId == request.auth.uid &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comment', 'rating']));
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // Cancellation feedback — users submit their own; admin reads/manages all
+    match /cancellation_feedback/{id} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
   }
 }

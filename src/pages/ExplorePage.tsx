@@ -1,6 +1,6 @@
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { ChevronLeft, ChevronRight, Sparkles, Users, Zap } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ExploreSidebar from '../components/ExploreSidebar';
 import PromptCard from '../components/PromptCard';
@@ -20,7 +20,7 @@ export default function ExplorePage() {
   const { isPro, isAdmin, profile } = useAuth();
   const navigate = useNavigate();
   const { prefix } = usePath();
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [rawPrompts, setRawPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -82,33 +82,30 @@ export default function ExplorePage() {
   }, [location.pathname]);
 
   useEffect(() => {
+    const CACHE_KEY = 'promptly_explore_v1';
+    const CACHE_TTL = 10 * 60 * 1000;
     async function fetchPrompts() {
+      try {
+        const stored = sessionStorage.getItem(CACHE_KEY);
+        if (stored) {
+          const { data, ts } = JSON.parse(stored);
+          if (Date.now() - ts < CACHE_TTL) {
+            setRawPrompts(data);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {}
       setLoading(true);
       try {
-        const q = query(
-          collection(db, 'prompts'),
-          orderBy('createdAt', 'desc'),
-          limit(500)
-        );
+        const q = query(collection(db, 'prompts'), orderBy('createdAt', 'desc'), limit(500));
         const snap = await getDocs(q);
-        const fetchedPrompts = snap.docs
+        const data = snap.docs
           .map(d => ({ ...d.data(), id: d.id } as Prompt))
-          // Show approved prompts + legacy prompts that have no status field (created before workflow)
           .filter(p => !p.status || p.status === 'approved')
           .filter(p => p.moderationStatus !== 'hidden');
-
-        // SECURITY: scrub content field for locked paid prompts
-        const promptsWithSecurity = fetchedPrompts.map(p => {
-          const isUnlocked = (profile?.unlockedPrompts || []).includes(p.id!);
-          const hasAccess = isPro || isAdmin || isUnlocked || !p.isPaid;
-          if (!hasAccess) {
-            const { content, ...safePrompt } = p;
-            return safePrompt as Prompt;
-          }
-          return p;
-        });
-
-        setPrompts(promptsWithSecurity);
+        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+        setRawPrompts(data);
         setFetchError(null);
       } catch (err) {
         console.error('Explore fetch error:', err);
@@ -118,7 +115,18 @@ export default function ExplorePage() {
       }
     }
     fetchPrompts();
-  }, [isPro, isAdmin, profile?.unlockedPrompts]);
+  }, []);
+
+  // Security scrubbing as derived state — re-runs when access level changes without re-fetching
+  const prompts = useMemo(() => rawPrompts.map(p => {
+    const isUnlocked = (profile?.unlockedPrompts || []).includes(p.id!);
+    const hasAccess = isPro || isAdmin || isUnlocked || !p.isPaid;
+    if (!hasAccess) {
+      const { content, ...safePrompt } = p;
+      return safePrompt as Prompt;
+    }
+    return p;
+  }), [rawPrompts, isPro, isAdmin, profile?.unlockedPrompts]);
 
   // Sync search term to URL so searches are shareable
   useEffect(() => {

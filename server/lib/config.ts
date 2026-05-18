@@ -3,7 +3,7 @@
  * Always strips a trailing slash and forces HTTPS in production.
  */
 export function getAppUrl(): string {
-  const raw = process.env.APP_URL || 'http://localhost:5173';
+  const raw = process.env.APP_URL || process.env.VERCEL_APP_URL || 'http://localhost:5173';
   const url = raw.replace(/\/$/, '');
   if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
     return url.replace(/^http:\/\//, 'https://');

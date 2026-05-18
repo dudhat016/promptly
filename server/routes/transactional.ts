@@ -239,7 +239,7 @@ router.post("/send", authMiddleware, json(), async (req: AuthenticatedRequest, r
 });
 
 // POST /api/email/send-to — send to an arbitrary email; pass userId to enforce notif prefs
-router.post("/send-to", authMiddleware, json(), async (req: AuthenticatedRequest, res) => {
+router.post("/send-to", authMiddleware, adminOnly, json(), async (req: AuthenticatedRequest, res) => {
   const { to, type, variables = {}, userId } = req.body;
   if (!to || !type) return res.status(400).json({ error: "to and type are required" });
 

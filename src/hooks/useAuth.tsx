@@ -165,16 +165,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               // Cold-start fix: if local affinity is empty (new device / cleared storage),
               // seed from stored interests so "For You" works immediately
               const localAffinity = getAffinityProfile();
-              if (Object.keys(localAffinity).length === 0 && data.interests?.length > 0) {
-                seedAffinityFromInterests(data.interests);
+              if (Object.keys(localAffinity).length === 0 && (data.interests?.length ?? 0) > 0) {
+                seedAffinityFromInterests(data.interests ?? []);
               } else {
                 syncAffinityToCloud(user.uid);
               }
 
-              const sessionKey = `login_email_${user.uid}`;
-              if (!sessionStorage.getItem(sessionKey)) {
+              const loginEmailKey = `login_email_${user.uid}`;
+              const lastSent = localStorage.getItem(loginEmailKey);
+              const EIGHT_HOURS = 8 * 60 * 60 * 1000;
+              if (!lastSent || Date.now() - parseInt(lastSent) > EIGHT_HOURS) {
                 EmailService.sendLoginEmail(user.uid, user.email || '');
-                sessionStorage.setItem(sessionKey, 'true');
+                localStorage.setItem(loginEmailKey, String(Date.now()));
               }
             } else {
               // Create new profile
@@ -183,7 +185,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 .toUpperCase()
                 .slice(0, 10);
               const referralCode = `${baseName}${Math.floor(100 + Math.random() * 900)}`;
-              const referredBy = localStorage.getItem('referralCode') || null;
+              const referredBy = localStorage.getItem('referralCode') || undefined;
 
               const isAdminEmail = user.email === 'calmingsound016@gmail.com' || user.email === 'admin@promptly.com';
 
@@ -255,7 +257,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               } catch (crmErr) {
                 console.error("Failed to sync user to Marketing CRM:", crmErr);
               }
-              sessionStorage.setItem(`login_email_${user.uid}`, 'true');
+              // Stamp localStorage so the login-alert check skips this session on next snapshot
+              localStorage.setItem(`login_email_${user.uid}`, String(Date.now()));
             }
             setLoading(false); // Done loading profile
           } catch (err) {

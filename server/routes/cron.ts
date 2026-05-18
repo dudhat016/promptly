@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { tick, rebuildSegments } from "../services/automationEngine.js";
 import { NudgeService } from "../services/nudgeService.js";
-import { processExpiredLocks } from "../lib/payouts.js";
+import { processExpiredLocks, triggerAutoPayouts } from "../lib/payouts.js";
 
 const router = Router();
 
@@ -138,6 +138,25 @@ router.post("/expire-trials", async (req, res) => {
   } catch (err: any) {
     console.error("[Cron] expire-trials error:", err.message);
     await writeHealthRecord("expire-trials", "error", { error: err.message }, Date.now() - t0);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/cron/auto-payouts
+// Schedule: daily at 05:00 UTC — auto-pays eligible affiliates via PayPal Payouts API
+// Only fires when autoPayoutsEnabled === true in configs/marketing
+router.post("/auto-payouts", async (req, res) => {
+  if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
+
+  try {
+    const result = await triggerAutoPayouts();
+    console.log(`[Cron] auto-payouts: processed=${result.processed} succeeded=${result.succeeded} failed=${result.failed} skipped=${result.skipped}`);
+    await writeHealthRecord("auto-payouts", "ok", result, Date.now() - t0);
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    console.error("[Cron] auto-payouts error:", err.message);
+    await writeHealthRecord("auto-payouts", "error", { error: err.message }, Date.now() - t0);
     res.status(500).json({ error: err.message });
   }
 });

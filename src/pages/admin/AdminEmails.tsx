@@ -31,7 +31,7 @@ export default function AdminEmails() {
   const { prefix } = usePath();
   const [logs, setLogs]           = useState<RecentLog[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [smtpStatus, setSmtpStatus] = useState<'checking' | 'ok' | 'error' | 'unknown'>('checking');
+  const [smtpStatus, setSmtpStatus] = useState<'checking' | 'ok' | 'error' | 'unknown'>('unknown');
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ tags: number; segments: number; flows: number; templates: number } | null>(null);
 

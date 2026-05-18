@@ -9,6 +9,7 @@ import Button from '../../components/primitives/Button';
 import Textarea from '../../components/primitives/Textarea';
 import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
+import { adminCache } from '../../lib/adminCache';
 import { logAuditEvent } from '../../lib/auditLog';
 import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
@@ -31,10 +32,14 @@ export default function AdminPrompts() {
   useEffect(() => { fetchPrompts(); }, []);
 
   async function fetchPrompts() {
+    const cached = adminCache.get<Prompt[]>('admin_prompts');
+    if (cached) { setPrompts(cached); setLoading(false); return; }
     try {
       const q = query(collection(db, 'prompts'), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
-      setPrompts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt)));
+      const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt));
+      adminCache.set('admin_prompts', data);
+      setPrompts(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -47,7 +52,7 @@ export default function AdminPrompts() {
     if (!ok) return;
     try {
       await deleteDoc(doc(db, 'prompts', prompt.id!));
-      setPrompts(prev => prev.filter(p => p.id !== prompt.id));
+      setPrompts(prev => { const next = prev.filter(p => p.id !== prompt.id); adminCache.set('admin_prompts', next); return next; });
       logAuditEvent({ action: 'prompt.deleted', entityType: 'prompt', entityId: prompt.id, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { title: prompt.title } });
       toast.success('Prompt deleted');
     } catch {
@@ -57,7 +62,7 @@ export default function AdminPrompts() {
 
   const handleBulkDelete = async (rows: Prompt[]) => {
     await Promise.all(rows.map(p => deleteDoc(doc(db, 'prompts', p.id!))));
-    setPrompts(prev => prev.filter(p => !rows.some(r => r.id === p.id)));
+    setPrompts(prev => { const next = prev.filter(p => !rows.some(r => r.id === p.id)); adminCache.set('admin_prompts', next); return next; });
     logAuditEvent({ action: 'prompt.bulk_deleted', entityType: 'prompt', actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { count: rows.length, ids: rows.map(r => r.id) } });
     toast.success(`${rows.length} prompts deleted`);
   };
@@ -94,7 +99,7 @@ export default function AdminPrompts() {
           );
         }
       }).catch(() => {});
-      setPrompts(prev => prev.map(p => p.id === prompt.id ? { ...p, status: 'approved', isPaid, approvedBy: user?.uid } : p));
+      setPrompts(prev => { const next = prev.map(p => p.id === prompt.id ? { ...p, status: 'approved' as const, isPaid, approvedBy: user?.uid } : p); adminCache.set('admin_prompts', next); return next; });
       logAuditEvent({ action: 'prompt.approved', entityType: 'prompt', entityId: prompt.id, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { title: prompt.title, isPaid } });
       toast.success(`Approved as ${isPaid ? 'Premium' : 'Free'}!`);
     } catch {
@@ -139,7 +144,7 @@ export default function AdminPrompts() {
           );
         }
       }).catch(() => {});
-      setPrompts(prev => prev.map(p => p.id === rejectModalPrompt.id ? { ...p, status: 'rejected', rejectionReason: rejectReason } : p));
+      setPrompts(prev => { const next = prev.map(p => p.id === rejectModalPrompt.id ? { ...p, status: 'rejected' as const, rejectionReason: rejectReason } : p); adminCache.set('admin_prompts', next); return next; });
       logAuditEvent({ action: 'prompt.rejected', entityType: 'prompt', entityId: rejectModalPrompt.id, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { title: rejectModalPrompt.title, reason: rejectReason } });
       toast.success('Prompt rejected');
       setRejectModalPrompt(null);

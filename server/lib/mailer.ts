@@ -59,7 +59,13 @@ export async function resolveTemplate(
   }
 
   const appUrl = getAppUrl();
-  const allVars = { app_url: appUrl, ...vars };
+  const allVars = {
+    app_url:       appUrl,
+    dashboard_url: `${appUrl}/dashboard`,
+    explore_url:   `${appUrl}/explore`,
+    billing_url:   `${appUrl}/settings/billing`,
+    ...vars,
+  };
 
   return {
     subject:  substituteVars(subject,  allVars),

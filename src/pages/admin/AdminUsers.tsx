@@ -6,6 +6,7 @@ import type { BulkAction, DataTableActions, DataTableColumn } from '../../compon
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import Button from '../../components/primitives/Button';
 import Input from '../../components/primitives/Input';
+import { adminCache } from '../../lib/adminCache';
 import { db } from '../../lib/firebase';
 import { UserProfile } from '../../types';
 import { usePath } from '../../hooks/usePath';
@@ -55,18 +56,28 @@ export default function AdminUsers() {
   useEffect(() => { fetchUsers(); }, []);
 
   async function fetchUsers() {
+    const cachedUsers = adminCache.get<UserProfile[]>('admin_users');
+    const cachedLtv   = adminCache.get<Record<string, number>>('admin_ltv');
+    if (cachedUsers && cachedLtv) {
+      setUsers(cachedUsers);
+      setLtvMap(cachedLtv);
+      setLoading(false);
+      return;
+    }
     try {
       const [userSnap, orderSnap] = await Promise.all([
         getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'))),
         getDocs(query(collection(db, 'orders'), where('status', 'in', ['paid', 'completed']))),
       ]);
-      setUsers(userSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
-
+      const users = userSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
       const ltv: Record<string, number> = {};
       orderSnap.docs.forEach(d => {
         const { userId, amount } = d.data();
         if (userId) ltv[userId] = (ltv[userId] || 0) + (Number(amount) || 0);
       });
+      adminCache.set('admin_users', users);
+      adminCache.set('admin_ltv', ltv);
+      setUsers(users);
       setLtvMap(ltv);
     } catch (err) {
       console.error(err);
@@ -78,7 +89,7 @@ export default function AdminUsers() {
   const handleUpdateUser = async (uid: string, updates: Partial<UserProfile>) => {
     try {
       await updateDoc(doc(db, 'users', uid), { ...updates, updatedAt: serverTimestamp() });
-      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, ...updates } as UserProfile : u));
+      setUsers(prev => { const next = prev.map(u => u.uid === uid ? { ...u, ...updates } as UserProfile : u); adminCache.set('admin_users', next); return next; });
       toast.success('User updated');
     } catch {
       toast.error('Failed to update user');
@@ -90,7 +101,7 @@ export default function AdminUsers() {
     if (!ok) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid));
-      setUsers(prev => prev.filter(u => u.uid !== user.uid));
+      setUsers(prev => { const next = prev.filter(u => u.uid !== user.uid); adminCache.set('admin_users', next); return next; });
       toast.success('User deleted');
     } catch {
       toast.error('Failed to delete user');
@@ -110,7 +121,7 @@ export default function AdminUsers() {
 
   const handleBulkDelete = async (rows: UserProfile[]) => {
     await Promise.all(rows.map(u => deleteDoc(doc(db, 'users', u.uid))));
-    setUsers(prev => prev.filter(u => !rows.some(r => r.uid === u.uid)));
+    setUsers(prev => { const next = prev.filter(u => !rows.some(r => r.uid === u.uid)); adminCache.set('admin_users', next); return next; });
     toast.success(`${rows.length} users deleted`);
   };
 
@@ -127,11 +138,7 @@ export default function AdminUsers() {
         });
       });
       await batch.commit();
-      setUsers(prev => prev.map(u =>
-        creditModal.rows.some(r => r.uid === u.uid)
-          ? { ...u, credits: (u.credits || 0) + delta }
-          : u
-      ));
+      setUsers(prev => { const next = prev.map(u => creditModal.rows.some(r => r.uid === u.uid) ? { ...u, credits: (u.credits || 0) + delta } : u); adminCache.set('admin_users', next); return next; });
       toast.success(`${delta > 0 ? '+' : ''}${delta} credits applied to ${creditModal.rows.length} users`);
       setCreditModal({ open: false, rows: [] });
       setCreditAmount('');
@@ -155,11 +162,7 @@ export default function AdminUsers() {
         });
       });
       await batch.commit();
-      setUsers(prev => prev.map(u =>
-        planModal.rows.some(r => r.uid === u.uid)
-          ? { ...u, subscriptionStatus: selectedPlan as UserProfile['subscriptionStatus'] }
-          : u
-      ));
+      setUsers(prev => { const next = prev.map(u => planModal.rows.some(r => r.uid === u.uid) ? { ...u, subscriptionStatus: selectedPlan as UserProfile['subscriptionStatus'] } : u); adminCache.set('admin_users', next); return next; });
       toast.success(`${planModal.rows.length} users moved to ${selectedPlan}`);
       setPlanModal({ open: false, rows: [] });
       setSelectedPlan('');
