@@ -18,11 +18,25 @@ class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    // Stale chunk after a new deployment — reload once to pick up fresh assets
+    const isChunkError =
+      error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Importing a module script failed') ||
+      error.message.includes('Loading chunk') ||
+      error.message.includes('Load failed');
+    if (isChunkError) {
+      const reloaded = sessionStorage.getItem('chunk_reload');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload', '1');
+        window.location.reload();
+        return { hasError: false };
+      }
+    }
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('âŒ [Neural Crash] Uncaught error:', error, errorInfo);
+    console.error('[ErrorBoundary] Uncaught error:', error, errorInfo);
   }
 
   public render() {
@@ -35,7 +49,7 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/5 rounded-full blur-[100px]" />
           </div>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="max-w-xl w-full bg-card rounded-lg p-12 md:p-20 shadow-2xl border border-border relative z-10"
@@ -64,7 +78,7 @@ class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button 
+              <Button
                 onClick={() => window.location.reload()}
                 variant="primary"
                 size="lg"
@@ -73,7 +87,7 @@ class ErrorBoundary extends Component<Props, State> {
               >
                 Reboot System
               </Button>
-              <Button 
+              <Button
                 as="a"
                 href="/"
                 variant="outline"
