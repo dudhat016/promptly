@@ -1,5 +1,5 @@
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { AlertCircle, Check, CheckCircle2, Copy, CreditCard, ExternalLink, Globe, Lock, Percent, RefreshCw, Save, ShieldCheck, Webhook, Zap } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Copy, CreditCard, ExternalLink, Globe, KeyRound, Lock, Percent, RefreshCw, Save, ShieldCheck, Webhook, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
@@ -7,28 +7,39 @@ import Input from '../../components/primitives/Input';
 import Button from '../../components/primitives/Button';
 import { cn } from '../../lib/utils';
 
+function EnvVarField({ label, envVar }: { label: string; envVar: string }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{label}</label>
+      <div className="flex items-center gap-2.5 px-3 py-2.5 bg-muted/40 border border-border rounded-lg">
+        <KeyRound className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <code className="text-xs font-mono text-muted-foreground flex-1">{envVar}</code>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 uppercase tracking-widest shrink-0">
+          Env Var
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPaymentSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState({
     cashfree: {
       enabled: false,
-      appId: (process.env as any).CASHFREE_APP_ID || '',
-      secretKey: (process.env as any).CASHFREE_SECRET_KEY || '',
-      environment: (process.env as any).CASHFREE_ENV || 'sandbox',
-      webhookSecret: ''
+      environment: 'sandbox' as 'sandbox' | 'production',
+      webhookSecret: '',
     },
     paypal: {
       enabled: false,
-      clientId: (process.env as any).PAYPAL_CLIENT_ID || '',
-      secretKey: (process.env as any).PAYPAL_SECRET_KEY || '',
-      environment: (process.env as any).PAYPAL_ENV || 'sandbox',
-      webhookId: ''
+      environment: 'sandbox' as 'sandbox' | 'live',
+      webhookId: '',
     },
     fees: {
       paymentFeePercent: 2,
-      platformFeePercent: 0
-    }
+      platformFeePercent: 0,
+    },
   });
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
@@ -41,25 +52,19 @@ export default function AdminPaymentSettings() {
           // Merge Firestore data (like 'enabled' flags) with ENV values (keys)
           setConfig(prev => ({
             cashfree: {
-              ...prev.cashfree,
               enabled:       data.cashfree?.enabled       ?? prev.cashfree.enabled,
               environment:   data.cashfree?.environment   ?? prev.cashfree.environment,
               webhookSecret: data.cashfree?.webhookSecret ?? '',
-              appId:         data.cashfree?.appId         || prev.cashfree.appId,
-              secretKey:     data.cashfree?.secretKey     || prev.cashfree.secretKey,
             },
             paypal: {
-              ...prev.paypal,
               enabled:     data.paypal?.enabled     ?? prev.paypal.enabled,
               environment: data.paypal?.environment ?? prev.paypal.environment,
               webhookId:   data.paypal?.webhookId   ?? '',
-              clientId:    data.paypal?.clientId    || prev.paypal.clientId,
-              secretKey:   data.paypal?.secretKey   || prev.paypal.secretKey,
             },
             fees: {
-              paymentFeePercent: data.fees?.paymentFeePercent ?? 2,
+              paymentFeePercent:  data.fees?.paymentFeePercent  ?? 2,
               platformFeePercent: data.fees?.platformFeePercent ?? 0,
-            }
+            },
           }));
         }
       } catch (err) {
@@ -75,10 +80,18 @@ export default function AdminPaymentSettings() {
     setSaving(true);
     try {
       await setDoc(doc(db, 'configs', 'payment'), {
-        cashfree: config.cashfree,
-        paypal: config.paypal,
+        cashfree: {
+          enabled:       config.cashfree.enabled,
+          environment:   config.cashfree.environment,
+          webhookSecret: config.cashfree.webhookSecret,
+        },
+        paypal: {
+          enabled:     config.paypal.enabled,
+          environment: config.paypal.environment,
+          webhookId:   config.paypal.webhookId,
+        },
         fees: config.fees,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       });
       // Sync fee rates to configs/marketing so awardAffiliateCommission reads them
       await setDoc(doc(db, 'configs', 'marketing'), {
@@ -95,9 +108,7 @@ export default function AdminPaymentSettings() {
     }
   };
 
-  const appUrl = typeof window !== 'undefined'
-    ? window.location.origin
-    : (process.env as any).VITE_APP_URL || 'https://yourdomain.com';
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://yourdomain.com';
 
   const WEBHOOK_URLS = {
     cashfree: `${appUrl}/api/payments/webhook/cashfree`,
@@ -149,9 +160,7 @@ export default function AdminPaymentSettings() {
                 </div>
                 <div className="flex flex-col">
                   <h4 className="font-bold text-lg leading-tight">Cashfree Payments</h4>
-                  {(process.env as any).CASHFREE_APP_ID && (
-                    <span className="text-xs font-bold text-primary uppercase tracking-widest mt-0.5">Environment Managed</span>
-                  )}
+                  <span className="text-xs font-bold text-primary uppercase tracking-widest mt-0.5">Keys via Env Vars</span>
                 </div>
               </div>
               <Button 
@@ -168,30 +177,8 @@ export default function AdminPaymentSettings() {
             </div>
 
             <div className={`space-y-6 transition-all ${config.cashfree.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-              <Input
-                label="App ID"
-                id="cashfreeAppId"
-                name="cashfreeAppId"
-                type="text"
-                value={config.cashfree.appId}
-                readOnly={!!(process.env as any).CASHFREE_APP_ID}
-                onChange={e => setConfig({ ...config, cashfree: { ...config.cashfree, appId: e.target.value }})}
-                placeholder="CF_APP_ID"
-                className="font-mono"
-                variant="filled"
-              />
-              <Input
-                label="Secret Key"
-                id="cashfreeSecretKey"
-                name="cashfreeSecretKey"
-                type="password"
-                value={config.cashfree.secretKey}
-                readOnly={!!(process.env as any).CASHFREE_SECRET_KEY}
-                onChange={e => setConfig({ ...config, cashfree: { ...config.cashfree, secretKey: e.target.value }})}
-                placeholder="••••••••••••••••"
-                className="font-mono"
-                variant="filled"
-              />
+              <EnvVarField label="App ID" envVar="CASHFREE_APP_ID" />
+              <EnvVarField label="Secret Key" envVar="CASHFREE_SECRET_KEY" />
               <div>
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Environment</label>
                 <div className="flex gap-2">
@@ -243,9 +230,7 @@ export default function AdminPaymentSettings() {
                 </div>
                 <div className="flex flex-col">
                   <h4 className="font-bold text-lg leading-tight">PayPal Global</h4>
-                  {(process.env as any).PAYPAL_CLIENT_ID && (
-                    <span className="text-xs font-bold text-blue-500 uppercase tracking-widest mt-0.5">Environment Managed</span>
-                  )}
+                  <span className="text-xs font-bold text-blue-500 uppercase tracking-widest mt-0.5">Keys via Env Vars</span>
                 </div>
               </div>
               <Button 
@@ -262,30 +247,8 @@ export default function AdminPaymentSettings() {
             </div>
 
             <div className={`space-y-6 transition-all ${config.paypal.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-              <Input
-                label="Client ID"
-                id="paypalClientId"
-                name="paypalClientId"
-                type="text"
-                value={config.paypal.clientId}
-                readOnly={!!(process.env as any).PAYPAL_CLIENT_ID}
-                onChange={e => setConfig({ ...config, paypal: { ...config.paypal, clientId: e.target.value }})}
-                placeholder="PAYPAL_CLIENT_ID"
-                className="font-mono"
-                variant="filled"
-              />
-              <Input
-                label="Secret Key"
-                id="paypalSecretKey"
-                name="paypalSecretKey"
-                type="password"
-                value={config.paypal.secretKey}
-                readOnly={!!(process.env as any).PAYPAL_SECRET_KEY}
-                onChange={e => setConfig({ ...config, paypal: { ...config.paypal, secretKey: e.target.value }})}
-                placeholder="••••••••••••••••"
-                className="font-mono"
-                variant="filled"
-              />
+              <EnvVarField label="Client ID" envVar="PAYPAL_CLIENT_ID" />
+              <EnvVarField label="Secret Key" envVar="PAYPAL_CLIENT_SECRET" />
               <div>
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 ml-1">Environment</label>
                 <div className="flex gap-2">

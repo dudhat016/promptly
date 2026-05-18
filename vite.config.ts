@@ -1,11 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import {defineConfig} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   return {
     plugins: [
       react(),
@@ -31,19 +30,6 @@ export default defineConfig(({mode}) => {
         },
       }),
     ],
-    define: {
-      'process.env.EMAIL_PROVIDER': JSON.stringify(env.EMAIL_PROVIDER),
-      'process.env.SMTP_HOST': JSON.stringify(env.SMTP_HOST),
-      'process.env.SMTP_PORT': JSON.stringify(env.SMTP_PORT),
-      'process.env.SMTP_USER': JSON.stringify(env.SMTP_USER),
-      'process.env.SMTP_SECURE': JSON.stringify(env.SMTP_SECURE),
-      'process.env.FROM_NAME': JSON.stringify(env.FROM_NAME),
-      'process.env.FROM_EMAIL': JSON.stringify(env.FROM_EMAIL),
-      'process.env.CASHFREE_APP_ID': JSON.stringify(env.CASHFREE_APP_ID),
-      'process.env.CASHFREE_ENV': JSON.stringify(env.CASHFREE_ENV),
-      'process.env.PAYPAL_CLIENT_ID': JSON.stringify(env.PAYPAL_CLIENT_ID),
-      'process.env.PAYPAL_ENV': JSON.stringify(env.PAYPAL_ENV),
-    },
     resolve: {
       alias: {
         '@': path.resolve(process.cwd(), '.'),

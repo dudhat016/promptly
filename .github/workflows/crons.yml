@@ -7,7 +7,7 @@ on:
   workflow_dispatch:         # allow manual trigger from GitHub UI
 
 env:
-  APP_URL: ${{ secrets.VERCEL_APP_URL }}
+  APP_URL: ${{ secrets.APP_URL }}
   AUTH: "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
 
 jobs:
@@ -18,8 +18,8 @@ jobs:
       - name: POST /api/cron/automation-tick
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/automation-tick" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -X POST "$APP_URL/api/cron/automation-tick" \
+            -H "$AUTH" \
             -H "Content-Type: application/json")
           echo "Response: $STATUS"
           [ "$STATUS" = "200" ] || [ "$STATUS" = "304" ] || exit 1
@@ -33,8 +33,8 @@ jobs:
           MINUTE=$(date +%M)
           if [ "$MINUTE" = "00" ]; then
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/nudges" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -X POST "$APP_URL/api/cron/nudges" \
+              -H "$AUTH" \
               -H "Content-Type: application/json")
             echo "Response: $STATUS"
             [ "$STATUS" = "200" ] || exit 1
@@ -51,8 +51,8 @@ jobs:
           MINUTE=$(date +%M)
           if [ "$MINUTE" = "00" ]; then
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/segment-rebuild" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -X POST "$APP_URL/api/cron/segment-rebuild" \
+              -H "$AUTH" \
               -H "Content-Type: application/json")
             echo "Response: $STATUS"
             [ "$STATUS" = "200" ] || exit 1
@@ -70,8 +70,8 @@ jobs:
           MINUTE=$(date +%M)
           if [ "$HOUR" = "03" ] && [ "$MINUTE" = "00" ]; then
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/process-locks" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -X POST "$APP_URL/api/cron/process-locks" \
+              -H "$AUTH" \
               -H "Content-Type: application/json")
             echo "Response: $STATUS"
             [ "$STATUS" = "200" ] || exit 1
@@ -89,8 +89,8 @@ jobs:
           MINUTE=$(date +%M)
           if [ "$HOUR" = "04" ] && [ "$MINUTE" = "00" ]; then
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/expire-trials" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -X POST "$APP_URL/api/cron/expire-trials" \
+              -H "$AUTH" \
               -H "Content-Type: application/json")
             echo "Response: $STATUS"
             [ "$STATUS" = "200" ] || exit 1
@@ -108,8 +108,8 @@ jobs:
           MINUTE=$(date +%M)
           if [ "$HOUR" = "05" ] && [ "$MINUTE" = "00" ]; then
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/auto-payouts" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -X POST "$APP_URL/api/cron/auto-payouts" \
+              -H "$AUTH" \
               -H "Content-Type: application/json")
             echo "Response: $STATUS"
             [ "$STATUS" = "200" ] || exit 1

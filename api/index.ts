@@ -1,6 +1,5 @@
 import * as dotenv from 'dotenv';
 import express from "express";
-import admin from "firebase-admin";
 import helmet from "helmet";
 import cors from "cors";
 import multiparty from "multiparty";
@@ -16,9 +15,10 @@ import automationRouter from "../server/routes/automation.js";
 import cronRouter from "../server/routes/cron.js";
 import affiliatesRouter from "../server/routes/affiliates.js";
 import couponsRouter from "../server/routes/coupons.js";
-import { generalLimiter } from "../server/middleware/rateLimit.js";
+import { generalLimiter, authLimiter, checkoutLimiter, contactLimiter } from "../server/middleware/rateLimit.js";
 import { errorHandler } from "../server/middleware/errorHandler.js";
-import { authMiddleware, adminOnly, AuthenticatedRequest } from "../server/middleware/auth.js";
+import { authMiddleware, adminOnly } from "../server/middleware/auth.js";
+import type { AuthenticatedRequest } from "../server/middleware/auth.js";
 import { GeneralService } from "../server/services/generalService.js";
 import { initFirebase } from "../server/lib/firebase.js";
 
@@ -55,9 +55,9 @@ app.use(express.json({ limit: '10mb' }));
 // --- Routes ---
 app.use("/api/location", locationRouter);
 app.use("/api/data", dataRouter);
-app.use("/api/payments", paymentsRouter);
-app.use("/api/auth", authRouter);
-app.use("/api/support", supportRouter);
+app.use("/api/payments", checkoutLimiter, paymentsRouter);
+app.use("/api/auth", authLimiter, authRouter);
+app.use("/api/support", contactLimiter, supportRouter);
 app.use("/api/marketing", marketingRouter);
 app.use("/api/nudges", nudgesRouter);
 app.use("/api/email", transactionalRouter);
@@ -89,7 +89,7 @@ app.post("/api/test-ftp", authMiddleware, adminOnly, async (req, res) => {
 
 app.post("/api/upload-ftp", async (req, res) => {
   const form = new multiparty.Form();
-  form.parse(req, async (err, fields, files) => {
+  form.parse(req, async (err: Error | null, fields: Record<string, string[]>, files: Record<string, multiparty.File[]>) => {
     if (err) return res.status(500).json({ error: "Failed to parse upload" });
     
     const folder = fields.folder?.[0] || "";
@@ -115,7 +115,7 @@ app.post("/api/test-email", authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
-app.post("/api/create-checkout-session", authMiddleware, async (req: AuthenticatedRequest, res) => {
+app.post("/api/create-checkout-session", checkoutLimiter, authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await GeneralService.createStripeCheckout({
       ...req.body,

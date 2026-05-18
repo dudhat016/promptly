@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import nodemailer from "nodemailer";
 import { EMAIL_TYPES } from "./emailTypes.js";
-import { getAppUrl } from "./config.js";
+import { getAppUrl, getAppName } from "./config.js";
 
 // ─── SMTP ─────────────────────────────────────────────────────────────────────
 
@@ -20,8 +20,8 @@ export async function getSmtpTransport(db: admin.firestore.Firestore): Promise<S
   const pass      = c?.smtpPass     || process.env.SMTP_PASS;
   const port      = parseInt(c?.smtpPort || process.env.SMTP_PORT || "587");
   const secure    = c?.smtpSecure   ?? (process.env.SMTP_SECURE === "true");
-  const fromEmail = c?.fromEmail    || process.env.SMTP_FROM_EMAIL || process.env.FROM_EMAIL || "";
-  const fromName  = c?.fromName     || process.env.SMTP_FROM_NAME  || "Promptly";
+  const fromEmail = c?.fromEmail    || process.env.SMTP_FROM_EMAIL || "";
+  const fromName  = c?.fromName     || process.env.SMTP_FROM_NAME  || getAppName();
 
   if (!host || !user || !pass || !fromEmail) return null;
 

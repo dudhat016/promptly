@@ -107,7 +107,7 @@ app.post("/api/upload-ftp", (req, res) => {
     if (!file) return res.status(400).json({ error: "No file uploaded" });
 
     try {
-      const { GeneralService } = await import("./api/services/generalService");
+      const { GeneralService } = await import("./server/services/generalService.js");
       const result = await GeneralService.uploadFtp(file, folder);
       res.json(result);
     } catch (ftpErr: any) {

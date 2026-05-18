@@ -1,6 +1,6 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
-import { getLangUrl } from "../lib/config.js";
+import { getLangUrl, getAppName } from "../lib/config.js";
 import { sendSuccessEmail, awardAffiliateCommission } from "../lib/payouts.js";
 import { DunningService } from "./dunningService.js";
 import { triggerFlow } from "./automationEngine.js";
@@ -442,14 +442,16 @@ export class SubscriptionService {
     const configSnap = await firebase.db.collection("configs").doc("payment").get();
     const config = configSnap.exists ? configSnap.data() : null;
 
-    const clientId = config?.paypal?.clientId || process.env.VITE_PAYPAL_CLIENT_ID;
-    const clientSecret = config?.paypal?.clientSecret || process.env.PAYPAL_CLIENT_SECRET;
-    const environment = config?.paypal?.environment || 'sandbox';
-    const baseUrl = environment === 'production'
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    const environment = config?.paypal?.environment || process.env.PAYPAL_ENV || 'sandbox';
+    const baseUrl = environment === 'live'
       ? 'https://api-m.paypal.com'
       : 'https://api-m.sandbox.paypal.com';
 
-    const token = await SubscriptionService.getPaypalToken(baseUrl, clientId!, clientSecret!);
+    if (!clientId || !clientSecret) throw new Error("PayPal credentials not configured — set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET");
+
+    const token = await SubscriptionService.getPaypalToken(baseUrl, clientId, clientSecret);
 
     const paypalPlanId = await SubscriptionService.ensurePaypalPlan(
       baseUrl, token, firebase,
@@ -463,7 +465,7 @@ export class SubscriptionService {
         plan_id: paypalPlanId,
         subscriber: { email_address: payload.customerEmail },
         application_context: {
-          brand_name: 'Promptly',
+          brand_name: getAppName(),
           user_action: 'SUBSCRIBE_NOW',
           payment_method: {
             payer_selected: 'PAYPAL',
@@ -500,14 +502,16 @@ export class SubscriptionService {
     const configSnap = await firebase.db.collection("configs").doc("payment").get();
     const config = configSnap.exists ? configSnap.data() : null;
 
-    const clientId = config?.paypal?.clientId || process.env.VITE_PAYPAL_CLIENT_ID;
-    const clientSecret = config?.paypal?.clientSecret || process.env.PAYPAL_CLIENT_SECRET;
-    const environment = config?.paypal?.environment || 'sandbox';
-    const baseUrl = environment === 'production'
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    const environment = config?.paypal?.environment || process.env.PAYPAL_ENV || 'sandbox';
+    const baseUrl = environment === 'live'
       ? 'https://api-m.paypal.com'
       : 'https://api-m.sandbox.paypal.com';
 
-    const token = await SubscriptionService.getPaypalToken(baseUrl, clientId!, clientSecret!);
+    if (!clientId || !clientSecret) throw new Error("PayPal credentials not configured — set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET");
+
+    const token = await SubscriptionService.getPaypalToken(baseUrl, clientId, clientSecret);
 
     const res = await fetch(`${baseUrl}/v1/billing/subscriptions/${paypalSubId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -605,14 +609,16 @@ export class SubscriptionService {
     const configSnap = await firebase.db.collection("configs").doc("payment").get();
     const config = configSnap.exists ? configSnap.data() : null;
 
-    const clientId = config?.paypal?.clientId || process.env.VITE_PAYPAL_CLIENT_ID;
-    const clientSecret = config?.paypal?.clientSecret || process.env.PAYPAL_CLIENT_SECRET;
-    const environment = config?.paypal?.environment || 'sandbox';
-    const baseUrl = environment === 'production'
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    const environment = config?.paypal?.environment || process.env.PAYPAL_ENV || 'sandbox';
+    const baseUrl = environment === 'live'
       ? 'https://api-m.paypal.com'
       : 'https://api-m.sandbox.paypal.com';
 
-    const token = await SubscriptionService.getPaypalToken(baseUrl, clientId!, clientSecret!);
+    if (!clientId || !clientSecret) throw new Error("PayPal credentials not configured — set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET");
+
+    const token = await SubscriptionService.getPaypalToken(baseUrl, clientId, clientSecret);
 
     await fetch(`${baseUrl}/v1/billing/subscriptions/${paypalSubId}/cancel`, {
       method: 'POST',

@@ -4,7 +4,7 @@ const PAYPAL_BASE = process.env.PAYPAL_ENV === 'sandbox'
 
 async function getAccessToken(): Promise<string> {
   const clientId = process.env.PAYPAL_CLIENT_ID;
-  const secret   = process.env.PAYPAL_CLIENT_SECRET ?? process.env.PAYPAL_SECRET_KEY;
+  const secret   = process.env.PAYPAL_CLIENT_SECRET;
   if (!clientId || !secret) throw new Error('PayPal credentials not configured');
 
   const credentials = Buffer.from(`${clientId}:${secret}`).toString('base64');

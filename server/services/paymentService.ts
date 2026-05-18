@@ -1,6 +1,5 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
-import { getStripe } from "../lib/stripe.js";
 import { awardAffiliateCommission, sendSuccessEmail } from "../lib/payouts.js";
 import { triggerFlow } from "./automationEngine.js";
 
@@ -33,22 +32,18 @@ export class PaymentService {
     const firebase = await initFirebase();
     if (!firebase) throw new Error("Firebase not connected");
 
-    const configSnap = await firebase.db.collection("configs").doc("payment").get();
-    const config = configSnap.exists ? configSnap.data() : null;
+    const appId = process.env.CASHFREE_APP_ID;
+    const secretKey = process.env.CASHFREE_SECRET_KEY;
 
-    const appId = config?.cashfree?.appId || process.env.CASHFREE_APP_ID;
-    const secretKey = config?.cashfree?.secretKey || process.env.CASHFREE_SECRET_KEY;
-    const environment = config?.cashfree?.environment || process.env.CASHFREE_ENV || 'sandbox';
+    if (!appId || !secretKey) throw new Error("Cashfree credentials not configured — set CASHFREE_APP_ID and CASHFREE_SECRET_KEY");
 
-    // Always use api.cashfree.com — sandbox sessions are also hosted here
-    const baseUrl = "https://api.cashfree.com/pg";
-
-    const response = await fetch(`${baseUrl}/orders/${orderId}`, {
+    // Cashfree uses api.cashfree.com for both sandbox and production order lookups
+    const response = await fetch(`https://api.cashfree.com/pg/orders/${orderId}`, {
       headers: {
-        'x-client-id': appId!,
-        'x-client-secret': secretKey!,
-        'x-api-version': '2023-08-01'
-      }
+        'x-client-id': appId,
+        'x-client-secret': secretKey,
+        'x-api-version': '2023-08-01',
+      },
     });
 
     const data: any = await response.json();
@@ -59,7 +54,7 @@ export class PaymentService {
       const billingCycle = data.order_tags?.billingCycle || 'monthly';
 
       const planSnap = await firebase.db.collection("plans").doc(planId).get();
-      const planData = planSnap.exists ? planSnap.data() : { monthlyCredits: 500, name: 'Pro' };
+      const planData = planSnap.data() ?? { monthlyCredits: 500, name: 'Pro' };
       const planCredits = planData.monthlyCredits ?? planData.credits ?? 500;
 
       const userRef = firebase.db.collection("users").doc(customerId);
@@ -161,21 +156,27 @@ export class PaymentService {
     const configSnap = await firebase.db.collection("configs").doc("payment").get();
     const config = configSnap.exists ? configSnap.data() : null;
 
-    const clientId = config?.paypal?.clientId || process.env.VITE_PAYPAL_CLIENT_ID;
-    const clientSecret = config?.paypal?.clientSecret || process.env.PAYPAL_CLIENT_SECRET;
-    const environment = config?.paypal?.environment || 'sandbox';
+    // Secrets come from env vars only — not stored in Firestore
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    // PayPal environment values: 'live' | 'sandbox' (not 'production')
+    const environment = config?.paypal?.environment || process.env.PAYPAL_ENV || 'sandbox';
 
-    const authUrl = environment === 'production' ? "https://api-m.paypal.com/v1/oauth2/token" : "https://api-m.sandbox.paypal.com/v1/oauth2/token";
-    const captureUrl = environment === 'production' ? `https://api-m.paypal.com/v2/checkout/orders/${orderID}/capture` : `https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderID}/capture`;
+    if (!clientId || !clientSecret) throw new Error("PayPal credentials not configured — set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET");
+
+    const basePaypalUrl = environment === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+    const authUrl = `${basePaypalUrl}/v1/oauth2/token`;
+    const captureUrl = `${basePaypalUrl}/v2/checkout/orders/${orderID}/capture`;
 
     const authRes = await fetch(authUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: 'grant_type=client_credentials'
+      body: 'grant_type=client_credentials',
     });
+    if (!authRes.ok) throw new Error(`PayPal auth failed (${authRes.status}) — check PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET`);
     const { access_token } = await authRes.json();
 
     const captureRes = await fetch(captureUrl, {
@@ -189,7 +190,7 @@ export class PaymentService {
 
     if (captureData.status === 'COMPLETED') {
       const planSnap = await firebase.db.collection("plans").doc(planId).get();
-      const planData = planSnap.exists ? planSnap.data() : { monthlyCredits: 500, name: 'Pro' };
+      const planData = planSnap.data() ?? { monthlyCredits: 500, name: 'Pro' };
       const planCredits = planData.monthlyCredits ?? planData.credits ?? 500;
 
       const userRef = firebase.db.collection("users").doc(customerId);

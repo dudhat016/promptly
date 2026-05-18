@@ -43,7 +43,6 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == 'calmingsound016@gmail.com' ||
         request.auth.token.email == 'admin@promptly.com' ||
-        request.auth.token.firebase.sign_in_provider == 'anonymous' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
@@ -81,9 +80,12 @@ service cloud.firestore {
 
     // --- Configurations (Marketing & Monetization) ---
     match /configs/{configId} {
-      // marketing/payment/global: public; staff_roles: signed-in; rest: admin only
-      allow read: if configId == 'marketing' || configId == 'payment' || configId == 'access_levels' || configId == 'staff_roles' || isSignedIn() && configId == 'global' || isAdmin();
-      // Only admins can modify configurations
+      // marketing/access_levels/staff_roles: public read (pricing page, feature flags)
+      // global: signed-in users only (personalisation)
+      // payment/email/storage: admin only (contain or reference secrets)
+      allow read: if configId == 'marketing' || configId == 'access_levels' || configId == 'staff_roles'
+                  || (isSignedIn() && configId == 'global')
+                  || isAdmin();
       allow write: if isAdmin();
     }
 
@@ -212,12 +214,6 @@ service cloud.firestore {
     }
     match /config/global {
       allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // New Centralized Platform Configuration (duplicate block — kept for clarity, merged into rule above)
-    match /configs/{configId} {
-      allow read: if configId == 'global' || configId == 'marketing' || configId == 'payment' || configId == 'staff_roles' || isAdmin();
       allow write: if isAdmin();
     }
 

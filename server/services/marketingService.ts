@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
+import { getAppUrl } from "../lib/config.js";
 import nodemailer from "nodemailer";
 
 export class MarketingService {
@@ -10,7 +11,7 @@ export class MarketingService {
     const firebase = await initFirebase();
     if (!firebase) throw new Error("Firebase not connected");
 
-    const baseUrl = process.env.VITE_SITE_URL || 'https://promptly.ai';
+    const baseUrl = getAppUrl();
 
     const [promptsSnap, blogsSnap] = await Promise.all([
       firebase.db.collection("prompts").where("status", "==", "approved").get(),
