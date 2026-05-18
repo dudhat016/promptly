@@ -59,3 +59,41 @@ jobs:
           else
             echo "Skipping — not on the hour (minute=$MINUTE)"
           fi
+
+  process-locks:
+    name: Process Locks (daily 03:00 UTC)
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/process-locks
+        run: |
+          HOUR=$(date -u +%H)
+          MINUTE=$(date +%M)
+          if [ "$HOUR" = "03" ] && [ "$MINUTE" = "00" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/process-locks" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -H "Content-Type: application/json")
+            echo "Response: $STATUS"
+            [ "$STATUS" = "200" ] || exit 1
+          else
+            echo "Skipping — not 03:00 UTC (hour=$HOUR minute=$MINUTE)"
+          fi
+
+  expire-trials:
+    name: Expire Trials (daily 04:00 UTC)
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/expire-trials
+        run: |
+          HOUR=$(date -u +%H)
+          MINUTE=$(date +%M)
+          if [ "$HOUR" = "04" ] && [ "$MINUTE" = "00" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST "${{ secrets.VERCEL_APP_URL }}/api/cron/expire-trials" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -H "Content-Type: application/json")
+            echo "Response: $STATUS"
+            [ "$STATUS" = "200" ] || exit 1
+          else
+            echo "Skipping — not 04:00 UTC (hour=$HOUR minute=$MINUTE)"
+          fi
