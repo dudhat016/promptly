@@ -40,8 +40,8 @@ jobs:
           server-dir: /public_html/promptly/
           protocol: ftp
           port: 21
-          timeout: 60000
-          security: loose
+          timeout: 120000
+          security: strict
           exclude: |
             **/.git*
             **/.git*/**
