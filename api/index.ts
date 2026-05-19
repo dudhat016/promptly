@@ -45,8 +45,14 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+const corsOrigins: string[] = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+  : process.env.VERCEL_URL
+    ? [`https://${process.env.VERCEL_URL}`, 'http://localhost:5173']
+    : ['http://localhost:5173'];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'],
+  origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],

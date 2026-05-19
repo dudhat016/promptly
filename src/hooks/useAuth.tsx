@@ -90,17 +90,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (unsubscribeProfile) unsubscribeProfile();
 
       if (user) {
-        // Fire login alert exactly once per browser session.
-        // Server owns dedup atomically — safe across multiple tabs and devices.
-        const sessionKey = `login_alert_${user.uid}`;
-        if (!sessionStorage.getItem(sessionKey)) {
-          sessionStorage.setItem(sessionKey, '1');
-          api.post('/auth/login-alert', {
-            name: user.displayName || user.email?.split('@')[0] || '',
-            time: new Date().toLocaleString(),
-          }).catch(() => {});
-        }
-
         const docRef = doc(db, 'users', user.uid);
 
         // REAL-TIME LISTENER
@@ -125,7 +114,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
 
               // 2. Admin/Demotion Logic (Only if status actually changed)
-              const isAdminEmail = user.email === 'calmingsound016@gmail.com' || user.email === 'admin@promptly.com';
+              const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
+              const isAdminEmail = adminEmails.length > 0 ? adminEmails.includes(user.email || '') : false;
               const isToDemote = user.email === 'learnwithdudhat016@gmail.com';
 
               if (isAdminEmail && data.role !== 'admin') {
@@ -165,6 +155,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
 
               setProfile(data);
+
+              // Login alert — fires once per browser session for existing users only.
+              // New registrations are excluded (they receive a welcome email instead).
+              // Server dedup (atomic Firestore transaction) handles cross-device dedup.
+              const loginAlertKey = `login_alert_${user.uid}`;
+              if (!sessionStorage.getItem(loginAlertKey)) {
+                sessionStorage.setItem(loginAlertKey, '1');
+                api.post('/auth/login-alert', {
+                  name: user.displayName || user.email?.split('@')[0] || '',
+                  time: new Date().toLocaleString(),
+                }).catch(() => {});
+              }
+
               if (data.role === 'admin' && !sessionStorage.getItem('DB_SEEDED')) {
                 seedDatabase();
                 sessionStorage.setItem('DB_SEEDED', 'true');
@@ -191,7 +194,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               const referralCode = `${baseName}${Math.floor(100 + Math.random() * 900)}`;
               const referredBy = localStorage.getItem('referralCode') || undefined;
 
-              const isAdminEmail = user.email === 'calmingsound016@gmail.com' || user.email === 'admin@promptly.com';
+              const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
+              const isAdminEmail = adminEmails.length > 0 ? adminEmails.includes(user.email || '') : false;
 
               const newProfile: UserProfile = {
                 uid: user.uid,
@@ -212,6 +216,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
               await setDoc(docRef, { ...newProfile, createdAt: serverTimestamp() });
               setProfile(newProfile);
+
+              // Suppress login alert for new registrations — welcome email serves this purpose
+              sessionStorage.setItem(`login_alert_${user.uid}`, '1');
 
               if (isAdminEmail) {
                 await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });

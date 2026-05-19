@@ -17,10 +17,6 @@ export const EmailService = {
     await send('welcome', { name });
   },
 
-  async sendLoginEmail(_userId: string, _email: string) {
-    await send('login_alert', { time: new Date().toLocaleString() });
-  },
-
   async sendAffiliateJoinEmail(_userId: string, _email: string, code: string) {
     await send('affiliate_join', { referral_code: code });
   },
