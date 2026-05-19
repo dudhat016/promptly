@@ -22,6 +22,7 @@ function verifyCronSecret(req: any, res: any): boolean {
     return true;
   }
   if (authHeader !== `Bearer ${secret}`) {
+    console.error(`[Cron] Auth mismatch — received header length: ${authHeader?.length ?? 0}, expected length: ${7 + secret.length}`);
     res.status(401).json({ error: "Unauthorized" });
     return false;
   }
