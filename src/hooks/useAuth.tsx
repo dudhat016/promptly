@@ -90,6 +90,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (unsubscribeProfile) unsubscribeProfile();
 
       if (user) {
+        // Fire login alert exactly once per browser session.
+        // Server owns dedup atomically — safe across multiple tabs and devices.
+        const sessionKey = `login_alert_${user.uid}`;
+        if (!sessionStorage.getItem(sessionKey)) {
+          sessionStorage.setItem(sessionKey, '1');
+          api.post('/auth/login-alert', {
+            name: user.displayName || user.email?.split('@')[0] || '',
+            time: new Date().toLocaleString(),
+          }).catch(() => {});
+        }
+
         const docRef = doc(db, 'users', user.uid);
 
         // REAL-TIME LISTENER
@@ -171,13 +182,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 syncAffinityToCloud(user.uid);
               }
 
-              const loginEmailKey = `login_email_${user.uid}`;
-              const lastSent = localStorage.getItem(loginEmailKey);
-              const EIGHT_HOURS = 8 * 60 * 60 * 1000;
-              if (!lastSent || Date.now() - parseInt(lastSent) > EIGHT_HOURS) {
-                EmailService.sendLoginEmail(user.uid, user.email || '');
-                localStorage.setItem(loginEmailKey, String(Date.now()));
-              }
             } else {
               // Create new profile
               const baseName = (user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'USER')
@@ -257,8 +261,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               } catch (crmErr) {
                 console.error("Failed to sync user to Marketing CRM:", crmErr);
               }
-              // Stamp localStorage so the login-alert check skips this session on next snapshot
-              localStorage.setItem(`login_email_${user.uid}`, String(Date.now()));
             }
             setLoading(false); // Done loading profile
           } catch (err) {

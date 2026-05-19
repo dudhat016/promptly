@@ -151,6 +151,46 @@ export function buildBrandedHtml(
   return html;
 }
 
+// ─── ATOMIC DEDUP LOCK ───────────────────────────────────────────────────────
+
+// Atomically checks + stamps the dedup timestamp in a Firestore transaction.
+// Returns true if the lock was acquired (safe to send), false if suppressed.
+// Using a transaction eliminates the TOCTOU race where two simultaneous requests
+// both pass the read-check before either writes the timestamp.
+async function acquireDedupLock(
+  db: admin.firestore.Firestore,
+  userId: string,
+  type: string,
+  windowMs: number
+): Promise<boolean> {
+  try {
+    await db.runTransaction(async (tx) => {
+      const userRef = db.collection("users").doc(userId);
+      const snap = await tx.get(userRef);
+      const lastSent: admin.firestore.Timestamp | null =
+        snap.exists ? (snap.data()?.emailDedup?.[type] ?? null) : null;
+
+      if (lastSent && Date.now() - lastSent.toMillis() < windowMs) {
+        const err = new Error("dedup") as any;
+        err.code = "dedup";
+        throw err;
+      }
+
+      if (snap.exists) {
+        tx.update(userRef, {
+          [`emailDedup.${type}`]: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    });
+    return true; // transaction committed — lock acquired, safe to send
+  } catch (err: any) {
+    if (err.code === "dedup") return false; // within dedup window — suppress
+    // Firestore contention: another request already committed the lock — suppress this one
+    console.warn(`[Mailer] Dedup lock contention for ${userId}/${type}:`, err.message);
+    return false;
+  }
+}
+
 // ─── BOUNCE DETECTION ────────────────────────────────────────────────────────
 
 // SMTP response codes that indicate a permanent hard bounce
@@ -205,33 +245,25 @@ export async function sendEmail(
     // Non-fatal — proceed if CRM check fails
   }
 
-  // 2. Check user notification preferences + server-side dedup (single user fetch)
+  // 2a. Check user notification preferences (read-only, no race risk)
   const typeInfo = EMAIL_TYPES[type];
-  if (userId && (typeInfo?.prefKey || typeInfo?.dedupWindowMs)) {
+  if (userId && typeInfo?.prefKey) {
     try {
       const userSnap = await db.collection("users").doc(userId).get();
       if (userSnap.exists) {
-        const userData = userSnap.data()!;
-
-        // Notification preference check
-        if (typeInfo?.prefKey) {
-          const prefs = userData.notificationPrefs ?? {};
-          if (prefs[typeInfo.prefKey] === false) {
-            return { sent: false, reason: "user_preference_disabled" };
-          }
-        }
-
-        // Dedup check — suppress if same type was sent within the dedup window
-        if (typeInfo?.dedupWindowMs) {
-          const lastSent: Date | null = userData.emailDedup?.[type]?.toDate?.() ?? null;
-          if (lastSent && Date.now() - lastSent.getTime() < typeInfo.dedupWindowMs) {
-            return { sent: false, reason: "dedup" };
-          }
+        const prefs = userSnap.data()!.notificationPrefs ?? {};
+        if (prefs[typeInfo.prefKey] === false) {
+          return { sent: false, reason: "user_preference_disabled" };
         }
       }
-    } catch {
-      // Non-fatal — proceed if check fails
-    }
+    } catch { /* non-fatal */ }
+  }
+
+  // 2b. Atomic dedup lock — check + stamp in a single Firestore transaction
+  // This prevents two simultaneous requests both passing the check before either stamps.
+  if (userId && typeInfo?.dedupWindowMs) {
+    const acquired = await acquireDedupLock(db, userId, type, typeInfo.dedupWindowMs);
+    if (!acquired) return { sent: false, reason: "dedup" };
   }
 
   // 3. Resolve template (Firestore → default fallback)
@@ -294,13 +326,6 @@ export async function sendEmail(
       error: result.reason || null,
     });
   } catch { /* non-fatal */ }
-
-  // 8. Stamp dedup timestamp on the user doc so the next call within the window is suppressed
-  if (result.sent && userId && typeInfo?.dedupWindowMs) {
-    db.collection("users").doc(userId).update({
-      [`emailDedup.${type}`]: admin.firestore.FieldValue.serverTimestamp(),
-    }).catch(() => {});
-  }
 
   return result;
 }
