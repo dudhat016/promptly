@@ -8,11 +8,19 @@ export function getAppUrl(): string {
   const raw = process.env.APP_URL
     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
     || 'http://localhost:5173';
-  const url = raw.replace(/\/$/, '');
-  if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
-    return url.replace(/^http:\/\//, 'https://');
+  // Extract just the origin — strip any accidental path suffix (e.g. "/en") from APP_URL
+  try {
+    const parsed = new URL(raw);
+    const origin = `${parsed.protocol}//${parsed.host}`;
+    return !origin.includes('localhost') && !origin.includes('127.0.0.1')
+      ? origin.replace(/^http:\/\//, 'https://')
+      : origin;
+  } catch {
+    const url = raw.replace(/\/$/, '');
+    return !url.includes('localhost') && !url.includes('127.0.0.1')
+      ? url.replace(/^http:\/\//, 'https://')
+      : url;
   }
-  return url;
 }
 
 /**

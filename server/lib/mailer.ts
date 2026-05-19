@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import nodemailer from "nodemailer";
 import { EMAIL_TYPES } from "./emailTypes.js";
-import { getAppUrl, getAppName } from "./config.js";
+import { getAppUrl, getAppName, getDefaultLang } from "./config.js";
 
 // ─── SMTP ─────────────────────────────────────────────────────────────────────
 
@@ -58,12 +58,14 @@ export async function resolveTemplate(
     // Use defaults — template lookup is best-effort
   }
 
-  const appUrl = getAppUrl();
+  const appUrl  = getAppUrl();
+  // Browser-facing links need the language prefix so the SPA router resolves them correctly
+  const langBase = `${appUrl}/${getDefaultLang()}`;
   const allVars = {
-    app_url:       appUrl,
-    dashboard_url: `${appUrl}/dashboard`,
-    explore_url:   `${appUrl}/explore`,
-    billing_url:   `${appUrl}/settings/billing`,
+    app_url:       langBase,
+    dashboard_url: `${langBase}/dashboard`,
+    explore_url:   `${langBase}/explore`,
+    billing_url:   `${langBase}/settings/billing`,
     ...vars,
   };
 
