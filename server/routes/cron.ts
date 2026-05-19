@@ -4,6 +4,7 @@ import { initFirebase } from "../lib/firebase.js";
 import { tick, rebuildSegments } from "../services/automationEngine.js";
 import { NudgeService } from "../services/nudgeService.js";
 import { processExpiredLocks, triggerAutoPayouts } from "../lib/payouts.js";
+import { processBroadcastJobs } from "./transactional.js";
 
 const router = Router();
 
@@ -157,6 +158,57 @@ router.post("/auto-payouts", async (req, res) => {
   } catch (err: any) {
     console.error("[Cron] auto-payouts error:", err.message);
     await writeHealthRecord("auto-payouts", "error", { error: err.message }, Date.now() - t0);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/cron/onboarding-drip
+// Schedule: daily at 08:00 UTC — sends D1 / D3 / D7 emails to new users
+router.post("/onboarding-drip", async (req, res) => {
+  if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
+  try {
+    const result = await NudgeService.runOnboardingDrip();
+    console.log(`[Cron] onboarding-drip: ${result.sent} sent, ${result.skipped} skipped, ${result.errors} errors`);
+    await writeHealthRecord("onboarding-drip", "ok", result, Date.now() - t0);
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    console.error("[Cron] onboarding-drip error:", err.message);
+    await writeHealthRecord("onboarding-drip", "error", { error: err.message }, Date.now() - t0);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/cron/weekly-digest
+// Schedule: Mondays at 09:00 UTC — sends top-prompts digest to all active contacts
+router.post("/weekly-digest", async (req, res) => {
+  if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
+  try {
+    const result = await NudgeService.sendWeeklyDigest();
+    console.log(`[Cron] weekly-digest: ${result.sent} sent, ${result.skipped} skipped, ${result.errors} errors`);
+    await writeHealthRecord("weekly-digest", "ok", result, Date.now() - t0);
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    console.error("[Cron] weekly-digest error:", err.message);
+    await writeHealthRecord("weekly-digest", "error", { error: err.message }, Date.now() - t0);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/cron/process-broadcasts
+// Schedule: every 10 minutes — drains the broadcast_jobs queue in parallel batches
+router.post("/process-broadcasts", async (req, res) => {
+  if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
+  try {
+    const result = await processBroadcastJobs();
+    console.log(`[Cron] process-broadcasts: ${result.processed} jobs, ${result.sent} sent, ${result.skipped} skipped`);
+    await writeHealthRecord("process-broadcasts", "ok", result, Date.now() - t0);
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    console.error("[Cron] process-broadcasts error:", err.message);
+    await writeHealthRecord("process-broadcasts", "error", { error: err.message }, Date.now() - t0);
     res.status(500).json({ error: err.message });
   }
 });

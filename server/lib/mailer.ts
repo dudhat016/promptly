@@ -87,6 +87,16 @@ function textToHtml(text: string): string {
     .map(para => {
       const line = para.trim();
       if (!line) return "";
+
+      // Markdown headings: ## or ###
+      const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const content = headingMatch[2];
+        const fontSize = level === 1 ? '20px' : level === 2 ? '17px' : '15px';
+        return `<h${level + 1} style="color:#1e293b;margin:20px 0 8px;font-size:${fontSize};font-weight:700;line-height:1.3;">${content}</h${level + 1}>`;
+      }
+
       const withLinks = line.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color:#6366f1;font-weight:700;">$1</a>');
       const withBold  = withLinks.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
       const withArrow = withBold.replace(/^→\s+/gm, '<span style="color:#6366f1;font-weight:700;">→ </span>');
@@ -307,6 +317,10 @@ export async function sendEmail(
       to,
       subject,
       html,
+      headers: {
+        'List-Unsubscribe': `<${appUrl}/api/email/unsubscribe?email=${encodeURIComponent(to)}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     });
     result = { sent: true, messageId: info.messageId, logId };
   } catch (err: any) {

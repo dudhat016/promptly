@@ -2,8 +2,10 @@ name: Cron Jobs
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # every 10 min — triggers all jobs; nudges/segments skip unless on the hour
-    - cron: '0 * * * *'     # every hour — ensures nudges + segment-rebuild fire exactly on the hour
+    - cron: '*/10 * * * *'  # every 10 min — automation-tick + process-broadcasts
+    - cron: '0 * * * *'     # every hour — nudges + segment-rebuild
+    - cron: '0 8 * * *'     # daily 08:00 UTC — onboarding drip
+    - cron: '0 9 * * 1'     # Mondays 09:00 UTC — weekly digest
   workflow_dispatch:         # allow manual trigger from GitHub UI
 
 env:
@@ -116,3 +118,55 @@ jobs:
           else
             echo "Skipping — not 05:00 UTC (hour=$HOUR minute=$MINUTE)"
           fi
+
+  onboarding-drip:
+    name: Onboarding Drip (daily 08:00 UTC)
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/onboarding-drip
+        run: |
+          HOUR=$(date -u +%H)
+          MINUTE=$(date +%M)
+          if [ "$HOUR" = "08" ] && [ "$MINUTE" = "00" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
+              -X POST "$APP_URL/api/cron/onboarding-drip" \
+              -H "$AUTH" \
+              -H "Content-Type: application/json")
+            echo "Response: $STATUS"
+            [ "$STATUS" = "200" ] || exit 1
+          else
+            echo "Skipping — not 08:00 UTC (hour=$HOUR minute=$MINUTE)"
+          fi
+
+  weekly-digest:
+    name: Weekly Digest (Mondays 09:00 UTC)
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/weekly-digest
+        run: |
+          HOUR=$(date -u +%H)
+          MINUTE=$(date +%M)
+          DOW=$(date -u +%u)
+          if [ "$DOW" = "1" ] && [ "$HOUR" = "09" ] && [ "$MINUTE" = "00" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
+              -X POST "$APP_URL/api/cron/weekly-digest" \
+              -H "$AUTH" \
+              -H "Content-Type: application/json")
+            echo "Response: $STATUS"
+            [ "$STATUS" = "200" ] || exit 1
+          else
+            echo "Skipping — not Monday 09:00 UTC (dow=$DOW hour=$HOUR minute=$MINUTE)"
+          fi
+
+  process-broadcasts:
+    name: Process Broadcasts (every 10 min)
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/process-broadcasts
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
+            -X POST "$APP_URL/api/cron/process-broadcasts" \
+            -H "$AUTH" \
+            -H "Content-Type: application/json")
+          echo "Response: $STATUS"
+          [ "$STATUS" = "200" ] || exit 1

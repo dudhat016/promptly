@@ -226,7 +226,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
               // New registration emails (welcome also fires user_signup automation trigger server-side)
               await EmailService.sendWelcomeEmail(user.uid, user.email || '', user.displayName || 'Creator');
-              await EmailService.sendAffiliateJoinEmail(user.uid, user.email || '', referralCode);
+              // Only send affiliate welcome to users who came via a referral link — everyone else
+              // gets their referral code surfaced in-product, not as a cold email on signup.
+              if (referredBy) {
+                await EmailService.sendAffiliateJoinEmail(user.uid, user.email || '', referralCode);
+              }
 
               // Fire affiliate_join automation trigger
               if (referralCode) {

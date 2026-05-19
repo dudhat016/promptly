@@ -1,4 +1,5 @@
 import { Router, json } from "express";
+import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { getAppUrl, getLangUrl } from "../lib/config.js";
 import { sendEmail } from "../lib/mailer.js";
@@ -349,6 +350,92 @@ router.post("/seed-templates", authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
+// ─── BROADCAST JOB QUEUE ─────────────────────────────────────────────────────
+
+// Called by POST /api/cron/process-broadcasts every 10 minutes.
+// Picks up pending broadcast jobs and sends in parallel batches of 25.
+export async function processBroadcastJobs(): Promise<{ processed: number; sent: number; failed: number; skipped: number }> {
+  const firebase = await initFirebase();
+  if (!firebase) return { processed: 0, sent: 0, failed: 0, skipped: 0 };
+  const db = firebase.db;
+
+  const jobsSnap = await db.collection("broadcast_jobs")
+    .where("status", "==", "pending")
+    .orderBy("createdAt", "asc")
+    .limit(3) // process up to 3 jobs per tick to stay within function timeout
+    .get();
+
+  let processed = 0, totalSent = 0, totalFailed = 0, totalSkipped = 0;
+
+  for (const jobDoc of jobsSnap.docs) {
+    const job = jobDoc.data();
+
+    // Mark as processing so another concurrent cron doesn't pick it up
+    await jobDoc.ref.update({ status: "processing", startedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+    try {
+      // Resolve email list from segment or all active contacts
+      let emails: { email: string; userId?: string; name?: string }[] = [];
+
+      if (job.segmentId) {
+        const seg = await db.collection("marketing_segments").doc(job.segmentId).get();
+        if (!seg.exists) throw new Error(`Segment ${job.segmentId} not found`);
+        emails = ((seg.data()!.contactEmails as string[]) || []).map(e => ({ email: e }));
+      } else {
+        const snap = await db.collection("marketing_contacts").where("status", "==", "active").get();
+        emails = snap.docs.map(d => ({
+          email:  d.data().email as string,
+          userId: d.data().userId as string | undefined,
+          name:   d.data().displayName as string | undefined,
+        })).filter(e => !!e.email);
+      }
+
+      let sent = 0, failed = 0, skipped = 0;
+
+      // Process in parallel batches of 25
+      const BATCH = 25;
+      for (let i = 0; i < emails.length; i += BATCH) {
+        const batch = emails.slice(i, i + BATCH);
+        const results = await Promise.allSettled(
+          batch.map(({ email, userId, name }) =>
+            sendEmail(db, email, job.type, { email, name: name || '', ...job.variables }, userId)
+          )
+        );
+        for (const r of results) {
+          if (r.status === 'fulfilled') {
+            r.value.sent ? sent++ : skipped++;
+          } else {
+            failed++;
+          }
+        }
+      }
+
+      await jobDoc.ref.update({
+        status: "done",
+        sent, failed, skipped,
+        total: emails.length,
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt:   admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      totalSent    += sent;
+      totalFailed  += failed;
+      totalSkipped += skipped;
+      processed++;
+
+    } catch (err: any) {
+      console.error(`[Broadcast] Job ${jobDoc.id} failed:`, err.message);
+      await jobDoc.ref.update({
+        status: "error",
+        error:  err.message,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  return { processed, sent: totalSent, failed: totalFailed, skipped: totalSkipped };
+}
+
 // GET /api/email/broadcast/preview?segmentId= — recipient count before sending
 router.get("/broadcast/preview", authMiddleware, adminOnly, async (req, res) => {
   const segmentId = req.query.segmentId as string | undefined;
@@ -371,9 +458,9 @@ router.get("/broadcast/preview", authMiddleware, adminOnly, async (req, res) => 
   }
 });
 
-// POST /api/email/broadcast — admin: send a template to all contacts in a segment (or all active)
+// POST /api/email/broadcast — admin: queue a broadcast; returns immediately with a jobId.
+// The cron POST /api/cron/process-broadcasts drains the queue every 10 minutes.
 // Body: { segmentId?, type, variables? }
-// Returns: { sent, failed, skipped, total }
 router.post("/broadcast", authMiddleware, adminOnly, json(), async (req: AuthenticatedRequest, res) => {
   const { segmentId, type, variables = {} } = req.body;
   if (!type) return res.status(400).json({ error: "type is required" });
@@ -382,32 +469,36 @@ router.post("/broadcast", authMiddleware, adminOnly, json(), async (req: Authent
     const firebase = await initFirebase();
     if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
 
-    // Resolve recipient list
-    let emails: string[] = [];
-    if (segmentId) {
-      const segSnap = await firebase.db.collection("marketing_segments").doc(segmentId).get();
-      if (!segSnap.exists) return res.status(404).json({ error: "Segment not found" });
-      const seg = segSnap.data()!;
-      emails = (seg.contactEmails as string[]) || [];
-    } else {
-      // All active contacts
-      const snap = await firebase.db.collection("marketing_contacts")
-        .where("status", "==", "active").get();
-      emails = snap.docs.map(d => d.data().email as string).filter(Boolean);
-    }
+    const jobRef = await firebase.db.collection("broadcast_jobs").add({
+      type,
+      segmentId: segmentId || null,
+      variables,
+      status:    "pending",
+      sent:      0,
+      failed:    0,
+      skipped:   0,
+      total:     0,
+      createdBy: req.user!.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
-    let sent = 0, failed = 0, skipped = 0;
-    for (const email of emails) {
-      try {
-        const result = await sendEmail(firebase.db, email, type, { email, ...variables });
-        if (result.sent) sent++;
-        else { skipped++; } // unsubscribed / suppressed
-      } catch {
-        failed++;
-      }
-    }
+    res.json({ ok: true, jobId: jobRef.id, status: "pending" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    res.json({ ok: true, total: emails.length, sent, failed, skipped });
+// GET /api/email/broadcast/status/:jobId — poll broadcast job progress (admin only)
+router.get("/broadcast/status/:jobId", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const firebase = await initFirebase();
+    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
+
+    const snap = await firebase.db.collection("broadcast_jobs").doc(req.params.jobId).get();
+    if (!snap.exists) return res.status(404).json({ error: "Job not found" });
+
+    res.json({ ok: true, id: snap.id, ...snap.data() });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

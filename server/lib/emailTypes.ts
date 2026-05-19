@@ -54,20 +54,26 @@ const login_alert: EmailTypeDefinition = {
   name: 'Login Alert',
   group: 'auth',
   prefKey: 'securityAlerts',
-  dedupWindowMs: 8 * 60 * 60 * 1000, // 8 hours — matches the frontend localStorage guard
+  dedupWindowMs: 8 * 60 * 60 * 1000, // 8 hours — one alert per session window
   variables: [
-    { name: 'name',  description: 'User display name', example: 'Sarah' },
-    { name: 'email', description: 'User email',        example: 'sarah@example.com' },
-    { name: 'time',  description: 'Login timestamp',   example: 'May 15, 2026 at 10:30 AM' },
+    { name: 'name',    description: 'User display name',             example: 'Sarah' },
+    { name: 'email',   description: 'User email',                    example: 'sarah@example.com' },
+    { name: 'time',    description: 'Login timestamp',               example: 'May 15, 2026 at 10:30 AM' },
+    { name: 'browser', description: 'Browser used',                  example: 'Chrome on Windows 10/11' },
+    { name: 'ip',      description: 'IP address of the login',       example: '203.0.113.42' },
   ],
   defaultSubject: 'New login to your Promptly account',
   defaultBody: `Hi {{name}},
 
-A new login was detected for your Promptly account on {{time}}.
+A new login was detected for your Promptly account.
+
+**Time:** {{time}}
+**Device:** {{browser}}
+**IP Address:** {{ip}}
 
 If this was you, no action is needed.
 
-If you don't recognise this login, please secure your account immediately by changing your password.
+If you don't recognise this login, secure your account immediately by changing your password.
 
 → Secure my account: {{app_url}}/settings/security
 
@@ -130,6 +136,7 @@ const onboarding_d1_nudge: EmailTypeDefinition = {
   name: 'Onboarding Day 1 Nudge',
   group: 'onboarding',
   prefKey: 'onboarding',
+  dedupWindowMs: 30 * 24 * 60 * 60 * 1000, // 30 days — effectively once-per-user
   variables: [
     { name: 'name',         description: 'User display name',  example: 'Sarah' },
     { name: 'explore_link', description: 'Link to explore page', example: 'https://promptly.com/explore' },
@@ -151,6 +158,7 @@ const onboarding_d3_prompt: EmailTypeDefinition = {
   name: 'Onboarding Day 3 — Personalised Pick',
   group: 'onboarding',
   prefKey: 'onboarding',
+  dedupWindowMs: 30 * 24 * 60 * 60 * 1000, // 30 days — effectively once-per-user
   variables: [
     { name: 'name',         description: 'User display name',       example: 'Sarah' },
     { name: 'category',     description: 'Top interest category',   example: 'Marketing' },
@@ -173,6 +181,7 @@ const onboarding_d7_expiry: EmailTypeDefinition = {
   name: 'Onboarding Day 7 — Credits Expiry',
   group: 'onboarding',
   prefKey: 'onboarding',
+  dedupWindowMs: 30 * 24 * 60 * 60 * 1000, // 30 days — effectively once-per-user
   variables: [
     { name: 'name',         description: 'User display name',    example: 'Sarah' },
     { name: 'credits_left', description: 'Remaining credits',    example: '43' },
@@ -407,6 +416,7 @@ const low_credits: EmailTypeDefinition = {
   name: 'Low Credits Nudge',
   group: 'nudge',
   prefKey: 'nudges',
+  dedupWindowMs: 24 * 60 * 60 * 1000, // 24 hours — max once per day
   variables: [
     { name: 'name',              description: 'User display name',   example: 'Sarah' },
     { name: 'credits_remaining', description: 'Credits left',        example: '3' },
