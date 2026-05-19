@@ -28,7 +28,18 @@ class ErrorBoundary extends Component<Props, State> {
       const reloaded = sessionStorage.getItem('chunk_reload');
       if (!reloaded) {
         sessionStorage.setItem('chunk_reload', '1');
-        window.location.reload();
+        // Unregister SW and wipe caches so the reload fetches fresh assets,
+        // not the stale chunks the old service worker has cached.
+        const doReload = () => window.location.reload();
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations()
+            .then(regs => Promise.all(regs.map(r => r.unregister())))
+            .then(() => caches.keys())
+            .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+            .finally(doReload);
+        } else {
+          doReload();
+        }
         return { hasError: false };
       }
     }

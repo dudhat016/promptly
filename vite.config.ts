@@ -14,6 +14,7 @@ export default defineConfig(() => {
         includeAssets: ['favicon.ico', 'icons/*.png'],
         manifest: false, // We use public/manifest.json
         workbox: {
+          cleanupOutdatedCaches: true,
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           runtimeCaching: [
             {
