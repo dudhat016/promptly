@@ -10,6 +10,15 @@ interface VerifyResult {
   amount: number;
   currency: string;
   orderId: string;
+  productPrice?: number;
+  couponDiscount?: number;
+  couponCode?: string;
+  taxAmount?: number;
+  taxRate?: number;
+  billingCycle?: string;
+  gateway?: string;
+  isTrial?: boolean;
+  trialEndsAt?: string;
 }
 
 export default function CheckoutVerifyPage() {
@@ -23,9 +32,10 @@ export default function CheckoutVerifyPage() {
   const orderId = searchParams.get('order_id');
   const subscriptionId = searchParams.get('subscription_id');
   const paypalSubId = searchParams.get('paypal_sub_id');
+  const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
-    if (!orderId && !subscriptionId) {
+    if (!orderId && !subscriptionId && !sessionId) {
       navigate(prefix('/dashboard'));
       return;
     }
@@ -34,7 +44,9 @@ export default function CheckoutVerifyPage() {
       try {
         let response: Response;
 
-        if (subscriptionId) {
+        if (sessionId) {
+          response = await fetch(`/api/payments/stripe/verify?session_id=${sessionId}`);
+        } else if (subscriptionId) {
           const params = new URLSearchParams({ subscription_id: subscriptionId });
           if (paypalSubId) params.set('paypal_sub_id', paypalSubId);
           response = await fetch(`/api/payments/verify-subscription?${params.toString()}`);
@@ -44,16 +56,27 @@ export default function CheckoutVerifyPage() {
 
         const data = await response.json();
 
-        if (response.ok && (data.status === 'PAID' || data.status === 'COMPLETED')) {
+        if (response.ok && (data.status === 'PAID' || data.status === 'COMPLETED' || data.status === 'TRIAL')) {
+          const isTrial = data.status === 'TRIAL';
           setResult({
-            planName: data.planName || 'Pro Plan',
-            amount: data.amount ?? 0,
-            currency: data.currency ?? 'INR',
-            orderId: data.orderId ?? (subscriptionId || orderId!),
+            planName:    data.planName || 'Pro Plan',
+            amount:      data.amount ?? 0,
+            currency:    data.currency ?? 'USD',
+            orderId:     data.orderId ?? (sessionId || subscriptionId || orderId!),
+            billingCycle: data.billingCycle,
+            gateway:     data.gateway,
+            isTrial,
+            trialEndsAt: data.trialEndsAt,
           });
           setStatus('success');
-          setMessage(`Your ${data.planName || 'subscription'} is now active.`);
-          toast.success('Subscription Activated!');
+          if (isTrial) {
+            const trialEnd = data.trialEndsAt ? new Date(data.trialEndsAt).toLocaleDateString() : 'your trial end date';
+            setMessage(`Your free trial is now active. You won't be charged until ${trialEnd}.`);
+            toast.success('Trial Started!');
+          } else {
+            setMessage(`Your ${data.planName || 'subscription'} is now active.`);
+            toast.success('Subscription Activated!');
+          }
         } else {
           setStatus('failed');
           setMessage(data.message || 'Payment verification failed or was cancelled.');
@@ -71,11 +94,22 @@ export default function CheckoutVerifyPage() {
   const goToSuccess = () => {
     if (!result) return;
     const params = new URLSearchParams({
-      order_id:  result.orderId,
-      plan_name: result.planName,
-      amount:    String(result.amount),
-      currency:  result.currency,
+      order_id:        result.orderId,
+      plan_name:       result.planName,
+      amount:          String(result.amount),
+      currency:        result.currency,
+      product_price:   String(result.productPrice ?? result.amount),
+      coupon_discount: String(result.couponDiscount ?? 0),
+      coupon_code:     result.couponCode ?? '',
+      tax:             String(result.taxAmount ?? 0),
+      tax_rate:        String(result.taxRate ?? 0),
+      billing_cycle:   result.billingCycle || 'monthly',
+      gateway:         result.gateway || 'stripe',
     });
+    if (result.isTrial) {
+      params.set('is_trial', 'true');
+      if (result.trialEndsAt) params.set('trial_ends_at', result.trialEndsAt);
+    }
     navigate(prefix(`/checkout/success?${params.toString()}`));
   };
 
@@ -94,24 +128,29 @@ export default function CheckoutVerifyPage() {
 
         {status === 'success' && result && (
           <div className="space-y-6 animate-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-emerald-100 rounded-lg flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+            <div className={`w-20 h-20 rounded-lg flex items-center justify-center mx-auto ${result.isTrial ? 'bg-amber-100' : 'bg-emerald-100'}`}>
+              <CheckCircle2 className={`w-10 h-10 ${result.isTrial ? 'text-amber-600' : 'text-emerald-600'}`} />
             </div>
-            <h2 className="text-2xl font-bold text-foreground">Payment Successful!</h2>
+            <h2 className="text-2xl font-bold text-foreground">
+              {result.isTrial ? 'Trial Started!' : 'Payment Successful!'}
+            </h2>
             <p className="text-muted-foreground font-medium">{message}</p>
             <div className="bg-muted/50 rounded-xl p-4 text-left border border-border">
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-muted-foreground font-medium">Plan</span>
                 <span className="font-bold text-foreground">{result.planName}</span>
               </div>
-              {result.amount > 0 && (
+              {result.isTrial && result.trialEndsAt ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground font-medium">First charge</span>
+                  <span className="font-bold text-foreground">{new Date(result.trialEndsAt).toLocaleDateString()}</span>
+                </div>
+              ) : result.amount > 0 ? (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground font-medium">Amount</span>
-                  <span className="font-bold text-foreground">
-                    {result.currency === 'INR' ? '₹' : '$'}{result.amount}
-                  </span>
+                  <span className="font-bold text-foreground">${result.amount}</span>
                 </div>
-              )}
+              ) : null}
             </div>
             <Button
               onClick={goToSuccess}
@@ -121,7 +160,7 @@ export default function CheckoutVerifyPage() {
               rightIcon={ArrowRight}
               className="mt-4 font-bold shadow-xl shadow-primary/20"
             >
-              Finish Upgrade
+              {result.isTrial ? 'Start Using Promptly' : 'Finish Upgrade'}
             </Button>
           </div>
         )}

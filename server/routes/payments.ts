@@ -4,6 +4,7 @@ import { getLangUrl } from "../lib/config.js";
 import { initFirebase } from "../lib/firebase.js";
 import { PaymentService } from "../services/paymentService.js";
 import { SubscriptionService } from "../services/subscriptionService.js";
+import { StripeService } from "../services/stripeService.js";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth.js";
 
 const router = Router();
@@ -60,8 +61,12 @@ router.post("/cashfree/create-order", authMiddleware, json(), async (req: Authen
           return_url: `${getLangUrl('/checkout/verify')}?order_id={order_id}`
         },
         order_tags: {
-          planId: req.body.planId || 'pro_plan',
-          billingCycle: req.body.billingCycle || 'monthly'
+          planId:       req.body.planId       || 'pro_plan',
+          billingCycle: req.body.billingCycle || 'monthly',
+          ...(req.body.couponId       ? { couponId:       req.body.couponId }                : {}),
+          ...(req.body.couponCode     ? { couponCode:     req.body.couponCode }              : {}),
+          ...(req.body.couponDiscount ? { couponDiscount: String(req.body.couponDiscount) }  : {}),
+          ...(req.body.originalAmount ? { originalAmount: String(req.body.originalAmount) }  : {}),
         }
       })
     });
@@ -242,6 +247,71 @@ router.post("/webhook/paypal", json(), async (req: any, res) => {
   } catch (err: any) {
     console.error("PayPal webhook error:", err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Stripe Integration ─────────────────────────────────────────────────────────
+
+router.post("/stripe/create-checkout", authMiddleware, json(), async (req: AuthenticatedRequest, res) => {
+  try {
+    if (req.user?.uid !== req.body.userId) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    const result = await StripeService.createCheckoutSession({
+      ...req.body,
+      userId: req.user!.uid,
+      userEmail: req.user!.email || req.body.userEmail,
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/stripe/create-trial", authMiddleware, json(), async (req: AuthenticatedRequest, res) => {
+  try {
+    if (req.user?.uid !== req.body.userId) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    const result = await StripeService.createTrialCheckout({
+      ...req.body,
+      userId: req.user!.uid,
+      userEmail: req.user!.email || req.body.userEmail,
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/stripe/verify", async (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id) return res.status(400).json({ error: "session_id required" });
+  try {
+    const result = await StripeService.verifySession(session_id as string);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/webhook/stripe", json(), async (req: any, res) => {
+  const signature = req.headers["stripe-signature"] as string;
+  if (!signature) return res.status(400).json({ error: "Missing stripe-signature header" });
+
+  try {
+    const firebase = await initFirebase();
+    const configSnap = firebase ? await firebase.db.collection("configs").doc("payment").get() : null;
+    const config = configSnap?.exists ? configSnap.data() : null;
+    const webhookSecret = config?.stripe?.webhookSecret || process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) return res.status(400).json({ error: "Stripe webhook secret not configured" });
+
+    const rawBody = req.rawBody || JSON.stringify(req.body);
+    const result = await StripeService.handleWebhook(rawBody, signature, webhookSecret);
+    res.json(result);
+  } catch (err: any) {
+    console.error("[Stripe webhook]", err.message);
+    res.status(400).json({ error: err.message });
   }
 });
 

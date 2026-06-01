@@ -5,6 +5,7 @@ import { Tag, Pencil, Trash2, Check, X, Plus, FileText } from 'lucide-react';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import Badge from '../../components/primitives/Badge';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import { toast } from 'react-hot-toast';
 
@@ -165,7 +166,7 @@ export default function AdminBlogCategories() {
           { label: 'Tagged Posts', value: totalPosts, color: 'bg-emerald-500/10 text-emerald-600' },
           { label: 'Avg Tags / Post', value: totalPosts > 0 ? (totalPosts / Math.max(tags.length, 1)).toFixed(1) : '0', color: 'bg-sky-500/10 text-sky-600' },
         ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+          <Card key={s.label} padding="sm" className="flex-row items-center gap-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.color}`}>
               <Tag className="w-4 h-4" />
             </div>
@@ -173,12 +174,12 @@ export default function AdminBlogCategories() {
               <p className="text-lg font-black text-foreground leading-none">{loading ? '…' : s.value}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">{s.label}</p>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {/* Tag table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <Card padding="none">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <p className="text-sm font-bold text-foreground">All Tags</p>
           {addingNew && (
@@ -247,29 +248,33 @@ export default function AdminBlogCategories() {
 
                 {editingTag !== tag.name && (
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => startEdit(tag)}
                       disabled={saving === tag.name}
-                      className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       title="Rename"
+                      className="w-7 h-7"
                     >
                       <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleDelete(tag.name, tag.count)}
                       disabled={saving === tag.name}
-                      className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       title="Delete"
+                      className="w-7 h-7 hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

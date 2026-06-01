@@ -19,6 +19,7 @@ import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import { AdminPageHeader } from '../../components/admin';
+import Card from '../../components/primitives/Card';
 import Button from '../../components/primitives/Button';
 import Textarea from '../../components/primitives/Textarea';
 import { db } from '../../lib/firebase';
@@ -160,10 +161,10 @@ export default function AdminMarketingContactDetails() {
       />
 
       {/* Main Header Card */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+      <Card variant="default" padding="none" className="rounded-2xl overflow-hidden shadow-none">
         <div className="p-10 flex flex-wrap items-start justify-between gap-10">
           <div className="flex items-center gap-8">
-            <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center text-primary border-4 border-white shadow-xl">
+            <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center text-primary border-4 border-card">
               <Database className="w-12 h-12" />
             </div>
             <div>
@@ -233,13 +234,13 @@ export default function AdminMarketingContactDetails() {
             </Button>
           ))}
         </div>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-12 gap-10">
         {/* Left Side: Content */}
         <div className="col-span-8 space-y-10">
           {activeTab === 'timeline' && (
-            <div className="bg-card rounded-2xl border border-border p-10 shadow-sm">
+            <Card variant="default" padding="none" className="rounded-2xl p-10 shadow-none">
               <h3 className="text-xl font-bold text-foreground mb-10 flex items-center gap-3 uppercase tracking-tight">
                 <Activity className="w-6 h-6 text-primary" />
                 Customer Journey
@@ -248,7 +249,7 @@ export default function AdminMarketingContactDetails() {
               <div className="space-y-12 relative before:absolute before:left-[23px] before:top-2 before:bottom-2 before:w-1 before:bg-border/50">
                 {activities.map((activity) => (
                   <div key={activity.id} className="relative pl-20 group">
-                    <div className={`absolute left-0 top-0 w-12 h-12 rounded-2xl border-4 border-card flex items-center justify-center z-10 shadow-md transition-transform group-hover:scale-110 ${
+                    <div className={`absolute left-0 top-0 w-12 h-12 rounded-2xl border-4 border-card flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${
                       activity.type.includes('email') ? 'bg-primary text-primary-foreground' :
                       activity.type.includes('tag') ? 'bg-amber-500 text-white' : 'bg-muted text-foreground'
                     }`}>
@@ -285,11 +286,11 @@ export default function AdminMarketingContactDetails() {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           )}
 
           {activeTab === 'details' && (
-            <div className="bg-card rounded-2xl border border-border p-10 shadow-sm space-y-12">
+            <Card variant="default" padding="none" className="rounded-2xl p-10 shadow-none space-y-12">
                <section>
                  <h3 className="text-xl font-bold text-foreground mb-8 flex items-center gap-3 uppercase tracking-tight">
                    <Shield className="w-6 h-6 text-primary" />
@@ -324,11 +325,11 @@ export default function AdminMarketingContactDetails() {
                     )}
                  </div>
                </section>
-            </div>
+            </Card>
           )}
 
           {activeTab === 'marketing' && (
-            <div className="bg-card rounded-2xl border border-border p-10 shadow-sm space-y-12">
+            <Card variant="default" padding="none" className="rounded-2xl p-10 shadow-none space-y-12">
                <section>
                  <h3 className="text-xl font-bold text-foreground mb-8 flex items-center gap-3 uppercase tracking-tight">
                    <TagIcon className="w-6 h-6 text-primary" />
@@ -347,13 +348,13 @@ export default function AdminMarketingContactDetails() {
                     {contact.tags.length === 0 && <p className="text-muted-foreground italic">No tags assigned.</p>}
                  </div>
                </section>
-            </div>
+            </Card>
           )}
         </div>
 
         {/* Right Side: Quick Stats & Actions */}
         <div className="col-span-4 space-y-8">
-           <div className="bg-foreground text-background rounded-2xl p-8 shadow-xl">
+           <div className="bg-foreground text-background rounded-2xl p-8">
              <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-8 flex items-center gap-2 opacity-60">
                <Activity className="w-4 h-4" /> Engagement Metrics
              </h4>
@@ -397,17 +398,17 @@ export default function AdminMarketingContactDetails() {
                size="lg"
                fullWidth
                leftIcon={Mail}
-               className="py-5 mt-10 shadow-lg font-bold"
+               className="py-5 mt-10 font-bold"
              >
                Send Campaign Now
              </Button>
            </div>
 
-           <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
+           <Card variant="default" padding="none" className="rounded-2xl p-8 shadow-none">
              <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground mb-6">CRM Notes</h4>
              <Textarea
                placeholder="Add a private note about this contact..."
-               variant="filled"
+               variant="outline"
                className="min-h-[150px]"
                value={note}
                onChange={e => setNote(e.target.value)}
@@ -423,7 +424,7 @@ export default function AdminMarketingContactDetails() {
               >
                 Save Note
               </Button>
-           </div>
+           </Card>
         </div>
       </div>
     </div>

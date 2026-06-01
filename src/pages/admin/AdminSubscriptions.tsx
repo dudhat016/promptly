@@ -132,7 +132,7 @@ export default function AdminSubscriptions() {
                     setConfig(prev => prev ? { ...prev, freeTrialDays: val } : null);
                   }}
                   className="w-20 text-center"
-                  variant="filled"
+                  variant="outline"
                   inputSize="sm"
                 />
               </div>
@@ -203,7 +203,7 @@ export default function AdminSubscriptions() {
                           setConfig(prev => prev ? { ...prev, yearlyIncentiveValue: val } : null);
                         }}
                         className="w-20 text-center text-emerald-600"
-                        variant="filled"
+                        variant="outline"
                         inputSize="sm"
                       />
                     </div>

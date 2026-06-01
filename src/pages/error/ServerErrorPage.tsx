@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ServerCrash, RotateCcw, Home } from 'lucide-react';
+import Button from '../../components/primitives/Button';
 
 export default function ServerErrorPage() {
   const { lng } = useParams<{ lng: string }>();
@@ -24,20 +25,12 @@ export default function ServerErrorPage() {
           Please try again in a few minutes.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-widest bg-muted text-foreground hover:bg-muted/80 transition-all"
-          >
-            <RotateCcw className="w-4 h-4" />
+          <Button variant="secondary" leftIcon={RotateCcw} onClick={() => window.location.reload()}>
             Try Again
-          </button>
-          <Link
-            to={base}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-widest gradient-cta transition-all hover:opacity-90"
-          >
-            <Home className="w-4 h-4" />
+          </Button>
+          <Button as={Link} to={base} variant="gradient" leftIcon={Home}>
             Go Home
-          </Link>
+          </Button>
         </div>
       </motion.div>
     </div>

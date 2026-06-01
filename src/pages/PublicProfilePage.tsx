@@ -17,6 +17,7 @@ import { AFFILIATE_MILESTONES } from '../lib/milestones';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import Button from '../components/primitives/Button';
+import Spinner from '../components/feedback/Spinner';
 import PageContainer from '../components/layout/PageContainer';
 import { useAuth } from '../hooks/useAuth';
 import { useSEO } from '../hooks/useSEO';
@@ -141,7 +142,7 @@ export default function PublicProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary" />
+        <Spinner size="xl" />
       </div>
     );
   }

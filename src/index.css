@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "./styles/responsive.css";
 
@@ -23,6 +23,14 @@
   --color-sidebar: hsl(var(--sidebar));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-primary-end: hsl(var(--primary-end, var(--primary)));
+
+  /* Radius scale — all relative to --radius so the customizer drives everything */
+  --radius-sm:  calc(var(--radius) * 0.5);
+  --radius-md:  var(--radius);
+  --radius-lg:  calc(var(--radius) * 1.5);
+  --radius-xl:  calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 2.5);
+  --radius-3xl: calc(var(--radius) * 3);
 }
 
 :root {
@@ -42,8 +50,9 @@
   --destructive: 0 84% 60%;
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 240 10% 3.9%;
-  --radius: 0.25rem;
+  --radius: 8px;
   --content-max-width: 1440px;
+  --navbar-height: 4rem;
 }
 
 .dark {
@@ -90,19 +99,19 @@
   }
   * {
     border-color: hsl(var(--border));
-    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition-property: color, background-color, border-color, box-shadow;
+    transition-timing-function: ease;
     transition-duration: 150ms;
   }
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: var(--font-sans);
+    font-family: var(--font-body, "Inter", sans-serif);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
+    font-family: var(--font-heading, "Outfit", sans-serif);
   }
   /* Ensure inputs/selects inherit the theme */
   input, textarea, select {
@@ -153,6 +162,23 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius);
+}
+
+/* ── Layout-aware Navbar Theme ───────────────── */
+/*
+ * For 'advanced' (primary-colored header) and 'extended' (dark header) layouts,
+ * we override the Tailwind --color-* theme tokens scoped to the header element.
+ * This way every child component using text-foreground, bg-muted, border-border etc.
+ * automatically inherits white-on-dark colors without touching any child component.
+ */
+[data-navbar-theme="colored"] {
+  --color-foreground:           rgba(255, 255, 255, 0.95);
+  --color-muted-foreground:     rgba(255, 255, 255, 0.62);
+  --color-muted:                rgba(255, 255, 255, 0.10);
+  --color-border:               rgba(255, 255, 255, 0.14);
+  --color-accent:               rgba(255, 255, 255, 0.12);
+  --color-accent-foreground:    rgba(255, 255, 255, 0.95);
+  --color-input:                rgba(255, 255, 255, 0.12);
 }
 
 /* ── Glass Effect ────────────────────────────── */

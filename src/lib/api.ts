@@ -1,5 +1,8 @@
 import { auth } from './firebase';
-import type { ApiResponse } from '../../api/types/api';
+
+type ApiResponse<T = unknown> =
+  | { success: true; data: T }
+  | { success: false; error: string; code?: string };
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 

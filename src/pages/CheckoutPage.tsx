@@ -1,23 +1,22 @@
+import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { AlertCircle, ArrowLeft, Check, CheckCircle2, CreditCard, Heart, Lock, RefreshCw, ShieldCheck, Sparkles, Tag, TrendingUp, X, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import UnifiedAuth from '../components/auth/UnifiedAuth';
+import Spinner from '../components/feedback/Spinner';
+import PageContainer from '../components/layout/PageContainer';
+import Button from '../components/primitives/Button';
+import Checkbox from "../components/primitives/Checkbox";
+import Input from "../components/primitives/Input";
 import { useAuth } from '../hooks/useAuth';
+import { useConfig } from '../hooks/useConfig';
+import { usePath } from '../hooks/usePath';
 import { trackEvent } from '../lib/analytics';
 import { db } from '../lib/firebase';
-import { AppConfig, PricingPlan } from '../types';
-import UnifiedAuth from '../components/auth/UnifiedAuth';
 import { PaymentService } from '../services/paymentService';
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import Input from "../components/primitives/Input";
-import Checkbox from "../components/primitives/Checkbox";
-import { useCurrency } from '../context/CurrencyContext';
-import Button from '../components/primitives/Button';
-import PageContainer from '../components/layout/PageContainer';
-import { usePath } from '../hooks/usePath';
-import { useMarketing } from '../hooks/useMarketing';
-import { useConfig } from '../hooks/useConfig';
+import { AppConfig, PricingPlan } from '../types';
 
 const DEFAULT_BENEFITS = [
   '5,000+ expert-engineered AI prompts',
@@ -30,9 +29,7 @@ const DEFAULT_BENEFITS = [
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading, syncMarketingTags } = useAuth();
-  const { currency, symbol, exchangeRate, isLoading: currencyLoading } = useCurrency();
-  const { marketingConfig } = useMarketing();
-  const { config: globalConfig } = useConfig();
+  const { config: globalConfig, formatPrice, calculateTax } = useConfig();
   const { prefix } = usePath();
   const [searchParams] = useSearchParams();
 
@@ -55,7 +52,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!planId) { navigate(prefix('/pricing')); return; }
-    if (authLoading || currencyLoading) return;
+    if (authLoading) return;
 
     async function loadData() {
       try {
@@ -89,7 +86,7 @@ export default function CheckoutPage() {
               setAffiliateName(data.displayName || 'a Creator');
               setAffiliatePhoto(data.photoURL || null);
             }
-          } catch (e) { /* fallback already set */ }
+          } catch { /* fallback already set */ }
         }
       } catch (err) { /* silent */ } finally {
         setLoading(false);
@@ -107,12 +104,9 @@ export default function CheckoutPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
 
-  // Two-sided referral: referee discount
-  const refereeDiscountPct = marketingConfig?.refereeDiscountPercent ?? 10;
-
   const validate = () => {
     if (price === 0) return true;
-    if (paymentConfig?.cashfree?.enabled || (paymentConfig?.paypal?.enabled && currency !== 'INR')) return true;
+    if (paymentConfig?.cashfree?.enabled || paymentConfig?.paypal?.enabled || paymentConfig?.stripe?.enabled) return true;
 
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = "Cardholder name is required";
@@ -124,17 +118,6 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const redeemCoupon = async (idToken: string | undefined) => {
-    if (!couponData) return;
-    try {
-      await fetch('/api/coupons/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(idToken && { Authorization: `Bearer ${idToken}` }) },
-        body: JSON.stringify({ couponId: couponData.couponId, planId, amount: price }),
-      });
-    } catch { /* non-blocking */ }
-  };
-
   const applyCoupon = async () => {
     if (!couponInput.trim()) return;
     setCouponLoading(true);
@@ -143,12 +126,13 @@ export default function CheckoutPage() {
       const res = await fetch('/api/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponInput.trim(), planId, amount: price }),
+        // send pre-tax price so discount is applied before tax
+        body: JSON.stringify({ code: couponInput.trim(), planId, amount: basePrice }),
       });
       const data = await res.json();
       if (!res.ok) { setCouponError(data.error); return; }
       setCouponData(data);
-      toast.success(`Coupon applied — ${data.type === 'percent' ? `${data.value}% off` : `₹${data.value} off`}`);
+      toast.success(`Coupon applied — ${data.type === 'percent' ? `${data.value}% off` : `${formatPrice(data.value)} off`}`);
     } catch { setCouponError('Failed to validate coupon'); }
     finally { setCouponLoading(false); }
   };
@@ -163,20 +147,26 @@ export default function CheckoutPage() {
     setProcessing(true);
     try {
       if (paymentConfig?.cashfree?.enabled && price > 0) {
-        const idToken = await user?.getIdToken();
-        await redeemCoupon(idToken);
+        const couponFields = couponData ? {
+          couponId:       couponData.couponId,
+          couponCode:     couponData.code,
+          couponDiscount: couponData.discountAmount,
+          originalAmount: basePrice,
+        } : {};
         if (autoPay) {
           await PaymentService.initiateCashfreeSubscription({
-            amount: price, currency, customerId: user.uid, customerEmail: user.email || '',
+            amount: price, currency: 'USD', customerId: user.uid, customerEmail: user.email || '',
             customerPhone: profile?.phoneNumber || '9999999999',
             customerName: profile?.displayName || user.displayName || 'Creator',
-            planId: planId as string, billingCycle: cycle
+            planId: planId as string, billingCycle: cycle,
+            ...couponFields,
           });
         } else {
           await PaymentService.initiateCashfreePayment({
-            amount: price, currency, customerId: user.uid, customerEmail: user.email || '',
+            amount: price, currency: 'USD', customerId: user.uid, customerEmail: user.email || '',
             customerPhone: profile?.phoneNumber || '9999999999',
-            planId: planId as string, billingCycle: cycle
+            planId: planId as string, billingCycle: cycle,
+            ...couponFields,
           });
         }
         return;
@@ -203,11 +193,6 @@ export default function CheckoutPage() {
         trialUsed: isTrial ? true : (profile?.trialUsed || false),
         trialEndsAt, updatedAt: serverTimestamp()
       }, { merge: true });
-
-      if (couponData && !isTrial && price > 0) {
-        const idToken = await user?.getIdToken();
-        await redeemCoupon(idToken);
-      }
 
       try {
         const contactRef = collection(db, 'marketing_contacts');
@@ -258,35 +243,24 @@ export default function CheckoutPage() {
   if (loading || !plan) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <Spinner size="xl" />
       </div>
     );
   }
 
   const isTrial = config?.activePromotion === 'trial' && !profile?.trialUsed && plan.monthlyPrice > 0;
 
-  // Use fixed INR prices from the plan when set; fall back to live rate conversion.
-  const inrMonthly = (plan.inrMonthlyPrice ?? 0) > 0 ? plan.inrMonthlyPrice : Math.round(plan.monthlyPrice * exchangeRate);
-  const inrYearly  = (plan.inrYearlyPrice  ?? 0) > 0 ? plan.inrYearlyPrice  : Math.round(plan.yearlyPrice  * exchangeRate);
+  const basePrice = cycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
 
-  const basePrice = cycle === 'yearly'
-    ? (currency === 'INR' ? inrYearly : plan.yearlyPrice)
-    : (currency === 'INR' ? inrMonthly : plan.monthlyPrice);
-
-  // Referee discount (two-sided referral)
-  const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode');
-  const refereeDiscount = refCode && affiliateName ? parseFloat((basePrice * refereeDiscountPct / 100).toFixed(2)) : 0;
-
-  // Final price: base → referee discount → coupon
-  const priceAfterReferee = Math.max(0, basePrice - refereeDiscount);
-  const price = couponData ? couponData.finalAmount : priceAfterReferee;
-  const isFree = price === 0;
+  // Final price: base → coupon → tax
+  const priceWithoutTax = couponData ? couponData.finalAmount : basePrice;
+  const tax = calculateTax(priceWithoutTax);
+  const price = parseFloat((priceWithoutTax + tax).toFixed(2));
+  const isFree = priceWithoutTax === 0;
 
   const UNLOCK_BENEFITS: string[] = (globalConfig as any)?.checkoutBenefits?.length
     ? (globalConfig as any).checkoutBenefits
     : DEFAULT_BENEFITS;
-
-  const inputClass = "w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all bg-background border border-border focus:border-primary/50";
 
   return (
     <div className="min-h-screen pt-24 pb-16 bg-background">
@@ -416,12 +390,13 @@ export default function CheckoutPage() {
                         <Tag className="w-3.5 h-3.5" /> Have a coupon?
                       </p>
                       <div className="flex gap-2">
-                        <input
+                        <Input
                           type="text"
                           value={couponInput}
                           onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(''); }}
                           placeholder="Enter coupon code"
-                          className={inputClass + " flex-1 uppercase font-mono tracking-widest"}
+                          variant="outline"
+                          className="flex-1 uppercase font-mono tracking-widest"
                           onKeyDown={e => e.key === 'Enter' && applyCoupon()}
                         />
                         <Button onClick={applyCoupon} isLoading={couponLoading} variant="outline" size="sm" className="shrink-0 px-5">
@@ -445,7 +420,7 @@ export default function CheckoutPage() {
                         <div>
                           <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{couponData.code} applied!</p>
                           <p className="text-xs text-emerald-600/60 dark:text-emerald-400/60">
-                            {couponData.type === 'percent' ? `${couponData.value}% off` : `${symbol}${couponData.value} off`}
+                            {couponData.type === 'percent' ? `${couponData.value}% off` : `$${couponData.value} off`}
                             {couponData.description ? ` — ${couponData.description}` : ''}
                           </p>
                         </div>
@@ -475,12 +450,12 @@ export default function CheckoutPage() {
                         {isTrial
                           ? 'Start Trial with Cashfree'
                           : autoPay
-                            ? `Subscribe ${symbol}${price}/${cycle === 'yearly' ? 'yr' : 'mo'} with Cashfree`
-                            : `Pay ${symbol}${price} with Cashfree`}
+                            ? `Subscribe ${formatPrice(price)}/${cycle === 'yearly' ? 'yr' : 'mo'} with Cashfree`
+                            : `Pay ${formatPrice(price)} with Cashfree`}
                       </Button>
                     )}
 
-                    {paymentConfig?.paypal?.enabled && currency !== 'INR' && (
+                    {paymentConfig?.paypal?.enabled && (
                       autoPay ? (
                         // PayPal subscription (redirect flow)
                         <Button
@@ -536,11 +511,19 @@ export default function CheckoutPage() {
                                       'Content-Type': 'application/json',
                                       ...(idToken && { 'Authorization': `Bearer ${idToken}` }),
                                     },
-                                    body: JSON.stringify({ orderID: data.orderID, planId, billingCycle: cycle, customerId: user?.uid, customerEmail: user?.email })
+                                    body: JSON.stringify({
+                                    orderID: data.orderID, planId, billingCycle: cycle,
+                                    customerId: user?.uid, customerEmail: user?.email,
+                                    ...(couponData ? {
+                                      couponId:       couponData.couponId,
+                                      couponCode:     couponData.code,
+                                      couponDiscount: couponData.discountAmount,
+                                      originalAmount: basePrice,
+                                    } : {}),
+                                  })
                                   });
                                   const result = await response.json();
                                   if (result.status === 'COMPLETED') {
-                                    await redeemCoupon(idToken);
                                     toast.success("Payment Successful! Welcome to Pro.");
                                     window.location.href = result.redirectUrl || '/checkout/success';
                                   } else {
@@ -558,9 +541,61 @@ export default function CheckoutPage() {
                       )
                     )}
 
-                    {!paymentConfig?.cashfree?.enabled && !paymentConfig?.paypal?.enabled && (
+                    {paymentConfig?.stripe?.enabled && (
+                      <Button
+                        onClick={async () => {
+                          if (!agreeToTerms) { toast.error("Please agree to the Terms and Refund Policy to proceed."); return; }
+                          if (!user) { toast.error("Please log in to continue."); return; }
+                          setProcessing(true);
+                          try {
+                            const couponFields = couponData ? {
+                              couponId:       couponData.couponId,
+                              couponCode:     couponData.code,
+                              couponDiscount: couponData.discountAmount,
+                              originalAmount: basePrice,
+                            } : { originalAmount: basePrice };
+
+                            if (isTrial) {
+                              await PaymentService.initiateStripeTrialCheckout({
+                                planId:       planId as string,
+                                planName:     plan.name,
+                                billingCycle: cycle,
+                                amount:       priceWithoutTax,
+                                trialDays:    config?.freeTrialDays || 7,
+                                ...couponFields,
+                              });
+                            } else {
+                              const refCode = profile?.referredBy || searchParams.get('ref') || localStorage.getItem('referralCode') || undefined;
+                              await PaymentService.initiateStripeCheckout({
+                                planId:       planId as string,
+                                planName:     plan.name,
+                                billingCycle: cycle,
+                                amount:       price,
+                                referralCode: refCode || undefined,
+                                ...couponFields,
+                              });
+                            }
+                          } catch (err: any) {
+                            toast.error(err.message || "Stripe checkout failed");
+                            setProcessing(false);
+                          }
+                        }}
+                        isLoading={processing}
+                        variant="secondary"
+                        size="lg"
+                        fullWidth
+                        leftIcon={CreditCard}
+                        className="!border-[#635BFF] !text-[#635BFF] hover:!bg-[#635BFF]/10"
+                      >
+                        {isTrial
+                          ? `Start ${config?.freeTrialDays || 7}-Day Free Trial with Stripe`
+                          : `Pay ${formatPrice(price)} with Stripe`}
+                      </Button>
+                    )}
+
+                    {!paymentConfig?.cashfree?.enabled && !paymentConfig?.paypal?.enabled && !paymentConfig?.stripe?.enabled && (
                       <form onSubmit={handleCheckout} className="space-y-5">
-                        <Input 
+                        <Input
                           label="Cardholder Name"
                           id="cardName"
                           name="cardName"
@@ -574,7 +609,7 @@ export default function CheckoutPage() {
                           placeholder="Name on card"
                         />
 
-                        <Input 
+                        <Input
                           label="Card Information"
                           id="cardNumber"
                           name="cardNumber"
@@ -591,7 +626,7 @@ export default function CheckoutPage() {
                         />
 
                         <div className="grid grid-cols-2 gap-4">
-                          <Input 
+                          <Input
                             label="Expiry Date"
                             id="cardExpiry"
                             name="cardExpiry"
@@ -605,7 +640,7 @@ export default function CheckoutPage() {
                             placeholder="MM/YY"
                             className="font-mono"
                           />
-                          <Input 
+                          <Input
                             label="CVC"
                             id="cardCvc"
                             name="cardCvc"
@@ -628,7 +663,7 @@ export default function CheckoutPage() {
                           fullWidth
                           className="mt-2 shadow-xl shadow-primary/20"
                         >
-                          {isTrial ? 'Start Free Trial' : `Pay ${symbol}${price}`}
+                           {isTrial ? 'Start Free Trial' : `Pay ${formatPrice(price)}`}
                         </Button>
                       </form>
                     )}
@@ -653,7 +688,7 @@ export default function CheckoutPage() {
           {/* ── Order Summary ── */}
           <div className="lg:col-span-5 space-y-5">
 
-            {/* Affiliate banner */}
+            {/* Affiliate creator banner */}
             {affiliateName && (
               <div className="rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden"
                 style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
@@ -677,11 +712,6 @@ export default function CheckoutPage() {
                   </div>
                   <p className="font-semibold text-foreground text-sm">{affiliateName}</p>
                   <p className="text-xs mt-0.5 text-muted-foreground">A portion of your payment supports this creator.</p>
-                  {refereeDiscount > 0 && (
-                    <p className="text-xs font-bold mt-1" style={{ color: 'rgb(139,92,246)' }}>
-                      You save {refereeDiscountPct}% as a referred friend!
-                    </p>
-                  )}
                 </div>
                 <Heart className="absolute right-4 top-4 w-8 h-8 text-rose-500/10" />
               </div>
@@ -703,25 +733,22 @@ export default function CheckoutPage() {
                   <p className="text-xs mt-0.5 text-muted-foreground">Billed {cycle}</p>
                 </div>
                 <div className="text-right">
-                  {(refereeDiscount > 0 || couponData) && (
-                    <p className="text-sm text-muted-foreground line-through">{symbol}{basePrice}</p>
+                  {couponData && (
+                    <p className="text-sm text-muted-foreground line-through">{formatPrice(basePrice)}</p>
                   )}
-                  <p className="font-bold text-2xl text-foreground">{symbol}{price}</p>
+                  <p className="font-bold text-2xl text-foreground">{formatPrice(priceWithoutTax)}</p>
                 </div>
               </div>
 
               {cycle === 'monthly' && plan.yearlyPrice > 0 && plan.yearlyPrice < plan.monthlyPrice * 12 && (() => {
-                const annualSavings = currency === 'INR'
-                  ? Math.round(inrMonthly * 12 - inrYearly)
-                  : (plan.monthlyPrice * 12) - plan.yearlyPrice;
-                const annualBase = currency === 'INR' ? inrMonthly * 12 : plan.monthlyPrice * 12;
-                const savePct = Math.round((annualSavings / (annualBase || 1)) * 100);
+                const annualSavings = (plan.monthlyPrice * 12) - plan.yearlyPrice;
+                const savePct = Math.round((annualSavings / (plan.monthlyPrice * 12 || 1)) * 100);
                 const incentiveVal = (globalConfig as any)?.yearlyIncentiveValue ?? savePct;
                 const incentiveType = (globalConfig as any)?.yearlyIncentiveType ?? 'percent';
                 const label = incentiveType === 'free_months'
                   ? `Get ${incentiveVal} months free`
                   : incentiveType === 'amount'
-                  ? `Save ${symbol}${incentiveVal}`
+                  ? `Save ${formatPrice(incentiveVal)}`
                   : `Save ${incentiveVal}%`;
                 const params = new URLSearchParams(window.location.search);
                 params.set('cycle', 'yearly');
@@ -731,7 +758,7 @@ export default function CheckoutPage() {
                       <TrendingUp className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
                         <p className="text-xs font-bold text-emerald-600">{label} with Annual billing</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Pay {symbol}{currency === 'INR' ? inrYearly : plan.yearlyPrice}/yr instead</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Pay {formatPrice(plan.yearlyPrice)}/yr instead</p>
                       </div>
                     </div>
                     <a
@@ -748,17 +775,8 @@ export default function CheckoutPage() {
                 <div className="flex items-center justify-between py-3 border-b border-border text-emerald-600 dark:text-emerald-400">
                   <p className="text-sm font-semibold">Yearly discount</p>
                   <p className="text-sm font-bold">
-                    -{symbol}{currency === 'INR'
-                      ? Math.max(0, inrMonthly * 12 - inrYearly)
-                      : (plan.monthlyPrice * 12) - plan.yearlyPrice}
+                    -{formatPrice((plan.monthlyPrice * 12) - plan.yearlyPrice)}
                   </p>
-                </div>
-              )}
-
-              {refereeDiscount > 0 && (
-                <div className="flex items-center justify-between py-3 border-b border-border" style={{ color: 'rgb(139,92,246)' }}>
-                  <p className="text-sm font-semibold">Referral discount ({refereeDiscountPct}%)</p>
-                  <p className="text-sm font-bold">-{symbol}{refereeDiscount}</p>
                 </div>
               )}
 
@@ -770,7 +788,7 @@ export default function CheckoutPage() {
                     </p>
                     {couponData.description && <p className="text-xs text-muted-foreground mt-0.5">{couponData.description}</p>}
                   </div>
-                  <p className="text-sm font-bold shrink-0">-{symbol}{couponData.discountAmount}</p>
+                  <p className="text-sm font-bold shrink-0">-{formatPrice(couponData.discountAmount)}</p>
                 </div>
               )}
 
@@ -780,13 +798,20 @@ export default function CheckoutPage() {
                     <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Free Trial ({config?.freeTrialDays} Days)</p>
                     <p className="text-xs mt-0.5 text-muted-foreground">Due today</p>
                   </div>
-                  <p className="font-bold text-xl text-amber-600 dark:text-amber-400">{symbol}0.00</p>
+                  <p className="font-bold text-xl text-amber-600 dark:text-amber-400">{formatPrice(0)}</p>
+                </div>
+              )}
+
+              {tax > 0 && (
+                <div className="flex items-center justify-between py-3 border-b border-border text-muted-foreground">
+                  <p className="text-sm font-semibold">Tax ({globalConfig.taxRate}%)</p>
+                  <p className="text-sm font-bold">{formatPrice(tax)}</p>
                 </div>
               )}
 
               <div className="flex items-center justify-between pt-5 mt-2">
                 <p className="font-bold text-foreground">Total due today</p>
-                <p className="font-bold text-3xl text-primary">{symbol}{isTrial ? '0.00' : price}</p>
+                <p className="font-bold text-3xl text-primary">{isTrial ? formatPrice(0) : formatPrice(price)}</p>
               </div>
 
               {/* What you unlock */}

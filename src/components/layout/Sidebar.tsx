@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronRight, X, Zap, LogOut, Gift } from 'lucide-react';
+import { ChevronRight, X, Zap, Gift } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { usePath } from '../../hooks/usePath';
 import { NavItem } from './types';
@@ -16,12 +16,16 @@ interface SidebarProps {
   bottomSection?: React.ReactNode;
 }
 
+const SIDEBAR_WIDTH = 240;
+const SIDEBAR_COLLAPSED_WIDTH = 80;
+
 export default function Sidebar({ items, logo, onClose, isMobile, bottomSection }: SidebarProps) {
   const { config, setReferralModalOpen } = useUI();
   const { prefix } = usePath();
   const location = useLocation();
-  const sidebarWidth = config.sidebarCollapsed && !isMobile ? 80 : config.sidebarWidth;
   const collapsed = config.sidebarCollapsed && !isMobile;
+  const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
+  const isGradient = config.sidebarTheme === 'gradient';
 
   const checkActive = (path?: string, hasChildren?: boolean, exact?: boolean) => {
     if (!path) return false;
@@ -31,14 +35,12 @@ export default function Sidebar({ items, logo, onClose, isMobile, bottomSection 
     return location.pathname === p || location.pathname.startsWith(p + '/');
   };
 
-  const isGradient = config.sidebarTheme === 'gradient';
-
   return (
     <aside
       style={{ width: isMobile ? '100%' : `${sidebarWidth}px` }}
       className={cn(
-        "flex flex-col h-screen sticky top-0 border-r border-border transition-all duration-300 z-30",
-        isGradient ? "gradient-cta border-primary/20" : "bg-sidebar",
+        "flex flex-col h-screen sticky top-0 border-r transition-all duration-300 z-30",
+        isGradient ? "gradient-cta border-primary/20" : "bg-sidebar border-border",
         isMobile ? "w-full fixed inset-y-0 left-0" : "hidden lg:flex"
       )}
     >
@@ -114,7 +116,7 @@ export default function Sidebar({ items, logo, onClose, isMobile, bottomSection 
 
       {/* Bottom Section */}
       {bottomSection && (
-        <div className="p-3 border-t border-border shrink-0">
+        <div className={cn("p-3 border-t shrink-0", isGradient ? "border-white/10" : "border-border")}>
           {bottomSection}
         </div>
       )}
@@ -136,6 +138,7 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
   const { prefix } = usePath();
   const location = useLocation();
   const isGradient = config.sidebarTheme === 'gradient';
+  const useWhiteText = isGradient;
 
   const checkActive = (path?: string, hasChildren = false, exact = false) => {
     if (!path) return false;
@@ -159,7 +162,7 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
     return (
       <p className={cn(
         "px-3 pt-5 pb-1 text-[10px] font-bold uppercase tracking-widest",
-        isGradient ? "text-white/40" : "text-muted-foreground/50"
+        useWhiteText ? "text-white/40" : "text-muted-foreground/50"
       )}>
         {item.sectionTitle}
       </p>
@@ -168,7 +171,7 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
 
   // ── Horizontal divider ──
   if (item.divider) {
-    return <div className="h-px bg-border my-2 mx-3" />;
+    return <div className={cn("h-px my-2 mx-3", useWhiteText ? "bg-white/15" : "bg-border")} />;
   }
 
   // ── Expandable parent ──
@@ -182,20 +185,17 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium h-10 transition-all",
             parentActive
-              ? isGradient
+              ? useWhiteText
                 ? "bg-white/15 text-white"
                 : "bg-primary/10 text-primary"
-              : isGradient
+              : useWhiteText
                 ? "text-white/70 hover:text-white hover:bg-white/10"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
             collapsed && "justify-center px-0"
           )}
         >
           {item.icon && (
-            <item.icon className={cn(
-              "w-4 h-4 shrink-0",
-              collapsed && "w-5 h-5"
-            )} />
+            <item.icon className={cn("w-4 h-4 shrink-0", collapsed && "w-5 h-5")} />
           )}
           {!collapsed && (
             <>
@@ -210,7 +210,6 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
                   {item.badge}
                 </span>
               )}
-              {/* Chevron — only this element rotates, not the left icon */}
               <ChevronRight className={cn(
                 "w-3.5 h-3.5 shrink-0 opacity-50 transition-transform duration-200",
                 isOpen && "rotate-90"
@@ -230,7 +229,7 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
             >
               <div className={cn(
                 "ml-4 pl-3 mt-0.5 space-y-0.5 py-0.5",
-                isGradient ? "border-l border-white/15" : "border-l border-border"
+                useWhiteText ? "border-l border-white/15" : "border-l border-border"
               )}>
                 {item.children.map((child, idx) => (
                   <SidebarItem
@@ -250,7 +249,6 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
   }
 
   // ── Leaf link ──
-  // "New" spotlight — pulsing green dot for unvisited discovery features
   const newDot = item.isNew && !isActive && !collapsed ? (
     <span className="relative flex w-2 h-2 shrink-0">
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -258,16 +256,15 @@ function SidebarItem({ item, isActive, collapsed, depth = 0 }: SidebarItemProps)
     </span>
   ) : null;
 
-  // Children (depth > 0) use softer active style; top-level leaves use full primary
   const leafActiveClass = depth > 0
-    ? isGradient
+    ? useWhiteText
       ? "text-white font-semibold bg-white/10"
       : "text-primary font-semibold bg-primary/8"
     : isGradient
       ? "bg-white text-primary shadow-lg shadow-black/10"
       : "bg-primary text-primary-foreground shadow-sm shadow-primary/30";
 
-  const leafInactiveClass = isGradient
+  const leafInactiveClass = useWhiteText
     ? "text-white/70 hover:text-white hover:bg-white/10"
     : "text-muted-foreground hover:text-foreground hover:bg-muted/60";
 

@@ -1,23 +1,18 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 
 // ─── Types ──────────────────────────────────────────────────
 export type PrimaryColor = 'violet' | 'blue' | 'emerald' | 'rose' | 'amber' | 'cyan' | 'indigo' | 'purple' | 'orange' | 'teal';
 
 export interface UIConfig {
-  mode: 'light' | 'dark' | 'system';
-  orientation: 'vertical' | 'horizontal';
-  primaryColor: PrimaryColor;
-  customColor?: string; // hex, overrides primaryColor when set
-  radius: number;        // 0 | 4 | 8 | 12 | 16
-  sidebarWidth: number;  // 240 | 260 | 280
+  mode:           'light' | 'dark' | 'system';
+  primaryColor:   PrimaryColor;
+  customColor?:   string;
+  radius:         number;
   sidebarCollapsed: boolean;
-  layoutMode: 'boxed' | 'full';
-  cardShadow: boolean;
-  navbarStyle: 'fixed' | 'static' | 'floating';
-  contentWidth: 'compact' | 'wide';
-  language: string;
-  fontFamily: 'inter' | 'geist' | 'outfit' | 'space-grotesk';
-  sidebarTheme: 'default' | 'dark' | 'light' | 'gradient';
+  cardShadow:     boolean;
+  sidebarTheme:   'default' | 'dark' | 'light' | 'gradient';
+  sidebarBgPreset?: string;
+  language:       string;
 }
 
 interface UIContextValue {
@@ -30,20 +25,14 @@ interface UIContextValue {
 
 // ─── Defaults ───────────────────────────────────────────────
 const defaultConfig: UIConfig = {
-  mode: 'dark',
-  orientation: 'vertical',
-  primaryColor: 'violet',
-  customColor: undefined,
-  radius: 8,
-  sidebarWidth: 260,
+  mode:             'dark',
+  primaryColor:     'violet',
+  customColor:      undefined,
+  radius:           8,
   sidebarCollapsed: false,
-  layoutMode: 'boxed',
-  cardShadow: true,
-  navbarStyle: 'fixed',
-  contentWidth: 'compact',
-  language: 'en',
-  fontFamily: 'inter',
-  sidebarTheme: 'default',
+  cardShadow:       true,
+  sidebarTheme:     'default',
+  language:         'en',
 };
 
 // ─── Color Tokens ───────────────────────────────────────────
@@ -81,7 +70,6 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } | null {
   return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-// WCAG relative luminance from HSL
 function hslRelativeLuminance(h: number, s: number, l: number): number {
   s /= 100; l /= 100;
   const k = (n: number) => (n + h / 30) % 12;
@@ -91,7 +79,6 @@ function hslRelativeLuminance(h: number, s: number, l: number): number {
   return 0.2126 * lin(f(0)) + 0.7152 * lin(f(8)) + 0.0722 * lin(f(4));
 }
 
-// Returns HSL string for --primary-foreground: white or near-black based on WCAG AA contrast
 function contrastForeground(h: number, s: number, l: number): string {
   const lum = hslRelativeLuminance(h, s, l);
   const whiteContrast = 1.05 / (lum + 0.05);
@@ -99,22 +86,34 @@ function contrastForeground(h: number, s: number, l: number): string {
   return whiteContrast >= darkContrast ? '0 0% 100%' : '240 10% 8%';
 }
 
-// Returns a shifted hue for the gradient end color
 function gradientEnd(h: number, s: number, l: number): string {
-  const endH = (h + 22) % 360;
-  const endS = Math.min(s + 4, 100);
-  const endL = Math.min(l + 7, 85);
-  return `${endH} ${endS}% ${endL}%`;
+  return `${(h + 22) % 360} ${Math.min(s + 4, 100)}% ${Math.min(l + 7, 85)}%`;
 }
 
-const fontFamilies: Record<UIConfig['fontFamily'], string> = {
-  inter:         "'Inter', sans-serif",
-  geist:         "'Geist', sans-serif",
-  outfit:        "'Outfit', sans-serif",
-  'space-grotesk': "'Space Grotesk', sans-serif",
-};
-
 const STORAGE_KEY = 'promptly-ui-config';
+
+// ─── Token application ───────────────────────────────────────
+function applyTokens(config: UIConfig) {
+  const root = document.documentElement;
+
+  const hsl = config.customColor
+    ? (hexToHsl(config.customColor) ?? colorTokens[config.primaryColor])
+    : colorTokens[config.primaryColor];
+  const { h, s, l } = hsl;
+
+  root.style.setProperty('--radius', `${config.radius}px`);
+  root.style.setProperty('--primary', `${h} ${s}% ${l}%`);
+  root.style.setProperty('--primary-foreground', contrastForeground(h, s, l));
+  root.style.setProperty('--primary-end', gradientEnd(h, s, l));
+  root.style.setProperty('--ring', `${h} ${s}% ${l}%`);
+  root.style.setProperty('--card-shadow', config.cardShadow ? '0 1px 3px 0 rgb(0 0 0 / 0.1)' : 'none');
+
+  root.dataset.sidebarTheme = config.sidebarTheme ?? 'default';
+
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = config.mode === 'dark' || (config.mode === 'system' && prefersDark);
+  root.classList.toggle('dark', isDark);
+}
 
 // ─── Context ────────────────────────────────────────────────
 const UIContext = createContext<UIContextValue | undefined>(undefined);
@@ -127,40 +126,6 @@ function loadConfig(): UIConfig {
   return defaultConfig;
 }
 
-function applyTokens(config: UIConfig) {
-  const root = document.documentElement;
-
-  // Color — custom hex overrides named preset
-  const hsl = config.customColor
-    ? (hexToHsl(config.customColor) ?? colorTokens[config.primaryColor])
-    : colorTokens[config.primaryColor];
-  const { h, s, l } = hsl;
-
-  root.style.setProperty('--radius', `${config.radius}px`);
-  root.style.setProperty('--sidebar-width', `${config.sidebarWidth}px`);
-  root.style.setProperty('--layout-max-width', config.layoutMode === 'boxed' ? '1600px' : '100%');
-  root.style.setProperty('--content-max-width', config.contentWidth === 'compact' ? '1440px' : '100%');
-  root.style.setProperty('--primary', `${h} ${s}% ${l}%`);
-  root.style.setProperty('--primary-foreground', contrastForeground(h, s, l));
-  root.style.setProperty('--primary-end', gradientEnd(h, s, l));
-  root.style.setProperty('--ring', `${h} ${s}% ${l}%`);
-  root.style.setProperty('--font-family', fontFamilies[config.fontFamily ?? 'inter']);
-
-  // Card shadow toggle
-  root.style.setProperty('--card-shadow', config.cardShadow ? '0 1px 3px 0 rgb(0 0 0 / 0.1)' : 'none');
-
-  // Navbar style class
-  root.dataset.navbarStyle = config.navbarStyle ?? 'fixed';
-
-  // Sidebar theme
-  root.dataset.sidebarTheme = config.sidebarTheme ?? 'default';
-
-  // Dark/light mode
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = config.mode === 'dark' || (config.mode === 'system' && prefersDark);
-  root.classList.toggle('dark', isDark);
-}
-
 // ─── Provider ───────────────────────────────────────────────
 export function UIProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfigState] = useState<UIConfig>(loadConfig);
@@ -169,22 +134,18 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   const setConfig = useCallback((updates: Partial<UIConfig>) => {
     setConfigState(prev => {
       const next = { ...prev, ...updates };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
   }, []);
 
   const resetConfig = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
     setConfigState(defaultConfig);
   }, []);
 
-  // Apply CSS variables whenever config changes
-  useEffect(() => {
-    applyTokens(config);
-  }, [config]);
+  useLayoutEffect(() => { applyTokens(config); }, [config]);
 
-  // Listen for system theme changes when mode is 'system'
   useEffect(() => {
     if (config.mode !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -194,13 +155,7 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   }, [config]);
 
   return (
-    <UIContext.Provider value={{ 
-      config, 
-      setConfig, 
-      resetConfig, 
-      isReferralModalOpen, 
-      setReferralModalOpen 
-    }}>
+    <UIContext.Provider value={{ config, setConfig, resetConfig, isReferralModalOpen, setReferralModalOpen }}>
       {children}
     </UIContext.Provider>
   );

@@ -10,6 +10,7 @@ import Button from '../../components/primitives/Button';
 import Input from '../../components/primitives/Input';
 import Select from '../../components/primitives/Select';
 import Textarea from '../../components/primitives/Textarea';
+import Switch from '../../components/forms/Switch';
 import { db } from '../../lib/firebase';
 import { BADGE_COLOR_PRESETS, BADGE_ICON_MAP } from '../../lib/badges';
 import { usePath } from '../../hooks/usePath';
@@ -205,20 +206,17 @@ export default function AdminBadgeForm() {
                 {ICON_NAMES.map(name => {
                   const Icon = BADGE_ICON_MAP[name];
                   return (
-                    <button
+                    <Button
                       key={name}
                       type="button"
+                      variant={form.iconName === name ? 'soft' : 'outline'}
+                      size="icon"
                       onClick={() => set('iconName', name)}
                       title={name}
-                      className={cn(
-                        'w-9 h-9 rounded-lg flex items-center justify-center border transition-colors',
-                        form.iconName === name
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                      )}
+                      className="w-9 h-9"
                     >
                       <Icon className="w-4 h-4" />
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -229,20 +227,17 @@ export default function AdminBadgeForm() {
               <p className="text-sm font-semibold text-foreground mb-2">Color Theme</p>
               <div className="flex flex-wrap gap-2">
                 {BADGE_COLOR_PRESETS.map(preset => (
-                  <button
+                  <Button
                     key={preset.label}
                     type="button"
+                    variant={form.colorClass === preset.value ? 'soft' : 'outline'}
+                    size="sm"
                     onClick={() => set('colorClass', preset.value)}
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors',
-                      form.colorClass === preset.value
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/30'
-                    )}
+                    className="flex items-center gap-2"
                   >
                     <span className={cn('w-3 h-3 rounded-full flex-shrink-0', preset.preview)} />
                     {preset.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -253,19 +248,10 @@ export default function AdminBadgeForm() {
                 <p className="text-sm font-semibold text-foreground">Active</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Inactive badges won't be auto-awarded to users</p>
               </div>
-              <button
-                type="button"
-                onClick={() => set('isActive', !form.isActive)}
-                className={cn(
-                  'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
-                  form.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/30'
-                )}
-              >
-                <span className={cn(
-                  'absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                  form.isActive ? 'translate-x-6' : 'translate-x-1'
-                )} />
-              </button>
+              <Switch
+                checked={form.isActive}
+                onChange={checked => set('isActive', checked)}
+              />
             </div>
 
             {/* Actions */}

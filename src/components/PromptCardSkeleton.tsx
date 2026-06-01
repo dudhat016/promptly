@@ -1,7 +1,14 @@
+import { useConfig } from '../hooks/useConfig';
+
 export default function PromptCardSkeleton() {
+  const { config } = useConfig();
+  const ratio = config.storage?.promptImageRatio ?? '16:9';
+  const [rw, rh] = ratio.split(':').map(Number);
+  const paddingTop = `${((rh / rw) * 100).toFixed(4)}%`;
+
   return (
     <div className="bg-card rounded-md border border-border overflow-hidden shadow-sm">
-      <div className="aspect-[16/10] skeleton rounded-none" />
+      <div className="relative skeleton rounded-none" style={{ paddingTop }} />
       <div className="p-5 space-y-4">
         <div className="flex justify-between items-start">
           <div className="h-6 w-3/4 skeleton" />

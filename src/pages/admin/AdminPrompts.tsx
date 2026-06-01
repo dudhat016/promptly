@@ -6,7 +6,9 @@ import { Link } from 'react-router-dom';
 import type { DataTableActions, DataTableColumn } from '../../components/admin';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Textarea from '../../components/primitives/Textarea';
+import Tabs from '../../components/navigation/Tabs';
 import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
 import { adminCache } from '../../lib/adminCache';
@@ -163,7 +165,7 @@ export default function AdminPrompts() {
     if (activeTab === 'all') return true;
     if (activeTab === 'pending') return p.status === 'pending';
     if (activeTab === 'resubmit') return p.status === 'pending' && (p.resubmissionCount ?? 0) > 0;
-    if (activeTab === 'approved') return p.status === 'approved' || !p.status;
+    if (activeTab === 'approved') return p.status === 'approved';
     if (activeTab === 'rejected') return p.status === 'rejected';
     return true;
   });
@@ -306,27 +308,12 @@ export default function AdminPrompts() {
       />
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all',
-              activeTab === tab.key
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {tab.label}
-            {tab.count !== undefined && tab.count > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white min-w-[18px] text-center">
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS.map(t => ({ id: t.key, label: t.label, badge: (t.count !== undefined && t.count > 0) ? t.count : undefined }))}
+        activeTab={activeTab}
+        onChange={id => setActiveTab(id as Tab)}
+        variant="pill"
+      />
 
       <DataTable
         columns={displayColumns}
@@ -346,7 +333,7 @@ export default function AdminPrompts() {
       {/* Reject modal */}
       {rejectModalPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-xl w-full max-w-md p-8 shadow-2xl">
+          <Card className="!rounded-xl w-full max-w-md shadow-2xl">
             <div className="flex items-center gap-3 mb-2">
               <XCircle className="w-5 h-5 text-rose-500" />
               <h3 className="font-bold text-foreground">Reject Submission</h3>
@@ -361,7 +348,7 @@ export default function AdminPrompts() {
               onChange={e => setRejectReason(e.target.value)}
               rows={4}
               placeholder="e.g. Content is too short, image is missing, duplicate of an existing prompt..."
-              variant="filled"
+              variant="outline"
             />
             <div className="flex gap-3 mt-6">
               <Button variant="secondary" size="lg" fullWidth onClick={() => { setRejectModalPrompt(null); setRejectReason(''); }}>
@@ -378,7 +365,7 @@ export default function AdminPrompts() {
                 Confirm Rejection
               </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

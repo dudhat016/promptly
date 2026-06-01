@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import Button from './primitives/Button';
+import Card from './primitives/Card';
 import UpgradeModal from './UpgradeModal';
 
 // ── Blur-overlay gate ─────────────────────────────────────────────────────────
@@ -23,7 +24,7 @@ export function ProGate({ children, feature, description, className }: ProGatePr
   if (isPro || isAdmin) return <>{children}</>;
 
   return (
-    <div className={cn('relative overflow-hidden rounded-xl', className)}>
+    <Card variant="ghost" padding="none" className={cn('relative', className)}>
       {/* Blurred preview — pointer-events-none so user can't accidentally interact */}
       <div className="pointer-events-none select-none blur-[5px] opacity-40 saturate-0">
         {children}
@@ -53,7 +54,7 @@ export function ProGate({ children, feature, description, className }: ProGatePr
       </div>
 
       <UpgradeModal isOpen={open} onClose={() => setOpen(false)} />
-    </div>
+    </Card>
   );
 }
 
@@ -73,13 +74,13 @@ export function ProFeatureCard({ icon: Icon, title, description, badge, classNam
 
   return (
     <>
-      <button
+      <Card
+        as="button"
+        type="button"
+        interactive
+        padding="sm"
         onClick={() => setOpen(true)}
-        className={cn(
-          'group w-full text-left p-4 rounded-xl border border-border bg-card',
-          'hover:border-primary/30 hover:shadow-sm hover:bg-primary/[0.02] transition-all',
-          className
-        )}
+        className={cn('group w-full text-left', className)}
       >
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
@@ -96,7 +97,7 @@ export function ProFeatureCard({ icon: Icon, title, description, badge, classNam
           </div>
           <Lock className="w-3 h-3 text-muted-foreground/30 shrink-0 mt-0.5 group-hover:text-primary/40 transition-colors" />
         </div>
-      </button>
+      </Card>
       <UpgradeModal isOpen={open} onClose={() => setOpen(false)} />
     </>
   );

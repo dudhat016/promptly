@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { AdminPageHeader } from '../../components/admin';
 import Input from '../../components/primitives/Input';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Select from '../../components/primitives/Select';
 import { api } from '../../lib/api';
 import { usePath } from '../../hooks/usePath';
@@ -115,7 +116,7 @@ export default function AdminEmailSettings() {
         <div className="lg:col-span-2 space-y-5">
 
           {/* SMTP server */}
-          <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+          <Card className="space-y-5">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary" />
               <p className="font-bold text-foreground text-sm">SMTP Server</p>
@@ -172,10 +173,10 @@ export default function AdminEmailSettings() {
                 }
               />
             </div>
-          </div>
+          </Card>
 
           {/* Sender identity */}
-          <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+          <Card className="space-y-5">
             <div className="flex items-center gap-2">
               <Globe className="w-4 h-4 text-primary" />
               <p className="font-bold text-foreground text-sm">Sender Identity</p>
@@ -207,7 +208,7 @@ export default function AdminEmailSettings() {
                 />
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Side notes */}

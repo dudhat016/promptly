@@ -9,6 +9,7 @@ import Select from '../../components/primitives/Select';
 import Input from '../../components/primitives/Input';
 import Textarea from '../../components/primitives/Textarea';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Badge from '../../components/primitives/Badge';
 import { cn } from '../../lib/utils';
 
@@ -122,7 +123,7 @@ export default function AdminTickets() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             leftIcon={Search}
-            variant="filled"
+            variant="outline"
           />
 
           <div className="space-y-2 overflow-y-auto max-h-[70vh]">
@@ -182,31 +183,34 @@ export default function AdminTickets() {
         {/* Ticket Details / Chat */}
         <div className="lg:col-span-2">
           {selectedTicket ? (
-            <div className="bg-card border border-border rounded-xl shadow-sm h-[80vh] flex flex-col">
-              {/* Header */}
-              <div className="p-5 border-b border-border flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold text-foreground">{selectedTicket.subject}</h2>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                    <User className="w-3 h-3" /> {selectedTicket.userEmail}
-                  </p>
-                </div>
-                <div className="w-40">
-                  <Select
-                    value={selectedTicket.status}
-                    onChange={(val) => handleUpdateStatus(selectedTicket.id, val)}
-                    options={[
-                      { label: 'Open', value: 'open', description: 'User needs attention' },
-                      { label: 'Pending', value: 'pending', description: 'Waiting for user response' },
-                      { label: 'Resolved', value: 'resolved', description: 'Issue has been closed' }
-                    ]}
-                    isSearchable={false}
-                  />
-                </div>
-              </div>
+            <Card padding="none" className="h-[80vh]">
+              <Card.Header
+                title={
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">{selectedTicket.subject}</h2>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                      <User className="w-3 h-3" /> {selectedTicket.userEmail}
+                    </p>
+                  </div>
+                }
+                action={
+                  <div className="w-40">
+                    <Select
+                      value={selectedTicket.status}
+                      onChange={(val) => handleUpdateStatus(selectedTicket.id, val)}
+                      options={[
+                        { label: 'Open', value: 'open', description: 'User needs attention' },
+                        { label: 'Pending', value: 'pending', description: 'Waiting for user response' },
+                        { label: 'Resolved', value: 'resolved', description: 'Issue has been closed' }
+                      ]}
+                      isSearchable={false}
+                    />
+                  </div>
+                }
+              />
 
               {/* Messages */}
-              <div className="flex-grow overflow-y-auto p-5 space-y-4 bg-muted/30">
+              <Card.Body className="overflow-y-auto p-5 space-y-4 bg-muted/30">
                 {selectedTicket.messages.map((msg, idx) => (
                   <div key={idx} className={`flex ${msg.senderRole === 'admin' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[80%] p-4 rounded-lg text-sm ${
@@ -223,10 +227,10 @@ export default function AdminTickets() {
                     </div>
                   </div>
                 ))}
-              </div>
+              </Card.Body>
 
               {/* Reply Area */}
-              <div className="p-4 border-t border-border">
+              <Card.Footer>
                 <div className="flex gap-3">
                   <Textarea
                     id="ticketReply"
@@ -236,7 +240,7 @@ export default function AdminTickets() {
                     placeholder="Type your response..."
                     className="flex-grow min-h-[60px]"
                     rows={2}
-                    variant="filled"
+                    variant="outline"
                   />
                   <Button
                     onClick={handleSendReply}
@@ -249,8 +253,8 @@ export default function AdminTickets() {
                     Send
                   </Button>
                 </div>
-              </div>
-            </div>
+              </Card.Footer>
+            </Card>
           ) : (
             <div className="h-full flex flex-col items-center justify-center bg-muted/50 rounded-lg border-2 border-dashed border-border p-12 text-center">
               <MessageSquare className="w-12 h-12 text-muted-foreground/20 mb-4" />

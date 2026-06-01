@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Layout, Plus, Trash2, Save, HelpCircle, FileText, ChevronDown, ChevronUp, Sparkles, Rocket } from 'lucide-react';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import Textarea from '../../components/primitives/Textarea';
 import Select from '../../components/primitives/Select';
@@ -104,7 +105,7 @@ export default function AdminContentSettings({
       </div>
 
       {activeSubTab === 'legal' && (
-        <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+        <Card padding="none" className="!rounded-3xl shadow-sm">
           <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -139,7 +140,7 @@ export default function AdminContentSettings({
               Tip: Use the toolbar above to format your text. Headers and lists help with readability.
             </p>
           </div>
-        </div>
+        </Card>
       )}
 
       {activeSubTab === 'faq' && (
@@ -166,7 +167,7 @@ export default function AdminContentSettings({
 
           <div className="space-y-8">
             {siteContent.faq.map((cat: any, catIdx: number) => (
-              <div key={catIdx} className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <Card key={catIdx} padding="none" className="!rounded-3xl shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <div className="px-8 py-5 border-b border-border bg-muted/5 flex items-center justify-between">
                   <div className="flex items-center gap-4 flex-grow">
                     <div className="flex flex-col gap-1">
@@ -200,7 +201,7 @@ export default function AdminContentSettings({
                 
                 <div className="p-8 space-y-6 bg-muted/5">
                   {cat.items.map((item: any, itemIdx: number) => (
-                    <div key={itemIdx} className="bg-card border border-border rounded-2xl p-6 relative group shadow-sm transition-all hover:border-primary/20">
+                    <Card key={itemIdx} interactive className="!rounded-2xl relative group shadow-sm hover:border-primary/20">
                       <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => removeFaqItem(catIdx, itemIdx)}>
                           <Trash2 className="w-3.5 h-3.5" />
@@ -222,10 +223,10 @@ export default function AdminContentSettings({
                           rows={3}
                         />
                       </div>
-                    </div>
+                    </Card>
                   ))}
-                  
-                  <Button 
+
+                  <Button
                     onClick={() => addFaqItem(catIdx)} 
                     variant="outline" 
                     fullWidth 
@@ -235,14 +236,14 @@ export default function AdminContentSettings({
                     Add Question to {cat.label}
                   </Button>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
       )}
       {activeSubTab === 'onboarding' && (
         <div className="space-y-6">
-          <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+          <Card padding="none" className="!rounded-3xl shadow-sm">
             <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -392,7 +393,7 @@ export default function AdminContentSettings({
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

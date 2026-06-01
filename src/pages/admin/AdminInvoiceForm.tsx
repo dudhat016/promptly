@@ -22,11 +22,13 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
+import Card from '../../components/primitives/Card';
 import Button from '../../components/primitives/Button';
 import DatePicker from '../../components/primitives/DatePicker';
 import Input from '../../components/primitives/Input';
 import Select from '../../components/primitives/Select';
 import Textarea from '../../components/primitives/Textarea';
+import Spinner from '../../components/feedback/Spinner';
 import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
@@ -167,7 +169,7 @@ export default function AdminInvoiceForm() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <Spinner size="md" />
     </div>
   );
 
@@ -227,7 +229,7 @@ export default function AdminInvoiceForm() {
         <div className="grid lg:grid-cols-3 gap-8 pb-20">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+            <Card padding="none" className="!rounded-3xl shadow-sm">
               <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                   <User className="w-4 h-4" />
@@ -242,7 +244,7 @@ export default function AdminInvoiceForm() {
                     onChange={e => setData({...data, customerName: e.target.value})}
                     placeholder="e.g. John Doe"
                     leftIcon={User}
-                    variant="filled"
+                    variant="outline"
                   />
                   <Input
                     label="Customer Email"
@@ -251,7 +253,7 @@ export default function AdminInvoiceForm() {
                     onChange={e => setData({...data, customerEmail: e.target.value})}
                     placeholder="e.g. john@example.com"
                     leftIcon={Mail}
-                    variant="filled"
+                    variant="outline"
                   />
                 </div>
                 <Textarea
@@ -260,12 +262,12 @@ export default function AdminInvoiceForm() {
                   value={data.customerAddress}
                   onChange={e => setData({...data, customerAddress: e.target.value})}
                   placeholder="Enter full billing address..."
-                  variant="filled"
+                  variant="outline"
                 />
               </div>
-            </div>
+            </Card>
 
-            <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+            <Card padding="none" className="!rounded-3xl shadow-sm">
               <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -346,7 +348,7 @@ export default function AdminInvoiceForm() {
                         type="number"
                         value={data.taxRate}
                         onChange={e => setData({...data, taxRate: parseFloat(e.target.value) || 0})}
-                        variant="filled"
+                        variant="outline"
                         inputSize="sm"
                         className="text-right font-black"
                         rightIcon={Percent}
@@ -362,9 +364,9 @@ export default function AdminInvoiceForm() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
 
-            <div className="bg-card border border-border rounded-3xl p-8 shadow-sm">
+            <Card padding="lg" className="!rounded-3xl shadow-sm">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                   <Info className="w-4 h-4" />
@@ -375,15 +377,15 @@ export default function AdminInvoiceForm() {
                 value={data.notes}
                 onChange={e => setData({...data, notes: e.target.value})}
                 placeholder="Include payment instructions or thank you message..."
-                variant="filled"
+                variant="outline"
                 rows={4}
               />
-            </div>
+            </Card>
           </div>
 
           {/* Sidebar Settings */}
           <div className="space-y-8">
-            <div className="bg-card border border-border rounded-3xl shadow-sm sticky top-24">
+            <Card padding="none" className="!rounded-3xl shadow-sm sticky top-24">
               <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                   <Calculator className="w-4 h-4" />
@@ -396,7 +398,7 @@ export default function AdminInvoiceForm() {
                   value={data.invoiceNumber}
                   onChange={e => setData({...data, invoiceNumber: e.target.value})}
                   leftIcon={Hash}
-                  variant="filled"
+                  variant="outline"
                   className="font-black"
                 />
 
@@ -432,7 +434,7 @@ export default function AdminInvoiceForm() {
                   </Button>
                 </div>
               </div>
-            </div>
+            </Card>
 
             <div className="bg-primary border z-[-1] border-primary/10 rounded-3xl p-8 text-primary-foreground relative overflow-hidden group">
               <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
@@ -449,7 +451,7 @@ export default function AdminInvoiceForm() {
         </div>
       ) : (
         /* Preview Mode */
-        <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto mb-20">
+        <Card padding="none" className="!rounded-[2.5rem] shadow-2xl animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto mb-20">
           <div className="bg-foreground px-12 py-16 text-background relative overflow-hidden">
             <div className="absolute top-0 right-0 p-12 opacity-5">
               <FileText className="w-80 h-80 rotate-12" />
@@ -506,7 +508,7 @@ export default function AdminInvoiceForm() {
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-border overflow-hidden bg-card shadow-sm">
+            <Card padding="none" className="!rounded-[2rem] shadow-sm">
               <table className="w-full text-left border-collapse">
                 <thead className="bg-muted/50 border-b border-border text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                   <tr>
@@ -558,7 +560,7 @@ export default function AdminInvoiceForm() {
                   </tr>
                 </tfoot>
               </table>
-            </div>
+            </Card>
 
             <div className="pt-12 border-t border-border flex flex-col md:flex-row justify-between items-center gap-8">
               <div className="flex items-center gap-4">
@@ -577,7 +579,7 @@ export default function AdminInvoiceForm() {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

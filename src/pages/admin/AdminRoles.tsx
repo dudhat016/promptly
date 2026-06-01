@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
+import Spinner from '../../components/feedback/Spinner';
 import { AdminSection, SectionPermission, StaffRoleDefinition } from '../../types';
 import { useStaffRoles } from '../../hooks/useStaffRoles';
 
@@ -59,7 +61,7 @@ export default function AdminRoles() {
 
       {loading ? (
         <div className="flex items-center justify-center h-40">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <Spinner size="sm" />
         </div>
       ) : staffRoles.length === 0 ? (
         <div className="border border-dashed border-border rounded-2xl p-12 text-center">
@@ -73,11 +75,11 @@ export default function AdminRoles() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {staffRoles.map(role => (
-            <motion.div
+            <Card
               key={role.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4"
+              className="!rounded-2xl p-5 gap-4"
             >
               {/* Header */}
               <div className="flex items-start gap-3">
@@ -152,7 +154,7 @@ export default function AdminRoles() {
                   </Button>
                 </div>
               </div>
-            </motion.div>
+            </Card>
           ))}
         </div>
       )}

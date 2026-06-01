@@ -156,7 +156,7 @@ export default function AdminInquiries() {
             placeholder="Search by name, email, subject..."
             leftIcon={Search}
             className="w-72"
-            variant="filled"
+            variant="outline"
           />
       </div>
 

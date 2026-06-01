@@ -32,7 +32,9 @@ import { auth, db } from '../lib/firebase';
 import { AFFILIATE_MILESTONES } from '../lib/milestones';
 import { toast } from 'react-hot-toast';
 import Button from '../components/primitives/Button';
+import Card from '../components/primitives/Card';
 import Input from '../components/primitives/Input';
+import Spinner from '../components/feedback/Spinner';
 
 const fmt = (date: any) => {
   if (!date) return 'N/A';
@@ -61,6 +63,92 @@ interface Stats {
   commissions: any[];
   payouts: any[];
   hasPendingWithdrawal: boolean;
+}
+
+function CommissionList({ commissions }: { commissions: any[] }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  return (
+    <div className="divide-y divide-border">
+      {commissions.map((c: any) => {
+        const sale       = Number(c.grossSaleAmountUsd ?? c.grossSaleAmount ?? 0);
+        const gatewayFee = Number(c.paymentFeeUsd ?? 0);
+        const commBase   = Number(c.grossCommissionUsd ?? sale - gatewayFee);
+        const rate       = Number(c.commissionRate ?? 0);
+        const earned     = Number(c.netCommissionUsd ?? c.netCommission ?? 0);
+        const lockUntil  = c.lockUntil ? fmt(c.lockUntil) : null;
+        const isOpen     = expanded === c.id;
+
+        return (
+          <div key={c.id}>
+            <button
+              type="button"
+              onClick={() => setExpanded(isOpen ? null : c.id)}
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">{fmt(c.createdAt)}</p>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    Sale ${sale.toFixed(2)} &rarr; <span className="text-emerald-600">${earned.toFixed(2)} earned</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${STATUS_STYLE[c.status] ?? ''}`}>
+                  {c.status}
+                </span>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {isOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mx-6 mb-4 rounded-xl border border-border bg-muted/30 p-4 text-sm space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">How this commission was calculated</p>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Buyer paid</span>
+                      <span className="font-semibold">${sale.toFixed(2)}</span>
+                    </div>
+                    {gatewayFee > 0 && (
+                      <div className="flex justify-between text-muted-foreground/70">
+                        <span>− Gateway fee ({Number(c.paymentFeeRate ?? 2.9).toFixed(1)}%)</span>
+                        <span>−${gatewayFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Commission base</span>
+                      <span className="font-semibold">${commBase.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-primary">
+                      <span>Your rate ({rate}%)</span>
+                      <span className="font-bold">×{(rate / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-emerald-600 pt-2 border-t border-border">
+                      <span>You earned</span>
+                      <span>${earned.toFixed(2)}</span>
+                    </div>
+                    {lockUntil && c.status === 'pending' && (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-600 pt-1">
+                        <Clock className="w-3 h-3" />
+                        Locks until {lockUntil}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function AffiliatePage() {
@@ -339,7 +427,7 @@ export default function AffiliatePage() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Referral link */}
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+          <Card className="!rounded-2xl shadow-sm">
             <h2 className="text-base font-bold text-foreground flex items-center gap-2 mb-4">
               <LinkIcon className="w-4 h-4 text-primary" />
               Your Referral Link
@@ -424,11 +512,11 @@ export default function AffiliatePage() {
                 )}
               </AnimatePresence>
             </div>
-          </div>
+          </Card>
 
           {/* How it works — zero state */}
           {!loading && commissions.length === 0 && (
-            <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+            <Card className="!rounded-2xl shadow-sm">
               <h2 className="text-base font-bold text-foreground flex items-center gap-2 mb-5">
                 <Trophy className="w-4 h-4 text-primary" />
                 How It Works
@@ -447,11 +535,11 @@ export default function AffiliatePage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Earnings chart */}
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+          <Card className="!rounded-2xl shadow-sm">
             <h2 className="text-base font-bold text-foreground flex items-center gap-2 mb-5">
               <TrendingUp className="w-4 h-4 text-primary" />
               Earnings — Last 30 Days
@@ -480,10 +568,10 @@ export default function AffiliatePage() {
                 <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={24} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
           {/* Commission history */}
-          <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+          <Card padding="none" className="!rounded-2xl shadow-sm">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/20">
               <h2 className="font-bold text-foreground flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-primary" />
@@ -496,40 +584,11 @@ export default function AffiliatePage() {
 
             {loading ? (
               <div className="py-16 flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                <Spinner size="md" />
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading...</p>
               </div>
             ) : commissions.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-muted/30">
-                    <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      <th className="px-6 py-3">Date</th>
-                      <th className="px-6 py-3">Sale Amount</th>
-                      <th className="px-6 py-3">Commission</th>
-                      <th className="px-6 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {commissions.map((c: any) => (
-                      <tr key={c.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="px-6 py-4 text-sm text-muted-foreground">{fmt(c.createdAt)}</td>
-                        <td className="px-6 py-4 text-sm font-semibold text-foreground">
-                          {c.currency === 'INR' ? '₹' : '$'}{Number(c.grossSaleAmount ?? 0).toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-bold text-emerald-600">
-                          ${Number(c.netCommission ?? 0).toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${STATUS_STYLE[c.status] ?? ''}`}>
-                            {c.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <CommissionList commissions={commissions} />
             ) : (
               <div className="py-16 text-center">
                 <TrendingUp className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
@@ -537,10 +596,10 @@ export default function AffiliatePage() {
                 <p className="text-xs text-muted-foreground/60 mt-1">Share your link to start earning.</p>
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Withdrawal history */}
-          <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+          <Card padding="none" className="!rounded-2xl shadow-sm">
             <div className="px-6 py-4 border-b border-border bg-muted/20">
               <h2 className="font-bold text-foreground flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-primary" />
@@ -583,7 +642,7 @@ export default function AffiliatePage() {
                 <p className="text-sm text-muted-foreground">No withdrawals yet.</p>
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* Right sidebar */}
@@ -597,7 +656,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* Milestone achievements */}
-          <div className="bg-card rounded-2xl border border-border p-5 shadow-sm">
+          <Card padding="none" className="!rounded-2xl p-5 shadow-sm">
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
               <Trophy className="w-4 h-4 text-amber-500" />
               Achievements
@@ -637,7 +696,7 @@ export default function AffiliatePage() {
                 );
               })}
             </div>
-          </div>
+          </Card>
 
           {/* Payout CTA */}
           <div className="bg-primary rounded-2xl p-6 relative overflow-hidden shadow-xl shadow-primary/20">
@@ -686,12 +745,12 @@ export default function AffiliatePage() {
             style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
             onClick={() => setShowWithdrawModal(false)}
           >
-            <motion.div
+            <Card
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card rounded-2xl p-8 w-full max-w-md border border-border shadow-2xl"
-              onClick={e => e.stopPropagation()}
+              className="!rounded-2xl w-full max-w-md shadow-2xl"
+              onClick={(e: any) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-foreground">Request Withdrawal</h2>
@@ -791,7 +850,7 @@ export default function AffiliatePage() {
                   </div>
                 </div>
               )}
-            </motion.div>
+            </Card>
           </motion.div>
         )}
       </AnimatePresence>
@@ -801,10 +860,10 @@ export default function AffiliatePage() {
 
 function BalanceCard({ label, value, icon: Icon, accent, bg, note }: any) {
   return (
-    <motion.div
+    <Card
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card rounded-xl border border-border p-5 flex items-start gap-4 shadow-sm"
+      className="flex-row items-start gap-4 shadow-sm"
     >
       <div className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center shrink-0`}>
         <Icon className={`w-5 h-5 ${accent}`} />
@@ -814,16 +873,16 @@ function BalanceCard({ label, value, icon: Icon, accent, bg, note }: any) {
         <p className={`text-2xl font-bold mt-0.5 ${accent}`}>{value}</p>
         {note && <p className="text-xs text-muted-foreground mt-1">{note}</p>}
       </div>
-    </motion.div>
+    </Card>
   );
 }
 
 function StatCard({ label, value, icon: Icon, color }: any) {
   return (
-    <div className="bg-card rounded-xl border border-border p-4 flex flex-col gap-2 shadow-sm">
+    <Card padding="sm" className="flex-col gap-2 shadow-sm">
       <Icon className={`w-5 h-5 ${color}`} />
       <p className="text-2xl font-bold text-foreground">{value}</p>
       <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-    </div>
+    </Card>
   );
 }

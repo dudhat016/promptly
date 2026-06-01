@@ -23,6 +23,10 @@ export const PaymentService = {
     customerPhone: string;
     planId: string;
     billingCycle: string;
+    couponId?: string;
+    couponCode?: string;
+    couponDiscount?: number;
+    originalAmount?: number;
   }) {
     const idToken = await auth.currentUser?.getIdToken();
     if (!idToken) throw new Error('Not authenticated');
@@ -57,6 +61,10 @@ export const PaymentService = {
     customerName: string;
     planId: string;
     billingCycle: string;
+    couponId?: string;
+    couponCode?: string;
+    couponDiscount?: number;
+    originalAmount?: number;
   }) {
     const idToken = await auth.currentUser?.getIdToken();
     if (!idToken) throw new Error('Not authenticated');
@@ -103,6 +111,68 @@ export const PaymentService = {
     }
 
     return { success: true, subscriptionId: data.subscriptionId };
+  },
+
+  async initiateStripeTrialCheckout(params: {
+    planId: string;
+    planName: string;
+    billingCycle: string;
+    amount: number;
+    trialDays: number;
+    originalAmount?: number;
+    couponDiscount?: number;
+    couponCode?: string;
+    couponId?: string;
+  }) {
+    const idToken = await auth.currentUser?.getIdToken();
+    if (!idToken) throw new Error('Not authenticated');
+    const userId = auth.currentUser!.uid;
+    const userEmail = auth.currentUser!.email || '';
+
+    const response = await fetch('/api/payments/stripe/create-trial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+      body: JSON.stringify({ ...params, userId, userEmail }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to create Stripe trial checkout");
+
+    if (data.url) {
+      window.location.href = data.url;
+    }
+    return { success: true };
+  },
+
+  async initiateStripeCheckout(params: {
+    planId: string;
+    planName: string;
+    billingCycle: string;
+    amount: number;
+    originalAmount?: number;
+    couponDiscount?: number;
+    couponCode?: string;
+    referralCode?: string;
+    couponId?: string;
+  }) {
+    const idToken = await auth.currentUser?.getIdToken();
+    if (!idToken) throw new Error('Not authenticated');
+    const userId = auth.currentUser!.uid;
+    const userEmail = auth.currentUser!.email || '';
+
+    const response = await fetch('/api/payments/stripe/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+      body: JSON.stringify({ ...params, userId, userEmail }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to create Stripe checkout");
+
+    if (data.url) {
+      window.location.href = data.url;
+    }
+    return { success: true };
   },
 
   async cancelSubscription(payload: {

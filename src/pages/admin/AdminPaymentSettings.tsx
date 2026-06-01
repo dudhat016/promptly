@@ -1,11 +1,14 @@
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { AlertCircle, Check, CheckCircle2, Copy, CreditCard, ExternalLink, Globe, KeyRound, Lock, Percent, RefreshCw, Save, ShieldCheck, Webhook, Zap } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Clock, Copy, CreditCard, ExternalLink, Globe, KeyRound, Lock, Percent, RefreshCw, Save, ShieldCheck, Webhook, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../../lib/firebase';
+import { api } from '../../lib/api';
 import Input from '../../components/primitives/Input';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import { cn } from '../../lib/utils';
+import { useConfig } from '../../hooks/useConfig';
 
 function EnvVarField({ label, envVar }: { label: string; envVar: string }) {
   return (
@@ -36,12 +39,36 @@ export default function AdminPaymentSettings() {
       environment: 'sandbox' as 'sandbox' | 'live',
       webhookId: '',
     },
+    stripe: {
+      enabled: false,
+      webhookSecret: '',
+    },
     fees: {
       paymentFeePercent: 2,
       platformFeePercent: 0,
     },
   });
+  const [governance, setGovernance] = useState({
+    minWithdrawalAmount: 50,
+    fraudScoreThreshold: 70,
+    referralCommission: 25,
+  });
+  const [taxRate, setTaxRate] = useState(0);
+  const { refreshConfig } = useConfig();
+  const [processingLocks, setProcessingLocks] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  const handleProcessLocks = async () => {
+    setProcessingLocks(true);
+    try {
+      const r = await api.post('/affiliates/process-locks') as any;
+      toast.success(`Approved ${r.approved ?? 0} commission(s) — earnings credited to affiliates`);
+    } catch {
+      toast.error('Failed to process lock periods');
+    } finally {
+      setProcessingLocks(false);
+    }
+  };
 
   useEffect(() => {
     async function loadConfig() {
@@ -49,7 +76,6 @@ export default function AdminPaymentSettings() {
         const docSnap = await getDoc(doc(db, 'configs', 'payment'));
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Merge Firestore data (like 'enabled' flags) with ENV values (keys)
           setConfig(prev => ({
             cashfree: {
               enabled:       data.cashfree?.enabled       ?? prev.cashfree.enabled,
@@ -61,11 +87,29 @@ export default function AdminPaymentSettings() {
               environment: data.paypal?.environment ?? prev.paypal.environment,
               webhookId:   data.paypal?.webhookId   ?? '',
             },
+            stripe: {
+              enabled:       data.stripe?.enabled       ?? prev.stripe.enabled,
+              webhookSecret: data.stripe?.webhookSecret ?? '',
+            },
             fees: {
               paymentFeePercent:  data.fees?.paymentFeePercent  ?? 2,
               platformFeePercent: data.fees?.platformFeePercent ?? 0,
             },
           }));
+        }
+        const mktSnap = await getDoc(doc(db, 'configs', 'marketing'));
+        if (mktSnap.exists()) {
+          const d = mktSnap.data();
+          setGovernance({
+            minWithdrawalAmount: d.minWithdrawalAmount ?? 50,
+            fraudScoreThreshold: d.fraudScoreThreshold ?? 70,
+            referralCommission:  d.referralCommission  ?? 25,
+          });
+        }
+        const globalSnap = await getDoc(doc(db, 'configs', 'global'));
+        if (globalSnap.exists()) {
+          const d = globalSnap.data();
+          setTaxRate(d.taxRate ?? 0);
         }
       } catch (err) {
         console.error(err);
@@ -90,15 +134,24 @@ export default function AdminPaymentSettings() {
           environment: config.paypal.environment,
           webhookId:   config.paypal.webhookId,
         },
+        stripe: {
+          enabled:       config.stripe.enabled,
+          webhookSecret: config.stripe.webhookSecret,
+        },
         fees: config.fees,
         updatedAt: serverTimestamp(),
       });
-      // Sync fee rates to configs/marketing so awardAffiliateCommission reads them
       await setDoc(doc(db, 'configs', 'marketing'), {
+        ...governance,
         paymentFeePercent: config.fees.paymentFeePercent,
         platformFeePercent: config.fees.platformFeePercent,
         updatedAt: serverTimestamp()
       }, { merge: true });
+      await setDoc(doc(db, 'configs', 'global'), {
+        taxRate: taxRate,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await refreshConfig();
       toast.success('Payment settings updated!');
     } catch (err) {
       console.error(err);
@@ -113,6 +166,7 @@ export default function AdminPaymentSettings() {
   const WEBHOOK_URLS = {
     cashfree: `${appUrl}/api/payments/webhook/cashfree`,
     paypal:   `${appUrl}/api/payments/webhook/paypal`,
+    stripe:   `${appUrl}/api/payments/webhook/stripe`,
   };
 
   const copyUrl = (key: string, url: string) => {
@@ -147,7 +201,7 @@ export default function AdminPaymentSettings() {
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* Cashfree Integration */}
-        <div className="bg-card rounded-lg border border-border p-8 shadow-sm relative overflow-hidden group">
+        <Card className="!rounded-lg !p-8 relative overflow-visible group">
           <div className="absolute top-0 right-0 p-8 opacity-5">
             <Zap className="w-24 h-24 text-primary" />
           </div>
@@ -214,10 +268,10 @@ export default function AdminPaymentSettings() {
               />
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* PayPal Integration */}
-        <div className="bg-card rounded-lg border border-border p-8 shadow-sm relative overflow-hidden group">
+        <Card className="!rounded-lg !p-8 relative overflow-visible group">
           <div className="absolute top-0 right-0 p-8 opacity-5">
             <Globe className="w-24 h-24 text-blue-600" />
           </div>
@@ -284,25 +338,73 @@ export default function AdminPaymentSettings() {
               />
             </div>
           </div>
-        </div>
+        </Card>
+        {/* Stripe Integration */}
+        <Card className="!rounded-lg !p-8 relative overflow-visible group md:col-span-2">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
+            <CreditCard className="w-24 h-24 text-[#635BFF]" />
+          </div>
+
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-md flex items-center justify-center" style={{ background: 'rgba(99,91,255,0.1)' }}>
+                  <CreditCard className="w-5 h-5" style={{ color: '#635BFF' }} />
+                </div>
+                <div className="flex flex-col">
+                  <h4 className="font-bold text-lg leading-tight">Stripe Payments</h4>
+                  <span className="text-xs font-bold uppercase tracking-widest mt-0.5" style={{ color: '#635BFF' }}>Keys via Env Vars · USD only</span>
+                </div>
+              </div>
+              <Button
+                onClick={() => setConfig({ ...config, stripe: { ...config.stripe, enabled: !config.stripe.enabled }})}
+                variant={config.stripe.enabled ? 'primary' : 'ghost'}
+                size="sm"
+                className={cn(
+                  "w-12 h-6 rounded-full relative transition-all p-0",
+                  config.stripe.enabled ? '' : 'bg-muted'
+                )}
+                style={config.stripe.enabled ? { background: '#635BFF' } : {}}
+              >
+                <div className={cn("absolute top-1 w-4 h-4 bg-card rounded-full transition-all", config.stripe.enabled ? 'left-7' : 'left-1')} />
+              </Button>
+            </div>
+
+            <div className={`grid md:grid-cols-3 gap-6 transition-all ${config.stripe.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              <EnvVarField label="Secret Key" envVar="STRIPE_SECRET_KEY" />
+              <EnvVarField label="Publishable Key" envVar="VITE_STRIPE_PUBLIC_KEY" />
+              <Input
+                label="Webhook Secret"
+                id="stripeWebhookSecret"
+                name="stripeWebhookSecret"
+                type="password"
+                value={config.stripe.webhookSecret}
+                onChange={e => setConfig({ ...config, stripe: { ...config.stripe, webhookSecret: e.target.value }})}
+                placeholder="whsec_..."
+                className="font-mono"
+                variant="filled"
+                helperText="From Stripe Dashboard → Webhooks → Signing secret"
+              />
+            </div>
+          </div>
+        </Card>
       </div>
 
-      {/* Fee Settings */}
-      <div className="bg-card rounded-lg border border-border p-8 shadow-sm">
+      {/* Fee & Tax Settings */}
+      <Card className="!rounded-lg !p-8">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 bg-amber-500/10 rounded-md flex items-center justify-center">
             <Percent className="w-5 h-5 text-amber-600" />
           </div>
           <div>
-            <h4 className="font-bold text-lg leading-tight">Affiliate Fee Settings</h4>
+            <h4 className="font-bold text-lg leading-tight">Transaction Fee & Tax Settings</h4>
             <p className="text-xs text-muted-foreground font-medium mt-0.5">
-              Fees are deducted from the gross sale before calculating affiliate commission.
-              Net commission = (Sale − Payment Fee) × Commission Rate × (1 − Platform Fee)
+              Configure payment gateway fees, platform commissions, and global customer tax rates.
             </p>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           <div>
             <Input
               label="Payment Gateway Fee (%)"
@@ -333,6 +435,21 @@ export default function AdminPaymentSettings() {
               helperText="Percentage of gross commission kept by the platform. 0 = pass full commission to affiliate."
             />
           </div>
+          <div>
+            <Input
+              label="Tax Rate (%)"
+              id="taxRate"
+              name="taxRate"
+              type="number"
+              value={taxRate}
+              onChange={e => setTaxRate(Number(e.target.value))}
+              min={0}
+              max={100}
+              step={0.1}
+              variant="filled"
+              helperText="Charged to customers at checkout. e.g. GST/VAT/Sales Tax."
+            />
+          </div>
         </div>
 
         {/* Live Preview */}
@@ -342,7 +459,7 @@ export default function AdminPaymentSettings() {
             const sale = 15;
             const payFee = sale * (config.fees.paymentFeePercent / 100);
             const net = sale - payFee;
-            const grossComm = net * 0.25;
+            const grossComm = net * (governance.referralCommission / 100);
             const platFee = grossComm * (config.fees.platformFeePercent / 100);
             const affiliate = Math.max(0, grossComm - platFee);
             return (
@@ -350,17 +467,17 @@ export default function AdminPaymentSettings() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Gross sale</span><span>${sale.toFixed(2)}</span></div>
                 <div className="flex justify-between text-rose-500"><span>− Payment fee ({config.fees.paymentFeePercent}%)</span><span>−${payFee.toFixed(2)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Net to distribute</span><span>${net.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Gross commission (25%)</span><span>${grossComm.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Gross commission ({governance.referralCommission}%)</span><span>${grossComm.toFixed(2)}</span></div>
                 {config.fees.platformFeePercent > 0 && <div className="flex justify-between text-rose-500"><span>− Platform fee ({config.fees.platformFeePercent}%)</span><span>−${platFee.toFixed(2)}</span></div>}
                 <div className="flex justify-between font-bold text-emerald-600 border-t border-border pt-1 mt-1"><span>Affiliate receives</span><span>${affiliate.toFixed(2)}</span></div>
               </>
             );
           })()}
         </div>
-      </div>
+      </Card>
 
       {/* ── Webhook Setup Guide ── */}
-      <div className="bg-card rounded-lg border border-border p-8 shadow-sm space-y-8">
+      <Card className="!rounded-lg !p-8 space-y-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-violet-500/10 rounded-md flex items-center justify-center">
             <Webhook className="w-5 h-5 text-violet-500" />
@@ -373,7 +490,7 @@ export default function AdminPaymentSettings() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           {/* Cashfree webhook card */}
           <div className="rounded-xl border border-border p-5 space-y-4">
             <div className="flex items-center gap-2">
@@ -514,6 +631,69 @@ export default function AdminPaymentSettings() {
               </a>
             </div>
           </div>
+
+          {/* Stripe webhook card */}
+          <div className="rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" style={{ color: '#635BFF' }} />
+              <span className="font-bold text-sm text-foreground">Stripe</span>
+              {config.stripe.webhookSecret && (
+                <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 uppercase tracking-widest flex items-center gap-1">
+                  <CheckCircle2 className="w-2.5 h-2.5" /> Secret Saved
+                </span>
+              )}
+            </div>
+
+            <div className="bg-muted/50 rounded-lg border border-border overflow-hidden">
+              <div className="px-3 py-1.5 border-b border-border bg-muted/30">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Webhook URL</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2">
+                <code className="text-xs font-mono text-foreground flex-1 truncate">{WEBHOOK_URLS.stripe}</code>
+                <button
+                  onClick={() => copyUrl('stripe', WEBHOOK_URLS.stripe)}
+                  className="shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  {copiedUrl === 'stripe' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Subscribe to these events</p>
+              {['checkout.session.completed'].map(e => (
+                <div key={e} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: '#635BFF' }} />
+                  <code>{e}</code>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Setup Steps</p>
+              {[
+                'Log in to Stripe Dashboard',
+                'Go to Developers → Webhooks',
+                'Click "Add endpoint"',
+                'Paste the URL above, select checkout.session.completed',
+                'Copy the Signing Secret (whsec_...) and save it above',
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <span className="w-4 h-4 rounded-full bg-muted text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  {step}
+                </div>
+              ))}
+              <a
+                href="https://dashboard.stripe.com/webhooks"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold hover:underline mt-2"
+                style={{ color: '#635BFF' }}
+              >
+                Open Stripe Webhooks <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Webhook test */}
@@ -544,7 +724,64 @@ export default function AdminPaymentSettings() {
             </a>
           </div>
         </div>
-      </div>
+      </Card>
+
+      {/* Governance & Ecosystem */}
+      <Card className="!rounded-lg !p-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-primary/10 rounded-md flex items-center justify-center">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h4 className="font-bold text-lg leading-tight">Governance & Ecosystem</h4>
+            <p className="text-xs text-muted-foreground font-medium mt-0.5">
+              Withdrawal limits, fraud thresholds, and referral commission rules.
+            </p>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          <Input
+            label="Min. Payout ($)"
+            type="number"
+            value={governance.minWithdrawalAmount}
+            onChange={e => setGovernance({ ...governance, minWithdrawalAmount: Number(e.target.value) })}
+            variant="filled"
+          />
+          <Input
+            label="Fraud Risk Threshold"
+            type="number"
+            value={governance.fraudScoreThreshold}
+            onChange={e => setGovernance({ ...governance, fraudScoreThreshold: Number(e.target.value) })}
+            variant="filled"
+            helperText="Higher = Less Sensitive"
+          />
+          <Input
+            label="Referral Commission (%)"
+            type="number"
+            value={governance.referralCommission}
+            onChange={e => setGovernance({ ...governance, referralCommission: Number(e.target.value) })}
+            variant="filled"
+          />
+        </div>
+        <div className="mt-6 pt-6 border-t border-border flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold text-foreground">Process Lock Periods</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Release pending commissions past their lock window and credit affiliate earnings.
+            </p>
+          </div>
+          <Button
+            onClick={handleProcessLocks}
+            isLoading={processingLocks}
+            variant="secondary"
+            size="sm"
+            leftIcon={Clock}
+            className="shrink-0"
+          >
+            Process Now
+          </Button>
+        </div>
+      </Card>
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2">

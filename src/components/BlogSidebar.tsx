@@ -8,6 +8,8 @@ import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { BlogPost } from '../types';
 import Input from './primitives/Input';
+import Button from './primitives/Button';
+import Spinner from './feedback/Spinner';
 
 export default function BlogSidebar() {
   const [tags, setTags] = useState<string[]>([]);
@@ -121,7 +123,7 @@ export default function BlogSidebar() {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search articles..."
             leftIcon={Search}
-            variant="filled"
+            variant="outline"
           />
         </form>
       </div>
@@ -236,17 +238,15 @@ export default function BlogSidebar() {
             onChange={(e) => setEmail(e.target.value)}
             className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:ring-white/30"
           />
-          <button
+          <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-card text-primary font-bold text-sm px-4 py-3 rounded-md hover:bg-primary/8 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+            variant="secondary"
+            fullWidth
+            className="bg-card text-primary hover:bg-primary/8 shadow-lg"
           >
-            {isSubmitting ? (
-              <div className="w-4 h-4 border-2 border-primary/30 border-t-indigo-600 rounded-full animate-spin" />
-            ) : (
-              "Subscribe Now"
-            )}
-          </button>
+            {isSubmitting ? <Spinner size="xs" /> : 'Subscribe Now'}
+          </Button>
         </form>
       </div>
     </aside>

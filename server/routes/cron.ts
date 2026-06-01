@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
 import { tick, rebuildSegments } from "../services/automationEngine.js";
 import { NudgeService } from "../services/nudgeService.js";
+import { DunningService } from "../services/dunningService.js";
 import { processExpiredLocks, triggerAutoPayouts } from "../lib/payouts.js";
 import { processBroadcastJobs } from "./transactional.js";
 
@@ -209,6 +210,23 @@ router.post("/process-broadcasts", async (req, res) => {
   } catch (err: any) {
     console.error("[Cron] process-broadcasts error:", err.message);
     await writeHealthRecord("process-broadcasts", "error", { error: err.message }, Date.now() - t0);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/cron/process-dunning
+// Schedule: daily at 06:00 UTC — advances dunning email sequence for failing subscribers
+router.post("/process-dunning", async (req, res) => {
+  if (!verifyCronSecret(req, res)) return;
+  const t0 = Date.now();
+  try {
+    const result = await DunningService.processDunningQueue();
+    console.log(`[Cron] process-dunning: ${result.processed} processed, ${result.downgraded} downgraded, ${result.errors} errors`);
+    await writeHealthRecord("process-dunning", "ok", result, Date.now() - t0);
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    console.error("[Cron] process-dunning error:", err.message);
+    await writeHealthRecord("process-dunning", "error", { error: err.message }, Date.now() - t0);
     res.status(500).json({ error: err.message });
   }
 });

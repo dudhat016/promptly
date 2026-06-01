@@ -1,7 +1,6 @@
 import { ArrowRight, Check, Shield, Sparkles, X, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { usePath } from '../hooks/usePath';
@@ -27,12 +26,9 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const { prefix } = usePath();
 
   const PERKS: string[] = config.checkoutBenefits?.length ? config.checkoutBenefits : DEFAULT_PERKS;
-  const { symbol, exchangeRate, currency } = useCurrency();
 
   const proPlan = config.plans?.find(p => p.isPopular) || config.plans?.[0];
-  const price = proPlan
-    ? (currency === 'INR' ? Math.round(proPlan.monthlyPrice * exchangeRate) : proPlan.monthlyPrice)
-    : 15;
+  const price = proPlan?.monthlyPrice ?? 15;
   const isTrial = config?.activePromotion === 'trial' && !profile?.trialUsed;
 
   const handleUpgrade = () => {
@@ -80,7 +76,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               <p className="text-muted-foreground text-sm">
                 {isTrial
                   ? 'Full Pro access. No credit card needed. Cancel anytime.'
-                  : `${symbol}${price}/month — unlimited access to 5,000+ expert prompts.`}
+                  : `$${price}/month — unlimited access to 5,000+ expert prompts.`}
               </p>
             </div>
 
@@ -104,7 +100,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               leftIcon={isTrial ? Zap : ArrowRight}
               className="mb-3 shadow-[0_0_30px_rgba(139,92,246,0.3)]"
             >
-              {isTrial ? `Start Free Trial` : `Upgrade Now — ${symbol}${price}/mo`}
+              {isTrial ? `Start Free Trial` : `Upgrade Now — $${price}/mo`}
             </Button>
 
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/40">

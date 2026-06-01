@@ -1,6 +1,6 @@
-import { initializeApp } from 'firebase/app';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 import { signInWithEmailAndPassword as fbSignInWithEmail, createUserWithEmailAndPassword as fbSignUpWithEmail, getAuth, GoogleAuthProvider, sendPasswordResetEmail, signInAnonymously, signInWithPopup } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -21,8 +21,24 @@ if (missingKeys.length > 0) {
   console.error(`💡 Tip: Add these to your Vercel Project Settings -> Environment Variables.`);
 }
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, import.meta.env.VITE_FIREBASE_DATABASE_ID);
+// Guard against Vite HMR re-initialization: re-use the existing app if already initialized.
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || undefined;
+
+// initializeFirestore throws if called twice on the same app (Vite HMR); fall back to getFirestore().
+export const db = (() => {
+  try {
+    return initializeFirestore(
+      app,
+      { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) },
+      dbId,
+    );
+  } catch {
+    return getFirestore(app, dbId);
+  }
+})();
+
 export const storage = getStorage(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

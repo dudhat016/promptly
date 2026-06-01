@@ -78,22 +78,18 @@ export default function CookieConsent() {
                     <div className="flex flex-wrap items-center gap-3 pt-2">
                       <Button onClick={handleAcceptAll} variant="primary" size="sm">Accept All</Button>
                       <Button onClick={handleRejectAll} variant="outline" size="sm">Reject Non-essential</Button>
-                      <button 
-                        onClick={() => setShowManage(true)}
-                        className="text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1.5 px-2 py-1"
-                      >
-                        <Settings2 className="w-3.5 h-3.5" />
+                      <Button variant="ghost" size="sm" leftIcon={Settings2} onClick={() => setShowManage(true)}>
                         Manage Preferences
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-5">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-bold text-foreground">Manage Cookies</h3>
-                      <button onClick={() => setShowManage(false)} className="text-muted-foreground hover:text-foreground">
+                      <Button variant="ghost" size="icon" onClick={() => setShowManage(false)}>
                         <X className="w-5 h-5" />
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

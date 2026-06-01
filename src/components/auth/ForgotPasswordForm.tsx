@@ -69,7 +69,7 @@ export default function ForgotPasswordForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          variant="filled"
+          variant="outline"
         />
 
         {error && (

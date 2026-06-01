@@ -162,32 +162,6 @@ export default function AdminSubscriptionForm() {
             />
           </div>
 
-          {/* Fixed INR pricing */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Fixed INR Prices (₹)</p>
-            <p className="text-xs text-muted-foreground mb-3">Set clean round INR prices (e.g. ₹799). Leave 0 to use live USD→INR conversion.</p>
-            <div className="grid grid-cols-2 gap-6">
-              <Input
-                label="INR Monthly Price (₹)"
-                id="inrMonthlyPrice"
-                name="inrMonthlyPrice"
-                type="number" min="0" step="1"
-                helperText="e.g. 799 — shown to Indian users instead of converted price."
-                value={plan.inrMonthlyPrice || 0}
-                onChange={e => setPlan({ ...plan, inrMonthlyPrice: parseFloat(e.target.value) || 0 })}
-              />
-              <Input
-                label="INR Annual Price (₹ total/yr)"
-                id="inrYearlyPrice"
-                name="inrYearlyPrice"
-                type="number" min="0" step="1"
-                helperText="e.g. 7990 — total yearly amount charged to Indian users."
-                value={plan.inrYearlyPrice || 0}
-                onChange={e => setPlan({ ...plan, inrYearlyPrice: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="permissionGroup" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Linked Permission Group</label>
@@ -226,7 +200,7 @@ export default function AdminSubscriptionForm() {
               if (errors.features) setErrors({...errors, features: ''});
             }}
             placeholder="e.g. Unlimited Prompts, API Access, Priority Support"
-            variant="filled"
+            variant="outline"
           />
 
           <div className="pt-6 border-t border-border flex gap-4">

@@ -1,12 +1,12 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ChevronRight, ClipboardCopy, Eye, EyeOff, Mail, Save, Send, Settings, X } from 'lucide-react';
+import { ChevronRight, ClipboardCopy, Eye, EyeOff, Mail, Save, Send, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AdminPageHeader } from '../../components/admin';
 import Badge from '../../components/primitives/Badge';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import Select from '../../components/primitives/Select';
 import Textarea from '../../components/primitives/Textarea';
@@ -254,7 +254,7 @@ export default function AdminTemplateForm() {
                   value={template.name || ''}
                   onChange={e => { setTemplate(p => ({ ...p, name: e.target.value })); if (errors.name) setErrors(er => ({ ...er, name: '' })); }}
                   placeholder="e.g. Welcome Email"
-                  variant="filled"
+                  variant="outline"
                 />
 
                 <div>
@@ -290,7 +290,7 @@ export default function AdminTemplateForm() {
                   onChange={e => { setTemplate(p => ({ ...p, subject: e.target.value })); if (errors.subject) setErrors(er => ({ ...er, subject: '' })); }}
                   onFocus={() => setActiveField('subject')}
                   placeholder="e.g. Welcome to Promptly, {{name}}!"
-                  variant="filled"
+                  variant="outline"
                 />
                 {template.subject && (
                   <div className="flex items-center gap-2 px-1">
@@ -307,7 +307,7 @@ export default function AdminTemplateForm() {
                 <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Email Body</span>
                 <button
                   type="button"
-                  onClick={() => setInlinePrev(p => !p)}
+                  onClick={() => setShowPreview(true)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {inlinePrev ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -315,32 +315,19 @@ export default function AdminTemplateForm() {
                 </button>
               </div>
 
-              <div className={inlinePrev ? 'grid grid-cols-2 divide-x divide-border' : ''}>
-                <div className="p-4">
-                  <Textarea
-                    ref={bodyRef}
-                    id="tplBody"
-                    rows={inlinePrev ? 20 : 16}
-                    error={errors.body}
-                    value={template.body || ''}
-                    onChange={e => { setTemplate(p => ({ ...p, body: e.target.value })); if (errors.body) setErrors(er => ({ ...er, body: '' })); }}
-                    onFocus={() => setActiveField('body')}
-                    placeholder={`Hi {{name}},\n\nWelcome to Promptly!\n\n→ Get started: {{app_url}}/explore\n\n— The Promptly Team`}
-                    variant="ghost"
-                    className="font-mono text-xs resize-none border-0 focus:border-0 focus:ring-0 min-h-[320px]"
-                  />
-                  {errors.body && <p className="text-xs text-destructive px-1 mt-1">{errors.body}</p>}
-                </div>
-
-                {inlinePrev && (
-                  <div className="overflow-y-auto max-h-[520px] p-3 bg-muted/20">
-                    <div
-                      className="text-[11px] text-muted-foreground mb-2 font-semibold px-1">
-                      Live preview (example values)
-                    </div>
-                    <div dangerouslySetInnerHTML={{ __html: renderBodyHtml() }} />
-                  </div>
-                )}
+              <div className="p-4">
+                <Textarea
+                  ref={bodyRef}
+                  id="tplBody"
+                  error={errors.body}
+                  value={template.body || ''}
+                  onChange={e => { setTemplate(p => ({ ...p, body: e.target.value })); if (errors.body) setErrors(er => ({ ...er, body: '' })); }}
+                  onFocus={() => setActiveField('body')}
+                  placeholder={`Hi {{name}},\n\nWelcome to Promptly!\n\n→ Get started: {{app_url}}/explore\n\n— The Promptly Team`}
+                  variant="ghost"
+                  className="font-mono text-xs resize-none border-0 focus:border-0 focus:ring-0 min-h-[320px]"
+                />
+                {errors.body && <p className="text-xs text-destructive px-1 mt-1">{errors.body}</p>}
               </div>
 
               {unknownVars.length > 0 && (
@@ -359,16 +346,10 @@ export default function AdminTemplateForm() {
               <Button type="submit" isLoading={saving} variant="primary" size="lg" leftIcon={Save} className="min-w-[160px] shadow-sm shadow-primary/20">
                 Save Template
               </Button>
-              <Button type="button" onClick={() => setShowPreview(true)} variant="secondary" size="lg" leftIcon={Eye}>
-                Full Preview
-              </Button>
               <Button type="button" isLoading={isTesting} onClick={handleSendTest} variant="outline" size="lg" leftIcon={Send} className="bg-card">
                 Send Test
               </Button>
               <div className="flex-grow" />
-              <Button as={Link} to={prefix('/admin/emails/settings')} variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
-                <Settings className="w-4 h-4" /> SMTP Settings
-              </Button>
               <Button as={Link} to={prefix('/admin/emails/templates')} variant="ghost" size="sm" className="text-muted-foreground">
                 Cancel
               </Button>
@@ -509,10 +490,10 @@ export default function AdminTemplateForm() {
 
               <div className="overflow-y-auto bg-muted/50 flex-grow p-5">
                 <div className="max-w-xl mx-auto space-y-3">
-                  <div className="bg-card border border-border rounded-lg px-4 py-3">
+                  <Card padding="none" className="px-4 py-3">
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Subject</p>
                     <p className="font-bold text-foreground text-sm">{previewSubject || 'No Subject'}</p>
-                  </div>
+                  </Card>
                   <div dangerouslySetInnerHTML={{ __html: renderBodyHtml() }} />
                 </div>
               </div>

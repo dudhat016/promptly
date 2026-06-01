@@ -5,6 +5,8 @@ import { toast } from 'react-hot-toast';
 import type { BulkAction, DataTableActions, DataTableColumn } from '../../components/admin';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Select from '../../components/primitives/Select';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import { adminCache } from '../../lib/adminCache';
 import { db } from '../../lib/firebase';
@@ -239,20 +241,18 @@ export default function AdminUsers() {
             ? `staff:${u.staffRole}`
             : 'user';
         return (
-          <select
-            value={currentValue}
-            onChange={e => handleRoleChange(u, e.target.value)}
-            onClick={e => e.stopPropagation()}
-            className="text-xs font-medium bg-background border border-border rounded-lg px-2 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer min-w-[120px]"
-          >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-            {staffRoles.map(role => (
-              <option key={role.id} value={`staff:${role.id}`}>
-                {role.name}
-              </option>
-            ))}
-          </select>
+          <div onClick={e => e.stopPropagation()} className="min-w-[130px]">
+            <Select
+              value={currentValue}
+              onChange={val => handleRoleChange(u, val as string)}
+              options={[
+                { value: 'user', label: 'User' },
+                { value: 'admin', label: 'Admin' },
+                ...staffRoles.map(r => ({ value: `staff:${r.id}`, label: r.name })),
+              ]}
+              isSearchable={false}
+            />
+          </div>
         );
       },
       csvValue: u => u.staffRole ? `staff:${u.staffRole}` : (u.role ?? 'user'),
@@ -403,7 +403,7 @@ export default function AdminUsers() {
       {creditModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setCreditModal({ open: false, rows: [] })} />
-          <div className="relative z-10 w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4">
+          <Card className="relative z-10 !rounded-2xl w-full max-w-sm shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
                 <Coins className="w-5 h-5 text-emerald-500" />
@@ -426,7 +426,7 @@ export default function AdminUsers() {
               <Button onClick={() => { setCreditModal({ open: false, rows: [] }); setCreditAmount(''); }} variant="outline" size="sm" fullWidth>Cancel</Button>
               <Button onClick={handleBulkCredits} isLoading={bulkWorking} variant="primary" size="sm" fullWidth>Apply</Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
@@ -434,7 +434,7 @@ export default function AdminUsers() {
       {planModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setPlanModal({ open: false, rows: [] })} />
-          <div className="relative z-10 w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4">
+          <Card className="relative z-10 !rounded-2xl w-full max-w-sm shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
                 <Zap className="w-5 h-5 text-amber-500" />
@@ -466,7 +466,7 @@ export default function AdminUsers() {
               <Button onClick={() => { setPlanModal({ open: false, rows: [] }); setSelectedPlan(''); }} variant="outline" size="sm" fullWidth>Cancel</Button>
               <Button onClick={handleBulkPlan} isLoading={bulkWorking} variant="primary" size="sm" fullWidth disabled={!selectedPlan}>Apply</Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

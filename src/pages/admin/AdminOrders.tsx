@@ -9,6 +9,7 @@ import type { DataTableColumn } from '../../components/admin';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/primitives/Button';
 import Badge from '../../components/primitives/Badge';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -38,9 +39,8 @@ interface AwardModalState {
   referralCode: string;
 }
 
-const currencySymbol = (c: string) => c === 'INR' ? '₹' : '$';
 const formatDate = (ts: any) => {
-  try { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'; }
+  try { return ts?.toDate ? ts.toDate().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'; }
   catch { return 'N/A'; }
 };
 
@@ -150,7 +150,7 @@ export default function AdminOrders() {
       sortValue: o => o.amount,
       render: o => (
         <span className="font-black text-emerald-600 text-base">
-          {currencySymbol(o.currency)}{Number(o.amount).toFixed(2)}
+          ${Number(o.amount).toFixed(2)}
         </span>
       ),
       csvValue: o => o.amount,
@@ -183,12 +183,15 @@ export default function AdminOrders() {
           <CheckCircle className="w-3.5 h-3.5" /> Awarded
         </span>
       ) : (
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
+          leftIcon={Gift}
           onClick={() => setModal({ open: true, orderId: o.orderId, referralCode: o.referredBy || '' })}
-          className="flex items-center gap-1 text-amber-600 text-xs font-bold hover:text-amber-700 transition-colors"
+          className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
         >
-          <Gift className="w-3.5 h-3.5" /> Award
-        </button>
+          Award
+        </Button>
       ),
       csvValue: o => o.hasCommission ? 'Yes' : 'No',
     },
@@ -239,11 +242,11 @@ export default function AdminOrders() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Orders', value: orders.length.toString(), color: 'primary' },
-          { label: 'Total Revenue', value: `₹${totalRevenue.toFixed(2)}`, color: 'emerald' },
+          { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}`, color: 'emerald' },
           { label: 'With Commission', value: orders.filter(o => o.hasCommission).length.toString(), color: 'violet' },
           { label: 'Missing Commission', value: missingCommissions.toString(), color: missingCommissions > 0 ? 'amber' : 'muted' },
         ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4">
+          <Card key={s.label} padding="sm">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{s.label}</p>
             <p className={cn('text-2xl font-black', {
               'text-primary': s.color === 'primary',
@@ -252,7 +255,7 @@ export default function AdminOrders() {
               'text-amber-500': s.color === 'amber',
               'text-foreground': s.color === 'muted',
             })}>{s.value}</p>
-          </div>
+          </Card>
         ))}
       </div>
 
@@ -280,7 +283,7 @@ export default function AdminOrders() {
       {/* Award commission modal */}
       {modal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-md shadow-2xl space-y-5">
+          <Card className="!rounded-2xl w-full max-w-md shadow-2xl space-y-5">
             <div>
               <h3 className="text-lg font-black text-foreground">Award Affiliate Commission</h3>
               <p className="text-sm text-muted-foreground mt-1">
@@ -294,7 +297,7 @@ export default function AdminOrders() {
               placeholder="e.g. ABC123"
               value={modal.referralCode}
               onChange={e => setModal(m => ({ ...m, referralCode: e.target.value }))}
-              variant="filled"
+              variant="outline"
             />
             <p className="text-xs text-muted-foreground">
               This will look up the user with this referral code and credit them the commission based on current marketing config rates.
@@ -313,7 +316,7 @@ export default function AdminOrders() {
                 Award Commission
               </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

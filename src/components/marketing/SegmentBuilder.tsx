@@ -1,13 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Plus, X, Filter, Sliders, ChevronDown, 
-  Trash2, Database, Info, Save, Search, Check
-} from 'lucide-react';
+import { Plus, Filter, Trash2, Info, Save } from 'lucide-react';
 import { Segment, Contact } from '../../types';
-import Input from '../primitives/Input';
 import Select from '../primitives/Select';
 import Button from '../primitives/Button';
+import Input from '../primitives/Input';
 import { cn } from '../../lib/utils';
 
 interface Props {
@@ -32,9 +29,6 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
     matchType: 'and',
     filters: []
   });
-
-  const [searchValue, setSearchValue] = useState<Record<number, string>>({});
-  const [isDropdownOpen, setIsDropdownOpen] = useState<Record<number, boolean>>({});
 
   const addFilter = () => {
     setActiveSeg({
@@ -80,59 +74,35 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
   };
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden shadow-2xl flex flex-col max-h-[90vh] w-full">
-      <div className="p-8 border-b border-border flex items-center justify-between">
-        <div>
-          <h3 className="text-2xl font-bold text-foreground uppercase tracking-tight">Segment Rules</h3>
-          <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1 italic">Define automated filters for your contacts</p>
-        </div>
-        <Button 
-          onClick={onCancel} 
-          variant="ghost" 
-          size="icon" 
-          className="rounded-full text-muted-foreground"
-        >
-          <X className="w-6 h-6" />
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-auto p-10 space-y-10">
+    <div className="space-y-6">
+      <div className="bg-card rounded-3xl border border-border shadow-sm p-8 space-y-8">
         <div className="grid md:grid-cols-3 gap-8">
             <Input 
               label="Segment Name"
               type="text"
               value={activeSeg.name}
               onChange={e => setActiveSeg({...activeSeg, name: e.target.value})}
-              variant="filled"
+              variant="outline"
               placeholder="e.g. Pro Users in New York"
             />
           <div className="space-y-4 md:col-span-1">
             <label className="block text-xs font-bold uppercase text-muted-foreground tracking-widest ml-2">Match Logic</label>
-            <div className="flex bg-muted/50 p-1 rounded-md shadow-inner">
-              <Button 
-                onClick={() => setActiveSeg({...activeSeg, matchType: 'and'})}
-                variant={activeSeg.matchType === 'and' ? 'white' : 'ghost'}
-                size="md"
-                fullWidth
-                className={cn(
-                  "py-3 font-bold uppercase tracking-widest",
-                  activeSeg.matchType === 'and' ? "text-primary shadow-md" : "text-muted-foreground"
-                )}
-              >
-                Match ALL (AND)
-              </Button>
-              <Button 
-                onClick={() => setActiveSeg({...activeSeg, matchType: 'or'})}
-                variant={activeSeg.matchType === 'or' ? 'white' : 'ghost'}
-                size="md"
-                fullWidth
-                className={cn(
-                  "py-3 font-bold uppercase tracking-widest",
-                  activeSeg.matchType === 'or' ? "text-primary shadow-md" : "text-muted-foreground"
-                )}
-              >
-                Match ANY (OR)
-              </Button>
+            <div className="inline-flex items-center bg-muted/60 p-1 rounded-full border border-border shadow-inner w-full">
+              {(['and', 'or'] as const).map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setActiveSeg({ ...activeSeg, matchType: type })}
+                  className={cn(
+                    "flex-1 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-200",
+                    activeSeg.matchType === type
+                      ? "bg-card text-primary shadow-md border border-border"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {type === 'and' ? 'ALL (AND)' : 'ANY (OR)'}
+                </button>
+              ))}
             </div>
           </div>
           <Input 
@@ -140,7 +110,7 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
             type="text"
             value={activeSeg.description}
             onChange={e => setActiveSeg({...activeSeg, description: e.target.value})}
-            variant="filled"
+            variant="outline"
             placeholder="Who does this segment include?"
           />
         </div>
@@ -195,93 +165,24 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
                     />
                   </div>
 
-                  <div className="flex-[2] min-w-[250px] relative">
+                  <div className="flex-[2] min-w-[250px]">
                     <label className="block text-[8px] font-bold uppercase text-muted-foreground mb-2 ml-1 tracking-[0.2em]">Value</label>
-                    
-                    {/* Searchable Value Dropdown */}
-                    <div className="relative">
-                      <div 
-                        onClick={() => setIsDropdownOpen({...isDropdownOpen, [idx]: !isDropdownOpen[idx]})}
-                        className="w-full bg-muted/50 rounded-md p-4 text-xs font-bold shadow-sm focus-within:ring-2 focus-within:ring-indigo-600 flex items-center justify-between cursor-pointer group"
-                      >
-                        <span className={filter.value ? 'text-foreground' : 'text-muted-foreground italic'}>
-                          {filter.value || 'Select a value...'}
-                        </span>
-                        <ChevronDown className={`w-4 h-4 text-muted-foreground/40 transition-transform ${isDropdownOpen[idx] ? 'rotate-180' : ''}`} />
-                      </div>
-
-                      <AnimatePresence>
-                        {isDropdownOpen[idx] && (
-                          <motion.div 
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            className="absolute top-full left-0 right-0 mt-2 bg-card rounded-lg shadow-2xl border border-border z-50 overflow-hidden"
-                          >
-                            <div className="p-4 border-b border-border">
-                                <Input 
-                                  type="text"
-                                  autoFocus
-                                  value={searchValue[idx] || ''}
-                                  onChange={e => setSearchValue({...searchValue, [idx]: e.target.value})}
-                                  placeholder="Search values..."
-                                  variant="ghost"
-                                  inputSize="sm"
-                                  leftIcon={Search}
-                                />
-                            </div>
-                            <div className="max-h-48 overflow-auto py-2">
-                              {/* Custom Option */}
-                              <Button 
-                                onClick={() => {
-                                  const custom = prompt('Enter custom value:');
-                                  if (custom !== null) updateFilter(idx, { value: custom });
-                                  setIsDropdownOpen({...isDropdownOpen, [idx]: false});
-                                }}
-                                variant="ghost"
-                                size="md"
-                                fullWidth
-                                className="justify-start px-5 py-6 font-bold uppercase tracking-widest text-primary hover:bg-primary/8 border-b border-border"
-                              >
-                                + Custom Value
-                              </Button>
-
-                              {getUniqueValues(filter.field)
-                                .filter(v => v.toLowerCase().includes((searchValue[idx] || '').toLowerCase()))
-                                .map(val => (
-                                  <Button 
-                                    key={val}
-                                    onClick={() => {
-                                      updateFilter(idx, { value: val });
-                                      setIsDropdownOpen({...isDropdownOpen, [idx]: false});
-                                    }}
-                                    variant="ghost"
-                                    size="md"
-                                    fullWidth
-                                    className="justify-between px-5 py-6 font-bold text-muted-foreground hover:bg-muted/50"
-                                  >
-                                    {val}
-                                    {filter.value === val && <Check className="w-3 h-3 text-primary" />}
-                                  </Button>
-                                ))}
-                              
-                              {getUniqueValues(filter.field).length === 0 && (
-                                <p className="p-5 text-xs font-bold text-muted-foreground/40 uppercase italic">No existing values found</p>
-                              )}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                    <Select
+                      value={filter.value}
+                      onChange={val => updateFilter(idx, { value: val })}
+                      options={getUniqueValues(filter.field).map(v => ({ label: v, value: v }))}
+                      isSearchable={true}
+                      placeholder="Select or type a value..."
+                    />
                   </div>
 
-                  <Button 
+                  <Button
                     onClick={() => removeFilter(idx)}
                     variant="ghost"
                     size="icon"
-                    className="p-6 text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20"
+                    className="shrink-0 w-10 h-10 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 border border-border hover:border-rose-500/30 rounded-lg"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </motion.div>
               ))}
@@ -303,23 +204,25 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
         </div>
       </div>
 
-      <div className="p-8 bg-muted/50 border-t border-border flex items-center justify-between">
+      <div className="pt-6 border-t border-border flex items-center justify-between">
         <div className="flex items-center gap-3 text-muted-foreground">
-           <div className="w-8 h-8 bg-card rounded-md flex items-center justify-center shadow-sm">
+          <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center">
             <Info className="w-4 h-4 text-primary" />
-           </div>
-           <p className="text-xs font-bold uppercase tracking-widest max-w-xs leading-relaxed">Contacts are dynamically synchronized with this segment based on the active rule set.</p>
+          </div>
+          <p className="text-xs font-medium text-muted-foreground max-w-xs leading-relaxed">
+            Contacts are dynamically matched based on the active rule set.
+          </p>
         </div>
-        <div className="flex items-center gap-4">
-          <Button onClick={onCancel} variant="ghost" size="lg" className="px-8 font-bold uppercase tracking-widest">
+        <div className="flex items-center gap-3">
+          <Button onClick={onCancel} variant="secondary" size="md" className="font-bold">
             Discard
           </Button>
-          <Button 
+          <Button
             onClick={() => onSave(activeSeg)}
             variant="primary"
-            size="lg"
+            size="md"
             leftIcon={Save}
-            className="px-12 shadow-xl shadow-primary/20 font-bold uppercase tracking-widest"
+            className="font-bold shadow-sm shadow-primary/20"
           >
             Save Segment
           </Button>

@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { Shield, ArrowLeft, Save, Eye, Plus, Pencil, Trash2 } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import Textarea from '../../components/primitives/Textarea';
 import { cn } from '../../lib/utils';
@@ -214,7 +215,7 @@ export default function AdminRoleForm() {
 
         {/* ── Left: identity + color ─────────────────────────── */}
         <div className="xl:col-span-1 space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+          <Card className="!rounded-2xl space-y-5">
             <h3 className="text-sm font-bold text-foreground">Role Identity</h3>
 
             <Input
@@ -230,7 +231,7 @@ export default function AdminRoleForm() {
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={3}
-              variant="filled"
+              variant="outline"
             />
 
             {name && (
@@ -271,10 +272,10 @@ export default function AdminRoleForm() {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Save button (sticky on desktop) */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
+          <Card padding="sm" className="!rounded-2xl flex-col gap-3">
             <Button
               onClick={handleSave}
               isLoading={isSaving}
@@ -294,21 +295,15 @@ export default function AdminRoleForm() {
             >
               Cancel
             </Button>
-          </div>
+          </Card>
         </div>
 
         {/* ── Right: section permissions ────────────────────── */}
-        <div className="xl:col-span-2 bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-foreground">Section Access & Permissions</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Enable a section, then fine-tune what the role can do inside it.</p>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Enabled
-              <span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block ml-2" /> Disabled
-            </div>
-          </div>
+        <Card padding="none" className="xl:col-span-2 !rounded-2xl">
+          <Card.Header
+            title={<div><h3 className="text-sm font-bold text-foreground">Section Access & Permissions</h3><p className="text-xs text-muted-foreground mt-0.5">Enable a section, then fine-tune what the role can do inside it.</p></div>}
+            action={<div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Enabled<span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block ml-2" /> Disabled</div>}
+          />
 
           <div className="divide-y divide-border">
             {SECTION_GROUPS.map(group => (
@@ -383,7 +378,7 @@ export default function AdminRoleForm() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

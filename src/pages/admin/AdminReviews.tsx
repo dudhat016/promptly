@@ -1,5 +1,5 @@
 import {
-  collectionGroup, doc, onSnapshot, orderBy, query,
+  collectionGroup, doc, getDoc, onSnapshot, orderBy, query,
   serverTimestamp, updateDoc, deleteDoc, where,
 } from 'firebase/firestore';
 import { AlertCircle, CheckCircle, MessageSquare, Star, Trash2, XCircle } from 'lucide-react';
@@ -9,6 +9,8 @@ import { Link } from 'react-router-dom';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import Button from '../../components/primitives/Button';
 import Rating from '../../components/feedback/Rating';
+import Spinner from '../../components/feedback/Spinner';
+import Tabs from '../../components/navigation/Tabs';
 import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
@@ -59,6 +61,19 @@ export default function AdminReviews() {
 
   const getRef = (r: PromptReview) => doc(db, 'prompts', r.promptId, 'reviews', r.id);
 
+  // Recalculates avgRating + reviewCount on the prompt doc when a review is added or removed.
+  const updatePromptStats = async (promptId: string, ratingDelta: number, countDelta: number) => {
+    const promptRef = doc(db, 'prompts', promptId);
+    const snap = await getDoc(promptRef);
+    if (!snap.exists()) return;
+    const { avgRating = 0, reviewCount = 0 } = snap.data();
+    const newCount = Math.max(0, reviewCount + countDelta);
+    const newAvg = newCount === 0
+      ? 0
+      : parseFloat(((avgRating * reviewCount + ratingDelta) / newCount).toFixed(1));
+    await updateDoc(promptRef, { reviewCount: newCount, avgRating: newAvg });
+  };
+
   const handleApprove = async (r: PromptReview) => {
     if (actionLoading) return;
     setActionLoading(r.id);
@@ -68,6 +83,10 @@ export default function AdminReviews() {
         reviewedAt: serverTimestamp(),
         reviewedBy: user?.uid ?? '',
       });
+      // Only count it if it wasn't already approved (avoid double-counting re-approvals)
+      if (r.moderationStatus !== 'approved') {
+        await updatePromptStats(r.promptId, r.rating, 1).catch(() => {});
+      }
       toast.success('Review approved');
     } catch {
       toast.error('Failed to approve');
@@ -85,6 +104,10 @@ export default function AdminReviews() {
         reviewedAt: serverTimestamp(),
         reviewedBy: user?.uid ?? '',
       });
+      // Remove from stats only if it was previously approved
+      if (r.moderationStatus === 'approved') {
+        await updatePromptStats(r.promptId, -r.rating, -1).catch(() => {});
+      }
       toast.success('Review rejected');
     } catch {
       toast.error('Failed to reject');
@@ -98,6 +121,10 @@ export default function AdminReviews() {
     if (!ok) return;
     try {
       await deleteDoc(getRef(r));
+      // Remove from stats only if the review was approved and counted
+      if (r.moderationStatus === 'approved') {
+        await updatePromptStats(r.promptId, -r.rating, -1).catch(() => {});
+      }
       toast.success('Review deleted');
     } catch {
       toast.error('Failed to delete');
@@ -146,36 +173,18 @@ export default function AdminReviews() {
       )}
 
       {/* ── Tabs ── */}
-      <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg border border-border w-fit">
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={cn(
-              'px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-1.5',
-              activeTab === t.key
-                ? 'bg-background text-foreground shadow-sm border border-border'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {t.label}
-            {counts[t.key] > 0 && (
-              <span className={cn(
-                'min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center',
-                t.key === 'pending' ? 'bg-amber-500 text-white' : 'bg-primary/20 text-primary'
-              )}>
-                {counts[t.key]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={tabs.map(t => ({ id: t.key, label: t.label, badge: counts[t.key] > 0 ? counts[t.key] : undefined }))}
+        activeTab={activeTab}
+        onChange={id => setActiveTab(id as StatusFilter)}
+        variant="pill"
+      />
 
       {/* ── Table ── */}
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-16 flex flex-col items-center gap-3">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Loading reviews...</p>
           </div>
         ) : visible.length === 0 ? (

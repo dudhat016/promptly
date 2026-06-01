@@ -16,12 +16,3 @@ export interface NavItem {
   section?: AdminSection;
 }
 
-export interface LayoutConfig {
-  logo?: React.ReactNode;
-  navItems: NavItem[];
-  userMenu?: React.ReactNode;
-  rightActions?: React.ReactNode;
-  footer?: React.ReactNode;
-  sidebarWidth?: number;
-  collapsedSidebarWidth?: number;
-}

@@ -1,9 +1,11 @@
-import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
-import { AlertCircle, BarChart3, CheckCircle2, Link2, Mail, MousePointer2, RefreshCw, TrendingUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { AdminPageHeader } from '../../components/admin';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { AlertCircle, BarChart3, CheckCircle2, Mail, MousePointer2, RefreshCw, TrendingUp } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { AdminPageHeader, DataTable } from '../../components/admin';
+import type { DataTableColumn } from '../../components/admin';
 import Badge from '../../components/primitives/Badge';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import { db } from '../../lib/firebase';
 
 interface LogRow {
@@ -18,6 +20,16 @@ interface LogRow {
   clickedAt?: string | null;
   sentAt: any;
   error?: string;
+}
+
+interface GroupBreakdownRow {
+  group: string;
+  sent: number;
+  opens: number;
+  openRate: number;
+  clicks: number;
+  clickRate: number;
+  failed: number;
 }
 
 const GROUP_MAP: Record<string, string> = {
@@ -76,13 +88,35 @@ export default function AdminEmailAnalytics() {
   const failRate  = logs.length > 0 ? Math.round((failed / logs.length) * 100) : 0;
 
   // Per-group breakdown
-  const byGroup = logs.reduce<Record<string, { sent: number; opens: number; clicks: number; failed: number }>>((acc, l) => {
-    const g = GROUP_MAP[l.type] || 'other';
-    if (!acc[g]) acc[g] = { sent: 0, opens: 0, clicks: 0, failed: 0 };
-    if (l.status === 'sent')   { acc[g].sent++;   if ((l.opens || 0) > 0) acc[g].opens++; if ((l.clicks || 0) > 0) acc[g].clicks++; }
-    if (l.status === 'failed') acc[g].failed++;
-    return acc;
-  }, {});
+  const breakdownData = useMemo<GroupBreakdownRow[]>(() => {
+    const groups: Record<string, { sent: number; opens: number; clicks: number; failed: number }> = {};
+    logs.forEach(l => {
+      const g = GROUP_MAP[l.type] || 'other';
+      if (!groups[g]) groups[g] = { sent: 0, opens: 0, clicks: 0, failed: 0 };
+      if (l.status === 'sent') {
+        groups[g].sent++;
+        if ((l.opens || 0) > 0) groups[g].opens++;
+        if ((l.clicks || 0) > 0) groups[g].clicks++;
+      }
+      if (l.status === 'failed') {
+        groups[g].failed++;
+      }
+    });
+
+    return Object.entries(groups).map(([group, g]) => {
+      const oRate = g.sent > 0 ? Math.round((g.opens / g.sent) * 100) : 0;
+      const cRate = g.sent > 0 ? Math.round((g.clicks / g.sent) * 100) : 0;
+      return {
+        group,
+        sent: g.sent,
+        opens: g.opens,
+        openRate: oRate,
+        clicks: g.clicks,
+        clickRate: cRate,
+        failed: g.failed,
+      };
+    }).sort((a, b) => b.sent - a.sent);
+  }, [logs]);
 
   const recentFailed = logs.filter(l => l.status === 'failed').slice(0, 10);
 
@@ -91,6 +125,98 @@ export default function AdminEmailAnalytics() {
     { label: 'Open Rate',   value: `${openRate}%`,  icon: TrendingUp,    accent: 'bg-emerald-500/10 text-emerald-600' },
     { label: 'Click Rate',  value: `${clickRate}%`, icon: MousePointer2, accent: 'bg-blue-500/10 text-blue-700' },
     { label: 'Fail Rate',   value: `${failRate}%`,  icon: AlertCircle,   accent: 'bg-destructive/10 text-destructive' },
+  ];
+
+  const columns: DataTableColumn<GroupBreakdownRow>[] = [
+    {
+      key: 'group',
+      header: 'Group',
+      searchValue: r => r.group,
+      sortable: true,
+      sortValue: r => r.group,
+      render: r => (
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${GROUP_COLORS[r.group] ?? 'bg-muted text-muted-foreground'}`}>
+          {r.group}
+        </span>
+      ),
+      csvValue: r => r.group,
+    },
+    {
+      key: 'sent',
+      header: 'Sent',
+      sortable: true,
+      sortValue: r => r.sent,
+      render: r => <span className="text-sm font-semibold text-foreground">{r.sent}</span>,
+      csvValue: r => r.sent,
+    },
+    {
+      key: 'opens',
+      header: 'Opens',
+      sortable: true,
+      sortValue: r => r.opens,
+      render: r => <span className="text-sm text-muted-foreground">{r.opens}</span>,
+      csvValue: r => r.opens,
+    },
+    {
+      key: 'openRate',
+      header: 'Open %',
+      sortable: true,
+      sortValue: r => r.openRate,
+      render: r => (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 max-w-[80px] bg-muted rounded-full h-1.5">
+            <div
+              className="bg-emerald-500 h-1.5 rounded-full"
+              style={{ width: `${r.openRate}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground w-8 text-right">
+            {r.openRate}%
+          </span>
+        </div>
+      ),
+      csvValue: r => `${r.openRate}%`,
+    },
+    {
+      key: 'clicks',
+      header: 'Clicks',
+      sortable: true,
+      sortValue: r => r.clicks,
+      render: r => <span className="text-sm text-muted-foreground">{r.clicks}</span>,
+      csvValue: r => r.clicks,
+    },
+    {
+      key: 'clickRate',
+      header: 'Click %',
+      sortable: true,
+      sortValue: r => r.clickRate,
+      render: r => (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 max-w-[80px] bg-muted rounded-full h-1.5">
+            <div
+              className="bg-blue-500 h-1.5 rounded-full"
+              style={{ width: `${r.clickRate}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground w-8 text-right">
+            {r.clickRate}%
+          </span>
+        </div>
+      ),
+      csvValue: r => `${r.clickRate}%`,
+    },
+    {
+      key: 'failed',
+      header: 'Failed',
+      sortable: true,
+      sortValue: r => r.failed,
+      render: r => r.failed > 0 ? (
+        <Badge variant="error" size="sm">{r.failed}</Badge>
+      ) : (
+        <span className="text-xs text-muted-foreground">—</span>
+      ),
+      csvValue: r => r.failed,
+    },
   ];
 
   return (
@@ -110,7 +236,7 @@ export default function AdminEmailAnalytics() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {stats.map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+          <Card key={s.label} padding="sm" className="flex-row items-center gap-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.accent}`}>
               <s.icon className="w-4 h-4" />
             </div>
@@ -118,75 +244,26 @@ export default function AdminEmailAnalytics() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
               <p className="text-lg font-black text-foreground leading-none">{loading ? '…' : s.value}</p>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {/* Per-group breakdown */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-border">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-foreground">Breakdown by Group</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                {['Group', 'Sent', 'Opens', 'Open %', 'Clicks', 'Click %', 'Failed'].map(h => (
-                  <th key={h} className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {Object.entries(byGroup).sort((a, b) => b[1].sent - a[1].sent).map(([group, g]) => (
-                <tr key={group} className="hover:bg-muted/20 transition-colors">
-                  <td className="px-5 py-3">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${GROUP_COLORS[group] ?? 'bg-muted text-muted-foreground'}`}>
-                      {group}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-sm font-semibold text-foreground">{g.sent}</td>
-                  <td className="px-5 py-3 text-sm text-muted-foreground">{g.opens}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 max-w-[80px] bg-muted rounded-full h-1.5">
-                        <div
-                          className="bg-emerald-500 h-1.5 rounded-full"
-                          style={{ width: `${g.sent > 0 ? Math.round((g.opens / g.sent) * 100) : 0}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground w-8 text-right">
-                        {g.sent > 0 ? Math.round((g.opens / g.sent) * 100) : 0}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-sm text-muted-foreground">{g.clicks}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 max-w-[80px] bg-muted rounded-full h-1.5">
-                        <div
-                          className="bg-blue-500 h-1.5 rounded-full"
-                          style={{ width: `${g.sent > 0 ? Math.round((g.clicks / g.sent) * 100) : 0}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground w-8 text-right">
-                        {g.sent > 0 ? Math.round((g.clicks / g.sent) * 100) : 0}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    {g.failed > 0
-                      ? <Badge variant="error" size="sm">{g.failed}</Badge>
-                      : <span className="text-xs text-muted-foreground">—</span>
-                    }
-                  </td>
-                </tr>
-              ))}
-              {!loading && Object.keys(byGroup).length === 0 && (
-                <tr><td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">No data yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={breakdownData}
+          rowKey={row => row.group}
+          loading={loading}
+          searchPlaceholder="Search groups..."
+          exportFilename="email_group_breakdown"
+          emptyIcon={BarChart3}
+          emptyTitle="No group data found"
+          emptyMessage="Breakdown will appear here once email logs are loaded."
+        />
       </div>
 
       {/* Recent failures */}

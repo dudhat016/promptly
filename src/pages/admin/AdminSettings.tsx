@@ -2,18 +2,19 @@ import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc } 
 import {
   BarChart, Bell,
   ExternalLink,
-  Globe, Image,
+  Globe, HardDrive, Image,
   Link2, Lock, Mail, MessageSquare,
   Palette, Phone, Plus, Save, Search, Settings, Shield,
   Sparkles, Target, Trash2, UserPlus, Zap,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useParams } from 'react-router-dom';
 import { AdminPageHeader } from '../../components/admin';
 import ImageUpload from '../../components/admin/ImageUpload';
 import Alert from '../../components/feedback/Alert';
 import Button from '../../components/primitives/Button';
+import CardPrimitive from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import Select from '../../components/primitives/Select';
 import TagInput from '../../components/primitives/TagInput';
@@ -21,12 +22,11 @@ import Textarea from '../../components/primitives/Textarea';
 import { useConfig } from '../../hooks/useConfig';
 import { logAuditEvent } from '../../lib/auditLog';
 import { db } from '../../lib/firebase';
-import AdminEmailSettings from './AdminEmailSettings';
-import AdminMarketingSettings from './AdminMarketingSettings';
-import AdminPaymentSettings from './AdminPaymentSettings';
 import AdminContentSettings from './AdminContentSettings';
+import AdminEmailSettings from './AdminEmailSettings';
+import AdminPaymentSettings from './AdminPaymentSettings';
 
-type TabType = 'general' | 'branding' | 'auth' | 'ai' | 'email' | 'payments' | 'content' | 'security' | 'marketing';
+type TabType = 'general' | 'branding' | 'auth' | 'ai' | 'email' | 'payments' | 'content' | 'security';
 
 interface SitePage {
   id: string;
@@ -53,15 +53,17 @@ const TAB_ALIASES: Record<string, TabType> = {
 // ── Card wrapper ──────────────────────────────────────────────────────────────
 function Card({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-      <div className="px-8 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-          <Icon className="w-4 h-4" />
+    <CardPrimitive padding="none" className="!rounded-3xl shadow-sm">
+      <CardPrimitive.Header title={
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <Icon className="w-4 h-4" />
+          </div>
+          <h3 className="font-semibold text-lg text-foreground">{title}</h3>
         </div>
-        <h3 className="font-semibold text-lg text-foreground">{title}</h3>
-      </div>
-      <div className="p-8">{children}</div>
-    </div>
+      } />
+      <CardPrimitive.Body>{children}</CardPrimitive.Body>
+    </CardPrimitive>
   );
 }
 
@@ -90,7 +92,7 @@ export default function AdminSettings() {
   useEffect(() => {
     const raw = subPath?.split('/')[0] ?? '';
     const tab = (TAB_ALIASES[raw] ?? raw) as TabType;
-    setActiveTab(['general','branding','auth','ai','email','payments','content','security','marketing'].includes(tab) ? tab : 'general');
+    setActiveTab(['general','branding','auth','ai','email','payments','content','security'].includes(tab) ? tab : 'general');
   }, [subPath]);
 
   const [loading, setLoading] = useState(true);
@@ -178,6 +180,8 @@ export default function AdminSettings() {
     cookieConsentText: 'We use cookies to improve your experience and analyse site traffic.',
     gdprMode: false,
     webhookUrl: '',
+    // ── Storage & Uploads ──
+    storage: { maxImageSizeMb: 2, promptImageRatio: '16:9' },
   });
 
   useEffect(() => {
@@ -197,6 +201,7 @@ export default function AdminSettings() {
             appearance: { ...prev.appearance, ...(data.appearance ?? {}) },
             aiDefaults: { ...prev.aiDefaults, ...(data.aiDefaults ?? {}) },
             adminNotify:{ ...prev.adminNotify,...(data.adminNotify ?? {}) },
+            storage:    { ...prev.storage,    ...(data.storage    ?? {}) },
           }));
         }
         setPages(pagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SitePage)));
@@ -268,7 +273,7 @@ export default function AdminSettings() {
   );
 
   return (
-    <div className="pb-24">
+    <div>
       <AdminPageHeader
         label="Configuration"
         labelIcon={Settings}
@@ -338,7 +343,6 @@ export default function AdminSettings() {
                   <Select label="Currency" value={config.currency} onChange={val => setConfig({ ...config, currency: val })} options={[{ label: 'USD ($)', value: 'USD' }, { label: 'EUR (€)', value: 'EUR' }, { label: 'GBP (£)', value: 'GBP' }, { label: 'INR (₹)', value: 'INR' }]} />
                   <Input label="Symbol" value={config.currencySymbol} onChange={e => setConfig({ ...config, currencySymbol: e.target.value })} variant="outline" />
                 </div>
-                <Input label="Tax Rate (%)" type="number" value={config.taxRate} onChange={e => setConfig({ ...config, taxRate: Number(e.target.value) })} variant="outline" />
               </div>
             </Card>
 
@@ -591,9 +595,6 @@ export default function AdminSettings() {
           </div>
         )}
 
-        {/* ── MARKETING ────────────────────────────────────────── */}
-        {activeTab === 'marketing' && <AdminMarketingSettings />}
-
         {/* ── SECURITY ─────────────────────────────────────────── */}
         {activeTab === 'security' && (
           <div className="space-y-6">
@@ -631,6 +632,78 @@ export default function AdminSettings() {
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">Send a POST request to an external URL whenever a key platform event fires (new user, new order, failed payment).</p>
                 <Input label="Webhook Endpoint URL" value={config.webhookUrl || ''} onChange={e => setConfig({ ...config, webhookUrl: e.target.value })} variant="outline" placeholder="https://hooks.example.com/events" helperText="Must accept POST with JSON body. Leave blank to disable." />
+              </div>
+            </Card>
+
+            <Card icon={HardDrive} title="Storage & Uploads">
+              <div className="space-y-6">
+                <p className="text-xs text-muted-foreground">
+                  Control file upload limits across the platform. These limits apply to all image uploads (prompt covers, blog images, avatars, assets).
+                </p>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Input
+                    label="Max Image Upload Size (MB)"
+                    type="number"
+                    value={config.storage?.maxImageSizeMb ?? 2}
+                    onChange={e => setConfig({ ...config, storage: { ...config.storage, maxImageSizeMb: Math.max(0.1, parseFloat(e.target.value) || 2) } })}
+                    variant="outline"
+                    helperText="Users will see an error if their image exceeds this size."
+                    placeholder="2"
+                  />
+                </div>
+                <div className="grid md:grid-cols-3 gap-3">
+                  {[1, 2, 5].map(mb => (
+                    <button
+                      key={mb}
+                      type="button"
+                      onClick={() => setConfig({ ...config, storage: { ...config.storage, maxImageSizeMb: mb } })}
+                      className={`py-2.5 rounded-xl border-2 text-xs font-bold uppercase tracking-wider transition-all ${
+                        config.storage?.maxImageSizeMb === mb
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/30'
+                      }`}
+                    >
+                      {mb} MB
+                    </button>
+                  ))}
+                </div>
+
+                <div className="border-t border-border pt-6">
+                  <p className="text-sm font-semibold text-foreground mb-1">Prompt Image Ratio</p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    All prompt cards on the marketplace will display images at this ratio. Images are shown without cropping — letterbox areas use the card background.
+                  </p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {(['1:1', '3:2', '4:3', '16:9', '9:16'] as const).map(ratio => {
+                      const [w, h] = ratio.split(':').map(Number);
+                      const pct = Math.round((h / w) * 100);
+                      const active = (config.storage?.promptImageRatio ?? '16:9') === ratio;
+                      return (
+                        <button
+                          key={ratio}
+                          type="button"
+                          onClick={() => setConfig({ ...config, storage: { ...config.storage, promptImageRatio: ratio } })}
+                          className={`flex flex-col items-center gap-2 py-3 rounded-xl border-2 text-xs font-bold transition-all ${
+                            active ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'
+                          }`}
+                        >
+                          {/* Visual preview box */}
+                          <div className="flex items-center justify-center w-10" style={{ height: 40 }}>
+                            <div
+                              className={`rounded border-2 ${active ? 'border-primary bg-primary/20' : 'border-muted-foreground/30 bg-muted/40'}`}
+                              style={{
+                                width:  w >= h ? 36 : Math.round(36 * w / h),
+                                height: h >= w ? 36 : Math.round(36 * h / w),
+                              }}
+                            />
+                          </div>
+                          {ratio}
+                          <span className="text-[9px] font-normal opacity-60">{pct}%</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </Card>
 

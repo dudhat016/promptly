@@ -647,6 +647,20 @@ export class SubscriptionService {
     const eventType = payload.event_type;
     const resource = payload.resource;
 
+    if (eventType === 'BILLING.SUBSCRIPTION.PAYMENT.FAILED') {
+      const paypalSubId = resource.billing_agreement_id || resource.id;
+      if (paypalSubId) {
+        const usersSnap = await firebase.db.collection("users")
+          .where('paypalSubscriptionId', '==', paypalSubId)
+          .limit(1).get();
+        if (!usersSnap.empty) {
+          const userDoc = usersSnap.docs[0];
+          const currentAttempt = (userDoc.data().dunningAttempt || 0) + 1;
+          await DunningService.handlePaymentFailure(userDoc.id, 'paypal', currentAttempt);
+        }
+      }
+    }
+
     if (eventType === 'BILLING.SUBSCRIPTION.ACTIVATED' || eventType === 'PAYMENT.SALE.COMPLETED') {
       const paypalSubId = resource.billing_agreement_id || resource.id;
       if (!paypalSubId) return { received: true };
@@ -662,6 +676,11 @@ export class SubscriptionService {
       if (!usersSnap.empty) {
         const userDoc = usersSnap.docs[0];
         const userData = userDoc.data();
+
+        // Clear dunning if this is a recovery payment
+        if (userData.dunningStatus === 'failing') {
+          await DunningService.handlePaymentRecovery(userDoc.id);
+        }
 
         const expiryDate = userData.currentPeriodEnd?.toDate
           ? new Date(userData.currentPeriodEnd.toDate())

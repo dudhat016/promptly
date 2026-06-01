@@ -1,10 +1,12 @@
-import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { api } from '../../lib/api';
 import { usePath } from '../../hooks/usePath';
 import { cn } from '../../lib/utils';
+import Input from '../primitives/Input';
+import Button from '../primitives/Button';
 
 interface Props {
   className?: string;
@@ -61,22 +63,18 @@ export default function NewsletterSignup({
   if (variant === 'inline') {
     return (
       <form onSubmit={handleSubmit} className={cn('flex items-center gap-2', className)}>
-        <input
+        <Input
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           placeholder={placeholder}
           required
-          className="flex-1 min-w-0 px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:border-primary placeholder:text-muted-foreground/50"
+          variant="outline"
+          className="flex-1 min-w-0"
         />
-        <button
-          type="submit"
-          disabled={loading}
-          className="shrink-0 px-4 py-2 bg-primary text-primary-foreground text-sm font-bold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-        >
-          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+        <Button type="submit" isLoading={loading} leftIcon={loading ? undefined : ArrowRight} size="sm" className="shrink-0">
           Subscribe
-        </button>
+        </Button>
       </form>
     );
   }
@@ -90,22 +88,17 @@ export default function NewsletterSignup({
         <h3 className="font-black text-foreground text-lg mb-1">{label}</h3>
         <p className="text-muted-foreground text-sm mb-6">New prompts, AI tips, and workflow ideas. No spam.</p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 max-w-sm mx-auto">
-          <input
+          <Input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder={placeholder}
             required
-            className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:border-primary placeholder:text-muted-foreground/50"
+            variant="outline"
           />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          <Button type="submit" isLoading={loading} variant="primary" size="md" fullWidth>
             Subscribe for free
-          </button>
+          </Button>
         </form>
       </div>
     );
@@ -116,21 +109,18 @@ export default function NewsletterSignup({
     <div className={cn('space-y-3', className)}>
       <p className="text-sm font-semibold text-foreground">{label}</p>
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <input
+        <Input
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           placeholder={placeholder}
           required
-          className="flex-1 min-w-0 px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:border-primary placeholder:text-muted-foreground/50"
+          variant="outline"
+          className="flex-1 min-w-0"
         />
-        <button
-          type="submit"
-          disabled={loading}
-          className="shrink-0 px-4 py-2 bg-primary text-primary-foreground text-sm font-bold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-        >
-          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-        </button>
+        <Button type="submit" isLoading={loading} size="icon" className="shrink-0">
+          {!loading && <ArrowRight className="w-4 h-4" />}
+        </Button>
       </form>
       <p className="text-[10px] text-muted-foreground/60">No spam. Unsubscribe any time.</p>
     </div>

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
+import Button from '../../components/primitives/Button';
 
 const CRON_SECRET = import.meta.env.VITE_CRON_SECRET ?? '';
 
@@ -162,13 +163,15 @@ export default function AdminSystemHealth() {
           <h1 className="text-2xl font-bold text-white">System Health</h1>
           <p className="text-sm text-zinc-400 mt-1">Cron job status, collection stats, and recent email activity</p>
         </div>
-        <button
+        <Button
+          size="sm"
+          variant="ghost"
+          leftIcon={RefreshCw}
+          className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
           onClick={() => { fetchJobs(); fetchColStats(); fetchEmailLogs(); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors"
         >
-          <RefreshCw className="w-4 h-4" />
           Refresh
-        </button>
+        </Button>
       </div>
 
       {/* Collection stats */}
@@ -229,17 +232,17 @@ export default function AdminSystemHealth() {
               )}
 
               <div className="mt-auto">
-                <button
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
                   onClick={() => triggerJob(id)}
                   disabled={triggering === id}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-50 transition-colors"
+                  leftIcon={triggering === id ? undefined : Play}
+                  isLoading={triggering === id}
                 >
-                  {triggering === id
-                    ? <RefreshCw className="w-3 h-3 animate-spin" />
-                    : <Play className="w-3 h-3" />
-                  }
                   {triggering === id ? 'Running…' : 'Run now'}
-                </button>
+                </Button>
                 {triggerMsg[id] && (
                   <p className="text-xs mt-1.5 text-zinc-400 break-all">{triggerMsg[id]}</p>
                 )}

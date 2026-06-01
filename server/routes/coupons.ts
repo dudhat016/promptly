@@ -1,6 +1,6 @@
 import { Router, json } from "express";
 import { initFirebase } from "../lib/firebase.js";
-import { authMiddleware, AuthenticatedRequest } from "../middleware/auth.js";
+import { authMiddleware, adminOnly, AuthenticatedRequest } from "../middleware/auth.js";
 import admin from "firebase-admin";
 
 const router = Router();
@@ -99,7 +99,7 @@ router.post("/redeem", authMiddleware, json(), async (req: AuthenticatedRequest,
 });
 
 // Admin: list all coupons
-router.get("/", authMiddleware, async (req: AuthenticatedRequest, res) => {
+router.get("/", authMiddleware, adminOnly, async (req: AuthenticatedRequest, res) => {
   try {
     const firebase = await initFirebase();
     if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
@@ -114,7 +114,7 @@ router.get("/", authMiddleware, async (req: AuthenticatedRequest, res) => {
 });
 
 // Admin: create coupon
-router.post("/", authMiddleware, json(), async (req: AuthenticatedRequest, res) => {
+router.post("/", authMiddleware, adminOnly, json(), async (req: AuthenticatedRequest, res) => {
   const { code, type, value, maxUses, expiresAt, planIds, description } = req.body;
   if (!code || !type || value == null) {
     return res.status(400).json({ error: "code, type, and value are required" });
@@ -155,19 +155,20 @@ router.post("/", authMiddleware, json(), async (req: AuthenticatedRequest, res) 
 });
 
 // Admin: update coupon
-router.patch("/:id", authMiddleware, json(), async (req: AuthenticatedRequest, res) => {
+router.patch("/:id", authMiddleware, adminOnly, json(), async (req: AuthenticatedRequest, res) => {
   const { id } = req.params;
-  const { active, maxUses, expiresAt, description } = req.body;
+  const { active, maxUses, expiresAt, description, planIds } = req.body;
 
   try {
     const firebase = await initFirebase();
     if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
 
     const updates: any = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-    if (active !== undefined) updates.active = active;
-    if (maxUses !== undefined) updates.maxUses = maxUses ? Number(maxUses) : null;
-    if (expiresAt !== undefined) updates.expiresAt = expiresAt ? admin.firestore.Timestamp.fromDate(new Date(expiresAt)) : null;
+    if (active !== undefined)      updates.active = active;
+    if (maxUses !== undefined)     updates.maxUses = maxUses ? Number(maxUses) : null;
+    if (expiresAt !== undefined)   updates.expiresAt = expiresAt ? admin.firestore.Timestamp.fromDate(new Date(expiresAt)) : null;
     if (description !== undefined) updates.description = description;
+    if (planIds !== undefined)     updates.planIds = Array.isArray(planIds) ? planIds : [];
 
     await firebase.db.collection("coupons").doc(id).update(updates);
     res.json({ success: true });
@@ -177,7 +178,7 @@ router.patch("/:id", authMiddleware, json(), async (req: AuthenticatedRequest, r
 });
 
 // Admin: delete coupon
-router.delete("/:id", authMiddleware, async (req: AuthenticatedRequest, res) => {
+router.delete("/:id", authMiddleware, adminOnly, async (req: AuthenticatedRequest, res) => {
   try {
     const firebase = await initFirebase();
     if (!firebase) return res.status(500).json({ error: "Firebase not connected" });

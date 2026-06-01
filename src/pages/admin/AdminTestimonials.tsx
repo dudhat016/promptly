@@ -10,7 +10,9 @@ import {
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import { DataTable, type DataTableColumn } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
+import Textarea from '../../components/primitives/Textarea';
 import Badge from '../../components/primitives/Badge';
 import { toast } from 'react-hot-toast';
 import { AnimatePresence, motion } from 'motion/react';
@@ -270,12 +272,12 @@ export default function AdminTestimonials() {
       {/* Add / Edit Form */}
       <AnimatePresence>
         {showForm && (
-          <motion.div
+          <Card
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="bg-card border border-border rounded-xl p-6 shadow-sm"
+            className="shadow-sm"
           >
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-foreground">
@@ -312,15 +314,13 @@ export default function AdminTestimonials() {
                 onChange={e => setForm(p => ({ ...p, imageUrl: e.target.value }))}
               />
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                  Content *
-                </label>
-                <textarea
+                <Textarea
+                  label="Content *"
                   value={form.content}
                   onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
                   rows={3}
                   placeholder="This tool completely transformed my workflow..."
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  variant="outline"
                 />
               </div>
               <div>
@@ -359,7 +359,7 @@ export default function AdminTestimonials() {
                 {editing ? 'Update' : 'Add Testimonial'}
               </Button>
             </div>
-          </motion.div>
+          </Card>
         )}
       </AnimatePresence>
 
@@ -370,10 +370,10 @@ export default function AdminTestimonials() {
           { label: 'Featured', value: items.filter(t => t.featured).length, color: 'text-emerald-600' },
           { label: 'Avg Rating', value: items.length ? (items.reduce((s, t) => s + (t.rating ?? 5), 0) / items.length).toFixed(1) : '—', color: 'text-amber-500' },
         ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
+          <Card key={s.label} padding="sm" className="text-center">
             <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest mt-1">{s.label}</p>
-          </div>
+          </Card>
         ))}
       </div>
 

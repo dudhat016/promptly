@@ -7,6 +7,8 @@ import { db } from '../../lib/firebase';
 import { AdminPageHeader } from '../../components/admin';
 import { usePath } from '../../hooks/usePath';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
+import Input from '../../components/primitives/Input';
 import Badge from '../../components/primitives/Badge';
 import {
   AreaChart, Area, BarChart, Bar,
@@ -26,7 +28,7 @@ interface StatBoxProps {
 
 function StatBox({ label, value, sub, icon: Icon, accent = 'bg-primary/10 text-primary' }: StatBoxProps) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 flex items-start gap-4">
+    <Card padding="sm" className="flex-row items-start gap-4">
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -40,7 +42,7 @@ function StatBox({ label, value, sub, icon: Icon, accent = 'bg-primary/10 text-p
           </p>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -209,7 +211,7 @@ export default function AdminOverview() {
       <div className="grid lg:grid-cols-2 gap-6">
 
         {/* User Growth */}
-        <div className="bg-card border border-border rounded-xl p-6">
+        <Card>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="font-bold text-foreground">User Growth</h3>
@@ -243,10 +245,10 @@ export default function AdminOverview() {
               />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
         {/* Top Prompts Chart */}
-        <div className="bg-card border border-border rounded-xl p-6">
+        <Card>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="font-bold text-foreground">Top Prompts</h3>
@@ -279,7 +281,7 @@ export default function AdminOverview() {
               No prompt data yet.
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* ── Platform Health Bar ── */}
@@ -290,7 +292,7 @@ export default function AdminOverview() {
           { label: 'Total Copies',    value: stats.totalCopies.toLocaleString(), icon: BarChart3, color: 'text-purple-500', bg: 'bg-purple-500/10' },
           { label: 'Avg Order Value', value: revenue.arpu > 0 ? `₹${revenue.arpu}` : '—', icon: DollarSign, color: 'text-amber-500', bg: 'bg-amber-500/10' },
         ].map(m => (
-          <div key={m.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+          <Card key={m.label} padding="sm" className="flex-row items-center gap-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${m.bg}`}>
               <m.icon className={`w-4 h-4 ${m.color}`} />
             </div>
@@ -298,7 +300,7 @@ export default function AdminOverview() {
               <p className="text-lg font-bold text-foreground">{m.value}</p>
               <p className="text-[11px] text-muted-foreground font-medium">{m.label}</p>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
@@ -309,7 +311,7 @@ export default function AdminOverview() {
         <div className="flex flex-col gap-6">
 
           {/* Revenue snapshot */}
-          <div className="bg-card border border-border rounded-xl p-6 flex flex-col">
+          <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-foreground">Revenue</h3>
               <Button
@@ -336,10 +338,10 @@ export default function AdminOverview() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           {/* Plan Distribution donut */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <Card>
             <h3 className="font-bold text-foreground mb-4">Plan Distribution</h3>
             {stats.totalUsers > 0 ? (() => {
               const free = Math.max(0, stats.totalUsers - stats.proUsers);
@@ -390,11 +392,11 @@ export default function AdminOverview() {
                 No users yet.
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* Recent Signups */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl overflow-hidden">
+        <Card className="lg:col-span-2" padding="none">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <h3 className="font-bold text-foreground">Recent Signups</h3>
             <Button
@@ -437,12 +439,12 @@ export default function AdminOverview() {
               <p className="px-5 py-8 text-sm text-muted-foreground">No users yet.</p>
             )}
           </div>
-        </div>
+        </Card>
 
       </div>
 
       {/* ── Featured Prompt Setter ── */}
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+      <Card className="!rounded-2xl space-y-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center shrink-0">
             <Flame className="w-4 h-4 text-amber-500" />
@@ -458,42 +460,42 @@ export default function AdminOverview() {
           </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">Prompt Title</label>
-            <input
+          <div>
+            <Input
+              label="Prompt Title"
               value={featuredForm.promptTitle}
               onChange={e => setFeaturedForm(p => ({ ...p, promptTitle: e.target.value }))}
               placeholder="e.g. The Perfect Cold Email"
-              className="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              variant="outline"
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">Prompt Slug</label>
-            <input
+          <div>
+            <Input
+              label="Prompt Slug"
               value={featuredForm.promptSlug}
               onChange={e => setFeaturedForm(p => ({ ...p, promptSlug: e.target.value }))}
               placeholder="e.g. the-perfect-cold-email"
-              className="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              variant="outline"
             />
           </div>
-          <div className="flex flex-col gap-1 sm:col-span-2">
-            <label className="text-xs font-medium text-muted-foreground">Tagline (optional)</label>
-            <input
+          <div className="sm:col-span-2">
+            <Input
+              label="Tagline (optional)"
               value={featuredForm.description}
               onChange={e => setFeaturedForm(p => ({ ...p, description: e.target.value }))}
               placeholder="Short description shown on the banner"
-              className="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              variant="outline"
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">Duration (hours)</label>
-            <input
+          <div>
+            <Input
+              label="Duration (hours)"
               type="number"
               value={featuredForm.hours}
               onChange={e => setFeaturedForm(p => ({ ...p, hours: e.target.value }))}
               min={1}
               max={168}
-              className="h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              variant="outline"
             />
           </div>
         </div>
@@ -528,7 +530,7 @@ export default function AdminOverview() {
         >
           Set as Featured
         </Button>
-      </div>
+      </Card>
 
     </div>
   );

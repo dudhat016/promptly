@@ -8,6 +8,8 @@ import { toast } from 'react-hot-toast';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import Button from '../../components/primitives/Button';
+import Spinner from '../../components/feedback/Spinner';
+import Card from '../../components/primitives/Card';
 import { useAuth } from '../../hooks/useAuth';
 
 interface LoginEvent {
@@ -97,7 +99,7 @@ export default function SecuritySettings() {
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
 
       {/* Header */}
-      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
+      <Card className="!rounded-lg" padding="md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-2xl font-bold flex items-center gap-3 text-foreground">
             <div className="w-10 h-10 bg-rose-500/10 text-rose-500 rounded-md flex items-center justify-center">
@@ -110,10 +112,10 @@ export default function SecuritySettings() {
             Account Protected
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Sign-in Methods */}
-      <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+      <Card className="!rounded-lg" padding="none">
         <div className="px-6 py-3 bg-muted border-b border-border">
           <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sign-in Methods</span>
         </div>
@@ -178,10 +180,10 @@ export default function SecuritySettings() {
             </Button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Active Session */}
-      <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+      <Card className="!rounded-lg" padding="none">
         <div className="px-6 py-3 bg-muted border-b border-border">
           <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Session</span>
         </div>
@@ -208,10 +210,10 @@ export default function SecuritySettings() {
             Sign Out All
           </Button>
         </div>
-      </div>
+      </Card>
 
       {/* Recent Login Activity */}
-      <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+      <Card className="!rounded-lg" padding="none">
         <div className="px-6 py-3 bg-muted border-b border-border flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Recent Login Activity</span>
           <span className="text-xs text-muted-foreground">Last 5 events</span>
@@ -219,7 +221,7 @@ export default function SecuritySettings() {
 
         {loadingHistory ? (
           <div className="p-8 flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+            <Spinner size="sm" />
           </div>
         ) : loginHistory.length > 0 ? (
           <div className="divide-y divide-border">
@@ -261,7 +263,7 @@ export default function SecuritySettings() {
             immediately and change your password.
           </p>
         </div>
-      </div>
+      </Card>
 
       {/* Account info */}
       {joinedDate && (

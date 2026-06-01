@@ -27,6 +27,8 @@ import { toast } from 'react-hot-toast';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import type { DataTableColumn } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Input from '../../components/primitives/Input';
+import Card from '../../components/primitives/Card';
 import { useAuth } from '../../hooks/useAuth';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import { db } from '../../lib/firebase';
@@ -405,7 +407,7 @@ export default function AdminMedia() {
 
       {/* Upload Queue Progress */}
       {uploadQueue.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3 shadow-sm">
+        <Card padding="none" className="!rounded-2xl p-5 space-y-3 shadow-sm">
           <p className="text-sm font-bold text-foreground">
             Uploading {uploadQueue.length} file{uploadQueue.length > 1 ? 's' : ''}…
           </p>
@@ -427,7 +429,7 @@ export default function AdminMedia() {
               </span>
             </div>
           ))}
-        </div>
+        </Card>
       )}
 
       {/* Folder Tabs + Search */}
@@ -455,23 +457,19 @@ export default function AdminMedia() {
           ))}
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
+        <div className="w-full sm:w-64">
+          <Input
             placeholder="Search filename…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-8 h-9 rounded-xl bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            leftIcon={Search}
+            variant="outline"
+            rightAction={search ? (
+              <Button variant="ghost" size="icon" onClick={() => setSearch('')} className="w-7 h-7">
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            ) : undefined}
           />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
       </div>
 

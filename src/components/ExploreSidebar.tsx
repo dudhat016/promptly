@@ -152,7 +152,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
             type="text"
             placeholder="Keywords, tasks..."
             leftIcon={Search}
-            variant="filled"
+            variant="outline"
             value={searchTerm}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}

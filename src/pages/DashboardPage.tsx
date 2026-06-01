@@ -17,7 +17,9 @@ import PromptCard from '../components/PromptCard';
 import { ProGate, ProFeatureCard } from '../components/ProGate';
 import Button from '../components/primitives/Button';
 import Progress from '../components/feedback/Progress';
+import Spinner from '../components/feedback/Spinner';
 import Badge from '../components/primitives/Badge';
+import Card from '../components/primitives/Card';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { useNotifications } from '../hooks/useNotifications';
@@ -273,7 +275,7 @@ export default function DashboardPage() {
 
   if (authLoading) return (
     <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <Spinner size="md" />
     </div>
   );
 
@@ -447,12 +449,7 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Progress</span>
                 <span className="text-[10px] font-bold text-foreground">{referralCount}/{REFERRAL_GOAL}</span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${achieved ? 'bg-emerald-500' : 'bg-primary'}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
+              <Progress value={pct} size="sm" variant={achieved ? 'success' : 'default'} />
             </div>
             {!achieved && (
               <Link
@@ -796,7 +793,7 @@ export default function DashboardPage() {
                 <div key={o.id} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{o.planName || o.plan || 'Subscription'}</span>
                   <span className="font-bold text-foreground">
-                    {o.currency === 'INR' ? '₹' : '$'}{o.amount}
+                    ${o.amount}
                   </span>
                 </div>
               ))}
@@ -911,12 +908,7 @@ export default function DashboardPage() {
             </div>
             {/* Progress bar */}
             <div className="mt-4 flex items-center gap-3">
-              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-700"
-                  style={{ width: `${Math.round((earnedCount / activeBadgeDefs.length) * 100)}%` }}
-                />
-              </div>
+              <Progress value={Math.round((earnedCount / activeBadgeDefs.length) * 100)} size="xs" className="flex-1" />
               <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">
                 {Math.round((earnedCount / activeBadgeDefs.length) * 100)}% complete
               </span>
@@ -926,7 +918,7 @@ export default function DashboardPage() {
       })()}
 
       {/* ── Recent Activity ── */}
-      <div className="bg-card border border-border rounded-xl p-5">
+      <Card padding="sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <History className="w-4 h-4 text-muted-foreground" /> Recent Activity
@@ -967,7 +959,7 @@ export default function DashboardPage() {
             </Link>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* ── Badge Milestone Modal ── */}
       {milestoneQueue.length > 0 && (

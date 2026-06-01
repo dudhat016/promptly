@@ -41,6 +41,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import Tabs from '../../components/navigation/Tabs';
 import { useAuth } from '../../hooks/useAuth';
@@ -303,7 +304,7 @@ export default function AdminUserDetails() {
       />
 
       {/* Profile card */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+      <Card padding="none" className="!rounded-2xl">
         <div className="p-8 flex flex-wrap items-start justify-between gap-8">
           <div className="flex items-center gap-6">
             <div className="relative">
@@ -371,14 +372,14 @@ export default function AdminUserDetails() {
           className="border-t border-border bg-muted/10 p-1 rounded-none"
           tabClassName="px-8 rounded-lg"
         />
-      </div>
+      </Card>
 
       <div className="grid grid-cols-12 gap-6">
         {/* Left: tab content */}
         <div className="col-span-12 lg:col-span-8 space-y-6">
 
           {activeTab === 'overview' && (
-            <div className="bg-card rounded-2xl border border-border p-8 shadow-sm space-y-8">
+            <Card padding="lg" className="!rounded-2xl space-y-8">
               <section>
                 <h3 className="text-base font-bold text-foreground mb-5 flex items-center gap-2 uppercase tracking-tight">
                   <Shield className="w-4 h-4 text-primary" /> Profile Details
@@ -424,7 +425,7 @@ export default function AdminUserDetails() {
                 <Target className="w-4 h-4 text-primary" /> Onboarding & Interests
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-card border border-border rounded-2xl p-6">
+                <Card className="!rounded-2xl">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Selected Interests</p>
                   <div className="flex flex-wrap gap-2">
                     {(user.interests || []).map(interest => (
@@ -436,8 +437,8 @@ export default function AdminUserDetails() {
                       <p className="text-sm text-muted-foreground italic">No interests selected during onboarding.</p>
                     )}
                   </div>
-                </div>
-                <div className="bg-card border border-border rounded-2xl p-6">
+                </Card>
+                <Card className="!rounded-2xl">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Preferred AI Engine</p>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-600">
@@ -448,7 +449,7 @@ export default function AdminUserDetails() {
                       <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Primary workspace model</p>
                     </div>
                   </div>
-                </div>
+                </Card>
               </div>
             </section>
 
@@ -470,11 +471,11 @@ export default function AdminUserDetails() {
                   ))}
                 </div>
               </section>
-            </div>
+            </Card>
           )}
 
           {activeTab === 'orders' && (
-            <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
+            <Card padding="lg" className="!rounded-2xl">
               <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2 uppercase tracking-tight">
                 <ShoppingBag className="w-4 h-4 text-primary" /> Purchase History
               </h3>
@@ -499,7 +500,7 @@ export default function AdminUserDetails() {
                       </div>
                       <div className="text-right shrink-0 ml-4">
                         <p className="text-xl font-black text-emerald-600">
-                          {o.currency === 'INR' ? '₹' : '$'}{Number(o.amount).toFixed(2)}
+                          ${Number(o.amount).toFixed(2)}
                         </p>
                         <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
                           o.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
@@ -509,7 +510,7 @@ export default function AdminUserDetails() {
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
           )}
 
           {activeTab === 'affiliate' && (
@@ -521,7 +522,7 @@ export default function AdminUserDetails() {
                   { label: 'Pending (Locked)', value: `$${(user.pendingEarnings || 0).toFixed(2)}`, color: 'amber', icon: Clock },
                   { label: 'Total Withdrawn', value: `$${(user.withdrawnAmount || 0).toFixed(2)}`, color: 'primary', icon: Gift },
                 ].map(s => (
-                  <div key={s.label} className="bg-card border border-border rounded-xl p-5">
+                  <Card key={s.label} padding="none" className="p-5">
                     <div className="flex items-center gap-2 mb-2">
                       <s.icon className={`w-4 h-4 ${s.color === 'emerald' ? 'text-emerald-500' : s.color === 'amber' ? 'text-amber-500' : 'text-primary'}`} />
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{s.label}</p>
@@ -529,7 +530,7 @@ export default function AdminUserDetails() {
                     <p className={`text-2xl font-black ${s.color === 'emerald' ? 'text-emerald-600' : s.color === 'amber' ? 'text-amber-600' : 'text-primary'}`}>
                       {s.value}
                     </p>
-                  </div>
+                  </Card>
                 ))}
               </div>
 
@@ -542,7 +543,7 @@ export default function AdminUserDetails() {
               )}
 
               {/* Commission history */}
-              <div className="bg-card rounded-2xl border border-border p-6">
+              <Card className="!rounded-2xl">
                 <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 uppercase tracking-tight">
                   <Gift className="w-4 h-4 text-primary" /> Commissions Earned (as Referrer)
                 </h3>
@@ -560,7 +561,7 @@ export default function AdminUserDetails() {
                         <div>
                           <p className="font-mono text-xs text-muted-foreground">{c.orderId}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Sale: {c.currency === 'INR' ? '₹' : '$'}{Number(c.grossSaleAmount).toFixed(2)}
+                            Sale: ${Number(c.grossSaleAmount).toFixed(2)}
                             {' · '}Rate: {c.commissionRate}%
                             {' · '}
                             {(() => { try { return c.lockUntil?.toDate ? `Unlocks ${c.lockUntil.toDate().toLocaleDateString()}` : ''; } catch { return ''; } })()}
@@ -578,12 +579,12 @@ export default function AdminUserDetails() {
                     ))}
                   </div>
                 )}
-              </div>
+              </Card>
             </div>
           )}
 
           {activeTab === 'activity' && (
-            <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
+            <Card padding="lg" className="!rounded-2xl">
               <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2 uppercase tracking-tight">
                 <Activity className="w-4 h-4 text-primary" /> Activity History
               </h3>
@@ -611,11 +612,11 @@ export default function AdminUserDetails() {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           )}
 
           {activeTab === 'security' && (
-            <div className="bg-card rounded-2xl border border-border p-8 shadow-sm space-y-4">
+            <Card padding="lg" className="!rounded-2xl space-y-4">
               {/* Suspend / Restore */}
               <div className={`flex items-center justify-between p-6 rounded-xl border ${
                 isSuspended ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-rose-500/5 border-rose-500/10'
@@ -736,7 +737,7 @@ export default function AdminUserDetails() {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           )}
         </div>
 
@@ -766,7 +767,7 @@ export default function AdminUserDetails() {
 
           {/* Plan selector */}
           {plans.length > 0 && (
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+            <Card className="!rounded-2xl">
               <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
                 <CreditCard className="w-3.5 h-3.5 text-primary" /> Change Plan
               </h4>
@@ -790,11 +791,11 @@ export default function AdminUserDetails() {
                   {' · '}{user.subscriptionStatus.toUpperCase()}
                 </p>
               )}
-            </div>
+            </Card>
           )}
 
           {/* Credit adjustment */}
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+          <Card className="!rounded-2xl">
             <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
               <Award className="w-3.5 h-3.5 text-amber-500" /> Adjust Credits
             </h4>
@@ -822,7 +823,7 @@ export default function AdminUserDetails() {
                     value={adjustAmount}
                     onChange={e => setAdjustAmount(Number(e.target.value))}
                     className="flex-1 text-center"
-                    variant="filled"
+                    variant="outline"
                   />
                   <Button
                     onClick={() => setAdjustAmount(v => v + 10)}
@@ -856,7 +857,7 @@ export default function AdminUserDetails() {
                 value={adjustReason}
                 onChange={e => setAdjustReason(e.target.value)}
                 placeholder="e.g. Compensation, bonus..."
-                variant="filled"
+                variant="outline"
               />
 
               <Button
@@ -870,7 +871,7 @@ export default function AdminUserDetails() {
                 {adjustAmount > 0 ? `Add ${adjustAmount} credits` : adjustAmount < 0 ? `Deduct ${Math.abs(adjustAmount)} credits` : 'Enter amount'}
               </Button>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

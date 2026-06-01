@@ -1,14 +1,16 @@
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { AlertTriangle, Mail, Send, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import { AdminPageHeader } from '../../components/admin';
-import Badge from '../../components/primitives/Badge';
 import Button from '../../components/primitives/Button';
-import { db } from '../../lib/firebase';
-import { api } from '../../lib/api';
+import Card from '../../components/primitives/Card';
+import Checkbox from '../../components/primitives/Checkbox';
+import Select from '../../components/primitives/Select';
 import { usePath } from '../../hooks/usePath';
+import { api } from '../../lib/api';
+import { db } from '../../lib/firebase';
 interface EmailTypeInfo { type: string; name: string; group: string; defaultSubject: string; variables: { name: string }[]; }
 interface Segment { id: string; name: string; description?: string; }
 
@@ -63,14 +65,51 @@ export default function AdminEmailBroadcast() {
 
     setSending(true);
     setResult(null);
-    const toastId = toast.loading('Sending broadcast…');
+    const toastId = toast.loading('Initiating broadcast…');
     try {
-      const r = await api.post('/email/broadcast', {
+      const initRes = await api.post('/email/broadcast', {
         ...(segmentId ? { segmentId } : {}),
         type: emailType,
       }) as any;
-      setResult(r);
-      toast.success(`Broadcast done — ${r.sent} sent, ${r.failed} failed, ${r.skipped} skipped`, { id: toastId });
+
+      if (!initRes || !initRes.jobId) {
+        throw new Error(initRes?.error || 'Failed to queue broadcast');
+      }
+
+      const jobId = initRes.jobId;
+
+      // Poll status
+      const poll = async (): Promise<any> => {
+        return new Promise((resolve, reject) => {
+          const interval = setInterval(async () => {
+            try {
+              const statusRes = await api.get(`/email/broadcast/status/${jobId}`) as any;
+              if (!statusRes || statusRes.error) {
+                clearInterval(interval);
+                reject(new Error(statusRes?.error || 'Failed to check status'));
+                return;
+              }
+
+              if (statusRes.status === 'done') {
+                clearInterval(interval);
+                resolve(statusRes);
+              } else if (statusRes.status === 'error') {
+                clearInterval(interval);
+                reject(new Error(statusRes.error || 'Broadcast failed during processing'));
+              } else {
+                toast.loading(`Processing broadcast… (${statusRes.status === 'processing' ? 'sending' : statusRes.status})`, { id: toastId });
+              }
+            } catch (err) {
+              clearInterval(interval);
+              reject(err);
+            }
+          }, 1500);
+        });
+      };
+
+      const finalResult = await poll();
+      setResult(finalResult);
+      toast.success(`Broadcast done — ${finalResult.sent} sent, ${finalResult.failed} failed, ${finalResult.skipped} skipped`, { id: toastId });
       setConfirmed(false);
     } catch (err: any) {
       toast.error(err?.message || 'Broadcast failed', { id: toastId });
@@ -86,47 +125,35 @@ export default function AdminEmailBroadcast() {
         labelIcon={Mail}
         title="Send Broadcast"
         subtitle="Send a one-time email to a segment or all active contacts."
-        actions={
-          <Button as={Link} to={prefix('/admin/emails')} variant="ghost" size="md">
-            Back to Emails
-          </Button>
-        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Config panel */}
         <div className="space-y-5">
           {/* Audience */}
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <Card padding="sm" className="space-y-4">
             <p className="text-sm font-bold text-foreground">1. Choose audience</p>
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Segment (leave blank for all active)</label>
-              <select
-                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
+              <Select
                 value={segmentId}
-                onChange={e => { setSegmentId(e.target.value); setConfirmed(false); }}
-              >
-                <option value="">All active contacts</option>
-                {segments.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+                onChange={val => { setSegmentId(val as string); setConfirmed(false); }}
+                options={[{ value: '', label: 'All active contacts' }, ...segments.map(s => ({ value: s.id, label: s.name }))]}
+                isSearchable={false}
+              />
             </div>
-          </div>
+          </Card>
 
           {/* Email type */}
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <Card padding="sm" className="space-y-4">
             <p className="text-sm font-bold text-foreground">2. Choose email type</p>
-            <select
-              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
+            <Select
               value={emailType}
-              onChange={e => { setEmailType(e.target.value); setConfirmed(false); }}
-            >
-              <option value="">Select a type…</option>
-              {emailTypes.map(t => (
-                <option key={t.type} value={t.type}>{t.name} ({t.type})</option>
-              ))}
-            </select>
+              onChange={val => { setEmailType(val as string); setConfirmed(false); }}
+              options={[{ value: '', label: 'Select a type…' }, ...emailTypes.map(t => ({ value: t.type, label: `${t.name} (${t.type})` }))]}
+              placeholder="Select a type…"
+              isSearchable={false}
+            />
             {selectedType && (
               <div className="mt-2 space-y-1">
                 <p className="text-xs text-muted-foreground">
@@ -140,10 +167,10 @@ export default function AdminEmailBroadcast() {
                 </div>
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Confirm + Send */}
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <Card padding="sm" className="space-y-4">
             <p className="text-sm font-bold text-foreground">3. Confirm &amp; send</p>
 
             <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
@@ -161,15 +188,11 @@ export default function AdminEmailBroadcast() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded accent-primary"
-                checked={confirmed}
-                onChange={e => setConfirmed(e.target.checked)}
-              />
-              <span className="text-sm text-foreground">I understand this will send real emails</span>
-            </label>
+            <Checkbox
+              checked={confirmed}
+              onChange={e => setConfirmed(e.target.checked)}
+              label="I understand this will send real emails"
+            />
 
             <Button
               onClick={handleSend}
@@ -182,13 +205,13 @@ export default function AdminEmailBroadcast() {
             >
               Send Broadcast
             </Button>
-          </div>
+          </Card>
         </div>
 
         {/* Result panel */}
         <div className="space-y-5">
           {result ? (
-            <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+            <Card padding="sm" className="space-y-4">
               <p className="text-sm font-bold text-foreground">Send results</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -206,15 +229,15 @@ export default function AdminEmailBroadcast() {
               <Button as={Link} to={prefix('/admin/emails/logs')} variant="secondary" size="sm" leftIcon={Mail} className="w-full">
                 View email logs
               </Button>
-            </div>
+            </Card>
           ) : (
-            <div className="bg-card border border-border rounded-xl p-8 flex flex-col items-center justify-center text-center gap-3 min-h-[200px]">
+            <Card padding="lg" className="flex-col items-center justify-center text-center gap-3 min-h-[200px]">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Zap className="w-6 h-6 text-primary" />
               </div>
               <p className="text-sm font-semibold text-foreground">Results will appear here</p>
               <p className="text-xs text-muted-foreground">Configure your audience and email type, then send.</p>
-            </div>
+            </Card>
           )}
 
           {/* Tips */}

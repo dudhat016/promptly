@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import TagInput from '../../components/TagInput';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Input from '../../components/primitives/Input';
 import Select from '../../components/primitives/Select';
 import Textarea from '../../components/primitives/Textarea';
@@ -264,7 +265,7 @@ export default function SubmitPromptPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Core fields */}
-        <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+        <Card className="space-y-5">
           <h2 className="font-bold text-foreground text-sm uppercase tracking-widest text-primary/80 flex items-center gap-2">
             <BookOpen className="w-4 h-4" /> Core Details
           </h2>
@@ -275,7 +276,7 @@ export default function SubmitPromptPage() {
             onChange={e => handleTitleChange(e.target.value)}
             placeholder="e.g. Expert Cold Email Generator"
             error={errors.title}
-            variant="filled"
+            variant="outline"
           />
 
           <Textarea
@@ -285,7 +286,7 @@ export default function SubmitPromptPage() {
             placeholder="What does this prompt do? Who is it for? (min 30 chars)"
             rows={3}
             error={errors.description}
-            variant="filled"
+            variant="outline"
           />
 
           <Textarea
@@ -295,13 +296,13 @@ export default function SubmitPromptPage() {
             placeholder="Paste your full prompt here... (min 150 chars)"
             rows={8}
             error={errors.content}
-            variant="filled"
+            variant="outline"
             helperText={`${form.content.length} / 150 min chars`}
           />
-        </div>
+        </Card>
 
         {/* Classification */}
-        <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+        <Card className="space-y-5">
           <h2 className="font-bold text-sm uppercase tracking-widest text-primary/80">Classification</h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -338,10 +339,10 @@ export default function SubmitPromptPage() {
             />
             {errors.tags && <p className="text-xs text-destructive mt-1">{errors.tags}</p>}
           </div>
-        </div>
+        </Card>
 
         {/* Image */}
-        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+        <Card className="space-y-4">
           <h2 className="font-bold text-sm uppercase tracking-widest text-primary/80">Cover Image *</h2>
 
           {form.imageUrl ? (
@@ -368,10 +369,10 @@ export default function SubmitPromptPage() {
             </label>
           )}
           {errors.imageUrl && <p className="text-xs text-destructive">{errors.imageUrl}</p>}
-        </div>
+        </Card>
 
         {/* Optional extras */}
-        <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+        <Card className="space-y-5">
           <h2 className="font-bold text-sm uppercase tracking-widest text-primary/80">Optional Extras</h2>
           <Textarea
             label="Sample Output"
@@ -379,7 +380,7 @@ export default function SubmitPromptPage() {
             onChange={e => set('sampleOutput', e.target.value)}
             placeholder="Paste an example of what this prompt produces..."
             rows={4}
-            variant="filled"
+            variant="outline"
           />
           <Textarea
             label="Usage Guide"
@@ -387,12 +388,12 @@ export default function SubmitPromptPage() {
             onChange={e => set('usageGuide', e.target.value)}
             placeholder="Tips, variable replacements, best practices..."
             rows={3}
-            variant="filled"
+            variant="outline"
           />
-        </div>
+        </Card>
 
         {/* SEO accordion */}
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <Card padding="none" className="overflow-hidden">
           <button
             type="button"
             onClick={() => setSeoOpen(v => !v)}
@@ -408,32 +409,32 @@ export default function SubmitPromptPage() {
                 value={form.slug}
                 onChange={e => { setManualSlug(true); set('slug', e.target.value); }}
                 placeholder="auto-generated from title"
-                variant="filled"
+                variant="outline"
                 helperText="Leave blank to auto-generate from title"
               />
               <Input
                 label="Meta Title"
                 value={form.metaTitle}
                 onChange={e => set('metaTitle', e.target.value)}
-                variant="filled"
+                variant="outline"
               />
               <Textarea
                 label="Meta Description"
                 value={form.metaDescription}
                 onChange={e => set('metaDescription', e.target.value)}
                 rows={2}
-                variant="filled"
+                variant="outline"
               />
               <Input
                 label="Meta Keywords"
                 value={form.metaKeywords}
                 onChange={e => set('metaKeywords', e.target.value)}
                 placeholder="comma, separated, keywords"
-                variant="filled"
+                variant="outline"
               />
             </div>
           )}
-        </div>
+        </Card>
 
         <div className="flex gap-3 pb-8">
           <Button

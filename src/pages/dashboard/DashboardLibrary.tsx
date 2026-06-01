@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import PromptCard from '../../components/PromptCard';
 import PromptCardSkeleton from '../../components/PromptCardSkeleton';
 import Button from '../../components/primitives/Button';
+import Tabs from '../../components/navigation/Tabs';
 import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
@@ -175,35 +176,17 @@ export default function DashboardLibrary() {
 
       {/* Tabs */}
       {!loading && prompts.length > 0 && (
-        <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl border border-border w-fit mb-6">
-          {TABS.map(({ key, label }) => {
-            const count = tabCount(key);
-            if (key !== 'all' && count === 0) return null;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all',
-                  activeTab === key
-                    ? 'bg-background text-foreground shadow-sm border border-border'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {label}
-                {key !== 'all' && (
-                  <span className={cn(
-                    'text-[10px] font-black px-1.5 py-0.5 rounded-full',
-                    key === 'pending'  ? 'bg-amber-500/15 text-amber-600' :
-                    key === 'rejected' ? 'bg-rose-500/15 text-rose-600'   :
-                                         'bg-emerald-500/15 text-emerald-600'
-                  )}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="mb-6">
+          <Tabs
+            tabs={TABS.filter(t => t.key === 'all' || tabCount(t.key) > 0).map(t => ({
+              id: t.key,
+              label: t.label,
+              badge: t.key !== 'all' ? tabCount(t.key) : undefined,
+            }))}
+            activeTab={activeTab}
+            onChange={id => setActiveTab(id as TabKey)}
+            variant="pill"
+          />
         </div>
       )}
 

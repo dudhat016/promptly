@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useConfig } from './useConfig';
 
 interface UploadResult {
   success: boolean;
@@ -9,11 +10,18 @@ interface UploadResult {
 }
 
 export function useImageUpload() {
+  const { config } = useConfig();
   const [isUploading, setIsUploading] = useState(false);
 
   const uploadImage = async (file: File, folder?: string): Promise<UploadResult | null> => {
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
+      return null;
+    }
+
+    const maxMb = config.storage?.maxImageSizeMb ?? 2;
+    if (file.size > maxMb * 1024 * 1024) {
+      toast.error(`Image is too large. Maximum allowed size is ${maxMb} MB.`);
       return null;
     }
 

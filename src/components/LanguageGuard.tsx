@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES, RTL_LANGUAGES } from '../i18n';
+import { useConfig } from '../hooks/useConfig';
 
 interface LanguageGuardProps {
   children: React.ReactNode;
@@ -17,13 +18,18 @@ export default function LanguageGuard({ children }: LanguageGuardProps) {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { config, loading } = useConfig();
 
   useEffect(() => {
+    if (loading) return;
+
     const isSupported = SUPPORTED_LANGUAGES.some(l => l.code === lng);
 
     if (!lng || !isSupported) {
-      // No valid language in URL — redirect to current i18n language or default
-      const currentLng = SUPPORTED_LANGUAGES.some(l => l.code === i18n.language) ? i18n.language : 'en';
+      // No valid language in URL — redirect to current i18n language or default config language
+      const currentLng = SUPPORTED_LANGUAGES.some(l => l.code === i18n.language)
+        ? i18n.language
+        : (config?.defaultLanguage || 'en');
       
       // Strip the existing invalid language prefix if it exists
       const pathParts = location.pathname.split('/').filter(Boolean);
@@ -47,7 +53,7 @@ export default function LanguageGuard({ children }: LanguageGuardProps) {
     const isRtl = lng ? RTL_LANGUAGES.includes(lng) : false;
     document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
     document.documentElement.lang = lng;
-  }, [lng, i18n, navigate, location]);
+  }, [lng, i18n, navigate, location, config, loading]);
 
   return <>{children}</>;
 }

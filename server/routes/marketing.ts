@@ -2,8 +2,6 @@ import { Router, json } from "express";
 import { MarketingService } from "../services/marketingService.js";
 import { authMiddleware, adminOnly } from "../middleware/auth.js";
 import { initFirebase } from "../lib/firebase.js";
-import { seedMarketingData } from "../lib/seedMarketing.js";
-
 const router = Router();
 
 router.get("/sitemap.xml", async (req, res) => {
@@ -101,22 +99,6 @@ router.post("/contacts/import", authMiddleware, adminOnly, json(), async (req, r
     res.json({ ok: true, created, updated, skipped, total: rows.length });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/marketing/seed-all — seeds tags, segments, automation flows, and email templates
-// ?force=true overwrites existing records (default: skip existing)
-router.post("/seed-all", authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const firebase = await initFirebase();
-    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
-
-    const force = req.query.force === "true";
-    const result = await seedMarketingData(firebase.db, { force });
-    res.json({ ok: true, ...result });
-  } catch (err: any) {
-    console.error("[seed-all] error:", err);
-    res.status(500).json({ error: err?.message ?? String(err) });
   }
 });
 

@@ -82,7 +82,7 @@ export default function ExplorePage() {
   }, [location.pathname]);
 
   useEffect(() => {
-    const CACHE_KEY = 'promptly_explore_v1';
+    const CACHE_KEY = 'promptly_explore_v2';
     const CACHE_TTL = 10 * 60 * 1000;
     async function fetchPrompts() {
       try {
@@ -100,10 +100,21 @@ export default function ExplorePage() {
       try {
         const q = query(collection(db, 'prompts'), orderBy('createdAt', 'desc'), limit(500));
         const snap = await getDocs(q);
-        const data = snap.docs
+        const all = snap.docs
           .map(d => ({ ...d.data(), id: d.id } as Prompt))
-          .filter(p => !p.status || p.status === 'approved')
+          .filter(p => p.status === 'approved')
           .filter(p => p.moderationStatus !== 'hidden');
+
+        // Deduplicate by slug — keeps the newest (first due to orderBy desc)
+        // prevents duplicate Firestore docs with the same slug from showing as separate cards
+        const seenSlugs = new Set<string>();
+        const data = all.filter(p => {
+          const key = p.slug || p.id!;
+          if (seenSlugs.has(key)) return false;
+          seenSlugs.add(key);
+          return true;
+        });
+
         try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
         setRawPrompts(data);
         setFetchError(null);

@@ -1,19 +1,19 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { Prompt } from '../types';
-import { ArrowRight, Bookmark, Copy, Eye, Flag, Heart, Lock, MoreHorizontal, Sparkles, Unlock, Zap } from 'lucide-react';
+import { addDoc, collection, doc, increment, updateDoc } from 'firebase/firestore';
+import { ArrowRight, Bookmark, Eye, Flag, Heart, Lock, MoreHorizontal, Sparkles, Unlock, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
-import { cn } from '../lib/utils';
-import { doc, updateDoc, increment, collection, addDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { api } from '../lib/api';
-import { toast } from 'react-hot-toast';
-import { useState, useRef, useEffect } from 'react';
 import { usePath } from '../hooks/usePath';
 import { useSavedPrompts } from '../hooks/useSavedPrompts';
-import Button from './primitives/Button';
+import { api } from '../lib/api';
+import { db } from '../lib/firebase';
+import { cn } from '../lib/utils';
+import { Prompt } from '../types';
 import Rating from './feedback/Rating';
+import Button from './primitives/Button';
 import ReportModal from './ReportModal';
 
 const DIFFICULTY_DOT: Record<string, string> = {
@@ -48,7 +48,7 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
 
   const favorited = prompt.id ? isFavorited(prompt.id) : false;
   const isCreation = (prompt as any).isCreation;
-  
+
   const isActuallyUnlocked =
     isCreation ||
     initialUnlocked ||
@@ -114,19 +114,24 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
       transition={{ duration: 0.3 }}
       className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 flex flex-col"
     >
-      {/* Thumbnail */}
-      <div className="block relative aspect-[16/9] overflow-hidden bg-muted shrink-0">
-        {prompt.imageUrl ? (
-          <img
-            src={prompt.imageUrl}
-            alt={prompt.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/8 via-primary/4 to-transparent flex items-center justify-center">
-            <Zap className="w-8 h-8 text-primary/20" />
-          </div>
-        )}
+      {/* Thumbnail — ratio driven by admin storage config */}
+      {(() => {
+        const ratio = config.storage?.promptImageRatio ?? '16:9';
+        const [rw, rh] = ratio.split(':').map(Number);
+        const paddingTop = `${((rh / rw) * 100).toFixed(4)}%`;
+        return (
+          <div className="relative overflow-hidden bg-muted/60 shrink-0" style={{ paddingTop }}>
+            {prompt.imageUrl ? (
+              <img
+                src={prompt.imageUrl}
+                alt={prompt.title}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-primary/4 to-transparent flex items-center justify-center">
+                <Zap className="w-8 h-8 text-primary/20" />
+              </div>
+            )}
 
         {/* Top badges */}
         <div className="absolute top-3 left-3 flex gap-1.5">
@@ -189,29 +194,35 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
             {menuOpen && (
               <div className="absolute top-full left-0 mt-1 w-40 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
                 {user && prompt.id && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setMenuOpen(false);
                       toggleSaved(prompt.id!, prompt.title, prompt.slug);
                     }}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-muted/60 transition-colors"
+                    className="flex items-center gap-2 w-full justify-start px-3 py-2.5 text-xs font-semibold text-foreground rounded-none"
                   >
                     <Bookmark className={cn('w-3.5 h-3.5', isSaved(prompt.id!) && 'fill-current text-primary')} />
                     {isSaved(prompt.id!) ? 'Remove from Queue' : 'Save to Queue'}
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => { setMenuOpen(false); setReportOpen(true); }}
-                  className="flex items-center gap-2 w-full px-3 py-2.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                  className="flex items-center gap-2 w-full justify-start px-3 py-2.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 rounded-none"
                 >
                   <Flag className="w-3.5 h-3.5" />
                   Report Prompt
-                </button>
+                </Button>
               </div>
             )}
           </div>
         )}
-      </div>
+          </div>
+        );
+      })()}
 
       {/* Body */}
       <div className="flex flex-col flex-1 p-5">

@@ -1,4 +1,4 @@
-import { CheckCircle2, Copy, Home, Layout, Rocket, Sparkles } from 'lucide-react';
+import { Calendar, CheckCircle2, Copy, Download, Home, Layout, Rocket, Sparkles, Tag, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -7,29 +7,34 @@ import { toast } from 'react-hot-toast';
 import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../hooks/useAuth';
 import { usePath } from '../hooks/usePath';
+import { generateInvoicePDF } from '../lib/invoice';
 
 export default function CheckoutSuccessPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { prefix } = usePath();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('order_id');
   const planName = searchParams.get('plan_name') || 'Pro Plan';
   const amount = searchParams.get('amount') || '0';
-  const currency = searchParams.get('currency') || 'INR';
-  const currencySymbol = currency === 'INR' ? '₹' : '$';
+  const taxAmount      = parseFloat(searchParams.get('tax')              || '0');
+  const taxRate        = parseFloat(searchParams.get('tax_rate')         || '0');
+  const productPrice   = parseFloat(searchParams.get('product_price')    || amount);
+  const couponDiscount = parseFloat(searchParams.get('coupon_discount')  || '0');
+  const couponCode     = searchParams.get('coupon_code') || '';
+  const billingCycle   = searchParams.get('billing_cycle')               || 'monthly';
+  const gateway        = searchParams.get('gateway')                     || 'stripe';
+  const isTrial        = searchParams.get('is_trial')                    === 'true';
+  const trialEndsAt    = searchParams.get('trial_ends_at');
   const [confetti, setConfetti] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setConfetti(false), 5000);
-    
-    // Track complete_checkout (Gap #1)
     trackEvent('complete_checkout', user?.uid, {
       orderId,
       planName,
       amount: Number(amount),
       currency: 'USD'
     });
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -38,6 +43,25 @@ export default function CheckoutSuccessPage() {
       navigator.clipboard.writeText(orderId);
       toast.success("Order ID copied!");
     }
+  };
+
+  const downloadInvoice = () => {
+    generateInvoicePDF({
+      orderId: orderId || 'N/A',
+      date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
+      planName,
+      billingCycle,
+      buyerName: profile?.displayName || user?.displayName || undefined,
+      buyerEmail: user?.email || undefined,
+      productPrice,
+      couponDiscount,
+      couponCode: couponCode || undefined,
+      taxAmount,
+      taxRate,
+      buyerTotal: parseFloat(amount),
+      currency: 'USD',
+      gateway,
+    });
   };
 
   return (
@@ -66,40 +90,90 @@ export default function CheckoutSuccessPage() {
         {/* Text Content */}
         <div className="space-y-4 mb-12">
           <div className="flex items-center justify-center gap-2 text-primary font-bold uppercase tracking-[0.2em] text-xs">
-            <Sparkles className="w-4 h-4" />
-            Payment Synchronized
+            {isTrial ? <Zap className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+            {isTrial ? 'Trial Activated' : 'Payment Synchronized'}
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">You're Now PRO!</h1>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+            {isTrial ? 'Trial Started!' : "You're Now PRO!"}
+          </h1>
           <p className="text-muted-foreground font-medium text-lg max-w-md mx-auto">
-            Your neural workspace has been upgraded. Welcome to the future of AI engineering.
+            {isTrial
+              ? `Enjoy full PRO access free until ${trialEndsAt ? new Date(trialEndsAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'your trial ends'}. Your card will be charged automatically after the trial.`
+              : 'Your neural workspace has been upgraded. Welcome to the future of AI engineering.'}
           </p>
         </div>
 
-        {/* Order Details Card */}
-        <div className="bg-muted/50 rounded-lg p-8 mb-12 border border-border relative overflow-hidden group">
+        {/* Receipt Card */}
+        <div className="bg-muted/50 rounded-lg p-6 mb-10 border border-border relative overflow-hidden text-left">
           <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-left">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-1">Transaction Receipt</p>
-              <p className="font-mono text-xs font-bold text-foreground truncate max-w-[200px]">
-                {orderId || 'TXN_PROMPTLY_001'}
+
+          <div className="flex items-center justify-between mb-5 pl-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 mb-0.5">
+                {isTrial ? 'Trial' : 'Receipt'}
               </p>
-              {planName && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {planName} &nbsp;·&nbsp;
-                  {parseFloat(amount) > 0 ? `${currencySymbol}${amount}` : 'Free'}
-                </p>
-              )}
+              <p className="font-mono text-xs font-bold text-foreground">{orderId || 'TXN_PROMPTLY_001'}</p>
             </div>
-             <Button
-              onClick={copyOrderId}
-              variant="secondary"
-              size="sm"
-              leftIcon={Copy}
-              className="font-bold uppercase tracking-widest"
-            >
-              Copy Order ID
+            <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${
+              isTrial
+                ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+            }`}>
+              {isTrial ? 'Trialing' : 'Paid'}
+            </span>
+          </div>
+
+          <div className="space-y-2.5 pl-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{planName}</span>
+              {isTrial
+                ? <span className="font-semibold text-amber-600 dark:text-amber-400">FREE (Trial)</span>
+                : <span className="font-semibold text-foreground">${productPrice.toFixed(2)}</span>
+              }
+            </div>
+            {!isTrial && couponDiscount > 0 && (
+              <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Tag className="w-3 h-3" />
+                  {couponCode ? `Coupon (${couponCode})` : 'Coupon discount'}
+                </span>
+                <span className="font-semibold">-${couponDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            {!isTrial && taxAmount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tax ({taxRate}%)</span>
+                <span className="font-semibold text-foreground">+${taxAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {isTrial && trialEndsAt && (
+              <div className="flex justify-between text-sm text-amber-600 dark:text-amber-400">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Calendar className="w-3 h-3" />
+                  First charge date
+                </span>
+                <span className="font-semibold">
+                  {new Date(trialEndsAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm pt-2.5 border-t border-border">
+              <span className="font-bold text-foreground">{isTrial ? 'Due today' : 'Total charged'}</span>
+              <span className={`font-bold ${isTrial ? 'text-amber-600 dark:text-amber-400' : 'text-primary'}`}>
+                {isTrial ? '$0.00 USD' : `$${parseFloat(amount).toFixed(2)} USD`}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex gap-2.5 mt-5 pl-2">
+            <Button onClick={copyOrderId} variant="secondary" size="sm" leftIcon={Copy} className="font-bold">
+              Copy ID
             </Button>
+            {!isTrial && (
+              <Button onClick={downloadInvoice} variant="secondary" size="sm" leftIcon={Download} className="font-bold">
+                Download Invoice
+              </Button>
+            )}
           </div>
         </div>
 

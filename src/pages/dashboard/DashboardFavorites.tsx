@@ -10,6 +10,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../lib/firebase';
 import { Prompt } from '../../types';
 import Input from '../../components/primitives/Input';
+import Button from '../../components/primitives/Button';
 import { X } from 'lucide-react';
 
 export default function DashboardFavorites() {
@@ -80,12 +81,12 @@ export default function DashboardFavorites() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             leftIcon={Search}
-            variant="filled"
+            variant="outline"
             className="md:w-80"
             rightAction={searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="p-1 hover:bg-muted rounded-md transition-colors">
+              <Button variant="ghost" size="icon" onClick={() => setSearchTerm('')} className="w-7 h-7">
                 <X className="w-4 h-4 text-muted-foreground" />
-              </button>
+              </Button>
             )}
           />
         )}
@@ -116,7 +117,7 @@ export default function DashboardFavorites() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <p className="font-semibold">No results for "<span className="text-foreground">{searchTerm}</span>"</p>
-          <button onClick={() => setSearchTerm('')} className="mt-3 text-sm text-primary hover:underline">Clear search</button>
+          <Button variant="link" onClick={() => setSearchTerm('')} className="mt-3">Clear search</Button>
         </div>
       ) : (
         <>

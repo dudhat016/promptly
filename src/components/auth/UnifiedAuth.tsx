@@ -82,7 +82,7 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="email"
-          variant="filled"
+          variant="outline"
         />
         <div className="space-y-2">
           <Input
@@ -94,7 +94,7 @@ export default function UnifiedAuth({ initialMode = 'login', onSuccess, hideFoot
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete={isLogin ? "current-password" : "new-password"}
-            variant="filled"
+            variant="outline"
           />
           {isLogin && (
             <div className="text-right">

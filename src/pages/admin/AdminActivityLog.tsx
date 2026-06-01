@@ -6,6 +6,7 @@ import { AdminPageHeader } from '../../components/admin';
 import { Timeline, type TimelineItem } from '../../components/data';
 import Badge from '../../components/primitives/Badge';
 import { Card } from '../../components/primitives';
+import Spinner from '../../components/feedback/Spinner';
 
 interface AuditLog {
   id: string;
@@ -119,7 +120,7 @@ export default function AdminActivityLog() {
       <Card variant="raised" className="p-8 md:p-12">
         {loading ? (
           <div className="py-20 text-center">
-            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <Spinner size="lg" className="mx-auto mb-4" />
             <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Fetching audit trail...</p>
           </div>
         ) : logs.length === 0 ? (

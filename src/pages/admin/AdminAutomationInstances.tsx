@@ -1,12 +1,14 @@
-import { AlertCircle, CheckCircle2, Clock, Mail, RefreshCw, RotateCcw, Search, Zap } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { AlertCircle, CheckCircle2, Clock, RefreshCw, RotateCcw, Search, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
+import Tabs from '../../components/navigation/Tabs';
 import Badge from '../../components/primitives/Badge';
 import Button from '../../components/primitives/Button';
-import { api } from '../../lib/api';
+import Card from '../../components/primitives/Card';
+import Input from '../../components/primitives/Input';
 import { usePath } from '../../hooks/usePath';
+import { api } from '../../lib/api';
 
 interface FlowInstance {
   id: string;
@@ -121,9 +123,6 @@ export default function AdminAutomationInstances() {
         subtitle="Active, completed and failed automation flow runs. Instances expire after 60 days."
         actions={
           <div className="flex items-center gap-2">
-            <Button as={Link} to={prefix('/admin/emails/logs')} variant="secondary" size="md" leftIcon={Mail}>
-              Email Logs
-            </Button>
             <Button onClick={handleTick} isLoading={ticking} variant="primary" size="md" leftIcon={Zap}>
               Run Tick Now
             </Button>
@@ -142,7 +141,7 @@ export default function AdminAutomationInstances() {
           { label: 'Completed', value: counts['completed'] || 0, icon: CheckCircle2, accent: 'bg-emerald-500/10 text-emerald-600' },
           { label: 'Failed', value: counts['failed'] || 0, icon: AlertCircle, accent: 'bg-destructive/10 text-destructive' },
         ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+          <Card key={s.label} padding="sm" className="flex-row items-center gap-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.accent}`}>
               <s.icon className="w-4 h-4" />
             </div>
@@ -150,38 +149,34 @@ export default function AdminAutomationInstances() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
               <p className="text-lg font-black text-foreground leading-none">{s.value}</p>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-grow max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          <input
-            className="w-full pl-9 pr-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
+        <div className="flex-grow max-w-xs">
+          <Input
             placeholder="Search email, flow name…"
             value={search}
             onChange={e => setSearch(e.target.value)}
+            leftIcon={Search}
+            variant="outline"
           />
         </div>
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-          {(['all', 'pending', 'completed', 'failed'] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                filterStatus === s ? 'bg-card shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          tabs={(['all', 'pending', 'completed', 'failed'] as const).map(s => ({
+            id: s,
+            label: s.charAt(0).toUpperCase() + s.slice(1),
+          }))}
+          activeTab={filterStatus}
+          onChange={id => setFilterStatus(id as typeof filterStatus)}
+          variant="pill"
+        />
       </div>
 
       {/* Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+      <Card padding="none" className="shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -262,7 +257,7 @@ export default function AdminAutomationInstances() {
             Showing {filtered.length} of {instances.length} instances (last 200). Instances auto-expire after 60 days.
           </p>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

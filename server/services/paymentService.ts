@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
+import { calculateOrderBreakdown } from "../lib/calculations.js";
 import { awardAffiliateCommission, sendSuccessEmail } from "../lib/payouts.js";
 import { triggerFlow } from "./automationEngine.js";
 
@@ -24,10 +25,28 @@ function toUsd(amount: number, currency: string, rate: number): number {
   return Math.round((amount / rate) * 100) / 100;
 }
 
+async function redeemCoupon(db: any, couponId: string, couponCode: string, orderId: string, userId: string) {
+  if (!couponId) return;
+  try {
+    await db.runTransaction(async (tx: any) => {
+      const ref  = db.collection("coupons").doc(couponId);
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      tx.update(ref, {
+        usedCount:  admin.firestore.FieldValue.increment(1),
+        lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(db.collection("coupon_redemptions").doc(), {
+        couponId, couponCode, orderId, userId,
+        redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+  } catch (err) {
+    console.error("[PaymentService] coupon redeem error:", err);
+  }
+}
+
 export class PaymentService {
-  /**
-   * Verified a payment from Cashfree and upgrades user account
-   */
   static async verifyCashfreePayment(orderId: string) {
     const firebase = await initFirebase();
     if (!firebase) throw new Error("Firebase not connected");
@@ -49,15 +68,26 @@ export class PaymentService {
     const data: any = await response.json();
 
     if (data.order_status === 'PAID') {
-      const customerId = data.customer_details.customer_id;
-      const planId = data.order_tags?.planId || 'pro_plan';
+      const customerId  = data.customer_details.customer_id;
+      const planId      = data.order_tags?.planId      || 'pro_plan';
       const billingCycle = data.order_tags?.billingCycle || 'monthly';
+      const couponId       = data.order_tags?.couponId       || '';
+      const couponCode     = data.order_tags?.couponCode     || '';
+      const couponDiscount = parseFloat(data.order_tags?.couponDiscount || '0');
+      const originalAmount = parseFloat(data.order_tags?.originalAmount || '0');
 
-      const planSnap = await firebase.db.collection("plans").doc(planId).get();
+      const [planSnap, globalSnap, marketingSnap] = await Promise.all([
+        firebase.db.collection("plans").doc(planId).get(),
+        firebase.db.collection("configs").doc("global").get(),
+        firebase.db.collection("configs").doc("marketing").get(),
+      ]);
       const planData = planSnap.data() ?? { monthlyCredits: 500, name: 'Pro' };
       const planCredits = planData.monthlyCredits ?? planData.credits ?? 500;
+      const taxRate            = Number(globalSnap.data()?.taxRate             ?? 0);
+      const commissionRate     = Number(marketingSnap.data()?.referralCommission ?? 25);
+      const platformFeePercent = Number(marketingSnap.data()?.platformFeePercent  ?? 0);
 
-      const userRef = firebase.db.collection("users").doc(customerId);
+      const userRef  = firebase.db.collection("users").doc(customerId);
       const userSnap = await userRef.get();
       const userData = userSnap.exists ? userSnap.data() : null;
 
@@ -65,9 +95,23 @@ export class PaymentService {
       if (billingCycle === 'yearly') expiryDate.setFullYear(expiryDate.getFullYear() + 1);
       else expiryDate.setMonth(expiryDate.getMonth() + 1);
 
-      // Normalize to USD for consistent reporting
       const exchangeRateAtOrder = await fetchLiveExchangeRate();
       const amountUsd = toUsd(data.order_amount, data.order_currency, exchangeRateAtOrder);
+
+      // Use originalAmount (USD) when available; fall back to reverse-calc
+      const productPrice = originalAmount > 0 ? originalAmount
+        : taxRate > 0
+          ? parseFloat(((amountUsd + couponDiscount) / (1 + taxRate / 100)).toFixed(4))
+          : amountUsd + couponDiscount;
+
+      const breakdown = calculateOrderBreakdown({
+        productPrice,
+        couponDiscount,
+        taxRate,
+        commissionRate,
+        platformFeePercent,
+        hasAffiliate: !!userData?.referredBy,
+      });
 
       await userRef.update({
         subscriptionStatus: planId === 'free' ? 'free' : 'pro',
@@ -80,19 +124,32 @@ export class PaymentService {
       });
 
       await firebase.db.collection("orders").doc(data.order_id).set({
-        orderId: data.order_id,
-        userId: customerId,
-        userEmail: data.customer_details.customer_email,
-        planId: planId,
-        planName: planData.name,
-        amount: data.order_amount,
-        currency: data.order_currency,
+        orderId:           data.order_id,
+        userId:            customerId,
+        userEmail:         data.customer_details.customer_email,
+        planId,
+        planName:          planData.name,
+        productPrice:      breakdown.productPrice,
+        couponDiscount:    breakdown.couponDiscount,
+        discountedPrice:   breakdown.discountedPrice,
+        taxAmount:         breakdown.taxAmount,
+        taxRate:           breakdown.taxRate,
+        buyerTotal:        breakdown.buyerTotal,
+        netRevenue:        breakdown.netRevenue,
+        commissionAmount:  breakdown.commissionAmount,
+        affiliatePayout:   breakdown.affiliatePayout,
+        adminKeeps:        breakdown.adminKeeps,
+        hasAffiliate:      breakdown.hasAffiliate,
+        ...(couponId   ? { couponId }   : {}),
+        ...(couponCode ? { couponCode } : {}),
+        amount:            data.order_amount,
+        currency:          data.order_currency,
         amountUsd,
         exchangeRateAtOrder,
-        status: 'completed',
-        billingCycle: billingCycle,
-        gateway: 'cashfree',
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        status:            'completed',
+        billingCycle,
+        gateway:           'cashfree',
+        createdAt:         admin.firestore.FieldValue.serverTimestamp(),
       });
 
       const invoiceNumber = `INV-${Date.now()}`;
@@ -114,6 +171,8 @@ export class PaymentService {
         paidAt: admin.firestore.FieldValue.serverTimestamp(),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      await redeemCoupon(firebase.db, couponId, couponCode, data.order_id, customerId);
 
       if (userData?.referredBy) {
         await awardAffiliateCommission(customerId, data.order_amount, data.order_id, data.order_currency, userData.referredBy, amountUsd, exchangeRateAtOrder);
@@ -148,8 +207,16 @@ export class PaymentService {
     billingCycle: string;
     customerId: string;
     customerEmail: string;
+    couponId?: string;
+    couponCode?: string;
+    couponDiscount?: number;
+    originalAmount?: number;
   }) {
     const { orderID, planId, billingCycle, customerId, customerEmail } = payload;
+    const couponId       = payload.couponId       || '';
+    const couponCode     = payload.couponCode     || '';
+    const couponDiscount = payload.couponDiscount ?? 0;
+    const originalAmount = payload.originalAmount ?? 0;
     const firebase = await initFirebase();
     if (!firebase) throw new Error("Firebase not connected");
 
@@ -189,11 +256,18 @@ export class PaymentService {
     const captureData: any = await captureRes.json();
 
     if (captureData.status === 'COMPLETED') {
-      const planSnap = await firebase.db.collection("plans").doc(planId).get();
+      const [planSnap, globalSnap, marketingSnap] = await Promise.all([
+        firebase.db.collection("plans").doc(planId).get(),
+        firebase.db.collection("configs").doc("global").get(),
+        firebase.db.collection("configs").doc("marketing").get(),
+      ]);
       const planData = planSnap.data() ?? { monthlyCredits: 500, name: 'Pro' };
       const planCredits = planData.monthlyCredits ?? planData.credits ?? 500;
+      const taxRate            = Number(globalSnap.data()?.taxRate             ?? 0);
+      const commissionRate     = Number(marketingSnap.data()?.referralCommission ?? 25);
+      const platformFeePercent = Number(marketingSnap.data()?.platformFeePercent  ?? 0);
 
-      const userRef = firebase.db.collection("users").doc(customerId);
+      const userRef  = firebase.db.collection("users").doc(customerId);
       const userSnap = await userRef.get();
       const userData = userSnap.exists ? userSnap.data() : null;
 
@@ -201,13 +275,28 @@ export class PaymentService {
       if (billingCycle === 'yearly') expiryDate.setFullYear(expiryDate.getFullYear() + 1);
       else expiryDate.setMonth(expiryDate.getMonth() + 1);
 
-      const ppCapture = captureData.purchase_units[0].payments.captures[0];
-      const nativeAmount = parseFloat(ppCapture.amount.value);
+      const ppCapture      = captureData.purchase_units[0].payments.captures[0];
+      const nativeAmount   = parseFloat(ppCapture.amount.value);
       const nativeCurrency = ppCapture.amount.currency_code as string;
-
-      // PayPal always charges USD — amountUsd equals the charge; rate = 1
-      const amountUsd = Math.round(nativeAmount * 100) / 100;
+      const amountUsd      = Math.round(nativeAmount * 100) / 100;
       const exchangeRateAtOrder = 1;
+
+      // productPrice: use originalAmount if provided, else reverse-calc
+      const productPrice = originalAmount > 0 ? originalAmount
+        : taxRate > 0
+          ? parseFloat(((amountUsd + couponDiscount) / (1 + taxRate / 100)).toFixed(4))
+          : amountUsd + couponDiscount;
+
+      const breakdown = calculateOrderBreakdown({
+        productPrice,
+        couponDiscount,
+        taxRate,
+        gatewayFeePercent: 0,
+        gatewayFlatFee: 0,
+        commissionRate,
+        platformFeePercent,
+        hasAffiliate: !!userData?.referredBy,
+      });
 
       await userRef.update({
         subscriptionStatus: planId === 'free' ? 'free' : 'pro',
@@ -220,39 +309,54 @@ export class PaymentService {
       });
 
       await firebase.db.collection("orders").doc(orderID).set({
-        orderId: orderID,
-        userId: customerId,
-        userEmail: customerEmail,
-        planId: planId,
-        planName: planData.name,
-        amount: nativeAmount,
-        currency: nativeCurrency,
+        orderId:           orderID,
+        userId:            customerId,
+        userEmail:         customerEmail,
+        planId,
+        planName:          planData.name,
+        productPrice:      breakdown.productPrice,
+        couponDiscount:    breakdown.couponDiscount,
+        discountedPrice:   breakdown.discountedPrice,
+        taxAmount:         breakdown.taxAmount,
+        taxRate:           breakdown.taxRate,
+        buyerTotal:        breakdown.buyerTotal,
+        netRevenue:        breakdown.netRevenue,
+        commissionAmount:  breakdown.commissionAmount,
+        affiliatePayout:   breakdown.affiliatePayout,
+        adminKeeps:        breakdown.adminKeeps,
+        hasAffiliate:      breakdown.hasAffiliate,
+        ...(couponId   ? { couponId }   : {}),
+        ...(couponCode ? { couponCode } : {}),
+        amount:            nativeAmount,
+        currency:          nativeCurrency,
         amountUsd,
         exchangeRateAtOrder,
-        status: 'completed',
-        billingCycle: billingCycle,
-        gateway: 'paypal',
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        status:            'completed',
+        billingCycle,
+        gateway:           'paypal',
+        createdAt:         admin.firestore.FieldValue.serverTimestamp(),
       });
 
       await firebase.db.collection("invoices").add({
         invoiceNumber: `INV-${Date.now()}`,
-        orderId: orderID,
-        userId: customerId,
+        orderId:       orderID,
+        userId:        customerId,
         customerEmail,
-        customerName: userData?.displayName || '',
+        customerName:  userData?.displayName || '',
         planId,
-        planName: planData.name,
-        amount: nativeAmount,
-        currency: nativeCurrency,
+        planName:      planData.name,
+        amount:        nativeAmount,
+        currency:      nativeCurrency,
         amountUsd,
         exchangeRateAtOrder,
         billingCycle,
-        gateway: 'paypal',
-        status: 'paid',
-        paidAt: admin.firestore.FieldValue.serverTimestamp(),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        gateway:       'paypal',
+        status:        'paid',
+        paidAt:        admin.firestore.FieldValue.serverTimestamp(),
+        createdAt:     admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      await redeemCoupon(firebase.db, couponId, couponCode, orderID, customerId);
 
       if (userData?.referredBy) {
         await awardAffiliateCommission(customerId, nativeAmount, orderID, nativeCurrency, userData.referredBy, amountUsd, exchangeRateAtOrder);

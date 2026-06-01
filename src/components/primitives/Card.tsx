@@ -1,12 +1,13 @@
+import { motion, type HTMLMotionProps } from 'motion/react';
 import React from 'react';
-import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps extends HTMLMotionProps<'div'> {
   variant?: 'default' | 'outline' | 'glass' | 'ghost' | 'raised' | 'flat';
   padding?: 'none' | 'sm' | 'md' | 'lg';
   as?: any;
   interactive?: boolean;
+  [key: string]: any;
 }
 
 /**
@@ -38,7 +39,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         whileHover={interactive ? { y: -4, transition: { duration: 0.2 } } : {}}
         className={cn(
-          "rounded-xl border transition-all overflow-hidden flex flex-col",
+          "rounded-xl border transition-all flex flex-col",
           variants[variant],
           paddings[padding],
           interactive && "cursor-pointer hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
@@ -50,7 +51,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       </MotionComponent>
     );
   }
-) as React.ForwardRefExoticComponent<CardProps & React.RefAttributes<HTMLDivElement>> & {
+) as React.ForwardRefExoticComponent<CardProps & React.RefAttributes<HTMLDivElement>> & Record<string, any> & {
   Header: typeof CardHeader;
   Body: typeof CardBody;
   Footer: typeof CardFooter;
@@ -66,12 +67,12 @@ interface CardHeaderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'ti
 }
 
 const CardHeader = ({ title, subtitle, action, sticky, className, children, ...props }: CardHeaderProps) => (
-  <div 
+  <div
     className={cn(
       "px-6 py-4 border-b border-border flex items-center justify-between gap-4",
       sticky && "sticky top-0 bg-card z-10",
       className
-    )} 
+    )}
     {...props}
   >
     <div className="flex-1 min-w-0">
@@ -88,13 +89,13 @@ const CardBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>)
 );
 
 const CardFooter = ({ className, sticky, ...props }: React.HTMLAttributes<HTMLDivElement> & { sticky?: boolean }) => (
-  <div 
+  <div
     className={cn(
       "px-6 py-4 border-t border-border bg-muted/5",
       sticky && "sticky bottom-0 bg-card z-10",
       className
-    )} 
-    {...props} 
+    )}
+    {...props}
   />
 );
 

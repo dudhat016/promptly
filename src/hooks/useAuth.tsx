@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { getAffinityProfile, mergeCloudAffinity, seedAffinityFromInterests, syncAffinityToCloud } from '../lib/affinity';
 import { auth, db } from '../lib/firebase';
-import { seedDatabase } from '../lib/seed';
 import { api } from '../lib/api';
 import { EmailService } from '../services/emailService';
 import { UserProfile } from '../types';
@@ -166,11 +165,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   name: user.displayName || user.email?.split('@')[0] || '',
                   time: new Date().toLocaleString(),
                 }).catch(() => {});
-              }
-
-              if (data.role === 'admin' && !sessionStorage.getItem('DB_SEEDED')) {
-                seedDatabase();
-                sessionStorage.setItem('DB_SEEDED', 'true');
               }
 
               // Merge cloud affinity into local profile

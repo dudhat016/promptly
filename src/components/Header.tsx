@@ -1,19 +1,17 @@
 import {
   ChevronDown, Coins, FileText, Gift, Heart, LayoutGrid,
   LogOut, Mail, Menu, Moon, Search, Settings, ShieldCheck,
-  Sparkles, Sun, User, X, HelpCircle
+  Sparkles, Sun, X, HelpCircle
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../i18n';
 import { usePath } from '../hooks/usePath';
-import { useUI } from '../contexts/UIProvider';
 import { auth, signInWithGoogle } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import Button from './primitives/Button';
@@ -21,55 +19,6 @@ import NotificationBell from './notifications/NotificationBell';
 import AnnouncementBanner from './AnnouncementBanner';
 import PageContainer from './layout/PageContainer';
 import UserDropdown from './layout/UserDropdown';
-
-function CurrencyDropdown() {
-  const { currency, setCurrency, symbol } = useCurrency();
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <Button
-        onClick={() => setOpen(!open)}
-        variant="ghost"
-        size="sm"
-        rightIcon={ChevronDown}
-        className="gap-1.5 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground font-semibold"
-      >
-        <span className="text-primary font-bold">{symbol}</span>
-        {currency}
-      </Button>
-
-      <AnimatePresence>
-        {open && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <motion.div
-              initial={{ opacity: 0, y: 4, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.97 }}
-              transition={{ duration: 0.12 }}
-              className="absolute right-0 mt-1.5 w-28 rounded-xl p-1.5 z-50 bg-card border border-border shadow-xl"
-            >
-              {(['USD', 'INR'] as const).map((c) => (
-                <Button
-                  key={c}
-                  onClick={() => { setCurrency(c); setOpen(false); }}
-                  variant={currency === c ? 'primary' : 'ghost'}
-                  size="sm"
-                  fullWidth
-                  className="justify-between px-2.5 py-1.5 font-semibold"
-                >
-                  <span>{c}</span>
-                  <span className="opacity-60">{c === 'USD' ? '$' : '₹'}</span>
-                </Button>
-              ))}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -146,7 +95,6 @@ function LanguageSwitcher() {
 }
 
 export default function Header() {
-  const { config: uiConfig } = useUI();
   const { config } = useConfig();
   const { theme } = useTheme();
   const { user, profile, isPro, isAdmin, isStaff, loading } = useAuth();
@@ -164,7 +112,6 @@ export default function Header() {
     { to: prefix('/leaderboard'), label: 'Leaderboard' },
     { to: prefix('/pricing'),     label: 'Pricing'     },
     { to: prefix('/blog'),        label: 'Blog'        },
-    { to: prefix('/changelog'),   label: 'Changelog'   },
     { to: prefix('/affiliate'),   label: 'Partner'     },
     { to: prefix('/contact'),     label: 'Support'     },
   ];
@@ -172,13 +119,7 @@ export default function Header() {
   return (
     <>
       <AnnouncementBanner />
-      <header className={cn(
-        "z-50 flex items-center transition-all duration-300",
-        (uiConfig.navbarStyle === 'fixed' || uiConfig.navbarStyle === 'floating') ? "sticky top-0" : "static",
-        uiConfig.navbarStyle === 'floating'
-          ? "m-4 rounded-2xl glass border border-border shadow-xl w-[calc(100%-2rem)]"
-          : "w-full glass border-b border-border h-16"
-      )}>
+      <header className="z-50 flex items-center transition-all duration-300 sticky top-0 w-full glass border-b border-border h-16">
         <PageContainer className="px-4 md:px-6 h-16 flex items-center justify-between gap-4" ignoreCustomizer>
   
           {/* Logo */}
@@ -233,7 +174,6 @@ export default function Header() {
         {/* Right actions */}
         <div className="flex items-center gap-1">
           <div className="hidden lg:flex items-center gap-1 pr-2 border-r border-border/50">
-            <CurrencyDropdown />
             <LanguageSwitcher />
             <ThemeToggle />
           </div>

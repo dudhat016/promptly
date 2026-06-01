@@ -3,6 +3,7 @@ import { Bell, Info, AlertTriangle, AlertCircle, CheckCircle2 } from 'lucide-rea
 import { motion, AnimatePresence } from 'motion/react';
 import { useNotifications, Notification } from '../../hooks/useNotifications';
 import { Button, Card } from '../primitives';
+import Spinner from '../feedback/Spinner';
 import { cn } from '../../lib/utils';
 import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
@@ -70,7 +71,7 @@ export default function NotificationBell() {
                 <div className="max-h-[400px] overflow-y-auto py-1 custom-scrollbar">
                   {loading ? (
                     <div className="p-8 text-center">
-                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      <Spinner size="sm" className="mx-auto mb-2" />
                       <p className="text-xs text-muted-foreground">Syncing...</p>
                     </div>
                   ) : notifications.length === 0 ? (

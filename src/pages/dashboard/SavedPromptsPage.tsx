@@ -3,6 +3,7 @@ import { Bookmark, ArrowRight, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import Button from '../../components/primitives/Button';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -96,13 +97,15 @@ export default function SavedPromptsPage() {
                     </Link>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => remove(entry.promptId)}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
+                  className="opacity-0 group-hover:opacity-100 hover:text-rose-500 hover:bg-rose-500/10 w-8 h-8 shrink-0"
                   title="Remove from queue"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </motion.div>
             ))}
           </div>

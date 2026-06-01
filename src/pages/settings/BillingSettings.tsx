@@ -11,26 +11,10 @@ import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
+import Textarea from '../../components/primitives/Textarea';
+import Spinner from '../../components/feedback/Spinner';
 import { PaymentService } from '../../services/paymentService';
-
-function SectionCard({ icon: Icon, title, description, children }: {
-  icon: React.ElementType; title: string; description?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-3">
-        <div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-foreground">{title}</h3>
-          {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-        </div>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  );
-}
 
 const CANCEL_REASONS = [
   { id: 'too_expensive',    label: 'Too expensive',             offer: 'pause'    },
@@ -178,7 +162,11 @@ export default function BillingSettings() {
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
 
       {/* ── Subscription ─────────────────────────────────────── */}
-      <SectionCard icon={CreditCard} title="Subscription" description="Your current plan, billing cycle, and renewal settings.">
+      <Card className="!rounded-lg">
+        <Card.Header
+          title={<div className="flex items-center gap-3"><div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0"><CreditCard className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-foreground">Subscription</h3><p className="text-xs text-muted-foreground mt-0.5">Your current plan, billing cycle, and renewal settings.</p></div></div>}
+        />
+        <Card.Body>
         <div className="space-y-6">
 
           {/* Trial countdown */}
@@ -436,10 +424,11 @@ export default function BillingSettings() {
                             <p className="text-sm text-muted-foreground">
                               We ship new features every week. What would make Promptly worth keeping?
                             </p>
-                            <textarea
+                            <Textarea
                               placeholder="e.g. I need better export options, or API access..."
-                              className="w-full bg-background border border-border rounded-lg p-3 text-sm text-foreground resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                              rows={3}
                               onChange={e => setCancelReason(`missing_feature:${e.target.value}`)}
+                              variant="outline"
                             />
                             <div className="flex gap-3">
                               <Button onClick={() => setShowCancelConfirm(false)} variant="secondary" size="sm">
@@ -491,13 +480,18 @@ export default function BillingSettings() {
             </>
           )}
         </div>
-      </SectionCard>
+        </Card.Body>
+      </Card>
 
       {/* ── Order History ─────────────────────────────────────── */}
-      <SectionCard icon={FileText} title="Order History" description="All past purchases and subscription payments.">
+      <Card className="!rounded-lg">
+        <Card.Header
+          title={<div className="flex items-center gap-3"><div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0"><FileText className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-foreground">Order History</h3><p className="text-xs text-muted-foreground mt-0.5">All past purchases and subscription payments.</p></div></div>}
+        />
+        <Card.Body>
         {loading ? (
           <div className="py-12 text-center">
-            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <Spinner size="lg" className="mx-auto mb-4" />
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Syncing records…</p>
           </div>
         ) : orders.length > 0 ? (
@@ -522,7 +516,7 @@ export default function BillingSettings() {
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{order.billingCycle}</p>
                     </td>
                     <td className="px-5 py-4 text-sm font-bold text-foreground">
-                      {order.currency === 'INR' ? '₹' : '$'}{order.amount}
+                      ${order.amount}
                     </td>
                     <td className="px-5 py-4">
                       <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
@@ -541,7 +535,8 @@ export default function BillingSettings() {
             <p className="text-xs text-muted-foreground/60 mt-1">Your purchase history will appear here.</p>
           </div>
         )}
-      </SectionCard>
+        </Card.Body>
+      </Card>
 
     </motion.div>
   );

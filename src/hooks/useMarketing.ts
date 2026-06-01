@@ -15,7 +15,6 @@ export function useMarketing() {
     paymentFeePercent: 2,
     platformFeePercent: 0,
     lockPeriodDays: 14,
-    refereeDiscountPercent: 10,
     adLabel: 'Sponsored Content',
     adProtectionTitle: 'Neural Protection Active',
     adProtectionSubtitle: 'Upgrade to PRO to instantly remove all advertisements.',

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Tag } from '../../types';
-import { Save, Tag as TagIcon } from 'lucide-react';
+import { ArrowLeft, Save, Tag as TagIcon } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import Button from '../../components/primitives/Button';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import Card from '../../components/primitives/Card';
+import { useNavigate, useParams } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
 import Input from '../../components/primitives/Input';
@@ -15,7 +16,7 @@ export default function AdminMarketingTagForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { prefix } = usePath();
-  
+
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [tag, setTag] = useState<Partial<Tag>>({
@@ -36,7 +37,7 @@ export default function AdminMarketingTagForm() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!tag.name?.trim()) newErrors.name = "Tag name is required";
+    if (!tag.name?.trim()) newErrors.name = 'Tag name is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -44,7 +45,6 @@ export default function AdminMarketingTagForm() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     setSaving(true);
     try {
       if (id && id !== 'new') {
@@ -53,29 +53,45 @@ export default function AdminMarketingTagForm() {
         const newId = tag.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || Date.now().toString();
         await setDoc(doc(db, 'marketing_tags', newId), { ...tag, id: newId });
       }
-      toast.success(id && id !== 'new' ? "Tag updated" : "New tag created");
-      navigate(prefix('/admin/marketing?tab=tag'));
+      toast.success(id && id !== 'new' ? 'Tag updated' : 'New tag created');
+      navigate(prefix('/admin/marketing/tags'));
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save tag");
+      toast.error('Failed to save tag');
     } finally {
       setSaving(false);
     }
   };
 
+  const PRESET_COLORS = [
+    '#4f46e5', '#7c3aed', '#db2777', '#dc2626',
+    '#ea580c', '#ca8a04', '#16a34a', '#0891b2',
+    '#0284c7', '#4338ca', '#be123c', '#15803d',
+  ];
+
   return (
-    <>
+    <div className="space-y-6">
       <AdminPageHeader
         label="Marketing CRM"
         labelIcon={TagIcon}
         title={id === 'new' ? 'Create Tag' : 'Edit Tag'}
         subtitle="Define a label to segment and organize your contacts."
+        actions={
+          <Button
+            onClick={() => navigate(prefix('/admin/marketing/tags'))}
+            variant="secondary"
+            size="md"
+            leftIcon={ArrowLeft}
+            className="font-bold"
+          >
+            Back
+          </Button>
+        }
       />
 
-      <div className="bg-card rounded-lg border border-border shadow-sm p-8">
-        
+      <Card padding="lg" className="!rounded-3xl shadow-sm">
         <form onSubmit={handleSave} className="space-y-6">
-          <Input 
+          <Input
             label="Tag Name"
             id="tagName"
             name="tagName"
@@ -83,57 +99,85 @@ export default function AdminMarketingTagForm() {
             error={errors.name}
             value={tag.name || ''}
             onChange={e => {
-              setTag({...tag, name: e.target.value});
-              if (errors.name) setErrors({...errors, name: ''});
+              setTag({ ...tag, name: e.target.value });
+              if (errors.name) setErrors({ ...errors, name: '' });
             }}
             placeholder="e.g. VIP Customer"
-            variant="filled"
+            variant="outline"
           />
 
-          <Textarea 
+          <Textarea
             label="Description"
             id="tagDescription"
             name="tagDescription"
             rows={3}
             value={tag.description || ''}
-            onChange={e => setTag({...tag, description: e.target.value})}
+            onChange={e => setTag({ ...tag, description: e.target.value })}
             placeholder="What does this tag mean?"
-            variant="filled"
+            variant="outline"
           />
 
-          <Input 
-            label="Color"
-            type="color"
-            value={tag.color || '#4f46e5'}
-            onChange={e => setTag({...tag, color: e.target.value})}
-            className="h-12 cursor-pointer"
-            variant="filled"
-          />
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+              Tag Color
+            </label>
+            {/* Preset swatches */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {PRESET_COLORS.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setTag({ ...tag, color })}
+                  className="w-8 h-8 rounded-lg border-2 transition-all hover:scale-110"
+                  style={{
+                    backgroundColor: color,
+                    borderColor: tag.color === color ? color : 'transparent',
+                    boxShadow: tag.color === color ? `0 0 0 3px ${color}33` : undefined,
+                  }}
+                />
+              ))}
+              {/* Custom color picker */}
+              <label className="w-8 h-8 rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 transition-all overflow-hidden relative">
+                <span className="text-[10px] font-black text-muted-foreground">+</span>
+                <input
+                  type="color"
+                  value={tag.color || '#4f46e5'}
+                  onChange={e => setTag({ ...tag, color: e.target.value })}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+              </label>
+            </div>
+            {/* Preview */}
+            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl border border-border w-fit">
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tag.color || '#4f46e5' }} />
+              <span className="text-xs font-bold text-foreground">{tag.name || 'Tag preview'}</span>
+              <span className="text-[10px] font-mono text-muted-foreground">{tag.color || '#4f46e5'}</span>
+            </div>
+          </div>
 
-          <div className="pt-6 border-t border-border flex gap-4">
-            <Button 
-              type="submit" 
+          <div className="pt-4 border-t border-border flex gap-3">
+            <Button
+              type="submit"
               isLoading={saving}
               variant="primary"
-              size="lg"
-              fullWidth
+              size="md"
               leftIcon={Save}
-              className="font-bold"
+              className="font-bold shadow-sm shadow-primary/20"
             >
-              {saving ? 'Saving...' : 'Save Tag'}
+              {saving ? 'Saving...' : id === 'new' ? 'Create Tag' : 'Save Changes'}
             </Button>
-            <Button 
-              as={Link}
-              to={prefix("/admin/marketing?tab=tag")}
+            <Button
+              type="button"
+              onClick={() => navigate(prefix('/admin/marketing/tags'))}
               variant="secondary"
-              size="lg"
-              className="px-8 font-bold"
+              size="md"
+              className="font-bold"
             >
               Cancel
             </Button>
           </div>
         </form>
-      </div>
-    </>
+      </Card>
+    </div>
   );
 }

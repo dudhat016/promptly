@@ -100,7 +100,7 @@ export default function MyVaultPage() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           leftIcon={Search}
-          variant="filled"
+          variant="outline"
           className="md:w-80"
           rightAction={searchTerm && (
             <button onClick={() => setSearchTerm('')} className="p-1 hover:bg-muted rounded-md transition-colors">

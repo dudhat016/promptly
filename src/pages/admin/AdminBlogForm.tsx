@@ -10,6 +10,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { Save, ArrowLeft, Upload, Loader2, FileText } from 'lucide-react';
 import { AdminPageHeader, ImageUpload } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Editor from '../../components/primitives/Editor';
 import TagInput from '../../components/TagInput';
 import { useImageUpload } from '../../hooks/useImageUpload';
@@ -177,7 +178,8 @@ export default function AdminBlogForm() {
         }
       />
 
-      <form onSubmit={handleSave} className="bg-card rounded-2xl border border-border p-6 md:p-8 space-y-6">
+      <Card padding="none" className="!rounded-2xl">
+      <form onSubmit={handleSave} className="space-y-6 p-6 md:p-8">
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-4 md:col-span-2">
             <Input 
@@ -287,7 +289,7 @@ export default function AdminBlogForm() {
               rows={1}
               placeholder="SEO meta description..."
               className="min-h-[50px]"
-              variant="filled"
+              variant="outline"
             />
           </div>
 
@@ -310,7 +312,7 @@ export default function AdminBlogForm() {
               rows={2}
               placeholder="A short summary of the blog post..."
               className="min-h-[80px]"
-              variant="filled"
+              variant="outline"
             />
 
             <div>
@@ -347,6 +349,7 @@ export default function AdminBlogForm() {
           </Button>
         </div>
       </form>
+      </Card>
     </div>
   );
 }

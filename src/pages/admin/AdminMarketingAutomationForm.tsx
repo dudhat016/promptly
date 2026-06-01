@@ -4,7 +4,7 @@ import { collection, query, getDocs, doc, getDoc, setDoc, updateDoc } from 'fire
 import { Tag, EmailTemplate, AutomationFlow } from '../../types';
 import { GitBranch } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import AutomationBuilder from '../../components/marketing/AutomationBuilder';
 import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
@@ -65,7 +65,7 @@ export default function AdminMarketingAutomationForm() {
   };
 
   return (
-    <div>
+    <div className="space-y-6">
       <AdminPageHeader
         label="Marketing CRM"
         labelIcon={GitBranch}

@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy, limit, where } from 'firebase/fire
 import { CreditCard, DollarSign, ShoppingBag, TrendingUp, Users } from 'lucide-react';
 import { AdminPageHeader, DataTable } from '../../components/admin';
 import Badge from '../../components/primitives/Badge';
+import Card from '../../components/primitives/Card';
 import type { DataTableColumn } from '../../components/admin';
 import { useConfig } from '../../hooks/useConfig';
 import {
@@ -197,14 +198,11 @@ export default function AdminFinancials() {
       render: o => (
         <div>
           <span className="font-bold text-emerald-600">
-            {o.currency === 'INR' ? '₹' : '$'}{Number(o.amount).toFixed(2)}
+            ${Number(o.amount).toFixed(2)}
           </span>
-          {o.amountUsd != null && o.currency !== 'USD' && (
-            <p className="text-[10px] text-muted-foreground font-mono">${o.amountUsd.toFixed(2)} USD</p>
-          )}
         </div>
       ),
-      csvValue: o => `${o.currency === 'INR' ? '₹' : '$'}${Number(o.amount).toFixed(2)}${o.amountUsd != null && o.currency !== 'USD' ? ` ($${o.amountUsd} USD)` : ''}`,
+      csvValue: o => `$${Number(o.amount).toFixed(2)}`,
     },
     {
       key: 'status',
@@ -273,7 +271,7 @@ export default function AdminFinancials() {
       <div className="grid lg:grid-cols-2 gap-6">
 
         {/* Cumulative MRR */}
-        <div className="bg-card border border-border rounded-xl p-6">
+        <Card>
           <div className="mb-5">
             <h3 className="font-bold text-foreground">MRR Growth</h3>
             <p className="text-xs text-muted-foreground mt-0.5">Cumulative monthly recurring revenue — last 6 months</p>
@@ -302,10 +300,10 @@ export default function AdminFinancials() {
               />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
         {/* Monthly new revenue */}
-        <div className="bg-card border border-border rounded-xl p-6">
+        <Card>
           <div className="mb-5">
             <h3 className="font-bold text-foreground">New Revenue / Month</h3>
             <p className="text-xs text-muted-foreground mt-0.5">Revenue from new subscriptions each month</p>
@@ -319,13 +317,13 @@ export default function AdminFinancials() {
               <Bar dataKey="newRevenue" name="New Revenue" fill="var(--color-primary)" radius={[4, 4, 0, 0]} fillOpacity={0.85} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       </div>
 
       {/* MRR by Plan */}
       {mrrByPlan.length > 0 && (
         <div className="grid lg:grid-cols-2 gap-6">
-          <div className="bg-card border border-border rounded-xl p-6">
+          <Card>
             <h3 className="font-bold text-foreground mb-1">MRR by Plan</h3>
             <p className="text-xs text-muted-foreground mb-5">Monthly recurring revenue split across active plans</p>
             <ResponsiveContainer width="100%" height={200}>
@@ -336,9 +334,9 @@ export default function AdminFinancials() {
                 <Tooltip formatter={(v: any) => [`$${v}`, 'MRR']} />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
-          <div className="bg-card border border-border rounded-xl p-6">
+          <Card>
             <h3 className="font-bold text-foreground mb-1">Subscribers by Plan</h3>
             <p className="text-xs text-muted-foreground mb-5">Active Pro subscriber count per plan tier</p>
             <div className="space-y-3 mt-6">
@@ -355,7 +353,7 @@ export default function AdminFinancials() {
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Est. MRR</span>
               <span className="text-xl font-bold text-foreground">${trueMrr.toFixed(2)}</span>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 

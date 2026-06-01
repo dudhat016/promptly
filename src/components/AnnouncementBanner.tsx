@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Megaphone, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import Button from './primitives/Button';
 import { useConfig } from '../hooks/useConfig';
 import { Link } from 'react-router-dom';
 import { usePath } from '../hooks/usePath';
@@ -35,13 +36,15 @@ export default function AnnouncementBanner() {
               </Link>
             </div>
 
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setIsVisible(false)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-colors"
               aria-label="Close announcement"
+              className="absolute right-4 top-1/2 -translate-y-1/2 hover:bg-white/10 text-primary-foreground"
             >
               <X className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
           
           {/* Subtle animated shine */}

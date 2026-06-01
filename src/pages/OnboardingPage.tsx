@@ -390,7 +390,7 @@ function StepProfile({ displayName, username, bio, location, usernameError, onCh
           placeholder="e.g. Alex Creator"
           value={displayName}
           onChange={e => onChangeName(e.target.value)}
-          variant="filled"
+          variant="outline"
           autoFocus
           required
           helperText="Shown publicly on your creator profile."
@@ -400,7 +400,7 @@ function StepProfile({ displayName, username, bio, location, usernameError, onCh
           placeholder="e.g. alexcreator"
           value={username}
           onChange={e => onChangeUsername(e.target.value.replace(/[^a-z0-9_-]/gi, '').toLowerCase())}
-          variant="filled"
+          variant="outline"
           helperText={usernameError || 'Optional. Your public URL: /creator/handle'}
           error={usernameError || undefined}
         />
@@ -409,7 +409,7 @@ function StepProfile({ displayName, username, bio, location, usernameError, onCh
           placeholder="Tell others what you do and what you're passionate about..."
           value={bio}
           onChange={e => onChangeBio(e.target.value)}
-          variant="filled"
+          variant="outline"
           rows={3}
           maxLength={300}
           helperText={`${bio.length}/300 — Shown on your public profile. Optional.`}
@@ -420,7 +420,7 @@ function StepProfile({ displayName, username, bio, location, usernameError, onCh
           placeholder="e.g. Mumbai, India"
           value={location}
           onChange={e => onChangeLocation(e.target.value)}
-          variant="filled"
+          variant="outline"
           helperText="City or country — optional."
           leftIcon={MapPin}
         />

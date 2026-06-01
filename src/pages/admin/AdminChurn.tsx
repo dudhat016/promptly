@@ -5,6 +5,7 @@ import { collection, getDocs, query, orderBy, limit, where, Timestamp } from 'fi
 import { TrendingUp, UserMinus, UserCheck, Clock, AlertTriangle, RefreshCw, Send, CreditCard } from 'lucide-react';
 import { AdminPageHeader, DataTable, type DataTableColumn } from '../../components/admin';
 import Badge from '../../components/primitives/Badge';
+import Card from '../../components/primitives/Card';
 import Button from '../../components/primitives/Button';
 import { api } from '../../lib/api';
 import { usePath } from '../../hooks/usePath';
@@ -361,7 +362,7 @@ export default function AdminChurn() {
           { icon: UserCheck,     label: 'Trial Conversions',    value: stats.trialConverted,   color: 'bg-emerald-500/10 text-emerald-500' },
           { icon: CreditCard,    label: 'In Dunning',           value: stats.dunningCount,     color: 'bg-destructive/10 text-destructive' },
         ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-5 flex items-start gap-3">
+          <Card key={s.label} padding="none" className="p-5 flex-row items-start gap-3">
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${s.color}`}>
               <s.icon className="w-4.5 h-4.5" />
             </div>
@@ -369,13 +370,13 @@ export default function AdminChurn() {
               <p className="text-xl font-bold text-foreground">{s.value}</p>
               <p className="text-xs text-muted-foreground font-medium mt-0.5">{s.label}</p>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-card border border-border rounded-xl p-6">
+        <Card>
           <h3 className="font-bold text-foreground mb-1">Monthly Churn</h3>
           <p className="text-xs text-muted-foreground mb-5">Cancellations per month — last 6 months</p>
           <ResponsiveContainer width="100%" height={180}>
@@ -391,9 +392,9 @@ export default function AdminChurn() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        <div className="bg-card border border-border rounded-xl p-6">
+        <Card>
           <h3 className="font-bold text-foreground mb-1">Cancellation Reasons</h3>
           <p className="text-xs text-muted-foreground mb-5">Why users cancel — all time</p>
           {reasonChart.length > 0 ? (
@@ -409,7 +410,7 @@ export default function AdminChurn() {
           ) : (
             <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">No cancellation data yet.</div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Active trial users */}

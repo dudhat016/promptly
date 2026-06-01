@@ -10,6 +10,7 @@ import Textarea from '../components/primitives/Textarea';
 import Select from '../components/primitives/Select';
 import Button from '../components/primitives/Button';
 import Skeleton from '../components/feedback/Skeleton';
+import Card from '../components/primitives/Card';
 
 interface Message {
   senderId: string;
@@ -162,7 +163,7 @@ export default function SupportPage() {
 
       {isCreating ? (
         /* ── New Ticket Form ── */
-        <div className="max-w-2xl bg-card border border-border rounded-2xl p-8">
+        <Card padding="lg" className="max-w-2xl !rounded-2xl">
           <h2 className="text-lg font-bold text-foreground mb-6">Describe your issue</h2>
           <form onSubmit={handleCreateTicket} className="space-y-5">
             <Input
@@ -216,7 +217,7 @@ export default function SupportPage() {
               Submit Ticket
             </Button>
           </form>
-        </div>
+        </Card>
       ) : (
         /* ── Ticket List + Conversation ── */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -270,30 +271,28 @@ export default function SupportPage() {
           {/* Conversation panel */}
           <div className="lg:col-span-2">
             {selectedTicket ? (
-              <div className="bg-card border border-border rounded-2xl flex flex-col h-[75vh]">
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-border flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="font-bold text-foreground">{selectedTicket.subject}</h2>
-                    <div className={`flex items-center gap-1.5 text-xs font-semibold mt-1 ${STATUS_CONFIG[selectedTicket.status].color}`}>
-                      {(() => { const Icon = STATUS_CONFIG[selectedTicket.status].icon; return <Icon className="w-3.5 h-3.5" />; })()}
-                      {STATUS_CONFIG[selectedTicket.status].label}
-                      <span className="text-muted-foreground/40">·</span>
-                      <span className={`uppercase tracking-wider ${PRIORITY_COLOR[selectedTicket.priority]}`}>{selectedTicket.priority} priority</span>
+              <Card padding="none" className="!rounded-2xl h-[75vh]">
+                <Card.Header
+                  title={
+                    <div>
+                      <h2 className="font-bold text-foreground">{selectedTicket.subject}</h2>
+                      <div className={`flex items-center gap-1.5 text-xs font-semibold mt-1 ${STATUS_CONFIG[selectedTicket.status].color}`}>
+                        {(() => { const Icon = STATUS_CONFIG[selectedTicket.status].icon; return <Icon className="w-3.5 h-3.5" />; })()}
+                        {STATUS_CONFIG[selectedTicket.status].label}
+                        <span className="text-muted-foreground/40">·</span>
+                        <span className={`uppercase tracking-wider ${PRIORITY_COLOR[selectedTicket.priority]}`}>{selectedTicket.priority} priority</span>
+                      </div>
                     </div>
-                  </div>
-                   <Button 
-                    onClick={() => setSelectedTicket(null)} 
-                    variant="ghost" 
-                    size="icon" 
-                    className="shrink-0"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
+                  }
+                  action={
+                    <Button onClick={() => setSelectedTicket(null)} variant="ghost" size="icon" className="shrink-0">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  }
+                />
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-muted/20">
+                <Card.Body className="overflow-y-auto p-5 space-y-4 bg-muted/20">
                   {(selectedTicket.messages || []).map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.senderRole === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
@@ -309,21 +308,22 @@ export default function SupportPage() {
                     </div>
                   ))}
                   <div ref={messagesEndRef} />
-                </div>
+                </Card.Body>
 
                 {/* Reply */}
                 {selectedTicket.status !== 'resolved' && (
-                  <div className="p-4 border-t border-border flex gap-3">
-                    <textarea
+                  <Card.Footer className="flex gap-3">
+                    <Textarea
                       value={reply}
                       onChange={e => setReply(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }}
                       placeholder="Type a reply… (Enter to send)"
                       rows={2}
-                      className={`${inputClass} resize-none flex-grow`}
+                      variant="outline"
+                      className="min-h-0 flex-grow"
                     />
-                     <Button 
-                      onClick={handleSendReply} 
+                    <Button
+                      onClick={handleSendReply}
                       isLoading={sending}
                       disabled={!reply.trim()}
                       variant="primary"
@@ -332,21 +332,21 @@ export default function SupportPage() {
                     >
                       <Send className="w-4 h-4" />
                     </Button>
-                  </div>
+                  </Card.Footer>
                 )}
                 {selectedTicket.status === 'resolved' && (
-                  <div className="p-4 border-t border-border text-center text-xs text-muted-foreground font-semibold">
-                     This ticket has been resolved. 
-                    <Button 
-                      onClick={() => setIsCreating(true)} 
-                      variant="ghost" 
+                  <Card.Footer className="text-center text-xs text-muted-foreground font-semibold">
+                    This ticket has been resolved.
+                    <Button
+                      onClick={() => setIsCreating(true)}
+                      variant="ghost"
                       className="text-primary hover:underline ml-1 h-auto py-1 inline-flex"
                     >
                       Open a new ticket
                     </Button>
-                  </div>
+                  </Card.Footer>
                 )}
-              </div>
+              </Card>
             ) : (
               <div className="h-[75vh] flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 text-center">
                 <MessageSquare className="w-12 h-12 text-muted-foreground/20 mb-4" />

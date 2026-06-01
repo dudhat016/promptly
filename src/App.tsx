@@ -8,6 +8,7 @@ import Header from './components/Header';
 import SocialProofToaster from './components/SocialProofToaster';
 import NeuralMarketingScripts from './components/NeuralMarketingScripts';
 import CookieConsent from './components/CookieConsent';
+import OfflineBanner from './components/OfflineBanner';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useStaffRoles } from './hooks/useStaffRoles';
 import { usePath } from './hooks/usePath';
@@ -16,14 +17,14 @@ import { useConfig, ConfigProvider } from './hooks/useConfig';
 import { useUI } from './contexts/UIProvider';
 import { ConfirmProvider } from './components/admin';
 import { ThemeProvider } from './hooks/useTheme';
-import { CurrencyProvider } from './context/CurrencyContext';
 import { CustomizerDrawer } from './components/overlays';
 import InstallPrompt from './components/pwa/InstallPrompt';
 import LanguageGuard from './components/LanguageGuard';
 import CommandPalette from './components/navigation/CommandPalette';
+import Spinner from './components/feedback/Spinner';
 import ReferralModal from './components/marketing/ReferralModal';
 import ConversionTracking from './components/ConversionTracking';
-import UserLayout from './layouts/UserLayout';
+import DemoLayout from './demo/layout';
 import HorizontalLayout from './layouts/HorizontalLayout';
 import AdminLayout from './pages/admin/AdminLayout';
 import OnboardingGuard from './guards/OnboardingGuard';
@@ -31,11 +32,9 @@ import OnboardingGuard from './guards/OnboardingGuard';
 // ── Page lazy imports (code-split per route) ──────────────────────────────────
 // Admin
 const AdminAffiliates         = lazy(() => import('./pages/admin/AdminAffiliates'));
-const AdminAssetManager       = lazy(() => import('./pages/admin/AdminAssetManager'));
 const AdminBlog               = lazy(() => import('./pages/admin/AdminBlog'));
 const AdminBlogCategories     = lazy(() => import('./pages/admin/AdminBlogCategories'));
 const AdminBlogForm           = lazy(() => import('./pages/admin/AdminBlogForm'));
-const AdminSitePages          = lazy(() => import('./pages/admin/AdminSitePages'));
 const AdminCategories         = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminCategoryForm       = lazy(() => import('./pages/admin/AdminCategoryForm'));
 const AdminEmails             = lazy(() => import('./pages/admin/AdminEmails'));
@@ -79,7 +78,9 @@ const AdminInvoices           = lazy(() => import('./pages/admin/AdminInvoices')
 const AdminInvoiceForm        = lazy(() => import('./pages/admin/AdminInvoiceForm'));
 const AdminReports            = lazy(() => import('./pages/admin/AdminReports'));
 const AdminTestimonials       = lazy(() => import('./pages/admin/AdminTestimonials'));
-const AdminChangelog          = lazy(() => import('./pages/admin/AdminChangelog'));
+const AdminAnalytics          = lazy(() => import('./pages/admin/AdminAnalytics'));
+const AdminPush               = lazy(() => import('./pages/admin/AdminPush'));
+const AdminRTLTest            = lazy(() => import('./pages/admin/AdminRTLTest'));
 const AdminBadges             = lazy(() => import('./pages/admin/AdminBadges'));
 const AdminBadgeForm          = lazy(() => import('./pages/admin/AdminBadgeForm'));
 const AdminChurn              = lazy(() => import('./pages/admin/AdminChurn'));
@@ -102,7 +103,6 @@ const DMCAPage                = lazy(() => import('./pages/DMCAPage'));
 const UnsubscribePage         = lazy(() => import('./pages/UnsubscribePage'));
 const NewsletterConfirmPage   = lazy(() => import('./pages/NewsletterConfirmPage'));
 const FAQPage                 = lazy(() => import('./pages/FAQPage'));
-const ChangelogPage           = lazy(() => import('./pages/ChangelogPage'));
 const SupportPage             = lazy(() => import('./pages/SupportPage'));
 const NotFoundPage            = lazy(() => import('./pages/NotFoundPage'));
 // Auth
@@ -132,7 +132,6 @@ const AffiliatePage           = lazy(() => import('./pages/AffiliatePage'));
 const NotificationsPage       = lazy(() => import('./pages/NotificationsPage'));
 const CollectionsPage         = lazy(() => import('./pages/dashboard/CollectionsPage'));
 const SavedPromptsPage        = lazy(() => import('./pages/dashboard/SavedPromptsPage'));
-const DeveloperPage           = lazy(() => import('./pages/dashboard/DeveloperPage'));
 // Settings
 const AccountSettings         = lazy(() => import('./pages/settings/AccountSettings'));
 const BillingSettings         = lazy(() => import('./pages/settings/BillingSettings'));
@@ -143,7 +142,7 @@ const AIIntegrationPage       = lazy(() => import('./pages/settings/AIIntegratio
 function PageLoader() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <Spinner size="lg" />
     </div>
   );
 }
@@ -179,7 +178,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <Spinner size="xl" />
       </div>
     );
   }
@@ -199,7 +198,7 @@ const SectionRoute = ({ section, children }: { section: AdminSection; children: 
   if (authLoading || rolesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <Spinner size="xl" />
       </div>
     );
   }
@@ -217,7 +216,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <Spinner size="xl" />
       </div>
     );
   }
@@ -254,7 +253,6 @@ function AppContent() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="promptly-theme">
       <ConfigProvider>
-        <CurrencyProvider>
           <AuthProvider>
             <ConfirmProvider>
             <NeuralMarketingScripts />
@@ -263,6 +261,7 @@ function AppContent() {
               <ReferralCapture />
               <Toaster position="top-center" />
               <SocialProofToaster />
+              <OfflineBanner />
               <CustomizerDrawer />
               <InstallPrompt />
               <CookieConsent />
@@ -297,7 +296,6 @@ function AppContent() {
                   <Route path="unsubscribe" element={<UnsubscribePage />} />
                   <Route path="newsletter/confirm" element={<NewsletterConfirmPage />} />
                   <Route path="faq" element={<FAQPage />} />
-                  <Route path="changelog" element={<ChangelogPage />} />
                   <Route path="403" element={<ForbiddenPage />} />
                   <Route path="500" element={<ServerErrorPage />} />
                   <Route path="maintenance" element={<MaintenancePage />} />
@@ -317,7 +315,7 @@ function AppContent() {
                 </Route>
   
                 {/* Dashboard Layout: Sidebar + Specialized Header */}
-                <Route element={<PrivateRoute><OnboardingGuard><UserLayout /></OnboardingGuard></PrivateRoute>}>
+                <Route element={<PrivateRoute><OnboardingGuard><DemoLayout /></OnboardingGuard></PrivateRoute>}>
                   <Route path="dashboard" element={<Outlet />}>
                     <Route index element={<DashboardPage />} />
                     <Route path="vault" element={<MyVaultPage />} />
@@ -334,7 +332,6 @@ function AppContent() {
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="collections" element={<CollectionsPage />} />
                     <Route path="saved" element={<SavedPromptsPage />} />
-                    <Route path="developer" element={<DeveloperPage />} />
                   </Route>
 
                   <Route path="settings" element={<Outlet />}>
@@ -354,7 +351,6 @@ function AppContent() {
                   <Route path="reports" element={<SectionRoute section="reports"><AdminReports /></SectionRoute>} />
                   <Route path="reviews" element={<SectionRoute section="reviews"><AdminReviews /></SectionRoute>} />
                   <Route path="testimonials" element={<SectionRoute section="content"><AdminTestimonials /></SectionRoute>} />
-                  <Route path="changelog" element={<SectionRoute section="content"><AdminChangelog /></SectionRoute>} />
                   <Route path="churn" element={<SectionRoute section="revenue"><AdminChurn /></SectionRoute>} />
                   <Route path="prompts" element={<SectionRoute section="prompts"><AdminPrompts /></SectionRoute>} />
                   <Route path="seo" element={<SectionRoute section="seo"><AdminSEO /></SectionRoute>} />
@@ -388,8 +384,6 @@ function AppContent() {
                   <Route path="emails/templates" element={<SectionRoute section="emails"><AdminTemplates /></SectionRoute>} />
                   <Route path="emails/templates/new" element={<SectionRoute section="emails"><AdminTemplateForm /></SectionRoute>} />
                   <Route path="emails/templates/:id/edit" element={<SectionRoute section="emails"><AdminTemplateForm /></SectionRoute>} />
-                  <Route path="assets" element={<SectionRoute section="settings"><AdminAssetManager /></SectionRoute>} />
-                  <Route path="site-pages" element={<SectionRoute section="content"><AdminSitePages /></SectionRoute>} />
                   <Route path="blog" element={<SectionRoute section="blog"><AdminBlog /></SectionRoute>} />
                   <Route path="blog/categories" element={<SectionRoute section="blog"><AdminBlogCategories /></SectionRoute>} />
                   <Route path="blog/new" element={<SectionRoute section="blog"><AdminBlogForm /></SectionRoute>} />
@@ -413,6 +407,9 @@ function AppContent() {
                   <Route path="roles" element={<SectionRoute section="roles"><AdminRoles /></SectionRoute>} />
                   <Route path="roles/new" element={<SectionRoute section="roles"><AdminRoleForm /></SectionRoute>} />
                   <Route path="roles/:id" element={<SectionRoute section="roles"><AdminRoleForm /></SectionRoute>} />
+                  <Route path="analytics" element={<SectionRoute section="settings"><AdminAnalytics /></SectionRoute>} />
+                  <Route path="push" element={<SectionRoute section="marketing"><AdminPush /></SectionRoute>} />
+                  <Route path="rtl-test" element={<SectionRoute section="settings"><AdminRTLTest /></SectionRoute>} />
                   <Route path="activity" element={<SectionRoute section="activity"><AdminActivityLog /></SectionRoute>} />
                   <Route path="system"   element={<SectionRoute section="settings"><AdminSystemHealth /></SectionRoute>} />
                   <Route path="media" element={<SectionRoute section="media"><AdminMedia /></SectionRoute>} />
@@ -430,7 +427,6 @@ function AppContent() {
             </Router>
             </ConfirmProvider>
           </AuthProvider>
-        </CurrencyProvider>
       </ConfigProvider>
     </ThemeProvider>
   );

@@ -4,7 +4,7 @@ import { initFirebase } from "../lib/firebase.js";
 import { getAppUrl, getLangUrl } from "../lib/config.js";
 import { sendEmail } from "../lib/mailer.js";
 import { EMAIL_TYPE_LIST } from "../lib/emailTypes.js";
-import { triggerFlow } from "../services/automationEngine.js";
+import { triggerFlow, rebuildSegments } from "../services/automationEngine.js";
 import { authMiddleware, adminOnly, AuthenticatedRequest } from "../middleware/auth.js";
 
 const router = Router();
@@ -60,6 +60,38 @@ router.get("/track/click/:logId", async (req, res) => {
       ref.update(update).catch(() => {});
     }).catch(() => {});
   }).catch(() => {});
+});
+
+// POST /api/email/seed-templates — idempotent: seeds default templates for any email type not already in Firestore
+router.post("/seed-templates", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const firebase = await initFirebase();
+    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
+
+    let seeded = 0, skipped = 0;
+
+    await Promise.all(EMAIL_TYPE_LIST.map(async def => {
+      const ref = firebase.db.collection("templates").doc(def.type);
+      const snap = await ref.get();
+      if (snap.exists) { skipped++; return; }
+
+      await ref.set({
+        id:        def.type,
+        type:      def.type,
+        name:      def.name,
+        group:     def.group,
+        subject:   def.defaultSubject,
+        body:      def.defaultBody,
+        variables: def.variables.map(v => v.name),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      seeded++;
+    }));
+
+    res.json({ ok: true, seeded, skipped });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/email/settings — return SMTP config from Firestore (admin only, password masked)
@@ -316,40 +348,6 @@ router.post("/resubscribe", json(), async (req, res) => {
   }
 });
 
-// POST /api/email/seed-templates — admin: write default templates to Firestore if missing
-// Safe to run multiple times — skips types that already have a template doc
-router.post("/seed-templates", authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const firebase = await initFirebase();
-    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
-
-    let created = 0;
-    let skipped = 0;
-
-    for (const type of EMAIL_TYPE_LIST) {
-      const ref = firebase.db.collection("templates").doc(type.type);
-      const snap = await ref.get();
-      if (snap.exists) { skipped++; continue; }
-
-      await ref.set({
-        id:        type.type,
-        type:      type.type,
-        name:      type.name,
-        subject:   type.defaultSubject,
-        body:      type.defaultBody,
-        variables: type.variables.map(v => v.name),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      created++;
-    }
-
-    res.json({ ok: true, created, skipped });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ─── BROADCAST JOB QUEUE ─────────────────────────────────────────────────────
 
 // Called by POST /api/cron/process-broadcasts every 10 minutes.
@@ -378,6 +376,9 @@ export async function processBroadcastJobs(): Promise<{ processed: number; sent:
       let emails: { email: string; userId?: string; name?: string }[] = [];
 
       if (job.segmentId) {
+        // Rebuild segments dynamically before sending to ensure 100% accurate targeting
+        await rebuildSegments(db).catch(err => console.error("[Broadcast] Segment rebuild failed:", err.message));
+
         const seg = await db.collection("marketing_segments").doc(job.segmentId).get();
         if (!seg.exists) throw new Error(`Segment ${job.segmentId} not found`);
         emails = ((seg.data()!.contactEmails as string[]) || []).map(e => ({ email: e }));
@@ -484,6 +485,11 @@ router.post("/broadcast", authMiddleware, adminOnly, json(), async (req: Authent
     });
 
     res.json({ ok: true, jobId: jobRef.id, status: "pending" });
+
+    // Trigger processing immediately in the background
+    processBroadcastJobs().catch(err => {
+      console.error("[Broadcast] Immediate processing failed:", err.message);
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

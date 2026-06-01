@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import Timeline from '../../components/data/Timeline';
 import Skeleton from '../../components/feedback/Skeleton';
+import Card from '../../components/primitives/Card';
 import { cn } from '../../lib/utils';
 
 interface Transaction {
@@ -95,7 +96,7 @@ export default function CreditHistoryPage() {
       </div>
 
       {/* Balance card */}
-      <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-4 mb-6 shadow-sm">
+      <Card className="!rounded-2xl flex-row items-center gap-4 mb-6 shadow-sm">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
           <Zap className="w-7 h-7" />
         </div>
@@ -111,7 +112,7 @@ export default function CreditHistoryPage() {
           <p className="text-2xl font-bold text-foreground mt-1">{profile?.totalUsedCredits ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-0.5">all time</p>
         </div>
-      </div>
+      </Card>
 
       {loading ? (
         <div className="space-y-4">

@@ -1,5 +1,5 @@
 import { collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
-import { Medal, Plus, Wand2 } from 'lucide-react';
+import { Medal, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -9,7 +9,6 @@ import Badge from '../../components/primitives/Badge';
 import Button from '../../components/primitives/Button';
 import { db } from '../../lib/firebase';
 import { BADGE_ICON_MAP, BADGE_COLOR_PRESETS } from '../../lib/badges';
-import { seedBadges } from '../../lib/seedData';
 import { usePath } from '../../hooks/usePath';
 import { BadgeDefinition } from '../../types';
 import { cn } from '../../lib/utils';
@@ -32,8 +31,6 @@ export default function AdminBadges() {
   const { prefix } = usePath();
   const [badges, setBadges] = useState<BadgeDefinition[]>([]);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
-
   async function load() {
     setLoading(true);
     try {
@@ -73,20 +70,6 @@ export default function AdminBadges() {
       toast.success(badge.isActive ? 'Badge deactivated' : 'Badge activated');
     } catch {
       toast.error('Failed to update badge');
-    }
-  };
-
-  const handleSeed = async () => {
-    setSeeding(true);
-    const toastId = toast.loading('Seeding default badges…');
-    try {
-      const { created, skipped } = await seedBadges();
-      toast.success(`${created} created, ${skipped} already existed`, { id: toastId });
-      if (created > 0) await load();
-    } catch {
-      toast.error('Seed failed', { id: toastId });
-    } finally {
-      setSeeding(false);
     }
   };
 
@@ -157,15 +140,17 @@ export default function AdminBadges() {
       sortable: true,
       sortValue: b => (b.isActive ? 0 : 1),
       render: b => (
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => handleToggleActive(b)}
-          className="group"
           title={b.isActive ? 'Click to deactivate' : 'Click to activate'}
+          className="p-0 h-auto"
         >
           <Badge variant={b.isActive ? 'success' : 'soft'} size="sm">
             {b.isActive ? 'Active' : 'Inactive'}
           </Badge>
-        </button>
+        </Button>
       ),
       csvValue: b => (b.isActive ? 'active' : 'inactive'),
     },
@@ -185,16 +170,6 @@ export default function AdminBadges() {
         subtitle="Define badges that are automatically awarded when users hit activity milestones."
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              onClick={handleSeed}
-              isLoading={seeding}
-              variant="secondary"
-              size="md"
-              leftIcon={Wand2}
-              title="Write the 9 default badge definitions to Firestore (skips existing)"
-            >
-              Seed Defaults
-            </Button>
             <Button
               as={Link}
               to={prefix('/admin/badges/new')}
@@ -218,7 +193,7 @@ export default function AdminBadges() {
         exportFilename="badges"
         emptyIcon={Medal}
         emptyTitle="No Badges Yet"
-        emptyMessage="Click 'Seed Defaults' to load the 9 built-in badge definitions, or create your own."
+        emptyMessage="Create your first badge definition to reward user activity milestones."
       />
     </div>
   );

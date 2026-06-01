@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { useMarketing } from '../hooks/useMarketing';
 import PageContainer from '../components/layout/PageContainer';
+import Input from '../components/primitives/Input';
 
 interface FAQItem {
   q: string;
@@ -169,14 +170,14 @@ export default function FAQPage() {
               .
             </p>
             {/* Search */}
-            <div className="relative max-w-md mx-auto px-4 sm:px-0">
-              <Search className="absolute left-7 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
+            <div className="max-w-md mx-auto px-4 sm:px-0">
+              <Input
                 type="text"
                 placeholder="Search questions…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 md:py-3.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors text-sm"
+                leftIcon={Search}
+                variant="outline"
               />
             </div>
           </motion.div>

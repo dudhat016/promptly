@@ -1,18 +1,21 @@
 import { addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, BookMarked, BookOpen, Check, ChevronRight, Copy, Eye, Flag, FolderPlus, Heart, Lock, MessageSquare, Plus, Share2, ShieldCheck, Sparkles, Star, Terminal, Trash2, User, Zap } from 'lucide-react';
+import { ArrowLeft, BookMarked, BookOpen, Check, Copy, Eye, Flag, FolderPlus, Heart, Lock, MessageSquare, Plus, Share2, ShieldCheck, Sparkles, Star, Terminal, Trash2, User, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import Rating from '../components/feedback/Rating';
+import PageContainer from '../components/layout/PageContainer';
+import Breadcrumbs from '../components/navigation/Breadcrumbs';
 import NeuralAdBanner from '../components/NeuralAdBanner';
+import Button from '../components/primitives/Button';
+import Textarea from '../components/primitives/Textarea';
 import { ProGate } from '../components/ProGate';
+import PromptCard from '../components/PromptCard';
 import ReportModal from '../components/ReportModal';
 import Schema from '../components/SEO/Schema';
 import ShareModal from '../components/ShareModal';
 import UpgradeModal from '../components/UpgradeModal';
-import Breadcrumbs from '../components/navigation/Breadcrumbs';
-import Button from '../components/primitives/Button';
-import PageContainer from '../components/layout/PageContainer';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { usePath } from '../hooks/usePath';
@@ -21,8 +24,6 @@ import { useSEO } from '../hooks/useSEO';
 import { INTERACTION_WEIGHTS, recordPromptInteraction } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
-import Rating from '../components/feedback/Rating';
-import Textarea from '../components/primitives/Textarea';
 import { Prompt, PromptCollection, PromptReview, UserProfile } from '../types';
 import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 
@@ -198,11 +199,10 @@ export default function PromptDetailPage() {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as PromptReview));
       const mine = user ? all.find(r => r.userId === user.uid) ?? null : null;
       setUserReview(mine);
-      // Only show approved reviews publicly; fall back to showing unmoderated ones for backwards compat
       setReviews(
         all
           .filter(r => r.userId !== user?.uid)
-          .filter(r => r.moderationStatus === 'approved' || !r.moderationStatus)
+          .filter(r => r.moderationStatus === 'approved')
       );
     }).catch(() => {}).finally(() => setReviewsLoading(false));
   }, [prompt?.id, user?.uid]);
@@ -251,10 +251,6 @@ export default function PromptDetailPage() {
         createdAt: serverTimestamp(),
       });
 
-      const newCount = (prompt.reviewCount || 0) + 1;
-      const newAvg = parseFloat((((prompt.avgRating || 0) * (prompt.reviewCount || 0) + myRating) / newCount).toFixed(1));
-      await updateDoc(doc(db, 'prompts', prompt.id), { reviewCount: increment(1), avgRating: newAvg });
-
       const newReview: PromptReview = {
         id: 'pending',
         promptId: prompt.id,
@@ -266,7 +262,6 @@ export default function PromptDetailPage() {
         createdAt: new Date(),
       };
       setUserReview(newReview);
-      setPrompt({ ...prompt, reviewCount: newCount, avgRating: newAvg });
       setMyRating(0);
       setMyComment('');
       toast.success('Review submitted!');
@@ -541,11 +536,16 @@ export default function PromptDetailPage() {
               </p>
 
               {/* ── Cover image ── */}
-              {prompt!.imageUrl && (
-                <div className="mb-10 rounded-2xl overflow-hidden border border-border aspect-[16/9] md:aspect-[21/9]">
-                  <img src={prompt!.imageUrl} className="w-full h-full object-cover" alt={prompt!.title} />
-                </div>
-              )}
+              {prompt!.imageUrl && (() => {
+                const ratio = config.storage?.promptImageRatio ?? '16:9';
+                const [rw, rh] = ratio.split(':').map(Number);
+                const paddingTop = `${((rh / rw) * 100).toFixed(4)}%`;
+                return (
+                  <div className="mb-10 rounded-2xl overflow-hidden border border-border relative bg-muted/60" style={{ paddingTop }}>
+                    <img src={prompt!.imageUrl} className="absolute inset-0 w-full h-full object-cover" alt={prompt!.title} />
+                  </div>
+                );
+              })()}
 
               {/* ── Tags ── */}
               <div className="flex flex-wrap gap-2 mb-10">
@@ -932,33 +932,7 @@ export default function PromptDetailPage() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               {relatedPrompts.map(p => (
-                <Link key={p.id} to={prefix(`/prompt/${p.slug}`)}
-                  className="group rounded-2xl p-6 flex flex-col transition-all bg-card border border-border hover:border-primary/20 hover:bg-muted/30"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-widest bg-muted text-muted-foreground border border-border">
-                      {p.model}
-                    </span>
-                    {p.isPaid && <Zap className="w-3.5 h-3.5 text-amber-500 fill-current" />}
-                  </div>
-                  <h3 className="font-bold text-base mb-2 text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
-                    {p.title}
-                  </h3>
-                  <p className="text-sm line-clamp-2 mb-5 flex-grow leading-relaxed text-muted-foreground">
-                    {p.description}
-                  </p>
-                  <div className="flex items-center justify-between text-muted-foreground/50">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1 text-xs font-bold">
-                        <Heart className="w-3.5 h-3.5" /> {p.likesCount || 0}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs font-bold">
-                        <Eye className="w-3.5 h-3.5" /> {p.viewsCount || 0}
-                      </span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-primary/50" />
-                  </div>
-                </Link>
+                <PromptCard key={p.id} prompt={p} />
               ))}
             </div>
           </div>

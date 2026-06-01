@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and private dashboard areas
+Disallow: /admin/
+Disallow: /en/admin/
+Disallow: /dashboard/
+Disallow: /en/dashboard/
+Disallow: /settings/
+Disallow: /en/settings/
+Disallow: /checkout/
+Disallow: /en/checkout/
+Disallow: /onboarding
+Disallow: /en/onboarding
+
+# Allow public pages
+Allow: /blog/
+Allow: /explore
+Allow: /pricing
+Allow: /about
+Allow: /contact
+
+Sitemap: https://promptly.com/sitemap.xml

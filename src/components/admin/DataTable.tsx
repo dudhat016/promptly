@@ -15,7 +15,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import Tooltip from '../overlays/Tooltip';
@@ -68,6 +68,14 @@ export interface BulkAction<T> {
   onClick: (rows: T[]) => void | Promise<void>;
 }
 
+export interface ServerFetchParams {
+  page: number;
+  pageSize: number;
+  sortKey: string | null;
+  sortDir: 'asc' | 'desc';
+  search: string;
+}
+
 interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   data: T[];
@@ -84,6 +92,13 @@ interface DataTableProps<T> {
   bulkActions?: BulkAction<T>[];
   exportFilename?: string;
   toolbar?: React.ReactNode;
+  tableId?: string;
+  /** Enable server-side mode: disables client sort/filter/paginate. */
+  serverSide?: boolean;
+  /** Called when page/pageSize/sort/search change in server-side mode. */
+  onFetchData?: (params: ServerFetchParams) => void;
+  /** Total record count (server-side mode). */
+  totalItems?: number;
 }
 
 // ─── CSV Export ───────────────────────────────────────────────────────────────
@@ -193,6 +208,10 @@ export default function DataTable<T>({
   bulkActions,
   exportFilename,
   toolbar,
+  tableId,
+  serverSide = false,
+  onFetchData,
+  totalItems,
 }: DataTableProps<T>) {
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -201,9 +220,15 @@ export default function DataTable<T>({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
-  const [hiddenCols, setHiddenCols] = useState<Set<string>>(
-    new Set(columns.filter(c => c.defaultHidden).map(c => c.key))
-  );
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => {
+    if (tableId) {
+      try {
+        const saved = sessionStorage.getItem(`datatable-cols-${tableId}`);
+        if (saved) return new Set(JSON.parse(saved) as string[]);
+      } catch {}
+    }
+    return new Set(columns.filter(c => c.defaultHidden).map(c => c.key));
+  });
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [colMenuOpen, setColMenuOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -228,6 +253,30 @@ export default function DataTable<T>({
 
   useEffect(() => { setPage(1); }, [search, pageSize]);
 
+  useEffect(() => {
+    if (!tableId) return;
+    try {
+      sessionStorage.setItem(`datatable-cols-${tableId}`, JSON.stringify([...hiddenCols]));
+    } catch {}
+  }, [hiddenCols, tableId]);
+
+  // ── Server-side fetch trigger ──────────────────────────────────────────────
+  const fetchRef = useRef(onFetchData);
+  fetchRef.current = onFetchData;
+
+  const triggerFetch = useCallback((params: ServerFetchParams) => {
+    fetchRef.current?.(params);
+  }, []);
+
+  useEffect(() => {
+    if (!serverSide) return;
+    const t = setTimeout(() => {
+      triggerFetch({ page, pageSize, sortKey, sortDir, search });
+    }, search ? 300 : 0);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverSide, page, pageSize, sortKey, sortDir, search, triggerFetch]);
+
   // ── Derived data ───────────────────────────────────────────────────────────
   const visibleColumns = useMemo(
     () => columns.filter(c => !hiddenCols.has(c.key)),
@@ -235,15 +284,15 @@ export default function DataTable<T>({
   );
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return data;
+    if (serverSide || !search.trim()) return data;
     const q = search.toLowerCase();
     return data.filter(row =>
       columns.some(col => col.searchValue?.(row).toLowerCase().includes(q))
     );
-  }, [data, search, columns]);
+  }, [serverSide, data, search, columns]);
 
   const sorted = useMemo(() => {
-    if (!sortKey) return filtered;
+    if (serverSide || !sortKey) return filtered;
     const col = columns.find(c => c.key === sortKey);
     if (!col?.sortValue) return filtered;
     return [...filtered].sort((a, b) => {
@@ -253,13 +302,18 @@ export default function DataTable<T>({
       if (va > vb) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [filtered, sortKey, sortDir, columns]);
+  }, [serverSide, filtered, sortKey, sortDir, columns]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const serverTotal = serverSide ? (totalItems ?? data.length) : sorted.length;
+  const totalPages = Math.max(1, serverSide
+    ? Math.ceil(serverTotal / pageSize)
+    : Math.ceil(sorted.length / pageSize)
+  );
   const paginated = useMemo(() => {
+    if (serverSide) return data;
     const start = (page - 1) * pageSize;
     return sorted.slice(start, start + pageSize);
-  }, [sorted, page, pageSize]);
+  }, [serverSide, sorted, data, page, pageSize]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   function handleSort(key: string) {
@@ -321,8 +375,8 @@ export default function DataTable<T>({
     actions && (actions.view || actions.viewExternal || actions.edit || actions.onDelete || (actions.custom?.length ?? 0) > 0)
   );
   const colCount = (selectable ? 1 : 0) + visibleColumns.length + (hasActions ? 1 : 0);
-  const startRow = Math.min((page - 1) * pageSize + 1, sorted.length);
-  const endRow = Math.min(page * pageSize, sorted.length);
+  const startRow = Math.min((page - 1) * pageSize + 1, serverTotal);
+  const endRow = Math.min(page * pageSize, serverTotal);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -446,7 +500,7 @@ export default function DataTable<T>({
                   <div className="p-2 space-y-0.5">
                     <Button
                       onClick={() => {
-                        exportCSV(columns, selectedRows.length > 0 ? selectedRows : sorted, exportFilename);
+                        exportCSV(visibleColumns, selectedRows.length > 0 ? selectedRows : sorted, exportFilename);
                         setExportMenuOpen(false);
                       }}
                       variant="ghost"
@@ -459,7 +513,7 @@ export default function DataTable<T>({
                     </Button>
                     <Button
                       onClick={() => {
-                        exportJSON(columns, selectedRows.length > 0 ? selectedRows : sorted, exportFilename);
+                        exportJSON(visibleColumns, selectedRows.length > 0 ? selectedRows : sorted, exportFilename);
                         setExportMenuOpen(false);
                       }}
                       variant="ghost"
@@ -472,7 +526,7 @@ export default function DataTable<T>({
                     </Button>
                     <Button
                       onClick={() => {
-                        exportPDF(columns, selectedRows.length > 0 ? selectedRows : sorted, exportFilename);
+                        exportPDF(visibleColumns, selectedRows.length > 0 ? selectedRows : sorted, exportFilename);
                         setExportMenuOpen(false);
                       }}
                       variant="ghost"
@@ -534,7 +588,7 @@ export default function DataTable<T>({
               </Button>
             ))}
             {exportFilename && (
-              <Button onClick={() => exportCSV(columns, selectedRows, exportFilename)} variant="white" size="sm" leftIcon={Download} className="font-bold border border-border">
+              <Button onClick={() => exportCSV(visibleColumns, selectedRows, exportFilename)} variant="white" size="sm" leftIcon={Download} className="font-bold border border-border">
                 Export Selected
               </Button>
             )}
@@ -742,14 +796,14 @@ export default function DataTable<T>({
         </div>
 
         {/* ── Footer: count + pagination ── */}
-        {!loading && sorted.length > 0 && (
+        {!loading && serverTotal > 0 && (
           <div className="flex items-center justify-between gap-4 px-5 py-3.5 border-t border-border bg-muted/20 flex-wrap">
             <p className="text-xs font-medium text-muted-foreground">
               Showing{' '}
               <span className="font-bold text-foreground">{startRow}–{endRow}</span>
               {' '}of{' '}
-              <span className="font-bold text-foreground">{sorted.length}</span> records
-              {sorted.length !== data.length && (
+              <span className="font-bold text-foreground">{serverTotal.toLocaleString()}</span> records
+              {!serverSide && sorted.length !== data.length && (
                 <span className="text-muted-foreground/60 ml-1.5">(filtered from {data.length})</span>
               )}
             </p>

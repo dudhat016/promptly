@@ -17,7 +17,7 @@ export default function PromptInput({ value, onChange, onMagicPrompt, isMagicLoa
         onChange={(e) => onChange(e.target.value)}
         placeholder="e.g. Vintage 1950s photograph, warm sepia tones, classic blazer, studio lighting..."
         rows={6}
-        variant="filled"
+        variant="outline"
         helperText="Tip: Mention mood, lighting, outfit, and background for best results."
       />
       <div className="flex justify-end">

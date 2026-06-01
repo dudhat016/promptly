@@ -15,30 +15,12 @@ import Input from '../../components/primitives/Input';
 import Textarea from '../../components/primitives/Textarea';
 import TagInput from '../../components/primitives/TagInput';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import ImageUpload from '../../components/forms/ImageUpload';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
-
-function SectionCard({ icon: Icon, title, description, children }: {
-  icon: React.ElementType; title: string; description?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-3">
-        <div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-foreground">{title}</h3>
-          {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-        </div>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  );
-}
 
 export default function AccountSettings() {
   const { user, profile } = useAuth();
@@ -190,7 +172,11 @@ export default function AccountSettings() {
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
 
       {/* ── Public Profile ───────────────────────────────────── */}
-      <SectionCard icon={User} title="Public Profile" description="Shown on your creator page and marketplace activity.">
+      <Card className="!rounded-lg">
+        <Card.Header
+          title={<div className="flex items-center gap-3"><div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0"><User className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-foreground">Public Profile</h3><p className="text-xs text-muted-foreground mt-0.5">Shown on your creator page and marketplace activity.</p></div></div>}
+        />
+        <Card.Body>
         <div className="flex flex-col sm:flex-row items-start gap-8 mb-8 pb-8 border-b border-border">
           <ImageUpload
             value={profile?.photoURL || undefined}
@@ -290,10 +276,15 @@ export default function AccountSettings() {
             Save Profile
           </Button>
         </div>
-      </SectionCard>
+        </Card.Body>
+      </Card>
 
       {/* ── Social Links ─────────────────────────────────────── */}
-      <SectionCard icon={Link2} title="Social Links" description="Displayed on your public creator profile.">
+      <Card className="!rounded-lg">
+        <Card.Header
+          title={<div className="flex items-center gap-3"><div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0"><Link2 className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-foreground">Social Links</h3><p className="text-xs text-muted-foreground mt-0.5">Displayed on your public creator profile.</p></div></div>}
+        />
+        <Card.Body>
         <div className="grid sm:grid-cols-2 gap-5">
           <Input label="X / Twitter" value={socialLinks.twitter} onChange={e => setSocialLinks(p => ({ ...p, twitter: e.target.value }))} variant="filled" placeholder="https://x.com/handle" leftIcon={Twitter} />
           <Input label="Instagram"   value={socialLinks.instagram} onChange={e => setSocialLinks(p => ({ ...p, instagram: e.target.value }))} variant="filled" placeholder="https://instagram.com/handle" leftIcon={Instagram} />
@@ -306,10 +297,15 @@ export default function AccountSettings() {
             Save Links
           </Button>
         </div>
-      </SectionCard>
+        </Card.Body>
+      </Card>
 
       {/* ── Creator Payouts ──────────────────────────────────── */}
-      <SectionCard icon={Coins} title="Creator Payouts" description="How you receive earnings from the affiliate and creator programs.">
+      <Card className="!rounded-lg">
+        <Card.Header
+          title={<div className="flex items-center gap-3"><div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0"><Coins className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-foreground">Creator Payouts</h3><p className="text-xs text-muted-foreground mt-0.5">How you receive earnings from the affiliate and creator programs.</p></div></div>}
+        />
+        <Card.Body>
         <div className="grid sm:grid-cols-2 gap-5">
           <Input
             label="UPI ID (India)"
@@ -341,10 +337,15 @@ export default function AccountSettings() {
             Save Payout Methods
           </Button>
         </div>
-      </SectionCard>
+        </Card.Body>
+      </Card>
 
       {/* ── Data & Privacy ───────────────────────────────────── */}
-      <SectionCard icon={ShieldCheck} title="Data & Privacy" description="GDPR controls — export or permanently remove your account.">
+      <Card className="!rounded-lg">
+        <Card.Header
+          title={<div className="flex items-center gap-3"><div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0"><ShieldCheck className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-foreground">Data &amp; Privacy</h3><p className="text-xs text-muted-foreground mt-0.5">GDPR controls — export or permanently remove your account.</p></div></div>}
+        />
+        <Card.Body>
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border border-border">
             <div>
@@ -366,7 +367,8 @@ export default function AccountSettings() {
             </Button>
           </div>
         </div>
-      </SectionCard>
+        </Card.Body>
+      </Card>
 
       {/* ── Delete confirmation modal ─────────────────────────── */}
       <AnimatePresence>
@@ -389,11 +391,12 @@ export default function AccountSettings() {
               <p className="text-xs font-bold text-foreground mb-2">
                 Type <span className="text-rose-500 font-mono">DELETE</span> to confirm:
               </p>
-              <input
+              <Input
                 value={deleteConfirmText}
                 onChange={e => setDeleteConfirmText(e.target.value)}
                 placeholder="DELETE"
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm mb-4 font-mono focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                variant="outline"
+                className="mb-4 font-mono"
               />
               <div className="flex gap-3">
                 <Button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }} variant="outline" size="sm" fullWidth>Cancel</Button>

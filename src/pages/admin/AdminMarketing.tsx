@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus, Wand2 } from 'lucide-react';
+import { LayoutGrid, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -9,14 +9,10 @@ import SegmentManager from '../../components/marketing/SegmentManager';
 import TagManager from '../../components/marketing/TagManager';
 import Button from '../../components/primitives/Button';
 import { usePath } from '../../hooks/usePath';
-import {
-  seedAutomations, seedCRMContacts, seedCRMSegments, seedCRMTags,
-} from '../../lib/seedData';
 
 export default function AdminMarketing() {
   const location = useLocation();
   const { prefix } = usePath();
-  const [seeding, setSeeding] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const getActiveMode = () => {
@@ -42,25 +38,6 @@ export default function AdminMarketing() {
     activeMode === 'segment'   ? 'Create targeted lists based on custom rules.'            :
                                  'Build intelligent workflows for user engagement.';
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    const toastId = toast.loading('Seeding demo data…');
-    try {
-      const fn =
-        activeMode === 'contact'   ? seedCRMContacts  :
-        activeMode === 'tag'       ? seedCRMTags       :
-        activeMode === 'segment'   ? seedCRMSegments   :
-                                     seedAutomations;
-      const { created, skipped } = await fn();
-      toast.success(`${created} created, ${skipped} already existed`, { id: toastId });
-      if (created > 0) setRefreshKey(k => k + 1);
-    } catch {
-      toast.error('Seed failed', { id: toastId });
-    } finally {
-      setSeeding(false);
-    }
-  };
-
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto">
       <AdminPageHeader
@@ -70,16 +47,6 @@ export default function AdminMarketing() {
         subtitle={subtitle}
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              onClick={handleSeed}
-              isLoading={seeding}
-              variant="secondary"
-              size="md"
-              leftIcon={Wand2}
-              title="Seed demo data for this section (skips existing entries)"
-            >
-              Seed Demo Data
-            </Button>
             {activeMode === 'automation' && (
               <Button as={Link} to={prefix('/admin/marketing/automations/new')} variant="primary" size="md" leftIcon={Plus} className="font-bold shadow-xl shadow-primary/20">
                 New Automation

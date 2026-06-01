@@ -5,7 +5,9 @@ import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { AdminPageHeader, useConfirm } from '../../components/admin';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import Textarea from '../../components/primitives/Textarea';
+import Tabs from '../../components/navigation/Tabs';
 import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
 import { logAuditEvent } from '../../lib/auditLog';
@@ -168,28 +170,15 @@ export default function AdminReports() {
       />
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all',
-              activeTab === tab.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {tab.label}
-            {tab.count !== undefined && tab.count > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white min-w-[18px] text-center">
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS.map(t => ({ id: t.key, label: t.label, badge: (t.count !== undefined && t.count > 0) ? t.count : undefined }))}
+        activeTab={activeTab}
+        onChange={id => setActiveTab(id as Tab)}
+        variant="pill"
+      />
 
       {/* Reports list */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <Card padding="none">
         {loading ? (
           <div className="py-16 text-center text-muted-foreground text-sm animate-pulse">Loading reports...</div>
         ) : filtered.length === 0 ? (
@@ -237,12 +226,12 @@ export default function AdminReports() {
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Detail modal */}
       {selectedReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+          <Card padding="none" className="!rounded-2xl w-full max-w-lg shadow-2xl">
             <div className="flex items-center justify-between px-6 py-5 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center">
@@ -280,7 +269,7 @@ export default function AdminReports() {
                 onChange={e => setAdminNote(e.target.value)}
                 rows={2}
                 placeholder="Add a note for the audit log..."
-                variant="filled"
+                variant="outline"
               />
 
               {/* View prompt link */}
@@ -340,7 +329,7 @@ export default function AdminReports() {
                 Delete Prompt
               </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

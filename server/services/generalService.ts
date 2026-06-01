@@ -3,8 +3,6 @@ import fs from "fs";
 import path from "path";
 import { initFirebase } from "../lib/firebase.js";
 import { getSmtpTransport } from "../lib/mailer.js";
-import { getStripe } from "../lib/stripe.js";
-import { getLangUrl } from "../lib/config.js";
 
 export class GeneralService {
   static async uploadFtp(file: any, folder: string): Promise<{ success: boolean; url: string; name: string }> {
@@ -84,39 +82,4 @@ export class GeneralService {
     return { ok: true, message: `Test email sent to ${smtp.fromEmail}` };
   }
 
-  static async createStripeCheckout(params: {
-    userId: string;
-    userEmail: string;
-    planId?: string;
-    billingCycle?: string;
-    amount?: number;
-    successUrl?: string;
-    cancelUrl?: string;
-  }): Promise<{ url: string }> {
-    const stripe = getStripe();
-    if (!stripe) throw new Error("Stripe not configured");
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: params.userEmail,
-      line_items: [{
-        price_data: {
-          currency: "usd",
-          product_data: { name: params.planId || "Promptly Plan" },
-          unit_amount: Math.round((params.amount ?? 0) * 100),
-        },
-        quantity: 1,
-      }],
-      metadata: {
-        userId: params.userId,
-        planId: params.planId || "",
-        billingCycle: params.billingCycle || "one_time",
-      },
-      success_url: params.successUrl || getLangUrl("/checkout/verify?session_id={CHECKOUT_SESSION_ID}"),
-      cancel_url:  params.cancelUrl  || getLangUrl("/pricing"),
-    });
-
-    if (!session.url) throw new Error("Failed to create Stripe checkout session");
-    return { url: session.url };
-  }
 }

@@ -99,16 +99,70 @@ interface GlobalConfig {
   // --- Nudge thresholds ---
   lowCreditThreshold?: number;
 
+  // --- Storage & Uploads ---
+  storage?: {
+    maxImageSizeMb: number;
+    promptImageRatio: '1:1' | '3:2' | '4:3' | '9:16' | '16:9';
+  };
+
   // --- Reference data (fetched in parallel on startup) ---
   models: AIModel[];
   categories: Category[];
   plans: PricingPlan[];
 }
 
+// Shared global state for date formatting overrides
+export const formatSettings = {
+  locale: 'en',
+  timezone: 'UTC',
+  currency: 'USD',
+  currencySymbol: '$',
+  currencyFormat: 'before' as 'before' | 'after',
+  taxRate: 0,
+};
+
+let patched = false;
+export function applyFormatPatches() {
+  if (patched) return;
+  patched = true;
+
+  const originalToLocaleDateString = Date.prototype.toLocaleDateString;
+  Date.prototype.toLocaleDateString = function (locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+    const targetLocales = locales || formatSettings.locale || 'en';
+    const targetOptions = { ...options };
+    if (!targetOptions.timeZone && formatSettings.timezone) {
+      targetOptions.timeZone = formatSettings.timezone;
+    }
+    return originalToLocaleDateString.call(this, targetLocales, targetOptions);
+  };
+
+  const originalToLocaleTimeString = Date.prototype.toLocaleTimeString;
+  Date.prototype.toLocaleTimeString = function (locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+    const targetLocales = locales || formatSettings.locale || 'en';
+    const targetOptions = { ...options };
+    if (!targetOptions.timeZone && formatSettings.timezone) {
+      targetOptions.timeZone = formatSettings.timezone;
+    }
+    return originalToLocaleTimeString.call(this, targetLocales, targetOptions);
+  };
+
+  const originalToLocaleString = Date.prototype.toLocaleString;
+  Date.prototype.toLocaleString = function (locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+    const targetLocales = locales || formatSettings.locale || 'en';
+    const targetOptions = { ...options };
+    if (!targetOptions.timeZone && formatSettings.timezone) {
+      targetOptions.timeZone = formatSettings.timezone;
+    }
+    return originalToLocaleString.call(this, targetLocales, targetOptions);
+  };
+}
+
 interface ConfigContextType {
   config: GlobalConfig;
   loading: boolean;
   refreshConfig: () => Promise<void>;
+  formatPrice: (price: number) => string;
+  calculateTax: (price: number) => number;
 }
 
 const defaultConfig: GlobalConfig = {
@@ -134,6 +188,10 @@ const defaultConfig: GlobalConfig = {
     borderRadius: '0.75rem',
     layoutMode: 'boxed'
   },
+  storage: {
+    maxImageSizeMb: 2,
+    promptImageRatio: '16:9' as const,
+  },
   aiDefaults: {
     defaultModel: 'gpt-4o',
     defaultTemperature: 0.7,
@@ -148,7 +206,9 @@ const defaultConfig: GlobalConfig = {
 const ConfigContext = createContext<ConfigContextType>({
   config: defaultConfig,
   loading: true,
-  refreshConfig: async () => {}
+  refreshConfig: async () => {},
+  formatPrice: (price: number) => `$${price}`,
+  calculateTax: () => 0,
 });
 
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
@@ -168,13 +228,26 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         ? [...plansRaw].sort((a, b) => a.monthlyPrice - b.monthlyPrice)
         : [];
 
-      setConfig(prev => ({ 
-        ...prev, 
+      const mergedConfig = { 
+        ...defaultConfig, 
         ...(siteConfig || {}), 
         models: models || [], 
         categories: categories || [], 
         plans 
-      }));
+      };
+
+      setConfig(mergedConfig);
+
+      // Sync settings to global formats closure
+      formatSettings.locale = mergedConfig.defaultLanguage || 'en';
+      formatSettings.timezone = mergedConfig.timezone || 'UTC';
+      formatSettings.currency = mergedConfig.currency || 'USD';
+      formatSettings.currencySymbol = mergedConfig.currencySymbol || '$';
+      formatSettings.currencyFormat = mergedConfig.currencyFormat || 'before';
+      formatSettings.taxRate = mergedConfig.taxRate || 0;
+      
+      // Apply the transparent prototype patches
+      applyFormatPatches();
     } catch (err) {
       console.error('[useConfig] Failed to load global data:', err);
     } finally {
@@ -186,8 +259,24 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     fetchGlobalData();
   }, []);
 
+  const formatPrice = (price: number): string => {
+    const symbol = config.currencySymbol || '$';
+    const format = config.currencyFormat || 'before';
+    const formattedVal = Number(price).toFixed(2).replace(/\.00$/, '');
+    
+    if (format === 'after') {
+      return `${formattedVal} ${symbol}`;
+    }
+    return `${symbol}${formattedVal}`;
+  };
+
+  const calculateTax = (price: number): number => {
+    const rate = config.taxRate || 0;
+    return parseFloat(((price * rate) / 100).toFixed(2));
+  };
+
   return (
-    <ConfigContext.Provider value={{ config, loading, refreshConfig: fetchGlobalData }}>
+    <ConfigContext.Provider value={{ config, loading, refreshConfig: fetchGlobalData, formatPrice, calculateTax }}>
       {children}
     </ConfigContext.Provider>
   );

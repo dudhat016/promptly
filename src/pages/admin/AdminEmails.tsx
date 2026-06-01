@@ -1,10 +1,11 @@
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
-import { AlertCircle, AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Database, Mail, RefreshCw, Send, Settings, Sparkles, Zap } from 'lucide-react';
+import { AlertCircle, AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Mail, RefreshCw, Send, Settings, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AdminPageHeader } from '../../components/admin';
 import Badge from '../../components/primitives/Badge';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import { db } from '../../lib/firebase';
 import { api } from '../../lib/api';
 import { usePath } from '../../hooks/usePath';
@@ -32,30 +33,12 @@ export default function AdminEmails() {
   const [logs, setLogs]           = useState<RecentLog[]>([]);
   const [loading, setLoading]     = useState(true);
   const [smtpStatus, setSmtpStatus] = useState<'checking' | 'ok' | 'error' | 'unknown'>('unknown');
-  const [seeding, setSeeding] = useState(false);
-  const [seedResult, setSeedResult] = useState<{ tags: number; segments: number; flows: number; templates: number } | null>(null);
-
   useEffect(() => {
     getDocs(query(collection(db, 'email_logs'), orderBy('sentAt', 'desc'), limit(10)))
       .then(snap => setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as RecentLog))))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  const handleSeedAll = async () => {
-    if (!confirm('Re-seed tags, segments, automation flows, and email templates? This will overwrite existing seed records with the latest defaults (custom records are unaffected).')) return;
-    setSeeding(true);
-    setSeedResult(null);
-    try {
-      const r = await api.post('/marketing/seed-all?force=true') as any;
-      setSeedResult(r);
-      toast.success(`Seeded: ${r.tags} tags, ${r.segments} segments, ${r.flows} flows, ${r.templates} templates`);
-    } catch {
-      toast.error('Seed failed — check server logs');
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const checkSmtp = async () => {
     setSmtpStatus('checking');
@@ -118,10 +101,6 @@ export default function AdminEmails() {
         subtitle="SMTP health, outgoing email logs, templates, and automation flows."
         actions={
           <div className="flex items-center gap-2">
-            <Button onClick={handleSeedAll} isLoading={seeding} variant="secondary" size="sm" className="flex items-center gap-1.5">
-              <Database className="w-3.5 h-3.5" />
-              Seed Marketing Data
-            </Button>
             <Button onClick={checkSmtp} isLoading={smtpStatus === 'checking'} variant="secondary" size="sm">
               Test SMTP
             </Button>
@@ -165,16 +144,6 @@ export default function AdminEmails() {
         </div>
       )}
 
-      {/* Seed result banner */}
-      {seedResult && (
-        <div className="flex items-center gap-3 px-5 py-3 bg-primary/10 border border-primary/20 rounded-xl">
-          <Sparkles className="w-4 h-4 text-primary shrink-0" />
-          <p className="text-sm font-semibold text-primary">
-            Seeded: <strong>{seedResult.tags}</strong> tags · <strong>{seedResult.segments}</strong> segments · <strong>{seedResult.flows}</strong> automation flows · <strong>{seedResult.templates}</strong> email templates
-          </p>
-        </div>
-      )}
-
       {/* Stats strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -183,7 +152,7 @@ export default function AdminEmails() {
           { label: 'Failed',      value: failed,        icon: AlertCircle,  accent: 'bg-destructive/10 text-destructive' },
           { label: 'Delivery',    value: rate !== null ? `${rate}%` : '—', icon: Zap, accent: 'bg-muted text-muted-foreground' },
         ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+          <Card key={s.label} padding="sm" className="flex-row items-center gap-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.accent}`}>
               <s.icon className="w-4 h-4" />
             </div>
@@ -191,17 +160,19 @@ export default function AdminEmails() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
               <p className="text-lg font-black text-foreground leading-none">{s.value}</p>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {/* Nav Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {navCards.map(card => (
-          <Link
+          <Card
             key={card.title}
+            as={Link}
             to={card.href}
-            className="group bg-card border border-border rounded-xl p-5 hover:border-primary/40 hover:shadow-md transition-all"
+            interactive
+            className="group hover:border-primary/40 hover:shadow-md"
           >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 border ${card.accent}`}>
               <card.icon className="w-5 h-5" />
@@ -213,12 +184,12 @@ export default function AdminEmails() {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5 group-hover:translate-x-0.5 transition-transform" />
             </div>
-          </Link>
+          </Card>
         ))}
       </div>
 
       {/* Recent Emails */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+      <Card padding="none" className="shadow-sm">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <p className="text-sm font-bold text-foreground">Recent Emails</p>
           <Button as={Link} to={prefix('/admin/emails/logs')} variant="ghost" size="sm" rightIcon={ChevronRight}>
@@ -261,7 +232,7 @@ export default function AdminEmails() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,8 +1,6 @@
 import { collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
 import {
-  CheckCircle2,
   Database,
-  Send,
   Tag as TagIcon,
   Upload,
   Users,
@@ -14,10 +12,7 @@ import { toast } from 'react-hot-toast';
 import { usePath } from '../../hooks/usePath';
 import { api } from '../../lib/api';
 import { db } from '../../lib/firebase';
-import { cn } from '../../lib/utils';
-import { CRMService } from '../../services/crmService';
-import { EmailService } from '../../services/emailService';
-import { Contact, EmailTemplate, Segment, Tag } from '../../types';
+import { Contact, Segment, Tag } from '../../types';
 import DataTable, { DataTableColumn } from '../admin/DataTable';
 import Tabs from '../navigation/Tabs';
 import Badge from '../primitives/Badge';
@@ -29,14 +24,10 @@ export default function ContactManager() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [segments, setSegments] = useState<Segment[]>([]);
-  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'unsubscribed' | 'at_risk'>('all');
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
-  const [sendingEmailTo, setSendingEmailTo] = useState<Contact | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState('');
-  const [isSending, setIsSending] = useState(false);
 
   const [isBulkTagging, setIsBulkTagging] = useState(false);
   const [bulkTaggingRows, setBulkTaggingRows] = useState<Contact[]>([]);
@@ -46,16 +37,14 @@ export default function ContactManager() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [cSnap, tSnap, sSnap, tmpSnap] = await Promise.all([
+        const [cSnap, tSnap, sSnap] = await Promise.all([
           getDocs(collection(db, 'marketing_contacts')),
           getDocs(collection(db, 'marketing_tags')),
           getDocs(collection(db, 'marketing_segments')),
-          getDocs(collection(db, 'templates'))
         ]);
         setContacts(cSnap.docs.map(d => ({ id: d.id, ...d.data() } as Contact)));
         setTags(tSnap.docs.map(d => ({ id: d.id, ...d.data() } as Tag)));
         setSegments(sSnap.docs.map(d => ({ id: d.id, ...d.data() } as Segment)));
-        setTemplates(tmpSnap.docs.map(d => ({ id: d.id, ...d.data() } as EmailTemplate)));
       } catch (err) {
         console.error(err);
       } finally {
@@ -141,36 +130,6 @@ export default function ContactManager() {
       toast.error(err?.message || 'Import failed');
     } finally {
       setImporting(false);
-    }
-  };
-
-  const handleSendEmail = async () => {
-    if (!sendingEmailTo || !selectedTemplate) return;
-    const template = templates.find(t => t.id === selectedTemplate);
-    setIsSending(true);
-    try {
-      await EmailService.sendEmailWithTemplate(
-        sendingEmailTo.id,
-        sendingEmailTo.email,
-        selectedTemplate,
-        { name: sendingEmailTo.displayName || 'User' }
-      );
-
-      await CRMService.logActivity(
-        sendingEmailTo.id,
-        'email_sent',
-        `Campaign Email Sent: ${template?.name || 'Unknown'}`,
-        { templateId: selectedTemplate, subject: template?.subject }
-      );
-
-      toast.success('Campaign email sent!');
-      setSendingEmailTo(null);
-      setSelectedTemplate('');
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to send email');
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -380,13 +339,6 @@ export default function ContactManager() {
         actions={{
           edit: c => prefix(`/admin/marketing/contacts/${c.id}/edit`),
           onDelete: handleDeleteContact,
-          custom: [
-            {
-              icon: Send,
-              label: 'Direct Message',
-              onClick: c => setSendingEmailTo(c),
-            }
-          ],
           bulk: [
             {
               icon: TagIcon,
@@ -437,93 +389,6 @@ export default function ContactManager() {
         )}
       </AnimatePresence>
 
-      {/* Send Email Modal */}
-      <AnimatePresence>
-        {sendingEmailTo && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-foreground/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 30 }}
-              className="bg-card rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.5)] border border-border/50"
-            >
-              <div className="p-10 border-b border-border bg-muted/5 flex items-center justify-between">
-                <div>
-                  <h3 className="text-3xl font-black text-foreground tracking-tight">Direct Message</h3>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <p className="text-sm font-bold text-muted-foreground">{sendingEmailTo.email}</p>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => setSendingEmailTo(null)}
-                  variant="ghost"
-                  size="icon"
-                  className="w-12 h-12 rounded-2xl hover:bg-muted"
-                >
-                  <X className="w-6 h-6" />
-                </Button>
-              </div>
-
-              <div className="p-10 space-y-8">
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-5">Select Communication Template</label>
-                  <div className="grid gap-4 max-h-[350px] overflow-y-auto pr-4 custom-scrollbar">
-                    {templates.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelectedTemplate(t.id)}
-                        className={cn(
-                          "flex items-center justify-between p-6 rounded-2xl border-2 transition-all text-left group",
-                          selectedTemplate === t.id
-                            ? 'border-primary bg-primary/5 shadow-inner'
-                            : 'border-border/50 bg-muted/20 hover:border-primary/20 hover:bg-muted/30'
-                        )}
-                      >
-                        <div className="min-w-0 pr-4">
-                          <p className={cn("font-bold transition-colors truncate", selectedTemplate === t.id ? 'text-primary' : 'text-foreground')}>
-                            {t.name}
-                          </p>
-                          <p className="text-xs font-medium text-muted-foreground truncate mt-1">{t.subject}</p>
-                        </div>
-                        <div className={cn(
-                          "w-6 h-6 rounded-full flex items-center justify-center transition-all shrink-0",
-                          selectedTemplate === t.id ? 'bg-primary text-primary-foreground scale-110 shadow-lg' : 'bg-muted/50 text-transparent border border-border'
-                        )}>
-                          <CheckCircle2 className="w-4 h-4" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4 flex gap-4">
-                  <Button
-                    onClick={handleSendEmail}
-                    isLoading={isSending}
-                    disabled={!selectedTemplate}
-                    variant="primary"
-                    size="lg"
-                    fullWidth
-                    leftIcon={Send}
-                    className="h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20"
-                  >
-                    {isSending ? 'Transmitting...' : 'Dispatch Message'}
-                  </Button>
-                  <Button
-                    onClick={() => setSendingEmailTo(null)}
-                    variant="secondary"
-                    size="lg"
-                    className="h-16 px-10 rounded-2xl font-black uppercase tracking-widest"
-                  >
-                    Hold
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </>
   );
 }

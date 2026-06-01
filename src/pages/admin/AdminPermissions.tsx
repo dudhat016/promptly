@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import Input from '../../components/primitives/Input';
 import Textarea from '../../components/primitives/Textarea';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import { cn } from '../../lib/utils';
 
 const DEFAULT_PERMISSIONS: PermissionSet = {
@@ -136,7 +137,7 @@ export default function AdminPermissions() {
         }
       />
 
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <Card padding="none">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -182,17 +183,21 @@ export default function AdminPermissions() {
                   {config.groups.map(group => (
                     <td key={group.id} className="px-6 py-3 text-center border-l border-border">
                       {typeof group.permissions[key] === 'boolean' ? (
-                        <Button 
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={group.permissions[key]}
                           onClick={() => updateGroupPermissions(group.id, key)}
-                          variant={group.permissions[key] ? 'primary' : 'ghost'}
-                          size="sm"
                           className={cn(
-                            "w-12 h-6 rounded-full transition-all relative p-0 h-auto min-h-0",
-                            group.permissions[key] ? 'bg-primary' : 'bg-muted'
+                            "relative inline-block w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                            group.permissions[key] ? 'bg-primary' : 'bg-muted border border-border'
                           )}
                         >
-                          <div className={cn("absolute top-1 w-4 h-4 bg-card rounded-full transition-all", group.permissions[key] ? 'right-1' : 'left-1')} />
-                        </Button>
+                          <span className={cn(
+                            "absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200",
+                            group.permissions[key] ? 'left-6' : 'left-1'
+                          )} />
+                        </button>
                       ) : (
                         <Input 
                           type="number" 
@@ -203,7 +208,7 @@ export default function AdminPermissions() {
                             setConfig({ ...config, groups: updatedGroups });
                           }}
                           className="w-20 text-center"
-                          variant="filled"
+                          variant="outline"
                           inputSize="sm"
                         />
                       )}
@@ -214,7 +219,7 @@ export default function AdminPermissions() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* Edit Group Modal */}
       <AnimatePresence>
@@ -241,7 +246,7 @@ export default function AdminPermissions() {
                     setEditingGroup(updated);
                     setConfig(prev => prev ? { ...prev, groups: prev.groups.map(g => g.id === editingGroup.id ? updated : g) } : null);
                   }}
-                  variant="filled"
+                  variant="outline"
                 />
                 <Textarea 
                   label="Description"
@@ -252,7 +257,7 @@ export default function AdminPermissions() {
                     setEditingGroup(updated);
                     setConfig(prev => prev ? { ...prev, groups: prev.groups.map(g => g.id === editingGroup.id ? updated : g) } : null);
                   }}
-                  variant="filled"
+                  variant="outline"
                 />
               </div>
 

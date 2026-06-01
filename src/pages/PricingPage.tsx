@@ -8,8 +8,8 @@ import { usePath } from '../hooks/usePath';
 import { PricingPlan } from '../types';
 import { useConfig } from '../hooks/useConfig';
 import { useSEO } from '../hooks/useSEO';
-import { useCurrency } from '../context/CurrencyContext';
 import Button from '../components/primitives/Button';
+import Spinner from '../components/feedback/Spinner';
 import PageContainer from '../components/layout/PageContainer';
 import Schema from '../components/SEO/Schema';
 import { db } from '../lib/firebase';
@@ -18,8 +18,7 @@ export default function PricingPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { prefix } = usePath();
-  const { config, loading: configLoading } = useConfig();
-  const { currency, symbol, exchangeRate, setCurrency } = useCurrency();
+  const { config, loading: configLoading, formatPrice } = useConfig();
 
   useSEO({
     title: 'Pricing',
@@ -66,13 +65,13 @@ export default function PricingPage() {
 
   if (configLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <Spinner size="lg" />
     </div>
   );
 
   return (
     <div className="min-h-screen bg-background">
-      <Schema type="Pricing" data={{ plans, currency }} />
+      <Schema type="Pricing" data={{ plans }} />
 
       {/* ── Hero ── */}
       <div className="relative pt-24 pb-12 md:pb-16 text-center overflow-hidden">
@@ -120,22 +119,6 @@ export default function PricingPage() {
               ))}
             </div>
 
-            {/* Currency switcher */}
-            <div className="inline-flex items-center p-1 rounded-xl gap-0.5 bg-muted border border-border">
-              {(['USD', 'INR'] as const).map(c => (
-                <button
-                  key={c}
-                  onClick={() => setCurrency(c)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    currency === c
-                      ? 'bg-card shadow-sm text-foreground border border-border'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {c === 'USD' ? '$ USD' : '₹ INR'}
-                </button>
-              ))}
-            </div>
           </div>
         </PageContainer>
       </div>
@@ -195,11 +178,6 @@ export default function PricingPage() {
       <PageContainer className="pb-16 md:pb-20" ignoreCustomizer>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {plans.map((plan, i) => {
-            // Fixed INR prices take priority over live rate conversion.
-            // If inrMonthlyPrice is 0/unset on the plan, fall back to live rate.
-            const inrMonthly = plan.inrMonthlyPrice > 0 ? plan.inrMonthlyPrice : Math.round(plan.monthlyPrice * exchangeRate);
-            const inrYearly  = plan.inrYearlyPrice  > 0 ? plan.inrYearlyPrice  : Math.round(plan.yearlyPrice  * exchangeRate);
-
             const discount = plan.monthlyPrice > 0
               ? Math.round(((plan.monthlyPrice * 12 - plan.yearlyPrice) / (plan.monthlyPrice * 12)) * 100)
               : 0;
@@ -212,8 +190,8 @@ export default function PricingPage() {
                   ? (plan.isPopular ?? false)
                   : false;
             const displayPrice = billingCycle === 'monthly'
-              ? (currency === 'INR' ? inrMonthly : plan.monthlyPrice)
-              : (currency === 'INR' ? Math.round(inrYearly / 12) : Math.floor(plan.yearlyPrice / 12));
+              ? plan.monthlyPrice
+              : Math.floor(plan.yearlyPrice / 12);
 
             return (
               <motion.div
@@ -247,7 +225,7 @@ export default function PricingPage() {
 
                 <div className="mb-7">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-bold text-foreground">{symbol}{displayPrice}</span>
+                    <span className="text-5xl font-bold text-foreground">{formatPrice(displayPrice)}</span>
                     <span className="text-muted-foreground text-sm font-medium">/mo</span>
                     {billingCycle === 'yearly' && discount > 0 && (
                       <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-md"
@@ -258,7 +236,7 @@ export default function PricingPage() {
                   </div>
                   {billingCycle === 'yearly' && plan.yearlyPrice > 0 && (
                     <p className="text-primary text-xs font-semibold mt-2 uppercase tracking-wider">
-                      Billed as {symbol}{currency === 'INR' ? Math.round(plan.yearlyPrice * exchangeRate) : plan.yearlyPrice}/year
+                      Billed as {formatPrice(plan.yearlyPrice)}/year
                     </p>
                   )}
                 </div>

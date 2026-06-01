@@ -1,32 +1,25 @@
 import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings, X, RotateCcw, Copy, Check, Sun, Moon, Monitor, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useUI, type UIConfig, type PrimaryColor } from '../../contexts/UIProvider';
+import { useUI, type PrimaryColor } from '../../contexts/UIProvider';
 import i18n from '../../i18n';
 import { cn } from '../../lib/utils';
 
 // ─── Color presets ───────────────────────────────────────────
 const colorOptions: { value: PrimaryColor; label: string; hex: string }[] = [
-  { value: 'violet',  label: 'Violet',       hex: '#7c3aed' },
-  { value: 'blue',    label: 'Blue',         hex: '#3b82f6' },
-  { value: 'indigo',  label: 'Indigo',       hex: '#6366f1' },
-  { value: 'purple',  label: 'Purple',       hex: '#a855f7' },
-  { value: 'cyan',    label: 'Cyan',         hex: '#06b6d4' },
-  { value: 'teal',    label: 'Teal',         hex: '#14b8a6' },
-  { value: 'emerald', label: 'Emerald',      hex: '#10b981' },
-  { value: 'amber',   label: 'Amber',        hex: '#f59e0b' },
-  { value: 'orange',  label: 'Orange',       hex: '#f97316' },
-  { value: 'rose',    label: 'Rose',         hex: '#f43f5e' },
+  { value: 'violet',  label: 'Violet',  hex: '#7c3aed' },
+  { value: 'blue',    label: 'Blue',    hex: '#3b82f6' },
+  { value: 'indigo',  label: 'Indigo',  hex: '#6366f1' },
+  { value: 'purple',  label: 'Purple',  hex: '#a855f7' },
+  { value: 'cyan',    label: 'Cyan',    hex: '#06b6d4' },
+  { value: 'teal',    label: 'Teal',    hex: '#14b8a6' },
+  { value: 'emerald', label: 'Emerald', hex: '#10b981' },
+  { value: 'amber',   label: 'Amber',   hex: '#f59e0b' },
+  { value: 'orange',  label: 'Orange',  hex: '#f97316' },
+  { value: 'rose',    label: 'Rose',    hex: '#f43f5e' },
 ];
 
 const radiusOptions = [0, 4, 8, 12, 16];
-
-const fontOptions: { value: UIConfig['fontFamily']; label: string }[] = [
-  { value: 'inter',          label: 'Inter' },
-  { value: 'geist',          label: 'Geist' },
-  { value: 'outfit',         label: 'Outfit' },
-  { value: 'space-grotesk',  label: 'Space Grotesk' },
-];
 
 const languageOptions = [
   { code: 'en', label: 'EN' },
@@ -130,9 +123,9 @@ export default function CustomizerDrawer() {
                 <Section label="Theme Mode">
                   <div className="grid grid-cols-3 gap-2">
                     {([
-                      { value: 'light', icon: Sun, label: 'Light' },
-                      { value: 'dark',  icon: Moon, label: 'Dark' },
-                      { value: 'system',icon: Monitor, label: 'System' },
+                      { value: 'light',  icon: Sun,     label: 'Light' },
+                      { value: 'dark',   icon: Moon,    label: 'Dark' },
+                      { value: 'system', icon: Monitor, label: 'System' },
                     ] as const).map(({ value, icon: Icon, label }) => (
                       <button
                         key={value}
@@ -223,126 +216,6 @@ export default function CustomizerDrawer() {
                   </div>
                 </Section>
 
-                {/* ── Font Family ── */}
-                <Section label="Font Family">
-                  <div className="grid grid-cols-2 gap-2">
-                    {fontOptions.map(f => (
-                      <button
-                        key={f.value}
-                        onClick={() => setConfig({ fontFamily: f.value })}
-                        className={cn(
-                          "py-2.5 px-3 rounded-lg border-2 text-xs font-bold transition-all text-left",
-                          config.fontFamily === f.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/30"
-                        )}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-
-                {/* ── Layout ── */}
-                <Section label="Layout Mode">
-                  <div className="flex gap-2">
-                    {(['boxed', 'full'] as const).map(layout => (
-                      <button
-                        key={layout}
-                        onClick={() => setConfig({ layoutMode: layout })}
-                        className={cn(
-                          "flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 transition-all",
-                          config.layoutMode === layout
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/30"
-                        )}
-                      >
-                        {layout}
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-
-                {/* ── Content Width ── */}
-                <Section label="Content Width">
-                  <div className="flex gap-2">
-                    {(['compact', 'wide'] as const).map(w => (
-                      <button
-                        key={w}
-                        onClick={() => setConfig({ contentWidth: w })}
-                        className={cn(
-                          "flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 transition-all",
-                          config.contentWidth === w
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/30"
-                        )}
-                      >
-                        {w}
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-
-                {/* ── Navbar Style ── */}
-                <Section label="Navbar Style">
-                  <div className="flex gap-2">
-                    {(['fixed', 'static', 'floating'] as const).map(ns => (
-                      <button
-                        key={ns}
-                        onClick={() => setConfig({ navbarStyle: ns })}
-                        className={cn(
-                          "flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 transition-all",
-                          config.navbarStyle === ns
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/30"
-                        )}
-                      >
-                        {ns}
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-
-                {/* ── Navigation Orientation ── */}
-                <Section label="Navigation">
-                  <div className="flex gap-2">
-                    {(['vertical', 'horizontal'] as const).map(orientation => (
-                      <button
-                        key={orientation}
-                        onClick={() => setConfig({ orientation })}
-                        className={cn(
-                          "flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 transition-all",
-                          config.orientation === orientation
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/30"
-                        )}
-                      >
-                        {orientation}
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-
-                {/* ── Sidebar Width ── */}
-                <Section label="Sidebar Width">
-                  <div className="flex gap-2">
-                    {([240, 260, 280] as const).map(w => (
-                      <button
-                        key={w}
-                        onClick={() => setConfig({ sidebarWidth: w })}
-                        className={cn(
-                          "flex-1 py-2.5 rounded-lg text-xs font-bold border-2 transition-all",
-                          config.sidebarWidth === w
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/30"
-                        )}
-                      >
-                        {w}px
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-
                 {/* ── Sidebar Theme ── */}
                 <Section label="Sidebar Theme">
                   <div className="grid grid-cols-2 gap-2">
@@ -368,7 +241,7 @@ export default function CustomizerDrawer() {
                   </div>
                 </Section>
 
-                {/* ── Toggles ── */}
+                {/* ── Options ── */}
                 <Section label="Options">
                   <div className="space-y-3">
                     <Toggle
@@ -406,6 +279,39 @@ export default function CustomizerDrawer() {
                     ))}
                   </div>
                 </Section>
+
+                {/* ── Direction ── */}
+                <Section label="Direction">
+                  <div className="flex gap-2">
+                    {([
+                      { dir: 'ltr', label: 'LTR', icon: ChevronRight },
+                      { dir: 'rtl', label: 'RTL', icon: ChevronLeft },
+                    ] as const).map(({ dir, label, icon: Icon }) => {
+                      const currentIsRtl = ['ar', 'he', 'ur', 'fa'].includes(config.language ?? 'en');
+                      const isActive = dir === 'rtl' ? currentIsRtl : !currentIsRtl;
+                      return (
+                        <button
+                          key={dir}
+                          onClick={() => {
+                            const lang = dir === 'rtl' ? 'ar' : 'en';
+                            setConfig({ language: lang });
+                            i18n.changeLanguage(lang);
+                          }}
+                          className={cn(
+                            "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 transition-all",
+                            isActive
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/30"
+                          )}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Section>
+
               </div>
 
               {/* Footer */}

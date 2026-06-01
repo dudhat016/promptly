@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, Bell, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import Button from '../../components/primitives/Button';
+import Input from '../../components/primitives/Input';
 
 export default function ComingSoonPage() {
   const [email, setEmail] = useState('');
@@ -63,21 +65,18 @@ export default function ComingSoonPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-sm mx-auto">
-              <input
+              <Input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className="flex-1 px-4 py-3.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors"
+                variant="outline"
+                className="flex-1"
               />
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest gradient-cta whitespace-nowrap hover:opacity-90 transition-opacity"
-              >
-                <Bell className="w-4 h-4" />
+              <Button type="submit" variant="gradient" leftIcon={Bell} className="whitespace-nowrap">
                 Notify Me
-              </button>
+              </Button>
             </form>
           )}
         </motion.div>

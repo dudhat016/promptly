@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/primitives/Button';
+import Spinner from '../components/feedback/Spinner';
 import { Notification, useNotifications } from '../hooks/useNotifications';
 import { usePath } from '../hooks/usePath';
 import { cn } from '../lib/utils';
@@ -215,7 +216,7 @@ export default function NotificationsPage() {
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-16 flex flex-col items-center gap-3">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Loading...</p>
           </div>
         ) : visible.length === 0 ? (

@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Contact, Tag } from '../../types';
-import { Save, Users } from 'lucide-react';
+import { ArrowLeft, Save, Users } from 'lucide-react';
 import { AdminPageHeader } from '../../components/admin';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { usePath } from '../../hooks/usePath';
 import { toast } from 'react-hot-toast';
-
 import Select from '../../components/primitives/Select';
 import Input from '../../components/primitives/Input';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import { cn } from '../../lib/utils';
 
 export default function AdminMarketingContactForm() {
@@ -43,11 +43,10 @@ export default function AdminMarketingContactForm() {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!contact.email?.trim()) {
-      newErrors.email = "Email address is required";
+      newErrors.email = 'Email address is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
-      newErrors.email = "Invalid email format";
+      newErrors.email = 'Invalid email format';
     }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -55,7 +54,6 @@ export default function AdminMarketingContactForm() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     setSaving(true);
     try {
       if (id && id !== 'new') {
@@ -64,11 +62,11 @@ export default function AdminMarketingContactForm() {
         const newId = Date.now().toString();
         await setDoc(doc(db, 'marketing_contacts', newId), { ...contact, id: newId, createdAt: new Date() });
       }
-      toast.success(id && id !== 'new' ? "Contact updated" : "New contact created");
-      navigate(prefix('/admin/marketing?tab=contact'));
+      toast.success(id && id !== 'new' ? 'Contact updated' : 'New contact created');
+      navigate(prefix('/admin/marketing/contacts'));
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save contact");
+      toast.error('Failed to save contact');
     } finally {
       setSaving(false);
     }
@@ -76,27 +74,37 @@ export default function AdminMarketingContactForm() {
 
   const toggleTag = (tagId: string) => {
     const currentTags = contact.tags || [];
-    if (currentTags.includes(tagId)) {
-      setContact({ ...contact, tags: currentTags.filter(t => t !== tagId) });
-    } else {
-      setContact({ ...contact, tags: [...currentTags, tagId] });
-    }
+    setContact({
+      ...contact,
+      tags: currentTags.includes(tagId)
+        ? currentTags.filter(t => t !== tagId)
+        : [...currentTags, tagId],
+    });
   };
 
-
   return (
-    <>
+    <div className="space-y-6">
       <AdminPageHeader
         label="Marketing CRM"
         labelIcon={Users}
         title={id === 'new' ? 'Create Contact' : 'Edit Contact'}
         subtitle="Add or update a contact in your CRM database."
+        actions={
+          <Button
+            onClick={() => navigate(prefix('/admin/marketing/contacts'))}
+            variant="secondary"
+            size="md"
+            leftIcon={ArrowLeft}
+            className="font-bold"
+          >
+            Back
+          </Button>
+        }
       />
 
-      <div className="bg-card rounded-lg border border-border p-8">
-
+      <Card padding="lg" className="!rounded-3xl shadow-sm">
         <form onSubmit={handleSave} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-6">
             <Input
               label="Email Address"
               id="contactEmail"
@@ -108,7 +116,7 @@ export default function AdminMarketingContactForm() {
                 setContact({ ...contact, email: e.target.value });
                 if (errors.email) setErrors({ ...errors, email: '' });
               }}
-              variant="filled"
+              variant="outline"
             />
             <Input
               label="Display Name"
@@ -117,11 +125,10 @@ export default function AdminMarketingContactForm() {
               type="text"
               value={contact.displayName || ''}
               onChange={e => setContact({ ...contact, displayName: e.target.value })}
-              variant="filled"
+              variant="outline"
             />
           </div>
 
-          <div>
           <Select
             label="Status"
             value={contact.status || 'active'}
@@ -129,63 +136,70 @@ export default function AdminMarketingContactForm() {
             options={[
               { label: 'Active', value: 'active', description: 'Contact is subscribed and receiving emails' },
               { label: 'Unsubscribed', value: 'unsubscribed', description: 'User opted out of marketing' },
-              { label: 'Bounced', value: 'bounced', description: 'Email delivery failed' }
+              { label: 'Bounced', value: 'bounced', description: 'Email delivery failed' },
             ]}
             isSearchable={false}
           />
-          </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Applied Tags</label>
-            <div className="flex flex-wrap gap-3">
-              {tags.map(tag => {
-                const isActive = (contact.tags || []).includes(tag.id);
-                return (
-                  <Button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => toggleTag(tag.id)}
-                    variant={isActive ? 'primary' : 'ghost'}
-                    size="sm"
-                    className={cn(
-                      "px-4 py-2 h-auto text-xs font-bold border transition-all rounded-xl",
-                      isActive
-                        ? 'border-primary bg-primary/10 text-primary shadow-sm hover:bg-primary/20'
-                        : 'border-border bg-card text-muted-foreground hover:border-primary/50'
-                    )}
-                  >
-                    {tag.name}
-                  </Button>
-                );
-              })}
-              {tags.length === 0 && <p className="text-sm text-muted-foreground italic">No tags available. Create some in the CRM dashboard.</p>}
-            </div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+              Applied Tags
+            </label>
+            {tags.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {tags.map(tag => {
+                  const isActive = (contact.tags || []).includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => toggleTag(tag.id)}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all',
+                        isActive
+                          ? 'border-primary/30 bg-primary/10 text-primary shadow-sm'
+                          : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                      )}
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                No tags available.{' '}
+                <Link to={prefix('/admin/marketing/tags/new')} className="text-primary hover:underline font-semibold">
+                  Create one
+                </Link>
+              </p>
+            )}
           </div>
 
-          <div className="pt-6 border-t border-border flex gap-4">
+          <div className="pt-4 border-t border-border flex gap-3">
             <Button
               type="submit"
               isLoading={saving}
               variant="primary"
-              size="lg"
-              fullWidth
+              size="md"
               leftIcon={Save}
-              className="font-bold shadow-lg shadow-primary/20"
+              className="font-bold shadow-sm shadow-primary/20"
             >
-              {saving ? 'Saving...' : 'Save Contact'}
+              {saving ? 'Saving...' : id === 'new' ? 'Create Contact' : 'Save Changes'}
             </Button>
             <Button
-              as={Link}
-              to={prefix("/admin/marketing?tab=contact")}
+              type="button"
+              onClick={() => navigate(prefix('/admin/marketing/contacts'))}
               variant="secondary"
-              size="lg"
-              className="px-8 font-bold"
+              size="md"
+              className="font-bold"
             >
               Cancel
             </Button>
           </div>
         </form>
-      </div>
-    </>
+      </Card>
+    </div>
   );
 }

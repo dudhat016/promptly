@@ -3,10 +3,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import {
-  Bot, Code2, Key, ExternalLink, CheckCircle2, XCircle, RefreshCw, Trash2, Loader2,
+  Bot, Key, ExternalLink, CheckCircle2, XCircle, RefreshCw, Trash2, Loader2,
 } from 'lucide-react';
-import { ProFeatureCard } from '../../components/ProGate';
 import Input from '../../components/primitives/Input';
+import Checkbox from '../../components/primitives/Checkbox';
 import Select from '../../components/primitives/Select';
 import Button from '../../components/primitives/Button';
 import { motion } from 'motion/react';
@@ -362,10 +362,12 @@ export default function AIIntegrationPage() {
 
           <div className="p-6 space-y-5">
             {/* Filter toggle */}
-            <label className="flex items-center gap-2 text-xs text-muted-foreground font-medium cursor-pointer w-fit">
-              <input type="checkbox" checked={p.filter.checked} onChange={e => p.filter.onChange(e.target.checked)} className="rounded" />
-              {p.filter.label}
-            </label>
+            <Checkbox
+              checked={p.filter.checked}
+              onChange={e => p.filter.onChange(e.target.checked)}
+              label={p.filter.label}
+              className="text-xs text-muted-foreground font-medium w-fit"
+            />
 
             {/* API key input */}
             <Input
@@ -374,7 +376,7 @@ export default function AIIntegrationPage() {
               value={p.apiKey}
               onChange={e => p.setApiKey(e.target.value)}
               placeholder={p.placeholder}
-              variant="filled"
+              variant="outline"
               rightAction={<Key className="w-4 h-4 opacity-40" />}
             />
 
@@ -466,20 +468,6 @@ export default function AIIntegrationPage() {
         </Button>
       </div>
 
-      {/* ── Promptly API access ── */}
-      <div className="border-t border-border pt-6 space-y-2">
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Programmatic Access</p>
-        <ProFeatureCard
-          icon={Code2}
-          title="Promptly REST API"
-          description="Access the full prompt library, manage vault contents, and automate workflows via REST API with dedicated rate limits."
-        />
-        <ProFeatureCard
-          icon={Key}
-          title="API Key Management"
-          description="Generate, rotate, and scope API keys for your integrations. Supports per-key usage limits and audit logs."
-        />
-      </div>
 
     </motion.div>
   );

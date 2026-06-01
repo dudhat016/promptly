@@ -1,5 +1,5 @@
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
-import { Mail, Plus, Send, Wand2 } from 'lucide-react';
+import { Mail, Plus, Send, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -7,10 +7,10 @@ import type { DataTableActions, DataTableColumn } from '../../components/admin';
 import { AdminPageHeader, DataTable, useConfirm } from '../../components/admin';
 import Badge from '../../components/primitives/Badge';
 import Button from '../../components/primitives/Button';
+import Card from '../../components/primitives/Card';
 import { db } from '../../lib/firebase';
 import { api } from '../../lib/api';
 import { usePath } from '../../hooks/usePath';
-import { seedEmailTemplates } from '../../lib/seedData';
 import { EmailTemplate } from '../../types';
 
 const GROUP_LABELS: Record<string, string> = {
@@ -27,9 +27,9 @@ export default function AdminTemplates() {
   const { prefix } = usePath();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [seeding, setSeeding]     = useState(false);
   const [digestSending, setDigestSending] = useState(false);
   const [digestPreview, setDigestPreview] = useState<number | null>(null);
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => { fetchTemplates(); }, []);
 
@@ -62,51 +62,81 @@ export default function AdminTemplates() {
     toast.success(`${rows.length} template${rows.length > 1 ? 's' : ''} deleted`);
   };
 
-  const handleSeedTemplates = async () => {
-    setSeeding(true);
-    const toastId = toast.loading('Seeding default templates…');
-    try {
-      // Server-side seed (core transactional templates)
-      let serverCreated = 0;
-      let serverSkipped = 0;
-      try {
-        const r = await api.post('/email/seed-templates');
-        serverCreated = (r as any).created ?? 0;
-        serverSkipped = (r as any).skipped ?? 0;
-      } catch { /* server seed optional */ }
-
-      // Client-side seed (badge_earned + any templates not covered server-side)
-      const { created: clientCreated, skipped: clientSkipped } = await seedEmailTemplates();
-
-      const totalCreated = serverCreated + clientCreated;
-      const totalSkipped = serverSkipped + clientSkipped;
-      toast.success(`${totalCreated} created, ${totalSkipped} already existed`, { id: toastId });
-      if (totalCreated > 0) await fetchTemplates();
-    } catch { toast.error('Seed failed', { id: toastId }); }
-    finally { setSeeding(false); }
-  };
-
   useEffect(() => {
     api.get('/email/broadcast/preview').then((r: any) => setDigestPreview(r.total ?? 0)).catch(() => {});
   }, []);
 
+  const handleSeedTemplates = async () => {
+    setSeeding(true);
+    try {
+      const r: any = await api.post('/email/seed-templates', {});
+      if (r.error || r.success === false) {
+        toast.error(r.error || 'Seed failed');
+        return;
+      }
+      toast.success(`Seeded ${r.seeded} new templates (${r.skipped} already existed)`);
+      if (r.seeded > 0) fetchTemplates();
+    } catch { toast.error('Seed failed'); }
+    finally { setSeeding(false); }
+  };
+
   const handleSendDigest = async () => {
     const hasTemplate = templates.some(t => (t as any).type === 'weekly_digest');
     if (!hasTemplate) {
-      toast.error('weekly_digest template not found — run Seed Defaults first');
+      toast.error('weekly_digest template not found — create it in Email Templates first');
       return;
     }
     setDigestSending(true);
-    const toastId = toast.loading('Sending weekly digest…');
+    const toastId = toast.loading('Initiating weekly digest…');
     try {
       const week = new Date().toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' });
-      const r: any = await api.post('/email/broadcast', {
+      const initRes: any = await api.post('/email/broadcast', {
         type: 'weekly_digest',
         variables: { week, dashboard_url: window.location.origin + '/dashboard' },
       });
-      toast.success(`Digest sent to ${r.sent} contacts (${r.skipped} skipped, ${r.failed} failed)`, { id: toastId });
-    } catch { toast.error('Broadcast failed', { id: toastId }); }
-    finally { setDigestSending(false); }
+
+      if (!initRes || !initRes.jobId) {
+        throw new Error(initRes?.error || 'Failed to queue broadcast');
+      }
+
+      const jobId = initRes.jobId;
+
+      // Poll status
+      const poll = async (): Promise<any> => {
+        return new Promise((resolve, reject) => {
+          const interval = setInterval(async () => {
+            try {
+              const statusRes = await api.get(`/email/broadcast/status/${jobId}`) as any;
+              if (!statusRes || statusRes.error) {
+                clearInterval(interval);
+                reject(new Error(statusRes?.error || 'Failed to check status'));
+                return;
+              }
+
+              if (statusRes.status === 'done') {
+                clearInterval(interval);
+                resolve(statusRes);
+              } else if (statusRes.status === 'error') {
+                clearInterval(interval);
+                reject(new Error(statusRes.error || 'Broadcast failed during processing'));
+              } else {
+                toast.loading(`Processing weekly digest… (${statusRes.status === 'processing' ? 'sending' : statusRes.status})`, { id: toastId });
+              }
+            } catch (err) {
+              clearInterval(interval);
+              reject(err);
+            }
+          }, 1500);
+        });
+      };
+
+      const finalResult = await poll();
+      toast.success(`Digest sent to ${finalResult.sent} contacts (${finalResult.skipped} skipped, ${finalResult.failed} failed)`, { id: toastId });
+    } catch (err: any) {
+      toast.error(err?.message || 'Broadcast failed', { id: toastId });
+    } finally {
+      setDigestSending(false);
+    }
   };
 
   // Stats by group
@@ -210,8 +240,8 @@ export default function AdminTemplates() {
               isLoading={seeding}
               variant="secondary"
               size="md"
-              leftIcon={Wand2}
-              title="Write default content for all system email types into Firestore (skips existing)"
+              leftIcon={Sparkles}
+              className="font-bold"
             >
               Seed Defaults
             </Button>
@@ -235,9 +265,10 @@ export default function AdminTemplates() {
           {Object.entries(GROUP_LABELS).map(([key, label]) => {
             const count = groupCounts[key] || 0;
             return (
-              <div
+              <Card
                 key={key}
-                className="bg-card border border-border rounded-lg px-3 py-2.5 flex items-center justify-between gap-2 hover:border-primary/30 transition-colors"
+                padding="none"
+                className="px-3 py-2.5 flex-row items-center justify-between gap-2 hover:border-primary/30"
               >
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground truncate">{label}</p>
@@ -252,7 +283,7 @@ export default function AdminTemplates() {
                     'bg-primary'
                   }`} />
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -270,11 +301,11 @@ export default function AdminTemplates() {
         exportFilename="email-templates"
         emptyIcon={Mail}
         emptyTitle="No templates yet"
-        emptyMessage="Click 'Seed Defaults' to populate all 26 system emails, or 'New Template' to create one from scratch."
+        emptyMessage="Click 'New Template' to create your first email template."
       />
 
       {/* ── Weekly Digest Broadcast ── */}
-      <div className="bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+      <Card className="!rounded-2xl flex-col sm:flex-row sm:items-center gap-5">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0">
             <Send className="w-5 h-5 text-blue-500" />
@@ -299,7 +330,7 @@ export default function AdminTemplates() {
         >
           Send This Week's Digest
         </Button>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { AnimatePresence, motion } from 'motion/react';
 import Button from './primitives/Button';
+import Textarea from './primitives/Textarea';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/firebase';
 import { Prompt } from '../types';
@@ -146,13 +147,14 @@ export default function ReportModal({ prompt, isOpen, onClose }: Props) {
                   ))}
 
                   {selected === 'other' && (
-                    <textarea
+                    <Textarea
                       value={details}
                       onChange={e => setDetails(e.target.value)}
                       placeholder="Describe the issue... (max 200 characters)"
                       maxLength={200}
                       rows={3}
-                      className="w-full mt-2 px-3 py-2 text-sm bg-muted/30 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
+                      variant="outline"
+                      className="mt-2 min-h-0"
                     />
                   )}
                 </div>

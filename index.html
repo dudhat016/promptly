@@ -20,12 +20,17 @@
     <meta property="og:url" content="https://promptly.com/" />
     <meta property="og:title" content="Promptly - Master the Art of AI Prompting" />
     <meta property="og:description" content="Discover, build, and monetize expert-level AI prompts. The leading marketplace for high-performance AI inputs." />
+    <meta property="og:image" content="https://promptly.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Promptly" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://promptly.com/" />
     <meta property="twitter:title" content="Promptly - Master the Art of AI Prompting" />
     <meta property="twitter:description" content="Discover, build, and monetize expert-level AI prompts. The leading marketplace for high-performance AI inputs." />
+    <meta property="twitter:image" content="https://promptly.com/og-image.png" />
 
     <!-- Manifest -->
     <link rel="manifest" href="/manifest.json">
@@ -35,6 +40,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+
+    <!-- Theme init: runs before React, prevents dark/light flash on load -->
+    <script>
+      (function () {
+        try {
+          var c = JSON.parse(localStorage.getItem('promptly-ui-config') || '{}');
+          var mode = c.mode !== undefined ? c.mode : 'dark';
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = mode === 'dark' || (mode === 'system' && prefersDark);
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Payment SDKs -->
     <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>

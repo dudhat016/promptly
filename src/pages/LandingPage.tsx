@@ -196,7 +196,7 @@ const S = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
-  const { config } = useConfig();
+  const { config, formatPrice } = useConfig();
   const { prefix } = usePath();
   useSEO('home');
 
@@ -830,7 +830,7 @@ export default function LandingPage() {
               <div className="mb-5 md:mb-6">
                 <div className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest mb-3">Free Forever</div>
                 <div className="text-4xl md:text-5xl font-bold text-foreground">
-                  {freePlan ? `$${freePlan.monthlyPrice}` : '$0'}
+                  {freePlan ? formatPrice(freePlan.monthlyPrice) : formatPrice(0)}
                 </div>
                 <div className="text-xs md:text-sm text-muted-foreground/70 mt-1">No credit card needed</div>
               </div>
@@ -868,7 +868,7 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <div className="text-4xl md:text-5xl font-bold text-foreground">
-                  {proPlan ? `$${proPlan.monthlyPrice}` : '$9'}
+                  {proPlan ? formatPrice(proPlan.monthlyPrice) : formatPrice(9)}
                   <span className="text-lg md:text-xl text-muted-foreground/70 font-medium">/mo</span>
                 </div>
                 <div className="text-xs md:text-sm text-muted-foreground/70 mt-1">Cancel anytime</div>

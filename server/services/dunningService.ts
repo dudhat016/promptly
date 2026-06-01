@@ -112,6 +112,38 @@ export class DunningService {
     }
   }
 
+  static async processDunningQueue(): Promise<{ processed: number; downgraded: number; errors: number }> {
+    const firebase = await initFirebase();
+    if (!firebase) return { processed: 0, downgraded: 0, errors: 0 };
+    const db = firebase.db;
+
+    const now = admin.firestore.Timestamp.now();
+    const snap = await db.collection("users")
+      .where("dunningStatus", "==", "failing")
+      .where("dunningNextRetryAt", "<=", now)
+      .get();
+
+    let processed = 0, downgraded = 0, errors = 0;
+
+    await Promise.all(snap.docs.map(async doc => {
+      try {
+        const data   = doc.data();
+        const nextAttempt = (data.dunningAttempt || 0) + 1;
+        const wasDowngraded = nextAttempt > MAX_ATTEMPTS;
+
+        await DunningService.handlePaymentFailure(doc.id, data.dunningGateway || 'unknown', nextAttempt);
+
+        processed++;
+        if (wasDowngraded) downgraded++;
+      } catch (err: any) {
+        console.error(`[Dunning] processDunningQueue error for user ${doc.id}:`, err.message);
+        errors++;
+      }
+    }));
+
+    return { processed, downgraded, errors };
+  }
+
   private static async sendDunningEmail(
     user: any,
     userId: string,
