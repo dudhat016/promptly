@@ -33,7 +33,7 @@ const welcome: EmailTypeDefinition = {
   variables: [
     { name: 'name',    description: 'User display name',  example: 'Sarah' },
     { name: 'email',   description: 'User email address', example: 'sarah@example.com' },
-    { name: 'app_url', description: 'App base URL',       example: 'https://promptly.com' },
+    { name: 'app_url', description: 'App base URL',       example: 'https://aipromptcopypaste.in' },
   ],
   defaultSubject: 'Welcome to Promptly, {{name}}!',
   defaultBody: `Hi {{name}},
@@ -115,7 +115,7 @@ const onboarding_complete: EmailTypeDefinition = {
   variables: [
     { name: 'name',      description: 'User display name',           example: 'Sarah' },
     { name: 'interests', description: 'User interests bullet list',  example: '• Marketing\n• Coding' },
-    { name: 'app_url',   description: 'App base URL',                example: 'https://promptly.com' },
+    { name: 'app_url',   description: 'App base URL',                example: 'https://aipromptcopypaste.in' },
   ],
   defaultSubject: 'Your personalised Promptly feed is ready, {{name}}!',
   defaultBody: `Hi {{name}},
@@ -139,7 +139,7 @@ const onboarding_d1_nudge: EmailTypeDefinition = {
   dedupWindowMs: 30 * 24 * 60 * 60 * 1000, // 30 days — effectively once-per-user
   variables: [
     { name: 'name',         description: 'User display name',  example: 'Sarah' },
-    { name: 'explore_link', description: 'Link to explore page', example: 'https://promptly.com/explore' },
+    { name: 'explore_link', description: 'Link to explore page', example: 'https://aipromptcopypaste.in/explore' },
   ],
   defaultSubject: '{{name}}, your first prompt is waiting',
   defaultBody: `Hi {{name}},
@@ -162,7 +162,7 @@ const onboarding_d3_prompt: EmailTypeDefinition = {
   variables: [
     { name: 'name',         description: 'User display name',       example: 'Sarah' },
     { name: 'category',     description: 'Top interest category',   example: 'Marketing' },
-    { name: 'explore_link', description: 'Link to explore page',    example: 'https://promptly.com/explore' },
+    { name: 'explore_link', description: 'Link to explore page',    example: 'https://aipromptcopypaste.in/explore' },
   ],
   defaultSubject: 'Top {{category}} prompts picked for you',
   defaultBody: `Hi {{name}},
@@ -186,7 +186,7 @@ const newsletter_confirm: EmailTypeDefinition = {
   variables: [
     { name: 'name',         description: 'Subscriber name',     example: 'Sarah' },
     { name: 'confirm_link', description: 'Confirmation URL',    example: 'https://...' },
-    { name: 'app_url',      description: 'App base URL',        example: 'https://promptly.com' },
+    { name: 'app_url',      description: 'App base URL',        example: 'https://aipromptcopypaste.in' },
   ],
   defaultSubject: 'Confirm your Promptly newsletter subscription',
   defaultBody: `Hi {{name}},
@@ -208,7 +208,7 @@ const newsletter_welcome: EmailTypeDefinition = {
   variables: [
     { name: 'name',             description: 'Subscriber name',    example: 'Sarah' },
     { name: 'unsubscribe_link', description: 'Unsubscribe URL',    example: 'https://...' },
-    { name: 'app_url',          description: 'App base URL',       example: 'https://promptly.com' },
+    { name: 'app_url',          description: 'App base URL',       example: 'https://aipromptcopypaste.in' },
   ],
   defaultSubject: "You're subscribed to the Promptly newsletter",
   defaultBody: `Hi {{name}},
@@ -230,7 +230,7 @@ const new_prompt: EmailTypeDefinition = {
   variables: [
     { name: 'name',  description: 'Creator name',    example: 'Sarah' },
     { name: 'title', description: 'Prompt title',    example: 'SEO Blog Writer' },
-    { name: 'app_url', description: 'App base URL',  example: 'https://promptly.com' },
+    { name: 'app_url', description: 'App base URL',  example: 'https://aipromptcopypaste.in' },
   ],
   defaultSubject: 'Your prompt "{{title}}" is live on Promptly!',
   defaultBody: `Hi {{name}},
@@ -255,7 +255,7 @@ const prompt_submitted: EmailTypeDefinition = {
   variables: [
     { name: 'name',          description: 'Creator name',   example: 'Sarah' },
     { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
-    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://promptly.com/dashboard/library' },
+    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://aipromptcopypaste.in/dashboard/library' },
   ],
   defaultSubject: '✅ We received your prompt — review in progress',
   defaultBody: `Hi {{name}},
@@ -280,7 +280,7 @@ const prompt_approved: EmailTypeDefinition = {
     { name: 'name',          description: 'Creator name',   example: 'Sarah' },
     { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
     { name: 'prompt_type',   description: 'free or premium', example: 'premium' },
-    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://promptly.com/dashboard/library' },
+    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://aipromptcopypaste.in/dashboard/library' },
   ],
   defaultSubject: '🎉 Your prompt "{{prompt_title}}" is now live!',
   defaultBody: `Hi {{name}},
@@ -303,7 +303,7 @@ const prompt_rejected: EmailTypeDefinition = {
     { name: 'name',             description: 'Creator name',      example: 'Sarah' },
     { name: 'prompt_title',     description: 'Prompt title',      example: 'SEO Blog Writer' },
     { name: 'rejection_reason', description: 'Feedback from admin', example: 'Content too short' },
-    { name: 'dashboard_url',    description: 'Dashboard link',    example: 'https://promptly.com/dashboard/library' },
+    { name: 'dashboard_url',    description: 'Dashboard link',    example: 'https://aipromptcopypaste.in/dashboard/library' },
   ],
   defaultSubject: '📝 Your prompt "{{prompt_title}}" needs a few changes',
   defaultBody: `Hi {{name}},
@@ -328,7 +328,7 @@ const prompt_warning: EmailTypeDefinition = {
   variables: [
     { name: 'name',          description: 'Creator name',   example: 'Sarah' },
     { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
-    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://promptly.com/dashboard/library' },
+    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://aipromptcopypaste.in/dashboard/library' },
   ],
   defaultSubject: '⚠️ Community guidelines reminder for "{{prompt_title}}"',
   defaultBody: `Hi {{name}},
@@ -348,7 +348,7 @@ const prompt_hidden: EmailTypeDefinition = {
   variables: [
     { name: 'name',          description: 'Creator name',   example: 'Sarah' },
     { name: 'prompt_title',  description: 'Prompt title',   example: 'SEO Blog Writer' },
-    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://promptly.com/dashboard/library' },
+    { name: 'dashboard_url', description: 'Dashboard link', example: 'https://aipromptcopypaste.in/dashboard/library' },
   ],
   defaultSubject: '🔒 Your prompt "{{prompt_title}}" has been removed from Explore',
   defaultBody: `Hi {{name}},
@@ -360,8 +360,6 @@ Following multiple community reports, **"{{prompt_title}}"** has been temporaril
 — The Moderation Team`,
 };
 
-
-
 const weekly_digest: EmailTypeDefinition = {
   type: 'weekly_digest',
   name: 'Weekly Creator Digest',
@@ -371,7 +369,7 @@ const weekly_digest: EmailTypeDefinition = {
     { name: 'name',          description: 'User name',           example: 'Sarah' },
     { name: 'week',          description: 'Week label',          example: 'May 12, 2026' },
     { name: 'top_prompts',   description: 'Top prompts list',    example: '• SEO Writer\n• Cold Email' },
-    { name: 'dashboard_url', description: 'Dashboard link',      example: 'https://promptly.com/dashboard' },
+    { name: 'dashboard_url', description: 'Dashboard link',      example: 'https://aipromptcopypaste.in/dashboard' },
   ],
   defaultSubject: '📬 Your Promptly weekly digest — {{week}}',
   defaultBody: `Hi {{name}},

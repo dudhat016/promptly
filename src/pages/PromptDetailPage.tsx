@@ -113,13 +113,18 @@ export default function PromptDetailPage() {
 
   const seoMeta = useMemo(() => {
     if (!prompt) return null;
+    const dateStr = typeof prompt.createdAt === 'string'
+      ? prompt.createdAt
+      : (prompt.createdAt as any)?.toDate?.()?.toISOString() || new Date().toISOString();
     return {
-      title: prompt.metaTitle || `${prompt.title} - Expert Prompt Marketplace`,
+      title: prompt.metaTitle || `${prompt.title} - Expert AI Prompt`,
       description: generateSmartDescription(prompt, 'prompt'),
       keywords: generateSmartKeywords(prompt),
-      author: creator?.displayName || 'Premium Creator',
+      author: (prompt as any).creatorName || (prompt as any).authorName || creator?.displayName || 'Promptly Creator',
       tags: prompt.tags,
-      ogImage: prompt.imageUrl || 'https://promptly.com/og-image.png',
+      ogImage: prompt.imageUrl || `${window.location.origin}/og-image.png`,
+      publishedTime: dateStr,
+      url: `/prompts/${prompt.slug || prompt.id}`,
     };
   }, [prompt, creator]);
 

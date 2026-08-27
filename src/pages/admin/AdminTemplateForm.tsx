@@ -162,7 +162,7 @@ export default function AdminTemplateForm() {
   };
 
   const mockVars = (): Record<string, string> => {
-    const base: Record<string, string> = { name: 'Sarah', email: 'sarah@example.com', app_url: 'https://promptly.com' };
+    const base: Record<string, string> = { name: 'Sarah', email: 'sarah@example.com', app_url: window.location.origin };
     selectedTypeInfo?.variables.forEach(v => { base[v.name] = v.example; });
     return base;
   };

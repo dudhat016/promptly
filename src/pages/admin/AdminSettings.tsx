@@ -298,7 +298,7 @@ export default function AdminSettings() {
                 </div>
                 <Textarea label="Global Meta Description" value={config.siteDescription} onChange={e => setConfig({ ...config, siteDescription: e.target.value })} variant="outline" rows={2} placeholder="Default description for search engines…" />
                 <div className="grid md:grid-cols-2 gap-6">
-                  <Input label="Site URL" value={config.siteUrl} onChange={e => setConfig({ ...config, siteUrl: e.target.value })} variant="outline" placeholder="https://promptly.com" />
+                  <Input label="Site URL" value={config.siteUrl} onChange={e => setConfig({ ...config, siteUrl: e.target.value })} variant="outline" placeholder="https://your-domain.com" />
                   <Select
                     label="System Status"
                     value={config.systemStatus || 'operational'}

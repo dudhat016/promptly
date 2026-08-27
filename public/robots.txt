@@ -1,5 +1,28 @@
 User-agent: *
 Allow: /
+Crawl-delay: 1
+
+# Allow AI & Answer Engine Crawlers for AEO
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bytespider
+Allow: /
 
 # Disallow admin and private dashboard areas
 Disallow: /admin/
@@ -13,11 +36,13 @@ Disallow: /en/checkout/
 Disallow: /onboarding
 Disallow: /en/onboarding
 
-# Allow public pages
+# Allow key public routes
 Allow: /blog/
+Allow: /prompts/
 Allow: /explore
 Allow: /pricing
 Allow: /about
 Allow: /contact
+Allow: /faq
 
-Sitemap: https://promptly.com/sitemap.xml
+Sitemap: https://aipromptcopypaste.in/sitemap.xml

@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "sitemap": "tsx scripts/generate-sitemap.ts",
     "env:pull": "vercel env pull .env.local --environment=production --yes"
   },
   "dependencies": {

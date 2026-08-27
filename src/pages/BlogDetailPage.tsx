@@ -1,23 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { usePath } from '../hooks/usePath';
-import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { BlogPost, UserProfile } from '../types';
+import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
+import { ArrowLeft, ArrowRight, Calendar, Clock, Eye, Share2, ShieldCheck, Sparkles } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Calendar, ArrowLeft, Share2, Eye, Sparkles, ArrowRight, Clock, ShieldCheck } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 import BlogSidebar from '../components/BlogSidebar';
+import Schema from '../components/SEO/Schema';
 import ShareModal from '../components/ShareModal';
-import { useAuth } from '../hooks/useAuth';
+import BlogPromptBlock from '../components/blog/BlogPromptBlock';
+import PageContainer from '../components/layout/PageContainer';
+import Breadcrumbs from '../components/navigation/Breadcrumbs';
+import Button from '../components/primitives/Button';
+import { usePath } from '../hooks/usePath';
 import { useSEO } from '../hooks/useSEO';
 import { INTERACTION_WEIGHTS, recordBlogInteraction } from '../lib/affinity';
-import Schema from '../components/SEO/Schema';
-import Breadcrumbs from '../components/navigation/Breadcrumbs';
-import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
-import Button from '../components/primitives/Button';
-import PageContainer from '../components/layout/PageContainer';
-import BlogPromptBlock from '../components/blog/BlogPromptBlock';
+import { db } from '../lib/firebase';
 import { RAKSHA_BANDHAN_BLOG } from '../lib/seedRakhiBlog';
+import { BlogPost, UserProfile } from '../types';
+import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 
 function readTime(content: string) {
   return Math.max(1, Math.ceil((content || '').split(/\s+/).length / 200));
@@ -78,7 +77,20 @@ function HtmlContent({ content }: { content: string }) {
   return <>{parts}</>;
 }
 
-
+function extractFaqsFromHtml(html: string): { question: string; answer: string }[] {
+  if (!html) return [];
+  const faqs: { question: string; answer: string }[] = [];
+  const regex = /<h[23][^>]*>(.*?)<\/h[23]>\s*<p[^>]*>(.*?)<\/p>/gi;
+  let match;
+  while ((match = regex.exec(html)) !== null) {
+    const q = match[1].replace(/<[^>]+>/g, '').trim();
+    const a = match[2].replace(/<[^>]+>/g, '').trim();
+    if (q && a && q.length > 5 && a.length > 10) {
+      faqs.push({ question: q, answer: a });
+    }
+  }
+  return faqs.slice(0, 10);
+}
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -89,15 +101,22 @@ export default function BlogDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
+  const blogFaqs = useMemo(() => {
+    return post?.content ? extractFaqsFromHtml(post.content) : [];
+  }, [post?.content]);
+
   const seoMeta = useMemo(() => {
     if (!post) return null;
     return {
       title: post.metaTitle || `${post.title} - Promptly Blog`,
       description: generateSmartDescription(post, 'blog'),
       keywords: generateSmartKeywords(post),
-      author: author?.displayName || 'Promptly Team',
+      author: post.authorName || author?.displayName || 'Promptly Team',
       tags: post.tags,
-      ogImage: post.coverImage || 'https://promptly.com/og-image.png',
+      ogImage: post.coverImage || `${window.location.origin}/og-image.png`,
+      publishedTime: post.publishedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      type: 'article' as const,
+      url: `/blog/${post.slug}`,
     };
   }, [post, author]);
 
@@ -214,9 +233,10 @@ export default function BlogDetailPage() {
   return (
     <div className="min-h-screen pt-24 pb-12 md:pb-16 bg-background">
       {post && (
-        <Schema 
-          type="Blog" 
-          data={{ ...post, authorName: author?.displayName }} 
+        <Schema
+          type="Blog"
+          data={{ ...post, authorName: author?.displayName }}
+          faq={blogFaqs}
           breadcrumbs={[
             { name: 'Blog', item: prefix('/blog') },
             { name: post.title, item: prefix(`/blog/${post.slug}`) }

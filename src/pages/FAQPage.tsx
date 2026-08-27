@@ -5,6 +5,8 @@ import { Link, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { useMarketing } from '../hooks/useMarketing';
+import { useSEO } from '../hooks/useSEO';
+import Schema from '../components/SEO/Schema';
 import PageContainer from '../components/layout/PageContainer';
 import Input from '../components/primitives/Input';
 
@@ -93,6 +95,17 @@ export default function FAQPage() {
   const FAQ_DATA = buildFaqData();
   const faqSource = dynamicContent?.categories || FAQ_DATA;
 
+  const allFaqItems = faqSource.flatMap((cat: any) =>
+    (cat.items || []).map((item: any) => ({ question: item.q, answer: item.a }))
+  );
+
+  useSEO({
+    title: 'Frequently Asked Questions & Help Center',
+    description: 'Find answers to common questions about Promptly AI prompt library, vault, collections, models, and usage guidelines.',
+    keywords: ['AI prompt FAQ', 'ChatGPT prompt help', 'Midjourney prompts FAQ', 'Promptly guide'],
+    url: '/faq',
+  });
+
   const query = search.toLowerCase().trim();
   const filtered = faqSource.map((cat: any) => ({
     ...cat,
@@ -117,6 +130,7 @@ export default function FAQPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Schema type="General" data={null} faq={allFaqItems} />
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border pt-24 pb-14 md:pb-20 text-center">
         <div className="absolute inset-0 opacity-10 dark:opacity-20"
