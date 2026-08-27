@@ -5,6 +5,15 @@
   "installCommand": "npm install",
   "headers": [
     {
+      "source": "/(index.html|sitemap.xml|manifest.json)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {
@@ -14,6 +23,7 @@
       ]
     }
   ],
+
   "rewrites": [
     {
       "source": "/api/(.*)",
