@@ -137,6 +137,7 @@ export function buildAdminNavItems(counts: AdminBadgeCounts): NavItem[] {
       section: 'settings' as AdminSection,
       children: [
         { label: 'General',       path: '/admin/settings',           exact: true },
+        { label: 'Header Menu',   path: '/admin/settings/menu' },
         { label: 'Branding',      path: '/admin/settings/branding' },
         { label: 'Users & Auth',  path: '/admin/settings/auth' },
         { label: 'Email / SMTP',  path: '/admin/settings/email' },

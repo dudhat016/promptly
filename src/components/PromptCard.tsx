@@ -1,5 +1,5 @@
 import { addDoc, collection, doc, increment, updateDoc } from 'firebase/firestore';
-import { ArrowRight, Bookmark, Eye, Flag, Heart, Lock, MoreHorizontal, Sparkles, Unlock, Zap } from 'lucide-react';
+import { ArrowRight, Bookmark, Copy, Check, Eye, Flag, Heart, Lock, MoreHorizontal, Sparkles, Unlock, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -26,9 +26,10 @@ const DIFFICULTY_DOT: Record<string, string> = {
 interface PromptCardProps {
   prompt: Prompt;
   isUnlocked?: boolean;
+  onQuickView?: (prompt: Prompt) => void;
 }
 
-export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false }: PromptCardProps) {
+export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false, onQuickView }: PromptCardProps) {
   const { isFavorited, toggleFavorite, user, profile, isPro, isAdmin } = useAuth();
   const { config } = useConfig();
   const { t } = useTranslation();
@@ -37,8 +38,18 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { isSaved, toggle: toggleSaved } = useSavedPrompts();
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyPrompt = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(prompt.content);
+    setCopied(true);
+    toast.success('Prompt copied!');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -96,15 +107,17 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
         return (
           <div className="relative overflow-hidden bg-muted/60 shrink-0" style={{ paddingTop }}>
             {prompt.imageUrl ? (
-              <img
-                src={prompt.imageUrl}
-                alt={prompt.title}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
+              <Link to={prefix(`/prompt/${prompt.slug || prompt.id}`)} className="absolute inset-0 block">
+                <img
+                  src={prompt.imageUrl}
+                  alt={prompt.title}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              </Link>
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-primary/4 to-transparent flex items-center justify-center">
+              <Link to={prefix(`/prompt/${prompt.slug || prompt.id}`)} className="absolute inset-0 bg-gradient-to-br from-primary/8 via-primary/4 to-transparent flex items-center justify-center">
                 <Zap className="w-8 h-8 text-primary/20" />
-              </div>
+              </Link>
             )}
 
         {/* Top badges */}
@@ -204,9 +217,11 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
               size="sm"
             />
           </div>
-          <h3 className="font-semibold text-base leading-snug mb-1.5 text-foreground group-hover:text-primary transition-colors line-clamp-1 font-display">
-            {prompt.title}
-          </h3>
+          <Link to={prefix(`/prompt/${prompt.slug || prompt.id}`)} className="block group/title">
+            <h3 className="font-semibold text-base leading-snug mb-1.5 text-foreground group-hover/title:text-primary group-hover:text-primary transition-colors line-clamp-1 font-display">
+              {prompt.title}
+            </h3>
+          </Link>
           <p className={cn(
             'text-sm text-muted-foreground leading-relaxed line-clamp-2',
             isLocked && 'blur-sm select-none opacity-40'
@@ -238,17 +253,28 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {isLocked && !isCategoryLocked && (
+          <div className="flex items-center gap-1.5">
+            {!isCreation && prompt.content && (
               <Button
-                onClick={handleQuickUnlock}
-                isLoading={isUnlocking}
-                variant="primary"
+                onClick={handleCopyPrompt}
+                variant={copied ? 'success' : 'primary'}
                 size="sm"
-                leftIcon={Zap}
-                className="px-3 shadow-sm shadow-primary/25"
+                leftIcon={copied ? Check : Copy}
+                className="px-2.5 py-1 text-xs font-bold shadow-sm"
+                title="Copy Prompt text"
               >
-                {isUnlocking ? '…' : t('promptCard.unlock')}
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+            )}
+            {onQuickView && (
+              <Button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuickView(prompt); }}
+                variant="secondary"
+                size="icon"
+                className="w-8 h-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+                title="Quick View Preview"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
               </Button>
             )}
             <Button
@@ -257,6 +283,7 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
               variant="secondary"
               size="icon"
               className="w-8 h-8 hover:bg-primary hover:text-primary-foreground"
+              title="Full Details"
             >
               {isCreation ? <Eye className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
             </Button>

@@ -60,6 +60,7 @@ const AdminUsers              = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminUserDetails        = lazy(() => import('./pages/admin/AdminUserDetails'));
 const AdminTickets            = lazy(() => import('./pages/admin/AdminTickets'));
 const AdminSettings           = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminNavigation         = lazy(() => import('./pages/admin/AdminNavigation'));
 const AdminMedia              = lazy(() => import('./pages/admin/AdminMedia'));
 const AdminActivityLog        = lazy(() => import('./pages/admin/AdminActivityLog'));
 
@@ -226,9 +227,9 @@ function AppContent() {
                 <Route path="/:lng" element={<LanguageGuard><MaintenanceGuard><Outlet /></MaintenanceGuard></LanguageGuard>}>
                   {/* Public Layout: Standard Header & Footer */}
                   <Route element={<HorizontalLayout />}>
-                    <Route index element={<LandingPage />} />
-                  <Route path="explore/*" element={<ExplorePage />} />
-                  <Route path="category/:id" element={<ExplorePage />} />
+                    <Route index element={<ExplorePage />} />
+                    <Route path="explore/*" element={<Navigate to="/" replace />} />
+                    <Route path="category/:id" element={<ExplorePage />} />
                   <Route path="prompt/:slug" element={<PromptDetailPage />} />
                   <Route path="blog" element={<BlogPage />} />
                   <Route path="blog/tag/:tagSlug" element={<BlogPage />} />
@@ -328,6 +329,7 @@ function AppContent() {
                   <Route path="emails/broadcast" element={<SectionRoute section="emails"><AdminEmailBroadcast /></SectionRoute>} />
                   <Route path="emails/analytics" element={<SectionRoute section="emails"><AdminEmailAnalytics /></SectionRoute>} />
                   <Route path="emails/settings" element={<SectionRoute section="emails"><AdminEmailSettings /></SectionRoute>} />
+                  <Route path="settings/menu" element={<SectionRoute section="settings"><AdminNavigation /></SectionRoute>} />
                   <Route path="settings/*" element={<SectionRoute section="settings"><AdminSettings /></SectionRoute>} />
                   <Route path="permissions" element={<SectionRoute section="permissions"><AdminPermissions /></SectionRoute>} />
                   <Route path="roles" element={<SectionRoute section="roles"><AdminRoles /></SectionRoute>} />

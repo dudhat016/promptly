@@ -15,7 +15,7 @@ export default function Footer() {
     {
       heading: t('footer.cols.platform'),
       links: [
-        { to: prefix('/explore'),   label: t('footer.cols.explore')  },
+        { to: prefix('/'),          label: t('footer.cols.explore')  },
         { to: prefix('/blog'),      label: t('footer.cols.blog')     },
       ],
     },
@@ -45,7 +45,7 @@ export default function Footer() {
 
   return (
     <footer className="bg-background border-t border-border">
-      <div className="container mx-auto px-4 pt-16 pb-8">
+      <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
 
         {/* Top grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 pb-12 border-b border-border">

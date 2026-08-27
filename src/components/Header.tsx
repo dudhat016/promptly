@@ -4,7 +4,8 @@ import {
   Sparkles, Sun, X, HelpCircle
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
@@ -12,8 +13,9 @@ import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../i18n';
 import { usePath } from '../hooks/usePath';
-import { auth, signInWithGoogle } from '../lib/firebase';
+import { auth, db, signInWithGoogle } from '../lib/firebase';
 import { cn } from '../lib/utils';
+import { HeaderMenuItem } from '../types';
 import Button from './primitives/Button';
 import NotificationBell from './notifications/NotificationBell';
 import AnnouncementBanner from './AnnouncementBanner';
@@ -108,11 +110,31 @@ export default function Header() {
     navigate(prefix('/'));
   };
 
-  const NAV_LINKS = [
-    { to: prefix('/explore'),     label: t('nav.explore')     },
+  const [dynamicMenuItems, setDynamicMenuItems] = useState<HeaderMenuItem[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'system_settings', 'navigation'), (snap) => {
+      if (snap.exists() && snap.data().menuItems) {
+        setDynamicMenuItems(snap.data().menuItems);
+      }
+    }, () => {});
+    return () => unsub();
+  }, []);
+
+  const defaultNavLinks = [
+    { to: prefix('/'),            label: t('nav.explore')     },
     { to: prefix('/blog'),        label: t('nav.blog')        },
     { to: prefix('/contact'),     label: t('nav.support')     },
   ];
+
+  const NAV_LINKS = dynamicMenuItems.length > 0
+    ? dynamicMenuItems.map(item => ({
+        to: item.url.startsWith('http') ? item.url : prefix(item.url),
+        label: item.label,
+        target: item.target,
+        isExternal: item.url.startsWith('http'),
+      }))
+    : defaultNavLinks.map(l => ({ ...l, target: '_self', isExternal: false }));
 
   return (
     <>
@@ -151,12 +173,26 @@ export default function Header() {
   
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(({ to, label }) => {
+            {NAV_LINKS.map(({ to, label, target, isExternal }) => {
               const isActive = location.pathname === to;
+              if (isExternal) {
+                return (
+                  <a
+                    key={to}
+                    href={to}
+                    target={target || '_self'}
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  >
+                    {label}
+                  </a>
+                );
+              }
               return (
                 <Link
                   key={to}
                   to={to}
+                  target={target || '_self'}
                   className={cn(
                     "px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all",
                     isActive 
@@ -259,10 +295,34 @@ export default function Header() {
                 )}
   
                 <div className="grid grid-cols-1 gap-1">
-                  <MobileLink to={prefix('/explore')}   icon={Search}    onClick={() => setMobileOpen(false)}>{t('header.mobile.explore')}</MobileLink>
-                  <MobileLink to={prefix('/blog')}      icon={FileText}  onClick={() => setMobileOpen(false)}>{t('header.mobile.blog')}</MobileLink>
-                  <MobileLink to={prefix('/contact')}   icon={Mail}      onClick={() => setMobileOpen(false)}>{t('header.mobile.contact')}</MobileLink>
-                  <MobileLink to={prefix('/faq')}       icon={HelpCircle} onClick={() => setMobileOpen(false)}>{t('header.mobile.faq')}</MobileLink>
+                  {dynamicMenuItems.length > 0 ? (
+                    NAV_LINKS.map(({ to, label, isExternal }) => (
+                      isExternal ? (
+                        <a
+                          key={to}
+                          href={to}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+                        >
+                          <Search className="w-4 h-4 text-primary" />
+                          {label}
+                        </a>
+                      ) : (
+                        <MobileLink key={to} to={to} icon={Search} onClick={() => setMobileOpen(false)}>
+                          {label}
+                        </MobileLink>
+                      )
+                    ))
+                  ) : (
+                    <>
+                      <MobileLink to={prefix('/')}          icon={Search}    onClick={() => setMobileOpen(false)}>{t('header.mobile.explore')}</MobileLink>
+                      <MobileLink to={prefix('/blog')}      icon={FileText}  onClick={() => setMobileOpen(false)}>{t('header.mobile.blog')}</MobileLink>
+                      <MobileLink to={prefix('/contact')}   icon={Mail}      onClick={() => setMobileOpen(false)}>{t('header.mobile.contact')}</MobileLink>
+                      <MobileLink to={prefix('/faq')}       icon={HelpCircle} onClick={() => setMobileOpen(false)}>{t('header.mobile.faq')}</MobileLink>
+                    </>
+                  )}
                 </div>
   
                 {user && (

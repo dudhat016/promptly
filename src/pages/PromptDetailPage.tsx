@@ -389,8 +389,8 @@ export default function PromptDetailPage() {
           type="Prompt"
           data={prompt}
           breadcrumbs={[
-            { name: 'Library', item: prefix('/explore') },
-            { name: category?.name || 'Category', item: prefix(`/explore?category=${prompt.categoryId}`) },
+            { name: 'Library', item: prefix('/') },
+            { name: category?.name || 'Category', item: prefix(`/?category=${prompt.categoryId}`) },
             { name: prompt.title, item: prefix(`/prompt/${prompt.slug}`) }
           ]}
         />
@@ -398,14 +398,14 @@ export default function PromptDetailPage() {
       <PageContainer className="pt-20 pb-12 md:pb-16" ignoreCustomizer>
         <Breadcrumbs
           items={[
-            { name: 'Library', item: prefix('/explore') },
-            { name: category?.name || 'Category', item: prefix(`/explore?category=${prompt.categoryId}`) },
+            { name: 'Library', item: prefix('/') },
+            { name: category?.name || 'Category', item: prefix(`/?category=${prompt.categoryId}`) },
             { name: prompt.title, item: prefix(`/prompt/${prompt.slug}`) }
           ]}
         />
 
         <Button
-          onClick={() => navigate(prefix('/explore'))}
+          onClick={() => navigate(prefix('/'))}
           variant="ghost"
           size="sm"
           leftIcon={ArrowLeft}

@@ -86,7 +86,7 @@ export default function CommandPalette() {
   };
 
   const STATIC_ACTIONS = [
-    { id: 'explore', label: 'Explore Prompts', icon: Sparkles, to: prefix('/explore') },
+    { id: 'explore', label: 'Explore Prompts', icon: Sparkles, to: prefix('/') },
     { id: 'profile', label: 'Account Settings', icon: User, to: prefix('/settings/profile'), private: true },
     { id: 'admin', label: 'Admin Dashboard', icon: ShieldCheck, to: prefix('/admin'), admin: true },
   ].filter(a => {

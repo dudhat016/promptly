@@ -21,10 +21,18 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
   const displayItems: BreadcrumbItem[] = items || (() => {
     const crumbs: BreadcrumbItem[] = [];
     let currentPath = '';
-    pathnames.forEach(value => {
+    const SUPPORTED_LOCALES = new Set(['en', 'es', 'fr', 'hi', 'ar']);
+    
+    pathnames.forEach((value, index) => {
       currentPath += `/${value}`;
+      if (index === 0 && SUPPORTED_LOCALES.has(value)) return;
       if (value === 'edit') return;
-      crumbs.push({ name: value.replace(/-/g, ' '), item: currentPath });
+      
+      const formattedName = value
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+        
+      crumbs.push({ name: formattedName, item: currentPath });
     });
     return crumbs;
   })();

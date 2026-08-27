@@ -7,6 +7,16 @@ export enum OperationType {
   WRITE = 'write',
 }
 
+export interface HeaderMenuItem {
+  id: string;
+  label: string;
+  type: 'category' | 'tag' | 'page' | 'custom';
+  url: string;
+  target?: '_self' | '_blank';
+  order: number;
+  children?: HeaderMenuItem[];
+}
+
 export interface NotifPrefs {
   securityAlerts: boolean;  // login alerts, password reset — locked on
   onboarding: boolean;       // welcome, onboarding emails, new prompt published

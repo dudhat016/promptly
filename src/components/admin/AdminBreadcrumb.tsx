@@ -53,6 +53,8 @@ export default function AdminBreadcrumb() {
 
   if (crumbs.length > 0) {
     crumbs[crumbs.length - 1].isLast = true;
+  } else {
+    return null;
   }
 
   return (
