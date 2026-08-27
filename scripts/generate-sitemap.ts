@@ -13,9 +13,10 @@ const firebaseConfig = {
 };
 
 const BASE_URL = (process.env.VITE_SITE_URL || process.env.SITE_URL || 'https://aipromptcopypaste.in').replace(/\/$/, '');
+const LANGUAGES = ['en', 'hi', 'ar', 'es', 'fr'];
 
 async function generateSitemap() {
-  console.log('Generating dynamic sitemap...');
+  console.log('Generating dynamic multi-language sitemap...');
 
   const staticUrls = [
     { loc: '/', priority: '1.0', changefreq: 'weekly' },
@@ -68,18 +69,26 @@ async function generateSitemap() {
   const allUrls = [...staticUrls, ...blogUrls, ...promptUrls];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${allUrls.map(u => `  <url>
-    <loc>${BASE_URL}${u.loc}</loc>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${allUrls.map(u => {
+    const cleanPath = u.loc === '/' ? '' : u.loc;
+    const alternates = LANGUAGES.map(l => `    <xhtml:link rel="alternate" hreflang="${l}" href="${BASE_URL}/${l}${cleanPath}" />`).join('\n');
+    const xDefault = `    <xhtml:link rel="alternate" hreflang="x-default" href="${BASE_URL}${cleanPath}" />`;
+
+    return `  <url>
+    <loc>${BASE_URL}${cleanPath || '/'}</loc>
     <changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
-  </url>`).join('\n')}
+${alternates}
+${xDefault}
+  </url>`;
+}).join('\n')}
 </urlset>
 `;
 
   const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.xml');
   fs.writeFileSync(sitemapPath, xml, 'utf8');
-  console.log(`✅ Sitemap successfully written to ${sitemapPath} (${allUrls.length} URLs)`);
+  console.log(`✅ Multi-language sitemap successfully written to ${sitemapPath} (${allUrls.length} URLs across 5 languages)`);
 }
 
 generateSitemap().catch(console.error);

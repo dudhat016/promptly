@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Copy, Check, Sparkles } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import Button from '../primitives/Button';
 
 interface BlogPromptBlockProps {
@@ -8,16 +9,17 @@ interface BlogPromptBlockProps {
 }
 
 export default function BlogPromptBlock({ content }: BlogPromptBlockProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(content);
       setCopied(true);
-      toast.success('Prompt copied to clipboard!');
+      toast.success(t('blogPrompt.success', 'Prompt copied to clipboard!'));
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      toast.error('Failed to copy prompt.');
+      toast.error(t('blogPrompt.error', 'Failed to copy prompt.'));
     }
   };
 
@@ -27,7 +29,7 @@ export default function BlogPromptBlock({ content }: BlogPromptBlockProps) {
       <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b border-border/80">
         <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-foreground">
           <Sparkles className="w-3.5 h-3.5 text-primary" />
-          <span>Prompt Formula</span>
+          <span>{t('blogPrompt.title', 'Prompt Formula')}</span>
         </div>
         <Button
           onClick={handleCopy}
@@ -38,7 +40,7 @@ export default function BlogPromptBlock({ content }: BlogPromptBlockProps) {
             copied ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : ''
           }`}
         >
-          {copied ? 'Copied!' : 'Copy Prompt'}
+          {copied ? t('blogPrompt.copied', 'Copied!') : t('blogPrompt.copy', 'Copy Prompt')}
         </Button>
       </div>
 

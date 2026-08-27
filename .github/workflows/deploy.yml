@@ -27,8 +27,10 @@ jobs:
       - name: 🏗️ Build Frontend
         run: npm run build
 
-      - name: 🛠️ Build Backend (server.mjs)
-        run: npx esbuild server.ts --bundle --platform=node --format=esm --target=node20 --outfile=server.mjs --packages=external
+      - name: 🛠️ Build Backend & Prepare Dist
+        run: |
+          npx esbuild server.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/server.mjs --packages=external
+          cp public/.htaccess dist/.htaccess || true
 
       - name: 🚀 Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -36,25 +38,9 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./
+          local-dir: ./dist/
           server-dir: /public_html/promptly/
           protocol: ftp
           port: 21
           timeout: 120000
           security: strict
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            src/**
-            tsconfig.json
-            vite.config.ts
-            package-lock.json
-            README.md
-            .env.example
-            service-account.json
-            *.service-account.json
-            *.ts
-            !server.mjs
-            !.htaccess
-            !health.html

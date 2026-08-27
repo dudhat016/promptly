@@ -253,5 +253,13 @@
     "message": "Message",
     "priority": "Priority",
     "submit": "Submit Ticket"
+  },
+  "blogPrompt": {
+    "title": "Prompt Formula",
+    "copy": "Copy Prompt",
+    "copied": "Copied!",
+    "success": "Prompt copied to clipboard!",
+    "error": "Failed to copy prompt."
   }
 }
+

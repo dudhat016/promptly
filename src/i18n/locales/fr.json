@@ -253,5 +253,13 @@
     "message": "Message",
     "priority": "Priorité",
     "submit": "Soumettre le Ticket"
+  },
+  "blogPrompt": {
+    "title": "Formule de Prompt",
+    "copy": "Copier le Prompt",
+    "copied": "Copié !",
+    "success": "Prompt copié dans le presse-papiers !",
+    "error": "Échec de la copie du prompt."
   }
 }
+
