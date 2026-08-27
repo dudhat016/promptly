@@ -27,7 +27,7 @@ export default function AdminPromptForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [prompt, setPrompt] = useState<Partial<Prompt>>({
     content: '', imageUrl: '', model: '', tags: [],
-    sampleOutput: '', usageGuide: '', difficulty: undefined
+    sampleOutput: '', usageGuide: ''
   });
 
   const [isManualSEO, setIsManualSEO] = useState({
@@ -378,26 +378,6 @@ export default function AdminPromptForm() {
             placeholder="Step-by-step tips on how to use this prompt. Shown as a 'How to Use' section after unlock. Plain text or use line breaks for steps."
             variant="outline"
           />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Select
-                id="promptDifficulty"
-                name="promptDifficulty"
-                label="Difficulty Level (optional)"
-                value={prompt.difficulty || ''}
-                onChange={val => setPrompt({...prompt, difficulty: (val as Prompt['difficulty']) || undefined})}
-                options={[
-                  { label: 'Not set', value: '' },
-                  { label: 'Beginner', value: 'beginner', description: 'Basic prompt structure' },
-                  { label: 'Intermediate', value: 'intermediate', description: 'Uses variables and context' },
-                  { label: 'Advanced', value: 'advanced', description: 'Complex logic and chain of thought' }
-                ]}
-                isSearchable={false}
-              />
-            </div>
-
-          </div>
 
           <div className="pt-6 border-t border-border flex gap-4">
             <Button 

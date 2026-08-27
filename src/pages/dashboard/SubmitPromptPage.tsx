@@ -16,13 +16,6 @@ import { useImageUpload } from '../../hooks/useImageUpload';
 import { EmailService } from '../../services/emailService';
 import { Category, AIModel } from '../../types';
 
-const DIFFICULTY_OPTIONS = [
-  { value: '', label: 'Select difficulty' },
-  { value: 'beginner', label: 'Beginner' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
-];
-
 const slugify = (text: string) =>
   text.toLowerCase()
     .replace(/\s+/g, '-')
@@ -51,7 +44,6 @@ export default function SubmitPromptPage() {
   const [form, setForm] = useState({
     title: '', slug: '', description: '', content: '',
     imageUrl: '', categoryId: '', model: '', tags: [] as string[],
-    difficulty: '' as '' | 'beginner' | 'intermediate' | 'advanced',
     sampleOutput: '', usageGuide: '',
     metaTitle: '', metaDescription: '', metaKeywords: '',
   });
@@ -83,7 +75,6 @@ export default function SubmitPromptPage() {
             categoryId: data.categoryId || '',
             model: data.model || '',
             tags: data.tags || [],
-            difficulty: data.difficulty || '',
             sampleOutput: data.sampleOutput || '',
             usageGuide: data.usageGuide || '',
             metaTitle: data.metaTitle || '',
@@ -161,7 +152,6 @@ export default function SubmitPromptPage() {
           moderationStatus: 'active',
           submittedAt: new Date().toISOString(),
           updatedAt: serverTimestamp(),
-          difficulty: form.difficulty || null,
           rejectionReason: null,
           previousRejectionReason: rejectionReason || null,
           resubmissionCount: increment(1),
@@ -184,7 +174,6 @@ export default function SubmitPromptPage() {
           submittedAt: new Date().toISOString(),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          difficulty: form.difficulty || undefined,
         });
         toast.success('Prompt submitted for review!');
         EmailService.sendPromptSubmittedEmail(user.uid, form.title).catch(() => {});
@@ -320,13 +309,6 @@ export default function SubmitPromptPage() {
               error={errors.categoryId}
             />
           </div>
-
-          <Select
-            label="Difficulty"
-            value={form.difficulty}
-            onChange={val => set('difficulty', val)}
-            options={DIFFICULTY_OPTIONS}
-          />
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">

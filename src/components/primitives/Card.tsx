@@ -14,6 +14,8 @@ interface CardProps extends HTMLMotionProps<'div'> {
  * A highly flexible Card component with sub-components for structured content.
  * Supports multiple variants, interactive states, and sticky headers/footers.
  */
+const MotionDiv = motion.div;
+
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = 'default', padding = 'md', as: Component = 'div', interactive = false, children, ...props }, ref) => {
     const variants = {
@@ -32,7 +34,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       lg: "p-8"
     };
 
-    const MotionComponent = motion.create(Component);
+    const MotionComponent = Component === 'div' ? MotionDiv : Component;
 
     return (
       <MotionComponent

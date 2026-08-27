@@ -436,100 +436,21 @@ export default function AdminSettings() {
         {/* ── CONTENT & SEO ────────────────────────────────────── */}
         {activeTab === 'content' && (
           <div className="space-y-6">
-            <AdminContentSettings siteContent={siteContent} setSiteContent={setSiteContent} onSave={handleSaveContent} isSaving={savingContent} />
-
-            <Card icon={BarChart} title="Analytics & Tracking Scripts">
-              <div className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Input label="Google Analytics 4 ID" value={config.googleAnalyticsId} onChange={e => setConfig({ ...config, googleAnalyticsId: e.target.value })} variant="outline" placeholder="G-XXXXXXXXXX" />
-                  <Input label="Facebook / Meta Pixel ID" value={config.facebookPixelId} onChange={e => setConfig({ ...config, facebookPixelId: e.target.value })} variant="outline" placeholder="1234567890" />
-                </div>
-                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
-                  <Textarea label="Global Header Scripts" value={config.customHeadScripts} onChange={e => setConfig({ ...config, customHeadScripts: e.target.value })} variant="outline" rows={5} placeholder="<script>…</script>" helperText="Injected into <head> on every page." />
-                  <Textarea label="Global Footer Scripts" value={config.customFooterScripts} onChange={e => setConfig({ ...config, customFooterScripts: e.target.value })} variant="outline" rows={5} placeholder="<script>…</script>" helperText="Injected before </body> on every page." />
-                </div>
-              </div>
-            </Card>
-
-            <Card icon={Search} title="Route-Specific SEO">
-              <div className="space-y-8">
-                <div className="flex flex-col md:flex-row items-end gap-4">
-                  <div className="flex-grow">
-                    <Select
-                      label="Select Route to Configure"
-                      placeholder="Choose a site page…"
-                      value={editingPage?.id || ''}
-                      onChange={val => {
-                        const page = pages.find(p => p.id === val) || defaultPages.find(dp => dp.id === val);
-                        setEditingPage(page || null);
-                      }}
-                      options={[
-                        ...(editingPage && !pages.find(p => p.id === editingPage.id) && !defaultPages.find(dp => dp.id === editingPage.id)
-                          ? [{ label: `NEW: ${editingPage.id || 'Untitled'}`, value: editingPage.id, description: 'Draft Route', icon: Plus }]
-                          : []),
-                        ...defaultPages.map(dp => ({
-                          label: `${dp.id.toUpperCase()} (${dp.path})`,
-                          value: dp.id,
-                          description: pages.find(p => p.id === dp.id) ? 'Configured' : 'Using Defaults',
-                          icon: Globe,
-                        })),
-                        ...pages.filter(p => !defaultPages.find(dp => dp.id === p.id)).map(p => ({
-                          label: `${p.id.toUpperCase()} (${p.path})`,
-                          value: p.id,
-                          description: 'Custom Route',
-                          icon: Plus,
-                        })),
-                      ]}
-                    />
-                  </div>
-                  <Button onClick={() => setEditingPage({ id: '', path: '', title: '', description: '' })} variant="outline" size="sm" leftIcon={Plus} className="rounded-xl font-bold">
-                    Add Custom Route
-                  </Button>
-                  {editingPage?.id && !defaultPages.find(dp => dp.id === editingPage.id) && pages.find(p => p.id === editingPage.id) && (
-                    <Button variant="danger" size="sm" className="rounded-xl font-bold" leftIcon={Trash2}
-                      onClick={() => { if (confirm('Delete custom route SEO?')) { deleteDoc(doc(db, 'site_pages', editingPage.id)).then(() => { setPages(pages.filter(pg => pg.id !== editingPage.id)); setEditingPage(null); toast.success('Deleted'); }); } }}>
-                      Delete
-                    </Button>
-                  )}
-                </div>
-
-                {editingPage ? (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><Target className="w-4 h-4" /></div>
-                        <div>
-                          <h4 className="text-sm font-bold text-foreground">SEO Metadata</h4>
-                          <p className="text-xs text-muted-foreground">/{editingPage.id || 'new-route'}</p>
-                        </div>
-                      </div>
-                      {editingPage.path && (
-                        <a href={editingPage.path} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 border border-border rounded-xl text-xs font-bold hover:text-primary transition-colors">
-                          View Page <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <Input label="Route ID" value={editingPage.id} onChange={e => setEditingPage({ ...editingPage, id: e.target.value })} variant="outline" placeholder="e.g. explore" helperText="Machine-readable identifier." />
-                      <Input label="Route Path" value={editingPage.path} onChange={e => setEditingPage({ ...editingPage, path: e.target.value })} variant="outline" placeholder="/explore" />
-                    </div>
-                    <Input label="Meta Title" value={editingPage.title} onChange={e => setEditingPage({ ...editingPage, title: e.target.value })} variant="outline" placeholder="SEO Optimized Page Title" />
-                    <Textarea label="Meta Description" value={editingPage.description} onChange={e => setEditingPage({ ...editingPage, description: e.target.value })} variant="outline" rows={3} placeholder="Search engine snippet (max 160 characters)…" />
-                    <TagInput label="Keywords" tags={editingPage.keywords ? editingPage.keywords.split(',').map(k => k.trim()).filter(Boolean) : []} onChange={tags => setEditingPage({ ...editingPage, keywords: tags.join(', ') })} placeholder="Add keyword and press Enter…" helperText="Comma-separated internally." />
-                    <ImageUpload label="Social Sharing Image (OG)" value={editingPage.ogImage || ''} onChange={val => setEditingPage({ ...editingPage, ogImage: val })} aspectRatio="video" folder="seo" helpText="Custom preview image for social links." />
-                    <Button onClick={handleSavePage} isLoading={savingPage} variant="primary" fullWidth size="lg" className="rounded-2xl h-14 font-bold shadow-xl shadow-primary/20" leftIcon={Save}>
-                      Save SEO Configuration
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="h-56 border-2 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-center p-8 bg-muted/5">
-                    <Search className="w-8 h-8 text-muted-foreground/30 mb-3" />
-                    <p className="text-sm font-semibold text-foreground">Select a Route to Configure</p>
-                    <p className="text-xs text-muted-foreground mt-1">Choose from the dropdown above or add a custom route.</p>
-                  </div>
-                )}
-              </div>
-            </Card>
+            <AdminContentSettings
+              siteContent={siteContent}
+              setSiteContent={setSiteContent}
+              onSave={handleSaveContent}
+              isSaving={savingContent}
+              config={config}
+              setConfig={setConfig}
+              pages={pages}
+              setPages={setPages}
+              editingPage={editingPage}
+              setEditingPage={setEditingPage}
+              savingPage={savingPage}
+              handleSavePage={handleSavePage}
+              defaultPages={defaultPages}
+            />
           </div>
         )}
 

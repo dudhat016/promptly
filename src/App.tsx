@@ -1,4 +1,3 @@
-import { collection, getDocs, increment, limit, query, updateDoc, where } from 'firebase/firestore';
 import { lazy, Suspense, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
@@ -12,7 +11,6 @@ import NeuralMarketingScripts from './components/NeuralMarketingScripts';
 import OfflineBanner from './components/OfflineBanner';
 import InstallPrompt from './components/pwa/InstallPrompt';
 import SocialProofToaster from './components/SocialProofToaster';
-import { useUI } from './contexts/UIProvider';
 import DemoLayout from './demo/layout';
 import OnboardingGuard from './guards/OnboardingGuard';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -21,7 +19,6 @@ import { usePath } from './hooks/usePath';
 import { useStaffRoles } from './hooks/useStaffRoles';
 import { ThemeProvider } from './hooks/useTheme';
 import HorizontalLayout from './layouts/HorizontalLayout';
-import { db } from './lib/firebase';
 import AdminLayout from './pages/admin/AdminLayout';
 import { AdminSection } from './types';
 
@@ -79,13 +76,10 @@ const BlogDetailPage          = lazy(() => import('./pages/BlogDetailPage'));
 
 
 const ContactPage             = lazy(() => import('./pages/ContactPage'));
-const TermsPage               = lazy(() => import('./pages/TermsPage'));
-const PrivacyPage             = lazy(() => import('./pages/PrivacyPage'));
-const CookiePolicyPage        = lazy(() => import('./pages/CookiePolicyPage'));
-const DMCAPage                = lazy(() => import('./pages/DMCAPage'));
+const CustomPage             = lazy(() => import('./pages/CustomPage'));
+const FAQPage                = lazy(() => import('./pages/FAQPage'));
 const UnsubscribePage         = lazy(() => import('./pages/UnsubscribePage'));
 const NewsletterConfirmPage   = lazy(() => import('./pages/NewsletterConfirmPage'));
-const FAQPage                 = lazy(() => import('./pages/FAQPage'));
 const SupportPage             = lazy(() => import('./pages/SupportPage'));
 const NotFoundPage            = lazy(() => import('./pages/NotFoundPage'));
 // Auth
@@ -229,7 +223,8 @@ function AppContent() {
                   <Route element={<HorizontalLayout />}>
                     <Route index element={<ExplorePage />} />
                     <Route path="explore/*" element={<Navigate to="/" replace />} />
-                    <Route path="category/:id" element={<ExplorePage />} />
+                    <Route path="category/:categorySlug" element={<ExplorePage />} />
+                    <Route path="tag/:tagSlug" element={<ExplorePage />} />
                   <Route path="prompt/:slug" element={<PromptDetailPage />} />
                   <Route path="blog" element={<BlogPage />} />
                   <Route path="blog/tag/:tagSlug" element={<BlogPage />} />
@@ -237,10 +232,11 @@ function AppContent() {
 
 
                   <Route path="contact" element={<ContactPage />} />
-                  <Route path="terms" element={<TermsPage />} />
-                  <Route path="privacy" element={<PrivacyPage />} />
-                  <Route path="cookies" element={<CookiePolicyPage />} />
-                  <Route path="dmca" element={<DMCAPage />} />
+                  <Route path="p/:slug" element={<CustomPage />} />
+                  <Route path="terms" element={<CustomPage defaultSlug="terms" />} />
+                  <Route path="privacy" element={<CustomPage defaultSlug="privacy" />} />
+                  <Route path="cookies" element={<CustomPage defaultSlug="cookies" />} />
+                  <Route path="dmca" element={<CustomPage defaultSlug="dmca" />} />
                   <Route path="unsubscribe" element={<UnsubscribePage />} />
                   <Route path="newsletter/confirm" element={<NewsletterConfirmPage />} />
                   <Route path="faq" element={<FAQPage />} />

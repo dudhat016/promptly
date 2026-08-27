@@ -541,7 +541,7 @@ export default function LandingPage() {
                   <motion.div key={cat.id}
                     initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }} viewport={{ once: true }}>
-                    <Link to={prefix(`/explore?category=${encodeURIComponent(cat.name)}`)}
+                    <Link to={prefix(`/category/${encodeURIComponent(cat.id || cat.name.toLowerCase())}`)}
                       className="group flex items-center gap-3 rounded-xl p-3 md:p-4 border border-border hover:bg-muted/50 hover:border-border/80 transition-all">
                       <Icon className={`w-4 h-4 md:w-5 md:h-5 ${style.color} shrink-0`} />
                       <span className="text-xs md:text-sm font-semibold text-foreground/70 group-hover:text-foreground transition-colors truncate">{cat.name}</span>
@@ -561,7 +561,7 @@ export default function LandingPage() {
                   <motion.div key={i}
                     initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }} viewport={{ once: true }}>
-                    <Link to={prefix(`/explore?category=${encodeURIComponent(name)}`)}
+                    <Link to={prefix(`/category/${encodeURIComponent(name.toLowerCase())}`)}
                       className="group flex items-center gap-3 rounded-xl p-3 md:p-4 border border-border hover:bg-muted/50 transition-all">
                       <Icon className={`w-4 h-4 md:w-5 md:h-5 ${style.color} shrink-0`} />
                       <span className="text-xs md:text-sm font-semibold text-foreground/70 group-hover:text-foreground transition-colors truncate">{name}</span>

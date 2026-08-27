@@ -202,7 +202,7 @@ export default function CommandPalette() {
                       {config.categories.slice(0, 6).map(cat => (
                         <button
                           key={cat.id}
-                          onClick={() => handleSelect(prefix(`/explore?category=${encodeURIComponent(cat.name)}`))}
+                          onClick={() => handleSelect(prefix(`/category/${encodeURIComponent(cat.id || cat.name.toLowerCase())}`))}
                           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all text-left"
                         >
                           <div className="w-2 h-2 rounded-full bg-primary/20 group-hover:bg-primary" />

@@ -17,12 +17,6 @@ import Rating from './feedback/Rating';
 import Button from './primitives/Button';
 import ReportModal from './ReportModal';
 
-const DIFFICULTY_DOT: Record<string, string> = {
-  beginner:     'bg-emerald-500',
-  intermediate: 'bg-amber-500',
-  advanced:     'bg-rose-500',
-};
-
 interface PromptCardProps {
   prompt: Prompt;
   isUnlocked?: boolean;
@@ -137,63 +131,64 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
           )}
         </div>
 
-        {/* Favorite */}
+        {/* Top-right action buttons (Favorite + Options Menu) */}
         {!isCreation && (
-          <Button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); prompt.id && toggleFavorite(prompt.id); }}
-            variant={favorited ? 'primary' : 'ghost'}
-            size="icon"
-            className={cn(
-              'absolute top-3 right-3 w-8 h-8 backdrop-blur-md border border-white/10 shadow-lg',
-              favorited ? 'bg-rose-500 hover:bg-rose-600 border-rose-500 shadow-rose-500/30' : 'bg-black/40 text-white/60 hover:bg-black/60'
-            )}
-          >
-            <Heart className={cn('w-4 h-4', favorited && 'fill-current')} />
-          </Button>
-        )}
-
-        {/* Three-dot menu */}
-        {!isCreation && (
-          <div
-            ref={menuRef}
-            className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-            onClick={e => { e.preventDefault(); e.stopPropagation(); }}
-          >
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
             <Button
-              onClick={() => setMenuOpen(v => !v)}
-              variant="ghost"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); prompt.id && toggleFavorite(prompt.id); }}
+              variant={favorited ? 'primary' : 'ghost'}
               size="icon"
-              className="w-8 h-8 bg-black/40 backdrop-blur-md border border-white/10 text-white/60 hover:bg-black/60"
+              className={cn(
+                'w-8 h-8 backdrop-blur-md border border-white/10 shadow-lg',
+                favorited ? 'bg-rose-500 hover:bg-rose-600 border-rose-500 shadow-rose-500/30' : 'bg-black/40 text-white/60 hover:bg-black/60'
+              )}
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <Heart className={cn('w-4 h-4', favorited && 'fill-current')} />
             </Button>
-            {menuOpen && (
-              <div className="absolute top-full left-0 mt-1 w-40 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-                {user && prompt.id && (
+
+            <div
+              ref={menuRef}
+              className="relative"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+            >
+              <Button
+                onClick={() => setMenuOpen(v => !v)}
+                variant="ghost"
+                size="icon"
+                className="w-8 h-8 bg-black/40 backdrop-blur-md border border-white/10 text-white/60 hover:bg-black/60 shadow-lg"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+
+              {menuOpen && (
+                <div className="absolute top-full right-0 mt-1.5 min-w-[170px] bg-card/95 backdrop-blur-md border border-border rounded-xl shadow-xl overflow-hidden z-30 py-1">
+                  {user && prompt.id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leftIcon={Bookmark}
+                      iconClassName={cn(isSaved(prompt.id!) && 'fill-current text-primary')}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        toggleSaved(prompt.id!, prompt.title, prompt.slug);
+                      }}
+                      className="w-full justify-start px-3.5 h-10 text-xs font-bold capitalize tracking-normal text-foreground hover:bg-muted/80 rounded-none whitespace-nowrap"
+                    >
+                      {isSaved(prompt.id!) ? t('promptCard.unsave') : t('promptCard.saveForLater')}
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      toggleSaved(prompt.id!, prompt.title, prompt.slug);
-                    }}
-                    className="flex items-center gap-2 w-full justify-start px-3 py-2.5 text-xs font-semibold text-foreground rounded-none"
+                    leftIcon={Flag}
+                    onClick={() => { setMenuOpen(false); setReportOpen(true); }}
+                    className="w-full justify-start px-3.5 h-10 text-xs font-bold capitalize tracking-normal text-rose-500 hover:bg-rose-500/10 rounded-none whitespace-nowrap"
                   >
-                    <Bookmark className={cn('w-3.5 h-3.5', isSaved(prompt.id!) && 'fill-current text-primary')} />
-                    {isSaved(prompt.id!) ? t('promptCard.unsave') : t('promptCard.saveForLater')}
+                    {t('promptCard.report')}
                   </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setMenuOpen(false); setReportOpen(true); }}
-                  className="flex items-center gap-2 w-full justify-start px-3 py-2.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 rounded-none"
-                >
-                  <Flag className="w-3.5 h-3.5" />
-                  {t('promptCard.report')}
-                </Button>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         )}
           </div>
@@ -204,12 +199,6 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
       <div className="flex flex-col flex-1 p-5">
         <div className="flex-1 mb-4">
           <div className="flex items-center gap-2 mb-1.5">
-            {!isCreation && prompt.difficulty && DIFFICULTY_DOT[prompt.difficulty] && (
-              <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                <span className={`w-1.5 h-1.5 rounded-full ${DIFFICULTY_DOT[prompt.difficulty]}`} />
-                {prompt.difficulty}
-              </span>
-            )}
             <Rating
               value={prompt.avgRating ?? (prompt.likesCount ? Math.min(5, 4.2 + (prompt.likesCount / 200)) : 4.5)}
               precision={0.5}
@@ -254,29 +243,6 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
           </div>
 
           <div className="flex items-center gap-1.5">
-            {!isCreation && prompt.content && (
-              <Button
-                onClick={handleCopyPrompt}
-                variant={copied ? 'success' : 'primary'}
-                size="sm"
-                leftIcon={copied ? Check : Copy}
-                className="px-2.5 py-1 text-xs font-bold shadow-sm"
-                title="Copy Prompt text"
-              >
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
-            )}
-            {onQuickView && (
-              <Button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuickView(prompt); }}
-                variant="secondary"
-                size="icon"
-                className="w-8 h-8 hover:bg-muted text-muted-foreground hover:text-foreground"
-                title="Quick View Preview"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-              </Button>
-            )}
             <Button
               as={isCreation ? 'a' : Link}
               {...(isCreation ? { href: prompt.imageUrl, target: '_blank' } : { to: prefix(`/prompt/${prompt.slug || prompt.id}`) })}

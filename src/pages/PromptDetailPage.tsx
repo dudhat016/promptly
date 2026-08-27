@@ -1,5 +1,5 @@
 import { addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, BookMarked, BookOpen, Check, Copy, Eye, Flag, FolderPlus, Heart, Lock, MessageSquare, Plus, Share2, ShieldCheck, Sparkles, Star, Terminal, Trash2, User, Zap } from 'lucide-react';
+import { BookMarked, BookOpen, Calendar, Check, ChevronRight, Copy, Cpu, Eye, Flag, Folder, FolderPlus, Heart, Lock, MessageSquare, Plus, Share2, ShieldCheck, Star, Tag, Terminal, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -17,23 +17,16 @@ import ShareModal from '../components/ShareModal';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { usePath } from '../hooks/usePath';
-import { usePermissions } from '../hooks/usePermissions';
 import { useSEO } from '../hooks/useSEO';
 import { INTERACTION_WEIGHTS, recordPromptInteraction } from '../lib/affinity';
 import { db } from '../lib/firebase';
-import { cn, formatDate } from '../lib/utils';
+import { cn, formatDate, toSlug } from '../lib/utils';
 import { Prompt, PromptCollection, PromptReview, UserProfile } from '../types';
 import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
 
-
-const DIFFICULTY_CONFIG = {
-  beginner:     { label: 'Beginner',     color: 'text-emerald-600 dark:text-emerald-400', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)' },
-  intermediate: { label: 'Intermediate', color: 'text-amber-600 dark:text-amber-400',    bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
-  advanced:     { label: 'Advanced',     color: 'text-rose-600 dark:text-rose-400',      bg: 'rgba(239,68,68,0.1)',  border: 'rgba(239,68,68,0.2)'  },
-};
 
 /** Highlight [VAR], {{var}}, <var> placeholders in a prompt formula. */
 function HighlightedFormula({ content }: { content: string }) {
@@ -63,7 +56,6 @@ function HighlightedFormula({ content }: { content: string }) {
 export default function PromptDetailPage() {
   const { slug } = useParams();
   const { user, profile, isPro, isAdmin, loading: authLoading, toggleFavorite, isFavorited } = useAuth();
-  const { permissions, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
   const { prefix } = usePath();
   const [prompt, setPrompt] = useState<Prompt | null>(null);
@@ -86,6 +78,26 @@ export default function PromptDetailPage() {
   const [myRating, setMyRating] = useState(0);
   const [myComment, setMyComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [dbTags, setDbTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchAllTags() {
+      try {
+        const snap = await getDocs(collection(db, 'tags'));
+        const tagsList = snap.docs.map(d => d.data().name || d.id).filter(Boolean);
+        setDbTags(tagsList);
+      } catch {}
+    }
+    fetchAllTags();
+  }, []);
+
+  const displaySidebarTags = useMemo(() => {
+    const set = new Set<string>();
+    (prompt?.tags || []).forEach(t => set.add(t));
+    dbTags.forEach(t => set.add(t));
+    ['trending', 'boys', 'girls', 'couple', 'saree', 'cinematic', 'cars-bikes', 'festival', 'art', 'marketing', 'coding', 'business'].forEach(t => set.add(t));
+    return Array.from(set).slice(0, 20);
+  }, [prompt?.tags, dbTags]);
 
   const unlockedKey = JSON.stringify(profile?.unlockedPrompts || []);
   const isLiked = prompt?.id ? isFavorited(prompt.id) : false;
@@ -96,7 +108,7 @@ export default function PromptDetailPage() {
     try {
       const stored = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
       setRecentlyViewed(stored);
-    } catch (e) {}
+    } catch (e) { }
   }, [slug]);
 
   const seoMeta = useMemo(() => {
@@ -150,7 +162,7 @@ export default function PromptDetailPage() {
           }
 
           setPrompt(pData);
-          await updateDoc(docSnap.ref, { viewsCount: increment(1) }).catch(() => {});
+          await updateDoc(docSnap.ref, { viewsCount: increment(1) }).catch(() => { });
           recordPromptInteraction(pData, INTERACTION_WEIGHTS.VIEW);
 
           try {
@@ -158,16 +170,34 @@ export default function PromptDetailPage() {
             const filtered = recent.filter((p: any) => p.id !== pData.id);
             const updated = [{ id: pData.id, slug: pData.slug, title: pData.title, model: pData.model }, ...filtered].slice(0, 6);
             localStorage.setItem('recentlyViewed', JSON.stringify(updated));
-          } catch (e) {}
+          } catch (e) { }
 
           if (pData.creatorId) {
             const creatorDoc = await getDoc(doc(db, 'users', pData.creatorId));
             if (creatorDoc.exists()) setCreator({ uid: creatorDoc.id, ...creatorDoc.data() } as UserProfile);
           }
 
-          const relatedQ = query(collection(db, 'prompts'), where('categoryId', '==', pData.categoryId || 'general'), limit(4));
-          const relatedSnap = await getDocs(relatedQ);
-          setRelatedPrompts(relatedSnap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt)).filter(p => p.id !== pData.id).slice(0, 3));
+          try {
+            const allPromptsSnap = await getDocs(query(collection(db, 'prompts'), limit(20)));
+            const candidates = allPromptsSnap.docs
+              .map(d => ({ ...d.data(), id: d.id } as Prompt))
+              .filter(p => p.id !== pData.id);
+
+            const scored = candidates.map(p => {
+              let score = 0;
+              if (p.categoryId && pData.categoryId && p.categoryId.toLowerCase() === pData.categoryId.toLowerCase()) score += 5;
+              if (p.tags && pData.tags) {
+                const shared = p.tags.filter(t => pData.tags.includes(t)).length;
+                score += shared * 2;
+              }
+              return { prompt: p, score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+            setRelatedPrompts(scored.slice(0, 3).map(s => s.prompt));
+          } catch (relErr) {
+            console.error('Failed to load related prompts:', relErr);
+          }
 
           if (pData.categoryId) {
             const catSnap = await getDoc(doc(db, 'categories', pData.categoryId));
@@ -181,7 +211,7 @@ export default function PromptDetailPage() {
       }
     }
     fetchPrompt();
-  }, [slug, unlockedKey, isPro, isAdmin, authLoading, permsLoading]);
+  }, [slug, unlockedKey, isPro, isAdmin, authLoading]);
 
   useEffect(() => {
     if (!prompt?.id) return;
@@ -199,7 +229,7 @@ export default function PromptDetailPage() {
           .filter(r => r.userId !== user?.uid)
           .filter(r => r.moderationStatus === 'approved')
       );
-    }).catch(() => {}).finally(() => setReviewsLoading(false));
+    }).catch(() => { }).finally(() => setReviewsLoading(false));
   }, [prompt?.id, user?.uid]);
 
   useEffect(() => {
@@ -219,7 +249,7 @@ export default function PromptDetailPage() {
         const q = query(collection(db, 'collections'), where('userId', '==', user.uid));
         const snap = await getDocs(q);
         setUserCollections(snap.docs.map(d => ({ ...d.data(), id: d.id } as PromptCollection)));
-      } catch {}
+      } catch { }
       finally { setCollectionsLoading(false); }
     }
   };
@@ -316,7 +346,7 @@ export default function PromptDetailPage() {
 
     try {
       if (prompt.id) {
-        updateDoc(doc(db, 'prompts', prompt.id), { copiesCount: increment(1) }).catch(() => {});
+        updateDoc(doc(db, 'prompts', prompt.id), { copiesCount: increment(1) }).catch(() => { });
       }
       const textToCopy = prompt.content || (prompt as any).formula || (prompt as any).prompt || prompt.description || '';
       await navigator.clipboard.writeText(textToCopy);
@@ -331,7 +361,6 @@ export default function PromptDetailPage() {
 
   const isUnlocked = true;
   const isCategoryLocked = false;
-  const diffConfig = prompt?.difficulty ? DIFFICULTY_CONFIG[prompt.difficulty] : null;
 
   // Pre-filled share tweet text
   const tweetText = prompt
@@ -390,87 +419,37 @@ export default function PromptDetailPage() {
           data={prompt}
           breadcrumbs={[
             { name: 'Library', item: prefix('/') },
-            { name: category?.name || 'Category', item: prefix(`/?category=${prompt.categoryId}`) },
+            { name: category?.name || 'Category', item: prefix(`/category/${toSlug(prompt.categoryId)}`) },
             { name: prompt.title, item: prefix(`/prompt/${prompt.slug}`) }
           ]}
         />
       )}
-      <PageContainer className="pt-20 pb-12 md:pb-16" ignoreCustomizer>
-        <Breadcrumbs
-          items={[
-            { name: 'Library', item: prefix('/') },
-            { name: category?.name || 'Category', item: prefix(`/?category=${prompt.categoryId}`) },
-            { name: prompt.title, item: prefix(`/prompt/${prompt.slug}`) }
-          ]}
-        />
+      <PageContainer className="pt-16 pb-16 md:pb-24" ignoreCustomizer>
+        {/* Top Navigation Row */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <Breadcrumbs
+            items={[
+              { name: category?.name || 'Category', item: prefix(`/category/${toSlug(prompt.categoryId)}`) },
+              { name: prompt.title, item: prefix(`/prompt/${prompt.slug}`) }
+            ]}
+          />
+        </div>
 
-        <Button
-          onClick={() => navigate(prefix('/'))}
-          variant="ghost"
-          size="sm"
-          leftIcon={ArrowLeft}
-          className="mb-8 font-bold"
-        >
-          Back to Library
-        </Button>
+        {/* ── 2-Column Grid Layout ── */}
+        <div className="grid lg:grid-cols-3 gap-8 md:gap-10">
 
-        <div className="grid lg:grid-cols-3 gap-8 md:gap-12">
-
-          {/* ── Main column ── */}
+          {/* ── Left Main Column (2 cols) ── */}
           <div className="lg:col-span-2">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-
-              {/* ── Meta row ── */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Model badge */}
-                  <span className="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest"
-                    style={{ background: 'rgba(139,92,246,0.12)', color: 'rgb(167,139,250)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                    {models.find(m => m.id === prompt!.model)?.name || prompt!.model}
-                  </span>
-
-                  {/* Difficulty badge */}
-                  {diffConfig && (
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-widest ${diffConfig.color}`}
-                      style={{ background: diffConfig.bg, border: `1px solid ${diffConfig.border}` }}>
-                      {diffConfig.label}
-                    </span>
-                  )}
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-3 text-xs font-semibold text-muted-foreground/60">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5" /> {prompt!.viewsCount || 0}
-                    </span>
-                    {(prompt!.copiesCount || 0) > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Copy className="w-3.5 h-3.5" /> {prompt!.copiesCount} copied
-                      </span>
-                    )}
-                    <span>{formatDate(prompt!.updatedAt || prompt!.createdAt)}</span>
-                  </div>
-                </div>
-
-                {/* Like button */}
-                <Button
-                  onClick={handleLikeClick}
-                  variant={isLiked ? 'secondary' : 'ghost'}
-                  size="sm"
-                  leftIcon={Heart}
-                  className={isLiked ? 'text-rose-500 bg-rose-500/10 border-rose-500/25' : 'text-muted-foreground border-border'}
-                >
-                  {prompt!.likesCount || 0} saves
-                </Button>
-              </div>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
 
               {/* ── Title ── */}
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-5 md:mb-6 leading-[1.1] tracking-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground mb-4 leading-[1.18] tracking-tight font-display">
                 {prompt!.title}
               </h1>
 
-              {/* ── Description — blurred when locked ── */}
+              {/* ── Description ── */}
               <p className={cn(
-                "text-lg mb-8 leading-relaxed transition-all text-muted-foreground",
+                "text-base sm:text-lg mb-6 leading-relaxed text-muted-foreground/90",
                 !isUnlocked && "blur-[5px] select-none opacity-30"
               )}>
                 {isUnlocked
@@ -478,186 +457,293 @@ export default function PromptDetailPage() {
                   : "Unlock this premium prompt to see the full description, parameters, and optimization guide."}
               </p>
 
+              {/* ── Meta & Creator Pill Bar ── */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:px-5 sm:py-3 rounded-2xl bg-card border border-border shadow-xs mb-8">
+                <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
+                  {/* Creator Pill (First) */}
+                  {(() => {
+                    const isOfficial = prompt!.creatorRole === 'admin' || prompt!.creatorRole === 'staff' || prompt!.creatorId === 'system';
+                    const displayName = prompt!.creatorName || creator?.displayName || 'Creator';
+                    const avatarLetter = displayName.charAt(0).toUpperCase();
+
+                    return (
+                      <div className="flex items-center gap-2 pr-3 border-r border-border/80">
+                        {isOfficial ? (
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center gradient-cta text-white shadow-xs">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                          </div>
+                        ) : creator?.photoURL ? (
+                          <img src={creator.photoURL} className="w-6 h-6 rounded-full object-cover border border-border" alt="" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] text-primary bg-primary/15">
+                            {avatarLetter}
+                          </div>
+                        )}
+                        <span className="font-bold text-foreground">{displayName}</span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Date */}
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Calendar className="w-3.5 h-3.5 text-muted-foreground/70" />
+                    {formatDate(prompt!.updatedAt || prompt!.createdAt)}
+                  </span>
+
+                  {/* Views */}
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Eye className="w-3.5 h-3.5 text-muted-foreground/70" />
+                    {prompt!.viewsCount || 0} views
+                  </span>
+
+                  {/* Copies */}
+                  {(prompt!.copiesCount || 0) > 0 && (
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Copy className="w-3.5 h-3.5 text-muted-foreground/70" />
+                      {prompt!.copiesCount} copied
+                    </span>
+                  )}
+                </div>
+
+                {/* Save / Like Button */}
+                <Button
+                  onClick={handleLikeClick}
+                  variant={isLiked ? 'secondary' : 'outline'}
+                  size="sm"
+                  leftIcon={Heart}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-bold transition-all shadow-xs',
+                    isLiked ? 'text-rose-500 bg-rose-500/10 border-rose-500/30' : 'text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
+                  )}
+                >
+                  {prompt!.likesCount || 0} Saves
+                </Button>
+              </div>
+
               {/* ── Cover image ── */}
               {prompt!.imageUrl && (() => {
                 const ratio = config.storage?.promptImageRatio ?? '16:9';
                 const [rw, rh] = ratio.split(':').map(Number);
                 const paddingTop = `${((rh / rw) * 100).toFixed(4)}%`;
                 return (
-                  <div className="mb-10 rounded-2xl overflow-hidden border border-border relative bg-muted/60" style={{ paddingTop }}>
-                    <img src={prompt!.imageUrl} className="absolute inset-0 w-full h-full object-cover" alt={prompt!.title} />
+                  <div className="mb-8 rounded-2xl overflow-hidden border border-border/80 relative bg-muted/40 shadow-md" style={{ paddingTop }}>
+                    <img src={prompt!.imageUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-[1.01]" alt={prompt!.title} />
                   </div>
                 );
               })()}
 
-              {/* ── Tags ── */}
-              <div className="flex flex-wrap gap-2 mb-10">
-                {prompt!.tags.map(tag => (
-                  <Link key={tag} to={prefix(`/explore?q=${tag}`)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all bg-muted text-muted-foreground border border-border hover:bg-primary/10 hover:text-primary hover:border-primary/20"
-                  >
-                    #{tag}
-                  </Link>
-                ))}
-              </div>
-
               {/* ── Partial teaser (locked only) ── */}
               {!isUnlocked && prompt!.description && (
-                <div className="mb-6 rounded-xl p-5 bg-card border border-border relative overflow-hidden">
-                  <div className="absolute top-2 right-3">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Preview</span>
+                <div className="mb-8 rounded-2xl p-6 bg-card border border-border relative overflow-hidden shadow-xs">
+                  <div className="absolute top-3 right-4">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70 bg-primary/10 px-2 py-0.5 rounded border border-primary/20">Preview</span>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 pr-12">
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 pr-16">
                     {prompt!.description}
                   </p>
-                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-card to-transparent" />
                 </div>
               )}
 
               {/* ── Formula block ── */}
-              <div className="relative group mb-10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
+              <div className="relative group mb-6 rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
+                <div className="flex items-center justify-between px-6 py-4 bg-muted/40 border-b border-border">
+                  <div className="flex items-center gap-2.5">
                     <Terminal className="w-4 h-4 text-primary" />
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">The Formula</h3>
+                    <h3 className="text-xs font-extrabold uppercase tracking-widest text-foreground">The Prompt Formula</h3>
                     {prompt!.content && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                      <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">
                         {(prompt!.content.match(/(\[[\w\s.,!?'-]+\]|\{\{[\w\s.,!?'-]+\}\})/g) || []).length} variables
                       </span>
                     )}
                   </div>
                   <Button
                     onClick={handleCopy}
-                    variant={copied ? 'success' : 'secondary'}
+                    variant={copied ? 'success' : 'primary'}
                     size="sm"
                     leftIcon={copied ? Check : Copy}
+                    className="shadow-sm font-bold text-xs"
                   >
-                    {copied ? 'Copied!' : 'Copy Formula'}
+                    {copied ? 'Copied to Clipboard!' : 'Copy Formula'}
                   </Button>
                 </div>
 
                 {/* Formula content */}
-                <div className="rounded-2xl p-8 md:p-10 min-h-[300px] bg-muted border border-border">
+                <div className="p-6 md:p-8 min-h-[220px] bg-muted/20 font-mono text-sm leading-relaxed overflow-x-auto">
                   <HighlightedFormula content={prompt!.content || (prompt as any)!.formula || (prompt as any)!.prompt || prompt!.description || ''} />
                 </div>
               </div>
 
-
-
-              {/* ── Usage Guide ── */}
-              {isUnlocked && prompt!.usageGuide && (
-                <div className="rounded-2xl border border-border overflow-hidden mb-10">
-                  <div className="flex items-center gap-2 px-6 py-4 bg-muted border-b border-border">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">How to Use This Prompt</h3>
-                  </div>
-                  <div className="p-6 bg-card prose prose-neutral dark:prose-invert prose-sm max-w-none
-                    prose-p:text-muted-foreground prose-li:text-muted-foreground
-                    prose-headings:text-foreground prose-strong:text-foreground">
-                    {prompt!.usageGuide.split('\n').map((line, i) => (
-                      <p key={i} className="text-sm leading-relaxed text-muted-foreground mb-2 last:mb-0">{line}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* ── Action bar ── */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 py-8 border-t border-border">
+              <div className="flex flex-wrap items-center gap-3.5 py-5 my-6 border-t border-b border-border/80">
                 <Button
                   onClick={() => setIsShareModalOpen(true)}
-                  variant="secondary"
-                  size="lg"
+                  variant="gradient"
+                  size="md"
                   leftIcon={Share2}
-                  className="w-full sm:w-auto"
+                  className="font-bold text-xs shadow-md shadow-primary/20"
                 >
                   Share & Earn
                 </Button>
                 <Button
                   onClick={openCollectionPicker}
-                  variant="secondary"
-                  size="lg"
+                  variant="outline"
+                  size="md"
                   leftIcon={BookMarked}
-                  className="w-full sm:w-auto"
+                  className="font-bold text-xs"
                 >
                   Save to Collection
                 </Button>
                 <Button
                   onClick={() => setIsReportModalOpen(true)}
                   variant="ghost"
-                  size="lg"
+                  size="md"
                   leftIcon={Flag}
-                  className="w-full sm:w-auto text-muted-foreground hover:text-rose-500"
+                  className="font-bold text-xs text-muted-foreground hover:text-rose-500 ml-auto"
                 >
-                  Report
+                  Report Prompt
                 </Button>
               </div>
 
-              <NeuralAdBanner className="mt-4" />
+              {/* ── Usage Guide ── */}
+              {isUnlocked && prompt!.usageGuide && (
+                <div className="rounded-2xl border border-border overflow-hidden mb-10 shadow-xs">
+                  <div className="flex items-center gap-2.5 px-6 py-4 bg-muted/40 border-b border-border">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    <h3 className="text-xs font-extrabold uppercase tracking-widest text-foreground">How to Use This Prompt</h3>
+                  </div>
+                  <div className="p-6 md:p-8 bg-card prose prose-neutral dark:prose-invert prose-sm max-w-none
+                      prose-p:text-muted-foreground prose-li:text-muted-foreground
+                      prose-headings:text-foreground prose-strong:text-foreground">
+                    {prompt!.usageGuide.split('\n').map((line, i) => (
+                      <p key={i} className="text-sm leading-relaxed text-muted-foreground mb-2 last:mb-0">{line}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
 
-          {/* ── Sidebar ── */}
+          {/* ── Right Sidebar (1 col) ── */}
           <div className="flex flex-col gap-6">
 
-            {/* Creator card */}
-            <div className="rounded-2xl p-6 bg-card border border-border">
-              <h4 className="text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2 text-muted-foreground">
-                <User className="w-3.5 h-3.5 text-primary" /> Creator
-              </h4>
-              {(() => {
-                const isOfficial = prompt!.creatorRole === 'admin' || prompt!.creatorRole === 'staff' || prompt!.creatorId === 'system';
-                const displayName = prompt!.creatorName || creator?.displayName || 'Creator';
-                const avatarLetter = displayName.charAt(0).toUpperCase();
-                const CardWrapper = ({ children }: { children: React.ReactNode }) => (
-                      <div className="flex items-center gap-3 mb-5">{children}</div>
-                    );
-                return (
-                  <CardWrapper>
-                    {isOfficial ? (
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center gradient-cta shadow-md shadow-primary/20">
-                        <ShieldCheck className="w-6 h-6 text-white" />
-                      </div>
-                    ) : creator?.photoURL ? (
-                      <img src={creator.photoURL} className="w-12 h-12 rounded-xl object-cover border border-border" alt="" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-primary bg-primary/15">
-                        {avatarLetter}
-                      </div>
-                    )}
-                    <div>
-                      <div className="font-bold text-foreground group-hover/creator:text-primary transition-colors">{displayName}</div>
-                      <div className="text-xs font-semibold flex items-center gap-1 text-primary">
-                        {isOfficial ? (
-                          <><ShieldCheck className="w-3 h-3" /> Official Content</>
-                        ) : (
-                          'Creator'
-                        )}
-                      </div>
-                    </div>
-                  </CardWrapper>
-                );
-              })()}
-              <div className="space-y-0.5">
-                {[
-                  { label: 'Model',    value: models.find(m => m.id === prompt!.model)?.name || prompt!.model },
-                  { label: 'Category', value: prompt!.categoryId },
-                  { label: 'Copied',   value: `${prompt!.copiesCount || 0} times` },
-                  { label: 'Standard', value: 'Production Ready', valueClass: 'text-emerald-600 dark:text-emerald-400' },
-                ].map(({ label, value, valueClass }) => (
-                  <div key={label} className="flex justify-between items-center py-2.5 border-b border-border last:border-0">
-                    <span className="text-xs font-semibold text-muted-foreground">{label}</span>
-                    <span className={`text-xs font-bold text-foreground ${valueClass || ''}`}>{value}</span>
-                  </div>
-                ))}
-              </div>
+            {/* ── AI Models Sidebar Card ── */}
+            {models && models.length > 0 && (
+              <div className="rounded-2xl p-6 bg-card border border-border shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 text-foreground">
+                    <Cpu className="w-4 h-4 text-primary" /> AI Models
+                  </h4>
+                  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {models.length}
+                  </span>
+                </div>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 no-scrollbar">
+                  {models.map(m => {
+                    const modelName = (m as any).name || m.id;
+                    const displayName = (m as any).displayName || modelName;
+                    const isCurrentModel = toSlug(modelName) === toSlug(prompt!.model) || toSlug(m.id) === toSlug(prompt!.model);
 
+                    return (
+                      <Link
+                        key={m.id}
+                        to={prefix(`/explore?model=${encodeURIComponent(m.id || modelName)}`)}
+                        className={cn(
+                          "group flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all border",
+                          isCurrentModel
+                            ? "bg-primary/10 text-primary border-primary/30 shadow-xs font-bold"
+                            : "bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground border-transparent"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <div className={cn(
+                            "w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0",
+                            isCurrentModel ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:text-foreground"
+                          )}>
+                            <Cpu className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="truncate">{displayName}</span>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── All Categories Sidebar Card ── */}
+            <div className="rounded-2xl p-6 bg-card border border-border shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 text-foreground">
+                  <Folder className="w-4 h-4 text-primary" /> Categories
+                </h4>
+                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  {config.categories.length}
+                </span>
+              </div>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 no-scrollbar">
+                {config.categories.map(cat => {
+                  const isCurrentCat = toSlug(cat.id) === toSlug(prompt!.categoryId) || toSlug(cat.name) === toSlug(prompt!.categoryId);
+                  return (
+                    <Link
+                      key={cat.id}
+                      to={prefix(`/category/${toSlug(cat.id || cat.name)}`)}
+                      className={cn(
+                        "group flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all border",
+                        isCurrentCat
+                          ? "bg-primary/10 text-primary border-primary/30 shadow-xs font-bold"
+                          : "bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground border-transparent"
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <div className={cn(
+                          "w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0",
+                          isCurrentCat ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:text-foreground"
+                        )}>
+                          {cat.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="truncate">{cat.name}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── All Topic Tags Sidebar Card ── */}
+            <div className="rounded-2xl p-6 bg-card border border-border shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 text-foreground">
+                  <Tag className="w-4 h-4 text-primary" /> Popular Tags
+                </h4>
+                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  {displaySidebarTags.length}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto no-scrollbar">
+                {displaySidebarTags.map(tag => {
+                  const isPromptTag = prompt!.tags?.some(t => toSlug(t) === toSlug(tag));
+                  return (
+                    <Link
+                      key={tag}
+                      to={prefix(`/tag/${toSlug(tag)}`)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
+                        isPromptTag
+                          ? "bg-primary/15 text-primary border-primary/30 shadow-xs font-bold"
+                          : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted border-border/60"
+                      )}
+                    >
+                      #{tag}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
 
             <NeuralAdBanner slot="sidebar-ad" format="rectangle" />
-
-
-
-
           </div>
         </div>
 

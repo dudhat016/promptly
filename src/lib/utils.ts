@@ -32,7 +32,17 @@ export function formatDate(date: any): string {
  * Used across ExploreSidebar, BlogSidebar, ExplorePage for filter matching.
  */
 export function toSlug(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, '-');
+  if (!text) return '';
+  try {
+    text = decodeURIComponent(text);
+  } catch {}
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-');
 }
 
 /**

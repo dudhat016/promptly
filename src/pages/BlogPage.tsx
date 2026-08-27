@@ -1,18 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
-import { Link, useSearchParams, useParams, useNavigate } from 'react-router-dom';
-import { db } from '../lib/firebase';
-import { BlogPost } from '../types';
-import { usePath } from '../hooks/usePath';
-import { Calendar, ArrowRight, LayoutGrid, List as ListIcon, X, Eye, Sparkles, Clock } from 'lucide-react';
-import Select from '../components/primitives/Select';
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { ArrowRight, Calendar, Clock, Eye, LayoutGrid, List as ListIcon, Sparkles, X } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import BlogSidebar from '../components/BlogSidebar';
-import { cn } from '../lib/utils';
-import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
-import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
+import Button from '../components/primitives/Button';
+import Select from '../components/primitives/Select';
+import { usePath } from '../hooks/usePath';
 import { useSEO } from '../hooks/useSEO';
+import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
+import { db } from '../lib/firebase';
+import { cn } from '../lib/utils';
+import { BlogPost } from '../types';
+import { RAKSHA_BANDHAN_BLOG, seedRakhiBlog } from '../lib/seedRakhiBlog';
 
 function readTime(content: string) {
   return Math.max(1, Math.ceil((content || '').split(/\s+/).length / 200));
@@ -49,8 +50,17 @@ export default function BlogPage() {
           orderBy('publishedAt', 'desc')
         );
         const snap = await getDocs(q);
-        setPosts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost)));
-      } catch { /* empty */ } finally {
+        let fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+
+        if (!fetched.some(p => p.slug === RAKSHA_BANDHAN_BLOG.slug)) {
+          fetched = [RAKSHA_BANDHAN_BLOG, ...fetched];
+          seedRakhiBlog().catch(() => {});
+        }
+
+        setPosts(fetched);
+      } catch {
+        setPosts([RAKSHA_BANDHAN_BLOG]);
+      } finally {
         setLoading(false);
       }
     }
@@ -59,23 +69,23 @@ export default function BlogPage() {
 
   const allTags = useMemo(() => Array.from(new Set(posts.flatMap(p => p.tags || []))).slice(0, 8), [posts]);
   const tagToSlug = (tag: string) => tag.toLowerCase().replace(/\s+/g, '-');
-  
+
   const filteredPosts = useMemo(() => {
     let result = posts;
-    
+
     if (tagFilter) {
       result = result.filter(p => p.tags?.some(t => tagToSlug(t) === tagFilter));
     }
-    
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.title.toLowerCase().includes(q) || 
-        p.excerpt?.toLowerCase().includes(q) || 
+      result = result.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.excerpt?.toLowerCase().includes(q) ||
         p.content?.toLowerCase().includes(q)
       );
     }
-    
+
     return result;
   }, [posts, tagFilter, searchQuery]);
 
@@ -177,7 +187,7 @@ export default function BlogPage() {
           <div className="flex-grow lg:w-2/3">
 
             {/* Toolbar */}
-            <div className="flex flex-wrap gap-4 items-center justify-between mb-8 pb-5 border-b border-border">
+            <div className="flex flex-wrap gap-4 items-center justify-between mb-8 py-5 border-b border-border">
               <div className="flex items-center gap-3">
                 <h2 className="text-base font-bold text-foreground">
                   {searchQuery ? (

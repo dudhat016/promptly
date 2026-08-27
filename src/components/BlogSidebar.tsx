@@ -7,11 +7,15 @@ import { usePath } from '../hooks/usePath';
 import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
 import { db } from '../lib/firebase';
 import { BlogPost } from '../types';
-import Input from './primitives/Input';
-import Button from './primitives/Button';
 import Spinner from './feedback/Spinner';
+import Button from './primitives/Button';
+import Input from './primitives/Input';
 
-export default function BlogSidebar() {
+interface BlogSidebarProps {
+  activeTags?: string[];
+}
+
+export default function BlogSidebar({ activeTags = [] }: BlogSidebarProps) {
   const [tags, setTags] = useState<string[]>([]);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,7 +43,7 @@ export default function BlogSidebar() {
         const fetchedPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
         setPosts(fetchedPosts);
 
-        const extractedTags = Array.from(new Set(fetchedPosts.flatMap(p => p.tags || []))).slice(0, 8);
+        const extractedTags = Array.from(new Set([...activeTags, ...fetchedPosts.flatMap(p => p.tags || [])])).slice(0, 15);
         setTags(extractedTags);
         setHasFetched(true);
       } catch (error) {
@@ -47,7 +51,7 @@ export default function BlogSidebar() {
       }
     }
     fetchTags();
-  }, [hasFetched]);
+  }, [hasFetched, activeTags]);
 
   const tagToSlug = (tag: string) => tag.toLowerCase().replace(/\s+/g, '-');
 
@@ -106,10 +110,17 @@ export default function BlogSidebar() {
     [...posts].sort((a, b) => calculateBlogScore(b, profile) - calculateBlogScore(a, profile)).slice(0, 3)
   , [posts, profile]);
 
+  const displayTags = useMemo(() => {
+    const set = new Set<string>();
+    activeTags.forEach(t => set.add(t));
+    tags.forEach(t => set.add(t));
+    return Array.from(set).slice(0, 15);
+  }, [activeTags, tags]);
+
   return (
-    <aside className="lg:w-1/3 space-y-8">
+    <aside className="lg:w-1/3 space-y-8 pt-5">
       {/* Search Box */}
-      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
+      <div className="bg-card rounded-2xl p-6 border border-border shadow-xs">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
           <Search className="w-5 h-5 text-primary" />
           Search Blog
@@ -130,7 +141,7 @@ export default function BlogSidebar() {
 
       {/* Trending Posts */}
       {posts.length > 0 && (
-        <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
+        <div className="bg-card rounded-2xl p-6 border border-border shadow-xs">
           <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary" />
             Trending Now
@@ -143,9 +154,9 @@ export default function BlogSidebar() {
                 className="group flex gap-3 items-center"
               >
                 {post.coverImage ? (
-                  <img src={post.coverImage} alt="" className="w-16 h-16 rounded-md object-cover" />
+                  <img src={post.coverImage} alt="" className="w-16 h-16 rounded-xl object-cover" />
                 ) : (
-                  <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center">
                     <Search className="w-6 h-6 text-muted-foreground/30" />
                   </div>
                 )}
@@ -165,8 +176,7 @@ export default function BlogSidebar() {
 
       {/* Recommended For You */}
       {Object.keys(getAffinityProfile()).length > 0 && posts.length > 0 && (
-        <div className="bg-card rounded-lg p-6 border border-primary/20 shadow-sm"
-          style={{ background: 'rgba(139,92,246,0.05)' }}>
+        <div className="bg-card rounded-2xl p-6 border border-primary/20 shadow-xs bg-primary/[0.03]">
           <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
             Recommended
@@ -179,9 +189,9 @@ export default function BlogSidebar() {
                 className="group flex gap-3 items-center"
               >
                 {post.coverImage ? (
-                  <img src={post.coverImage} alt="" className="w-16 h-16 rounded-md object-cover" />
+                  <img src={post.coverImage} alt="" className="w-16 h-16 rounded-xl object-cover" />
                 ) : (
-                  <div className="w-16 h-16 rounded-md bg-primary/15 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-xl bg-primary/15 flex items-center justify-center">
                     <Sparkles className="w-6 h-6 text-primary/40" />
                   </div>
                 )}
@@ -197,24 +207,31 @@ export default function BlogSidebar() {
       )}
 
       {/* Popular Tags */}
-      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
+      <div className="bg-card rounded-2xl p-6 border border-border shadow-xs">
         <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
           <TagIcon className="w-5 h-5 text-primary" />
           Popular Tags
         </h3>
         <div className="flex flex-wrap gap-2">
-          {tags.length > 0 ? tags.map(tag => (
-            <Link
-              key={tag}
-              to={prefix(`/blog/tag/${tagToSlug(tag)}`)}
-              className="px-3 py-1.5 bg-muted/50 text-muted-foreground hover:bg-primary/8 hover:text-primary text-sm font-semibold rounded-lg transition-colors border border-border"
-            >
-              {tag}
-            </Link>
-          )) : (
+          {displayTags.length > 0 ? displayTags.map(tag => {
+            const isActive = activeTags.some(t => tagToSlug(t) === tagToSlug(tag));
+            return (
+              <Link
+                key={tag}
+                to={prefix(`/blog/tag/${tagToSlug(tag)}`)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                  isActive
+                    ? 'bg-primary/15 text-primary border-primary/30 shadow-xs font-bold'
+                    : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted border-border/80'
+                }`}
+              >
+                #{tag}
+              </Link>
+            );
+          }) : (
             <div className="animate-pulse flex flex-wrap gap-2">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-8 w-16 bg-muted rounded-lg" />
+                <div key={i} className="h-8 w-16 bg-muted rounded-xl" />
               ))}
             </div>
           )}

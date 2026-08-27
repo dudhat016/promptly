@@ -19,6 +19,8 @@ interface InputProps extends Omit<React.InputHTMLAttributes<InputElement>, 'as'>
   as?: any;
 }
 
+const MotionInput = motion.input;
+
 const Input = React.forwardRef<InputElement, InputProps>(
   (
     {
@@ -42,6 +44,7 @@ const Input = React.forwardRef<InputElement, InputProps>(
   ) => {
     const generatedId = useId();
     const inputId = id || props.name || generatedId;
+    const InputComponent = Component === 'input' ? MotionInput : Component;
 
     // Base variant (idle state only — focus/error/success override border below)
     const variants = {
@@ -57,8 +60,6 @@ const Input = React.forwardRef<InputElement, InputProps>(
     };
 
     // Border/outline state priority: error > success > focus > idle
-    // We use focus:border-* to override the idle border on focus.
-    // ring is replaced with a simple outline approach via border width.
     const stateBorder = error
       ? "border-destructive focus:border-destructive"
       : isSuccess
@@ -71,9 +72,6 @@ const Input = React.forwardRef<InputElement, InputProps>(
       : isSuccess
       ? "text-emerald-500"
       : "text-muted-foreground group-focus-within:text-primary";
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const MotionComponent = React.useMemo(() => motion.create(Component), [Component]);
 
     return (
       <div className="space-y-1.5 w-full">
@@ -93,7 +91,7 @@ const Input = React.forwardRef<InputElement, InputProps>(
         )}
 
         <div className="relative group">
-          <MotionComponent
+          <InputComponent
             {...(props as any)}
             id={inputId}
             ref={ref}

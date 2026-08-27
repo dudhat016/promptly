@@ -303,6 +303,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Dynamic Site Pages & Legal Content
+    match /site_pages/{pageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Site Content (Legal Pages, FAQs)
     match /site_content/{contentId} {
       allow read: if true;

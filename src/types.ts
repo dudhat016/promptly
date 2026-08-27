@@ -227,7 +227,6 @@ export interface Prompt {
   updatedAt: string;
   sampleOutput?: string;
   usageGuide?: string;
-  difficulty?: 'beginner' | 'intermediate' | 'advanced';
   // Submission workflow
   status?: 'pending' | 'approved' | 'rejected';
   submittedAt?: string;

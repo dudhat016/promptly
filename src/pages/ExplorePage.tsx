@@ -1,20 +1,20 @@
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { ChevronLeft, ChevronRight, Sparkles, Users, Zap } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import PageContainer from '../components/layout/PageContainer';
+import NeuralAdBanner from '../components/NeuralAdBanner';
+import { Button, Select } from '../components/primitives';
 import PromptCard from '../components/PromptCard';
 import PromptCardSkeleton from '../components/PromptCardSkeleton';
 import PromptQuickViewModal from '../components/PromptQuickViewModal';
 import { useAuth } from '../hooks/useAuth';
-import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
-import { db } from '../lib/firebase';
-import { cn, toTitleCase } from '../lib/utils';
-import { Prompt } from '../types';
-import NeuralAdBanner from '../components/NeuralAdBanner';
 import { usePath } from '../hooks/usePath';
 import { useSEO } from '../hooks/useSEO';
-import { Button, Select } from '../components/primitives';
-import PageContainer from '../components/layout/PageContainer';
+import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
+import { db } from '../lib/firebase';
+import { cn, toSlug, toTitleCase } from '../lib/utils';
+import { Prompt } from '../types';
 
 export default function ExplorePage() {
   const { isPro, isAdmin, profile } = useAuth();
@@ -62,16 +62,46 @@ export default function ExplorePage() {
   };
 
   // Parse Categories
+  const queryCat = searchParams.get('category');
   const catIndex = pathParts.indexOf('categories');
   const pathCats = catIndex !== -1 ? pathParts[catIndex + 1].split('+') : [];
-  const activeCategories = new Set(pathCats.map(c => c.toLowerCase()));
-  if (categorySlug) activeCategories.add(categorySlug.toLowerCase());
+  const activeCategories = new Set(pathCats.map(c => toSlug(c)));
+  if (categorySlug) activeCategories.add(toSlug(categorySlug));
+  if (queryCat) activeCategories.add(toSlug(queryCat));
 
   // Parse Tags
+  const queryTag = searchParams.get('tag');
   const tagIndex = pathParts.indexOf('tags');
   const pathTags = tagIndex !== -1 ? pathParts[tagIndex + 1].split('+') : [];
-  const activeTags = new Set(pathTags.map(t => t.toLowerCase()));
-  if (tagSlug) activeTags.add(tagSlug.toLowerCase());
+  const activeTags = new Set(pathTags.map(t => toSlug(t)));
+  if (tagSlug) activeTags.add(toSlug(tagSlug));
+  if (queryTag) activeTags.add(toSlug(queryTag));
+
+  // Auto-redirect spaces / %20 / query params in URLs to clean hyphenated slugs (/tag/birthday-photoshot, /category/cars-and-bikes)
+  useEffect(() => {
+    if (queryCat) {
+      navigate(prefix(`/category/${toSlug(queryCat)}`), { replace: true });
+      return;
+    }
+    if (categorySlug) {
+      const cleanCat = toSlug(categorySlug);
+      if (categorySlug !== cleanCat || categorySlug.includes('%20') || categorySlug.includes(' ')) {
+        navigate(prefix(`/category/${cleanCat}`), { replace: true });
+        return;
+      }
+    }
+    if (queryTag) {
+      navigate(prefix(`/tag/${toSlug(queryTag)}`), { replace: true });
+      return;
+    }
+    if (tagSlug) {
+      const cleanTag = toSlug(tagSlug);
+      if (tagSlug !== cleanTag || tagSlug.includes('%20') || tagSlug.includes(' ')) {
+        navigate(prefix(`/tag/${cleanTag}`), { replace: true });
+        return;
+      }
+    }
+  }, [categorySlug, tagSlug, queryCat, queryTag, navigate, prefix]);
 
   // Parse Pricing
   const pricingIndex = pathParts.indexOf('pricing');
@@ -158,12 +188,13 @@ export default function ExplorePage() {
 
     // Category Filter
     if (activeCategories.size > 0) {
-      if (!activeCategories.has(p.categoryId.toLowerCase())) return false;
+      const catSlug = toSlug(p.categoryId);
+      if (!activeCategories.has(catSlug) && !activeCategories.has(p.categoryId.toLowerCase())) return false;
     }
 
     // Tag Filter
     if (activeTags.size > 0) {
-      const hasTag = p.tags.some(t => activeTags.has(t.toLowerCase()));
+      const hasTag = p.tags.some(t => activeTags.has(toSlug(t)) || activeTags.has(t.toLowerCase()));
       if (!hasTag) return false;
     }
 
@@ -258,10 +289,10 @@ export default function ExplorePage() {
   return (
     <PageContainer className="pt-20 pb-12 max-w-[1280px]" ignoreCustomizer>
       {/* Header */}
-      <div className="mb-8 md:mb-12">
+      {/* <div className="mb-8 md:mb-12">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-2 text-foreground">{pageTitle}</h1>
         <p className="text-muted-foreground text-sm md:text-base">{subtitle}</p>
-      </div>
+      </div> */}
 
       {/* Main Full-Width Layout */}
       <div className="w-full">
@@ -301,11 +332,11 @@ export default function ExplorePage() {
                     <button
                       key={pill.label}
                       onClick={() => {
+                        setSearchTerm('');
                         if (pill.value === '') {
-                          setSearchTerm('');
                           navigate(prefix('/'));
                         } else {
-                          setSearchTerm(pill.value);
+                          navigate(prefix(`/category/${toSlug(pill.value)}`));
                         }
                         setCurrentPage(1);
                       }}
@@ -380,7 +411,6 @@ export default function ExplorePage() {
                     <PromptCard
                       key={prompt.id}
                       prompt={prompt}
-                      onQuickView={(p) => setQuickPrompt(p)}
                     />
                   ))}
                 </div>
@@ -431,7 +461,7 @@ export default function ExplorePage() {
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  
+
                   {[...Array(totalPages)].map((_, i) => (
                     <Button
                       key={i}

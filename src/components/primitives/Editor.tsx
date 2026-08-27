@@ -14,7 +14,9 @@ const modules = {
   toolbar: [
     [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
     ['bold', 'italic', 'underline', 'strike'],
-    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
+    [{ 'align': [] }],
+    ['blockquote', 'code-block'],
     [{ 'color': [] }, { 'background': [] }],
     ['link', 'clean'],
   ],
@@ -23,7 +25,8 @@ const modules = {
 const formats = [
   'header',
   'bold', 'italic', 'underline', 'strike',
-  'list',
+  'list', 'indent', 'align',
+  'blockquote', 'code-block',
   'color', 'background',
   'link'
 ];
@@ -62,23 +65,28 @@ export default function Editor({ value, onChange, className, placeholder }: Edit
         .rich-text-editor .ql-container {
           border: none !important;
           font-family: inherit;
-          font-size: 0.9375rem;
-          min-height: 350px;
+          font-size: 1rem;
+          min-height: 380px;
         }
-        .rich-text-editor .ql-editor {
-          padding: 24px 32px;
-          min-height: 350px;
-          line-height: 1.7;
-          color: hsl(var(--foreground));
+        
+        /* High specificity overrides for Quill Editor content */
+        .rich-text-editor .ql-snow .ql-editor {
+          padding: 28px 36px !important;
+          min-height: 380px !important;
+          line-height: 1.75 !important;
+          color: hsl(var(--foreground)) !important;
+          word-break: normal !important;
+          overflow-wrap: break-word !important;
+          white-space: pre-wrap !important;
         }
-        .rich-text-editor .ql-editor.ql-blank::before {
+        .rich-text-editor .ql-snow .ql-editor.ql-blank::before {
           color: hsl(var(--muted-foreground) / 0.4);
           font-style: normal;
-          left: 32px;
+          left: 36px;
           font-weight: 500;
         }
         
-        /* Toolbar Customization */
+        /* Toolbar Buttons Customization */
         .rich-text-editor .ql-snow.ql-toolbar button {
           border-radius: 6px;
           transition: all 0.2s ease;
@@ -114,6 +122,9 @@ export default function Editor({ value, onChange, className, placeholder }: Edit
         .rich-text-editor .ql-snow .ql-stroke {
           stroke: hsl(var(--foreground));
         }
+        .rich-text-editor .ql-snow .ql-fill {
+          fill: hsl(var(--foreground));
+        }
         .rich-text-editor .ql-snow .ql-picker-options {
           background-color: hsl(var(--card));
           border: 1px solid hsl(var(--border));
@@ -123,20 +134,78 @@ export default function Editor({ value, onChange, className, placeholder }: Edit
         }
         
         /* Links */
-        .rich-text-editor .ql-editor a {
-          color: ${primaryColor};
-          text-decoration: underline;
-          text-underline-offset: 4px;
+        .rich-text-editor .ql-snow .ql-editor a {
+          color: ${primaryColor} !important;
+          text-decoration: underline !important;
+          text-underline-offset: 4px !important;
         }
         
-        /* Headings */
-        .rich-text-editor .ql-editor h1,
-        .rich-text-editor .ql-editor h2,
-        .rich-text-editor .ql-editor h3 {
-          color: hsl(var(--foreground));
-          font-weight: 800;
-          margin-top: 1.5em;
-          margin-bottom: 0.5em;
+        /* Typography Elements - Matching Frontend Prose */
+        .rich-text-editor .ql-snow .ql-editor h1 {
+          font-size: 2.25rem !important;
+          font-weight: 800 !important;
+          line-height: 1.25 !important;
+          margin-top: 2rem !important;
+          margin-bottom: 1rem !important;
+          color: hsl(var(--foreground)) !important;
+          letter-spacing: -0.025em !important;
+        }
+        .rich-text-editor .ql-snow .ql-editor h2 {
+          font-size: 1.625rem !important;
+          font-weight: 700 !important;
+          line-height: 1.35 !important;
+          margin-top: 1.75rem !important;
+          margin-bottom: 0.75rem !important;
+          color: hsl(var(--foreground)) !important;
+          letter-spacing: -0.02em !important;
+        }
+        .rich-text-editor .ql-snow .ql-editor h3 {
+          font-size: 1.35rem !important;
+          font-weight: 600 !important;
+          line-height: 1.4 !important;
+          margin-top: 1.5rem !important;
+          margin-bottom: 0.5rem !important;
+          color: hsl(var(--foreground)) !important;
+        }
+        .rich-text-editor .ql-snow .ql-editor h4 {
+          font-size: 1.15rem !important;
+          font-weight: 600 !important;
+          margin-top: 1.25rem !important;
+          margin-bottom: 0.5rem !important;
+          color: hsl(var(--foreground)) !important;
+        }
+        .rich-text-editor .ql-snow .ql-editor p {
+          font-size: 1rem !important;
+          line-height: 1.75 !important;
+          margin-bottom: 1.25rem !important;
+          color: hsl(var(--foreground) / 0.9) !important;
+        }
+        .rich-text-editor .ql-snow .ql-editor blockquote {
+          border-left: 4px solid ${primaryColor} !important;
+          padding: 0.75rem 1.25rem !important;
+          margin: 1.5rem 0 !important;
+          font-style: italic !important;
+          color: hsl(var(--muted-foreground)) !important;
+          background: hsl(var(--muted) / 0.25) !important;
+          border-radius: 0 10px 10px 0 !important;
+        }
+        .rich-text-editor .ql-snow .ql-editor pre.ql-syntax {
+          background-color: hsl(var(--muted) / 0.5) !important;
+          color: hsl(var(--foreground)) !important;
+          border-radius: 8px !important;
+          padding: 1rem !important;
+          font-family: monospace !important;
+          font-size: 0.875rem !important;
+          margin: 1.25rem 0 !important;
+        }
+        .rich-text-editor .ql-snow .ql-editor ul,
+        .rich-text-editor .ql-snow .ql-editor ol {
+          padding-left: 1.75rem !important;
+          margin-bottom: 1.25rem !important;
+        }
+        .rich-text-editor .ql-snow .ql-editor li {
+          margin-bottom: 0.35rem !important;
+          line-height: 1.7 !important;
         }
       `}</style>
     </div>

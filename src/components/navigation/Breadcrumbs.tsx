@@ -40,27 +40,34 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
   if (displayItems.length === 0) return null;
 
   return (
-    <nav className={`flex items-center gap-1.5 text-[11px] font-black tracking-widest text-muted-foreground/60 mb-8 overflow-x-auto whitespace-nowrap scrollbar-hide ${className}`} aria-label="Breadcrumb">
+    <nav
+      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-card/90 backdrop-blur-md border border-border shadow-xs text-xs overflow-x-auto whitespace-nowrap scrollbar-hide max-w-full ${className}`}
+      aria-label="Breadcrumb"
+    >
       <Link
         to={prefix('/')}
-        className="hover:text-primary transition-colors flex items-center gap-1 group shrink-0"
+        className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all font-semibold shrink-0"
       >
-        <Home className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+        <Home className="w-3.5 h-3.5" />
       </Link>
 
       {displayItems.map((item, index) => {
         const isLast = index === displayItems.length - 1;
         return (
           <React.Fragment key={index}>
-            <ChevronRight className="w-3 h-3 opacity-30 shrink-0" />
+            <span className="text-muted-foreground/30 font-light select-none shrink-0">/</span>
             {isLast ? (
-              <span className="text-primary font-black truncate max-w-[200px]" aria-current="page">
+              <span
+                className="px-2 py-0.5 font-semibold text-foreground truncate max-w-[240px] sm:max-w-[380px]"
+                aria-current="page"
+                title={item.name}
+              >
                 {item.name}
               </span>
             ) : (
               <Link
                 to={item.item}
-                className="hover:text-primary transition-colors transition-all shrink-0"
+                className="px-2 py-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all font-semibold shrink-0"
               >
                 {item.name}
               </Link>

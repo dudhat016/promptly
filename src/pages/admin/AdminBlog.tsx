@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { logAuditEvent } from '../../lib/auditLog';
 import { usePath } from '../../hooks/usePath';
+import { RAKSHA_BANDHAN_BLOG, seedRakhiBlog } from '../../lib/seedRakhiBlog';
 
 export default function AdminBlog() {
   const confirm = useConfirm();
@@ -25,7 +26,21 @@ export default function AdminBlog() {
     try {
       const q = query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
-      setPosts(snap.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost)));
+      let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
+
+      // Auto-seed Raksha Bandhan post if missing from Firestore
+      if (!fetched.some(p => p.slug === RAKSHA_BANDHAN_BLOG.slug)) {
+        try {
+          await seedRakhiBlog();
+          const reSnap = await getDocs(q);
+          fetched = reSnap.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
+        } catch {
+          // show it locally even if seed fails
+          fetched = [RAKSHA_BANDHAN_BLOG, ...fetched];
+        }
+      }
+
+      setPosts(fetched);
     } catch {
       toast.error('Failed to fetch blog posts');
     } finally {

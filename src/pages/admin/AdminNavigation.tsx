@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Globe, LayoutGrid, Link2, Plus, Save, Sparkles, Tag, Trash2, Layers } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -16,11 +16,14 @@ const PRESET_PAGES = [
   { label: 'FAQ', url: '/faq' },
   { label: 'Terms of Service', url: '/terms' },
   { label: 'Privacy Policy', url: '/privacy' },
+  { label: 'DMCA Policy', url: '/dmca' },
+  { label: 'Cookie Policy', url: '/cookies' },
 ];
 
 export default function AdminNavigation() {
   const { config } = useConfig();
   const [menuItems, setMenuItems] = useState<HeaderMenuItem[]>([]);
+  const [dynamicPages, setDynamicPages] = useState<Array<{ label: string; url: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -36,29 +39,46 @@ export default function AdminNavigation() {
   // Active left accordion section
   const [activeAccordion, setActiveAccordion] = useState<'cats' | 'tags' | 'pages' | 'custom'>('cats');
 
-  // Load dynamic menu items from Firestore
+  // Combined Pages list (Preset + Custom Pages generated in Admin Content)
+  const allAvailablePages = [
+    ...PRESET_PAGES,
+    ...dynamicPages,
+  ];
+
+  // Load dynamic menu items and custom site_pages from Firestore
   useEffect(() => {
-    async function loadNavigation() {
+    async function loadData() {
       try {
         const snap = await getDoc(doc(db, 'system_settings', 'navigation'));
         if (snap.exists() && snap.data().menuItems) {
           setMenuItems(snap.data().menuItems);
         } else {
-          // Default fallback menu
           setMenuItems([
             { id: '1', label: 'Explore', type: 'page', url: '/', order: 0 },
             { id: '2', label: 'Blog', type: 'page', url: '/blog', order: 1 },
             { id: '3', label: 'Support', type: 'page', url: '/contact', order: 2 },
           ]);
         }
+
+        // Fetch custom pages from site_pages collection
+        const pagesSnap = await getDocs(collection(db, 'site_pages'));
+        const customPagesList = pagesSnap.docs
+          .map(d => ({ ...d.data(), id: d.id }))
+          .filter(p => !['terms', 'privacy', 'dmca', 'cookies'].includes(p.id))
+          .map(p => ({
+            label: (p as any).title || p.id,
+            url: `/p/${p.id}`,
+          }));
+
+        setDynamicPages(customPagesList);
       } catch (err) {
-        console.error('Failed to load navigation menu:', err);
+        console.error('Failed to load navigation data:', err);
         toast.error('Failed to load navigation items');
       } finally {
         setLoading(false);
       }
     }
-    loadNavigation();
+    loadData();
   }, []);
 
   const toggleExpand = (id: string) => {
@@ -79,7 +99,7 @@ export default function AdminNavigation() {
           id: Math.random().toString(36).substring(2, 9),
           label: category.name,
           type: 'category',
-          url: `/?category=${encodeURIComponent(category.name.toLowerCase())}`,
+          url: `/category/${encodeURIComponent(category.id || category.name.toLowerCase())}`,
           order: menuItems.length + newItems.length,
         });
       }
@@ -108,7 +128,7 @@ export default function AdminNavigation() {
     if (selectedPages.size === 0) return;
     const newItems: HeaderMenuItem[] = [];
     selectedPages.forEach(url => {
-      const page = PRESET_PAGES.find(p => p.url === url);
+      const page = allAvailablePages.find(p => p.url === url);
       if (page) {
         newItems.push({
           id: Math.random().toString(36).substring(2, 9),
@@ -318,8 +338,8 @@ export default function AdminNavigation() {
             </button>
             {activeAccordion === 'pages' && (
               <div className="p-4 space-y-3 border-t border-border">
-                <div className="space-y-2">
-                  {PRESET_PAGES.map(page => {
+                <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                  {allAvailablePages.map(page => {
                     const isChecked = selectedPages.has(page.url);
                     return (
                       <label key={page.url} className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer select-none">

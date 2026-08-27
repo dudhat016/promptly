@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { usePath } from '../hooks/usePath';
-import { collection, getDocs, query, where, limit, doc, getDoc, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { BlogPost, UserProfile } from '../types';
 import ReactMarkdown from 'react-markdown';
@@ -16,10 +16,69 @@ import Breadcrumbs from '../components/navigation/Breadcrumbs';
 import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 import Button from '../components/primitives/Button';
 import PageContainer from '../components/layout/PageContainer';
+import BlogPromptBlock from '../components/blog/BlogPromptBlock';
+import { RAKSHA_BANDHAN_BLOG } from '../lib/seedRakhiBlog';
 
 function readTime(content: string) {
   return Math.max(1, Math.ceil((content || '').split(/\s+/).length / 200));
 }
+
+/** Renders Quill-generated HTML, replacing ALL code/pre blocks with BlogPromptBlock copy cards.
+ *  Quill saves code-blocks as: <pre class="ql-syntax" spellcheck="false">...</pre>
+ *  Seeded content uses:        <pre><code class="language-prompt">...</code></pre>
+ */
+function HtmlContent({ content }: { content: string }) {
+  // Debug: log the raw content so we can see exactly what Quill saved
+  if (import.meta.env.DEV) {
+    console.log('[HtmlContent] raw content:', content);
+  }
+
+  const decodeHtml = (str: string) =>
+    str
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim();
+
+  // Match ALL Quill/seeded code block formats:
+  // 1. <pre data-language="plain">...</pre>      ← react-quill-new (actual format)
+  // 2. <pre class="ql-syntax" ...>...</pre>      ← older Quill builds
+  // 3. <pre><code class="language-prompt">...</code></pre>  ← seeded HTML
+  const PROMPT_RE = /(?:<pre[^>]*data-language="[^"]*"[^>]*>([\s\S]*?)<\/pre>|<pre[^>]*class="[^"]*ql-syntax[^"]*"[^>]*>([\s\S]*?)<\/pre>|<pre><code[^>]*class="[^"]*language-prompt[^"]*"[^>]*>([\s\S]*?)<\/code><\/pre>)/g;
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = PROMPT_RE.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(<div key={key++} className="break-words" dangerouslySetInnerHTML={{ __html: content.slice(lastIndex, match.index) }} />);
+    }
+    // match[1]=data-language, match[2]=ql-syntax, match[3]=language-prompt
+    const raw = decodeHtml(match[1] ?? match[2] ?? match[3] ?? '');
+    if (import.meta.env.DEV) {
+      console.log('[HtmlContent] found prompt block:', raw.slice(0, 80));
+    }
+    parts.push(<BlogPromptBlock key={key++} content={raw} />);
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    parts.push(<div key={key++} className="break-words" dangerouslySetInnerHTML={{ __html: content.slice(lastIndex) }} />);
+  }
+
+  // If no prompt blocks matched at all, just render everything as HTML
+  if (parts.length === 0) {
+    return <div className="break-words overflow-x-hidden" dangerouslySetInnerHTML={{ __html: content }} />;
+  }
+
+  return <>{parts}</>;
+}
+
+
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -29,7 +88,6 @@ export default function BlogDetailPage() {
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const { profile } = useAuth();
 
   const seoMeta = useMemo(() => {
     if (!post) return null;
@@ -61,22 +119,29 @@ export default function BlogDetailPage() {
           });
           recordBlogInteraction(postData, INTERACTION_WEIGHTS.VIEW);
 
-          // Fetch related posts by shared tags
-          if (postData.tags && postData.tags.length > 0) {
-            getDocs(query(
-              collection(db, 'blog_posts'),
-              where('status', '==', 'published'),
-              where('tags', 'array-contains-any', postData.tags.slice(0, 10)),
-              orderBy('publishedAt', 'desc'),
-              limit(4)
-            )).then(relSnap => {
-              setRelatedPosts(
-                relSnap.docs
-                  .map(d => ({ id: d.id, ...d.data() } as BlogPost))
-                  .filter(p => p.slug !== postData.slug)
-                  .slice(0, 3)
-              );
-            }).catch(() => {});
+          // Fetch related posts safely
+          try {
+            const allPostsSnap = await getDocs(query(collection(db, 'blog_posts'), limit(20)));
+            const candidates = allPostsSnap.docs
+              .map(d => ({ id: d.id, ...d.data() } as BlogPost))
+              .filter(p => p.slug !== postData.slug && p.status === 'published');
+
+            const scored = candidates.map(p => {
+              let score = 0;
+              if (p.tags && postData.tags) {
+                const shared = p.tags.filter(t => postData.tags.includes(t)).length;
+                score += shared * 5;
+              }
+              if (p.authorRole && postData.authorRole && p.authorRole === postData.authorRole) {
+                score += 2;
+              }
+              return { post: p, score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+            setRelatedPosts(scored.slice(0, 3).map(s => s.post));
+          } catch (relErr) {
+            console.error('Failed to load related posts:', relErr);
           }
 
           // Only fetch the user profile for community-authored posts
@@ -85,11 +150,16 @@ export default function BlogDetailPage() {
             const authorDoc = await getDoc(doc(db, 'users', postData.authorId)).catch(() => null);
             if (authorDoc?.exists()) setAuthor({ uid: authorDoc.id, ...authorDoc.data() } as UserProfile);
           }
+        } else if (slug === RAKSHA_BANDHAN_BLOG.slug) {
+          setPost(RAKSHA_BANDHAN_BLOG);
         } else {
           setPost(null);
         }
       } catch (error) {
         console.error("Error fetching blog post:", error);
+        if (slug === RAKSHA_BANDHAN_BLOG.slug) {
+          setPost(RAKSHA_BANDHAN_BLOG);
+        }
       } finally {
         setLoading(false);
       }
@@ -159,90 +229,79 @@ export default function BlogDetailPage() {
           {/* ── Article ── */}
           <div className="flex-grow lg:w-2/3 max-w-3xl">
             <Breadcrumbs
-          items={[
-            { name: 'Blog', item: prefix('/blog') },
-            { name: post.title, item: prefix(`/blog/${post.slug}`) }
-          ]}
-        />
-
-        <Link to={prefix('/blog')}
-              className="inline-flex items-center gap-2 text-sm font-semibold mb-8 transition-colors text-muted-foreground hover:text-primary"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to all posts
-            </Link>
+              items={[
+                { name: 'Blog', item: prefix('/blog') },
+                { name: post.title, item: prefix(`/blog/${post.slug}`) }
+              ]}
+            />
 
             <div className="mb-10">
-              {post.tags && post.tags.length > 0 && (
-                <div className="flex gap-2 flex-wrap mb-6">
-                  {post.tags.map(tag => (
-                    <Link
-                      key={tag}
-                      to={prefix(`/blog/tag/${tagToSlug(tag)}`)}
-                      className="px-3 py-1 text-xs font-bold rounded-full transition-colors bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
-                    >
-                      {tag}
-                    </Link>
-                  ))}
-                </div>
-              )}
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight mb-6">
+                {post.title}
+              </h1>
 
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight">
-                  {post.title}
-                </h1>
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-8 border-b border-border">
+                <div className="flex flex-wrap items-center gap-5">
+                  {/* Author (First) */}
+                  {(() => {
+                    const isOfficial = post.authorRole === 'admin' || post.authorRole === 'staff';
+                    const displayName = post.authorName || author?.displayName || 'Promptly Team';
+                    return (
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-border">
+                          {isOfficial ? (
+                            <div className="w-full h-full flex items-center justify-center gradient-cta">
+                              <ShieldCheck className="w-4 h-4 text-white" />
+                            </div>
+                          ) : author?.photoURL ? (
+                            <img src={author.photoURL} alt={displayName} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary bg-primary/20">
+                              {displayName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-foreground">{displayName}</span>
+                          {isOfficial && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">
+                              Official
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Date */}
+                  <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    {post.publishedAt ? new Date(post.publishedAt.toMillis?.() || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Draft'}
+                  </div>
+
+                  {/* Read time */}
+                  <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    {readTime(post.content)} min read
+                  </div>
+
+                  {/* Views */}
+                  <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <Eye className="w-4 h-4" />
+                    {post.viewsCount || 0} views
+                  </div>
+                </div>
+
+                {/* Share Button (Inside Meta Row) */}
                 <Button
                   onClick={() => setIsShareModalOpen(true)}
                   variant="secondary"
-                  size="md"
+                  size="sm"
                   leftIcon={Share2}
-                  className="rounded-xl font-semibold text-sm transition-all shrink-0 bg-muted border border-border text-muted-foreground hover:bg-muted/70 hover:text-foreground h-11"
+                  className="rounded-xl font-semibold text-xs transition-all shrink-0 bg-muted border border-border text-muted-foreground hover:bg-muted/70 hover:text-foreground px-3.5 py-1.5"
                 >
                   Share
                 </Button>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-5 pb-8 border-b border-border">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  {post.publishedAt ? new Date(post.publishedAt.toMillis?.() || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Draft'}
-                </div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  {Math.max(1, Math.ceil((post.content || '').split(/\s+/).length / 200))} min read
-                </div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                  <Eye className="w-4 h-4" />
-                  {post.viewsCount || 0} views
-                </div>
-                {(() => {
-                  const isOfficial = post.authorRole === 'admin' || post.authorRole === 'staff';
-                  const displayName = post.authorName || author?.displayName || 'Promptly Team';
-                  return (
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                        {isOfficial ? (
-                          <div className="w-full h-full flex items-center justify-center gradient-cta">
-                            <ShieldCheck className="w-4 h-4 text-white" />
-                          </div>
-                        ) : author?.photoURL ? (
-                          <img src={author.photoURL} alt={displayName} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary bg-primary/20">
-                            {displayName.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-muted-foreground">{displayName}</span>
-                        {isOfficial && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">
-                            Official
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             </div>
 
@@ -252,21 +311,45 @@ export default function BlogDetailPage() {
               </div>
             )}
 
-            {/* Markdown content */}
-            <div className="prose prose-neutral dark:prose-invert prose-lg max-w-none
+            {/* Blog content — supports both HTML (Quill) and Markdown */}
+            <div className="prose prose-neutral dark:prose-invert prose-lg max-w-none overflow-x-hidden
               prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight
-              prose-p:text-muted-foreground prose-p:leading-relaxed
+              prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:break-words
               prose-a:text-primary prose-a:no-underline hover:prose-a:opacity-80
               prose-strong:text-foreground
               prose-code:text-primary prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:border prose-code:border-border
-              prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-xl
+              prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-xl prose-pre:overflow-x-auto
               prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
               prose-hr:border-border
               prose-li:text-muted-foreground
-              prose-img:rounded-xl
-            ">
-              <ReactMarkdown>{post.content}</ReactMarkdown>
+              prose-img:rounded-xl"
+            >
+              {/<[a-zA-Z]/.test(post.content || '') ? (
+                <HtmlContent content={post.content} />
+              ) : (
+                <ReactMarkdown
+                  components={{
+                    code({ node, inline, className, children, ...props }: any) {
+                      const isPromptBlock = !inline && (className || '').includes('prompt');
+                      if (isPromptBlock) {
+                        return <BlogPromptBlock content={String(children).replace(/\n$/, '')} />;
+                      }
+                      return <code className={className} {...props}>{children}</code>;
+                    },
+                    pre({ children }: any) {
+                      const child = React.Children.toArray(children)[0];
+                      if (React.isValidElement(child) && (child as any).type === BlogPromptBlock) {
+                        return <>{children}</>;
+                      }
+                      return <pre className="bg-muted border border-border rounded-2xl p-4 overflow-x-auto">{children}</pre>;
+                    }
+                  }}
+                >
+                  {post.content}
+                </ReactMarkdown>
+              )}
             </div>
+
 
             {/* ── Post-article CTA ── */}
             <div className="mt-16 rounded-2xl p-8 text-center relative overflow-hidden"
@@ -377,7 +460,7 @@ export default function BlogDetailPage() {
           </div>
 
           {/* ── Sidebar ── */}
-          <BlogSidebar />
+          <BlogSidebar activeTags={post?.tags || []} />
         </div>
       </PageContainer>
 
