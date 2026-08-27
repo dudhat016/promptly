@@ -297,6 +297,12 @@ service cloud.firestore {
     }
 
 
+    // System Settings (Navigation, Config Overrides)
+    match /system_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Site Content (Legal Pages, FAQs)
     match /site_content/{contentId} {
       allow read: if true;
