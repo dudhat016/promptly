@@ -177,7 +177,6 @@ export default function SubmitPromptPage() {
           creatorRole: 'user',
           status: 'pending',
           moderationStatus: 'active',
-          isPaid: false,
           likesCount: 0,
           viewsCount: 0,
           copiesCount: 0,

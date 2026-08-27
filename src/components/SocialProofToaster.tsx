@@ -7,14 +7,13 @@ import { useMarketing } from '../hooks/useMarketing';
 
 interface ActivityItem {
   id: string;
-  type: 'unlock' | 'purchase' | 'join' | 'copy';
+  type: 'unlock' | 'join' | 'copy';
   name: string;
   detail: string;
 }
 
 const ICON_MAP = {
   unlock:   { Icon: Sparkles,   color: 'text-primary',       bg: 'bg-primary/10' },
-  purchase: { Icon: ShoppingBag, color: 'text-emerald-500',  bg: 'bg-emerald-500/10' },
   join:     { Icon: UserPlus,    color: 'text-sky-500',       bg: 'bg-sky-500/10' },
   copy:     { Icon: Copy,        color: 'text-amber-500',     bg: 'bg-amber-500/10' },
 };
@@ -27,7 +26,6 @@ function actionLabel(type: ActivityItem['type'], detail: string, template?: stri
   if (template) return template.replace('{detail}', detail);
   switch (type) {
     case 'unlock':   return `just unlocked "${detail}"`;
-    case 'purchase': return `just subscribed to ${detail}`;
     case 'join':     return 'just joined the platform';
     case 'copy':     return `just copied "${detail}"`;
   }
@@ -43,7 +41,6 @@ export default function SocialProofToaster() {
   const intervalMs  = (marketingConfig as any).socialProofIntervalMs  ?? 15000;
   const visibleMs   = (marketingConfig as any).socialProofVisibleMs   ?? 5000;
   const unlockTpl   = (marketingConfig as any).socialProofUnlockTpl   ?? '';
-  const purchaseTpl = (marketingConfig as any).socialProofPurchaseTpl ?? '';
   const joinTpl     = (marketingConfig as any).socialProofJoinTpl     ?? '';
 
   useEffect(() => {
@@ -51,9 +48,8 @@ export default function SocialProofToaster() {
 
     async function fetchActivity() {
       try {
-        const [unlockSnap, orderSnap, userSnap] = await Promise.all([
+        const [unlockSnap, userSnap] = await Promise.all([
           getDocs(query(collection(db, 'credits_history'), orderBy('createdAt', 'desc'), limit(6))),
-          getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(4))),
           getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(4))),
         ]);
 
@@ -65,13 +61,6 @@ export default function SocialProofToaster() {
             combined.push({ id: d.id, type: 'unlock', name: pickName(i), detail: data.promptTitle || 'a premium prompt' });
           } else if (data.type === 'copy') {
             combined.push({ id: d.id, type: 'copy', name: pickName(i + 2), detail: data.promptTitle || 'a prompt' });
-          }
-        });
-
-        orderSnap.docs.forEach((d, i) => {
-          const data = d.data();
-          if (data.status === 'paid' || data.status === 'completed') {
-            combined.push({ id: d.id, type: 'purchase', name: pickName(i + 6), detail: data.planName || 'Pro' });
           }
         });
 
@@ -109,7 +98,7 @@ export default function SocialProofToaster() {
 
   const current = activities[currentIdx];
   const { Icon, color, bg } = ICON_MAP[current.type];
-  const tplMap = { unlock: unlockTpl, purchase: purchaseTpl, join: joinTpl, copy: '' };
+  const tplMap = { unlock: unlockTpl, join: joinTpl, copy: '' };
 
   return (
     <div className="fixed bottom-6 left-6 z-[60] pointer-events-none hidden sm:block">

@@ -46,7 +46,7 @@ export default function Schema({ type, data, breadcrumbs }: SchemaProps) {
         "operatingSystem": "Web",
         "offers": {
           "@type": "Offer",
-          "price": data.isPaid ? "Subscription" : "0",
+          "price": "0",
           "priceCurrency": config.currency || "USD",
           "availability": "https://schema.org/InStock"
         },

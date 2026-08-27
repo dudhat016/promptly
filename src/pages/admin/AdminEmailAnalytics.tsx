@@ -36,23 +36,13 @@ const GROUP_MAP: Record<string, string> = {
   welcome: 'onboarding', onboarding_complete: 'onboarding', onboarding_d1_nudge: 'onboarding',
   onboarding_d3_prompt: 'onboarding', onboarding_d7_expiry: 'onboarding',
   login_alert: 'auth', password_reset: 'auth',
-  purchase_confirmation: 'billing', subscription_renewed: 'billing', trial_started: 'billing',
-  subscription_ended: 'billing',
-  dunning_attempt_1: 'dunning', dunning_attempt_2: 'dunning', dunning_attempt_3: 'dunning',
-  dunning_recovered: 'dunning',
-  low_credits: 'nudge', trial_expiry: 'nudge', renewal_reminder: 'nudge',
-  affiliate_join: 'affiliate', affiliate_commission_unlocked: 'affiliate',
-  affiliate_withdrawal_approved: 'affiliate', affiliate_withdrawal_rejected: 'affiliate',
   newsletter_confirm: 'newsletter', newsletter_welcome: 'newsletter', new_prompt: 'newsletter',
 };
 
 const GROUP_COLORS: Record<string, string> = {
   onboarding: 'bg-emerald-500/10 text-emerald-700',
   auth:       'bg-slate-500/10 text-slate-600',
-  billing:    'bg-blue-500/10 text-blue-700',
-  dunning:    'bg-destructive/10 text-destructive',
   nudge:      'bg-amber-500/10 text-amber-700',
-  affiliate:  'bg-violet-500/10 text-violet-700',
   newsletter: 'bg-primary/10 text-primary',
 };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronRight, X, Zap, Gift } from 'lucide-react';
+import { ChevronRight, X, Zap } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { usePath } from '../../hooks/usePath';
 import { NavItem } from './types';
@@ -20,7 +20,7 @@ const SIDEBAR_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 80;
 
 export default function Sidebar({ items, logo, onClose, isMobile, bottomSection }: SidebarProps) {
-  const { config, setReferralModalOpen } = useUI();
+  const { config } = useUI();
   const { prefix } = usePath();
   const location = useLocation();
   const collapsed = config.sidebarCollapsed && !isMobile;
@@ -84,35 +84,7 @@ export default function Sidebar({ items, logo, onClose, isMobile, bottomSection 
         ))}
       </nav>
 
-      {/* Refer & Earn */}
-      <div className="px-3 mb-2">
-        <button
-          onClick={() => setReferralModalOpen(true)}
-          className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group overflow-hidden relative",
-            isGradient
-              ? "bg-white/10 hover:bg-white/20 text-white border border-white/10"
-              : "bg-primary/5 hover:bg-primary/10 text-primary border border-primary/10"
-          )}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
-          <div className={cn(
-            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-            isGradient ? "bg-white/10" : "bg-primary/10"
-          )}>
-            <Gift className="w-4 h-4" />
-          </div>
-          {(!collapsed || isMobile) && (
-            <div className="text-left">
-              <p className="text-[11px] font-bold uppercase tracking-widest leading-none">Refer & Earn</p>
-              <p className={cn(
-                "text-[9px] mt-0.5 font-medium",
-                isGradient ? "text-white/60" : "text-primary/60"
-              )}>Get 25% Recurring</p>
-            </div>
-          )}
-        </button>
-      </div>
+
 
       {/* Bottom Section */}
       {bottomSection && (

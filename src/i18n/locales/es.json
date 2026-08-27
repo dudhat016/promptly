@@ -18,29 +18,145 @@
     "getStarted": "Comenzar",
     "signUp": "Registro Gratis",
     "logIn": "Iniciar Sesión",
-    "logOut": "Cerrar Sesión"
+    "logOut": "Cerrar Sesión",
+    "or": "o",
+    "and": "y"
+  },
+  "nav": {
+    "home": "Inicio",
+    "explore": "Explorar",
+    "leaderboard": "Clasificación",
+    "pricing": "Precios",
+    "blog": "Blog",
+    "partner": "Socio",
+    "support": "Soporte",
+    "changelog": "Registro de Cambios",
+    "dashboard": "Panel",
+    "settings": "Configuración",
+    "admin": "Panel de Admin"
+  },
+  "header": {
+    "signIn": "Iniciar sesión",
+    "getStarted": "Comenzar",
+    "toggleTheme": "Cambiar tema",
+    "mobile": {
+      "explore": "Explorar Biblioteca",
+      "upgrade": "Actualizar a Pro",
+      "blog": "Recursos y Blog",
+      "contact": "Ayuda y Soporte",
+      "faq": "Preguntas Frecuentes",
+      "partner": "Ecosistema de Socios",
+      "vault": "Mi Bóveda",
+      "favorites": "Guardados",
+      "account": "Configuración de Cuenta",
+      "adminPanel": "Panel de Control Admin",
+      "staffPanel": "Panel de Personal",
+      "signOut": "Cerrar Sesión",
+      "credits": "Créditos Restantes",
+      "unlimitedAccess": "Acceso Ilimitado"
+    }
+  },
+  "footer": {
+    "cols": {
+      "platform": "Plataforma",
+      "legal": "Legal",
+      "support": "Soporte",
+      "explore": "Explorar Prompts",
+      "pricing": "Precios",
+      "blog": "Blog",
+      "partner": "Programa de Socios",
+      "terms": "Términos de Servicio",
+      "privacy": "Política de Privacidad",
+      "cookies": "Política de Cookies",
+      "dmca": "DMCA",
+      "contact": "Contáctanos",
+      "faq": "Preguntas Frecuentes",
+      "helpCenter": "Centro de Ayuda"
+    },
+    "newsletter": {
+      "title": "Recibe consejos de prompts IA, semanalmente.",
+      "desc": "Nuevos prompts, herramientas e ideas de flujo de trabajo. Sin spam."
+    },
+    "copyright": "Todos los derechos reservados.",
+    "status": {
+      "operational": "Todos los sistemas operativos",
+      "degraded": "Interrupción parcial",
+      "outage": "Interrupción de servicio"
+    }
+  },
+  "offline": {
+    "message": "Estás sin conexión — algunas funciones no están disponibles. Los cambios se sincronizarán al reconectarte.",
+    "reconnected": "De nuevo en línea — tus cambios han sido sincronizados."
+  },
+  "cookie": {
+    "title": "Preferencias de Cookies",
+    "badge": "Privacidad Primero",
+    "description": "Usamos cookies para mejorar tu experiencia, mostrar anuncios personalizados y analizar el tráfico. Al hacer clic en \"Aceptar Todo\", consientes el uso de cookies. Lee nuestra",
+    "privacyLink": "Política de Privacidad",
+    "acceptAll": "Aceptar Todo",
+    "rejectNonEssential": "Rechazar No Esenciales",
+    "managePreferences": "Gestionar Preferencias",
+    "manageCookies": "Gestionar Cookies",
+    "savePreferences": "Guardar Preferencias",
+    "back": "Atrás",
+    "essential": "Esencial",
+    "essentialDesc": "Necesario para el funcionamiento básico del sitio.",
+    "analytics": "Analítica",
+    "analyticsDesc": "Nos ayuda a entender cómo los visitantes interactúan con nuestro sitio.",
+    "marketing": "Marketing",
+    "marketingDesc": "Usado para mostrar anuncios más relevantes."
+  },
+  "promptCard": {
+    "pro": "PRO",
+    "free": "GRATIS",
+    "locked": "Bloqueado",
+    "unlocked": "Desbloqueado",
+    "unlock": "Desbloquear",
+    "unlocking": "Desbloqueando...",
+    "viewPrompt": "Ver Prompt",
+    "report": "Reportar",
+    "saveForLater": "Guardar para Después",
+    "unsave": "Eliminar",
+    "copyPrompt": "Copiar Prompt"
   },
   "auth": {
+    "layout": {
+      "agree": "Al continuar, aceptas nuestros",
+      "terms": "Términos",
+      "privacy": "Política de Privacidad"
+    },
     "login": {
       "title": "Bienvenido de Nuevo",
-      "subtitle": "Inicia sesión en tu cuenta de Promptly",
+      "subtitle": "Inicia sesión en tu espacio de trabajo de ingeniería de prompts.",
       "email": "Correo Electrónico",
       "password": "Contraseña",
       "submit": "Iniciar Sesión",
       "forgotPassword": "¿Olvidaste tu contraseña?",
       "noAccount": "¿No tienes cuenta?",
       "register": "Crear Cuenta"
+    },
+    "register": {
+      "title": "Crea Tu Cuenta",
+      "subtitle": "Únete al marketplace de prompts IA",
+      "paused": "Registro Pausado",
+      "pausedDesc": "Los nuevos registros están restringidos por los administradores de {{name}}.",
+      "backHome": "Volver al Inicio",
+      "name": "Nombre Completo",
+      "email": "Correo Electrónico",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar Contraseña",
+      "submit": "Crear Cuenta",
+      "hasAccount": "¿Ya tienes cuenta?",
+      "login": "Iniciar Sesión"
+    },
+    "forgot": {
+      "title": "Restablecer Contraseña",
+      "subtitle": "Ingresa tu correo para recibir un enlace de recuperación.",
+      "email": "Correo Electrónico",
+      "submit": "Enviar Enlace",
+      "backToLogin": "Volver al Login",
+      "success": "¡Enlace enviado! Revisa tu correo."
     }
-  },
-  "nav": {
-    "home": "Inicio",
-    "explore": "Explorar",
-    "pricing": "Precios",
-    "blog": "Blog",
-    "dashboard": "Panel",
-    "settings": "Configuración",
-    "support": "Soporte",
-    "admin": "Panel de Admin"
   },
   "errors": {
     "generic": "Algo salió mal",
@@ -48,6 +164,94 @@
     "unauthorized": "Inicia sesión para continuar",
     "forbidden": "No tienes permiso para acceder",
     "notFound": "Página no encontrada",
-    "offline": "Estás sin conexión — los cambios se sincronizarán al reconectarte."
+    "offline": "Estás sin conexión — los cambios se sincronizarán al reconectarte.",
+    "403": {
+      "title": "Acceso Denegado",
+      "desc": "No tienes permiso para ver esta página. Si crees que es un error, contacta al soporte.",
+      "back": "Volver",
+      "signIn": "Iniciar Sesión"
+    },
+    "500": {
+      "title": "Algo Salió Mal",
+      "desc": "Nuestros servidores encontraron un error inesperado. Hemos sido notificados y estamos trabajando en la solución. Inténtalo de nuevo en unos minutos.",
+      "retry": "Intentar de Nuevo",
+      "home": "Ir al Inicio"
+    },
+    "maintenance": {
+      "title": "En Mantenimiento",
+      "desc": "Estamos realizando mantenimiento programado. Volveremos pronto.",
+      "checkBack": "Vuelve pronto"
+    },
+    "comingSoon": {
+      "title": "Próximamente",
+      "desc": "Esta función está en camino. ¡Mantente atento!"
+    }
+  },
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "Bienvenido de nuevo",
+    "vault": {
+      "title": "Mi Bóveda",
+      "empty": "Tu bóveda está vacía",
+      "emptyDesc": "Los prompts que compres aparecerán aquí."
+    },
+    "favorites": {
+      "title": "Favoritos",
+      "empty": "Aún no hay favoritos",
+      "emptyDesc": "Dale corazón a los prompts para guardarlos aquí."
+    },
+    "builder": {
+      "title": "Constructor de Prompts",
+      "generate": "Generar Prompt"
+    },
+    "credits": {
+      "title": "Historial de Créditos",
+      "balance": "Saldo Actual"
+    }
+  },
+  "explore": {
+    "title": "Explorar Prompts",
+    "searchPlaceholder": "Buscar prompts...",
+    "filters": "Filtros",
+    "category": "Categoría",
+    "model": "Modelo IA",
+    "sort": "Ordenar Por",
+    "featured": "Destacados",
+    "newest": "Más Recientes",
+    "popular": "Más Populares",
+    "tabs": {
+      "all": "Todos",
+      "forYou": "Para Ti",
+      "following": "Siguiendo"
+    }
+  },
+  "pricing": {
+    "title": "Precios Simples y Transparentes",
+    "subtitle": "Elige el plan que mejor se adapte",
+    "monthly": "Mensual",
+    "annual": "Anual",
+    "free": "Gratis",
+    "pro": "Pro",
+    "enterprise": "Empresas",
+    "currentPlan": "Plan Actual",
+    "upgrade": "Actualizar Ahora",
+    "features": "Características"
+  },
+  "settings": {
+    "title": "Configuración",
+    "account": "Cuenta",
+    "billing": "Facturación",
+    "security": "Seguridad",
+    "notifications": "Notificaciones",
+    "language": "Idioma",
+    "theme": "Tema"
+  },
+  "support": {
+    "title": "Soporte",
+    "newTicket": "Nuevo Ticket",
+    "subject": "Asunto",
+    "message": "Mensaje",
+    "priority": "Prioridad",
+    "submit": "Enviar Ticket"
   }
 }

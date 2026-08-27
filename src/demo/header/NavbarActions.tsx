@@ -1,17 +1,16 @@
-import { Coins, HelpCircle, MoreHorizontal, Search } from 'lucide-react';
+import { HelpCircle, MoreHorizontal, Search } from 'lucide-react';
 import { useState } from 'react';
 import { ThemeToggle } from '../../components/ThemeToggle';
-import NotificationBell from '../../components/notifications/NotificationBell';
 import UserDropdown from '../../components/layout/UserDropdown';
 import LanguageSwitcher from '../../components/navigation/LanguageSwitcher';
+import NotificationBell from '../../components/notifications/NotificationBell';
 import { AppsDropdown } from './AppsDropdown';
-import { QuickActionsDropdown } from './QuickActionsDropdown';
 import { MobileActionsSheet } from './MobileActionsSheet';
+import { QuickActionsDropdown } from './QuickActionsDropdown';
 
 interface NavbarActionsProps {
   isAdmin?: boolean;
   isPro?: boolean;
-  credits?: number;
   onTourOpen?: () => void;
   onSearchOpen?: () => void;
 }
@@ -19,7 +18,6 @@ interface NavbarActionsProps {
 export function NavbarActions({
   isAdmin,
   isPro,
-  credits = 0,
   onTourOpen,
   onSearchOpen,
 }: NavbarActionsProps) {
@@ -53,15 +51,6 @@ export function NavbarActions({
       {/* Quick actions */}
       <QuickActionsDropdown />
 
-      {/* Credits badge */}
-      <div
-        data-tour="credits"
-        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/8 text-primary rounded border border-primary/12 text-xs font-semibold mr-1"
-      >
-        <Coins className="w-3.5 h-3.5" />
-        <span>{isPro ? '∞' : credits}</span>
-      </div>
-
       {/* Help / guided tour */}
       <button
         onClick={onTourOpen}
@@ -91,7 +80,6 @@ export function NavbarActions({
         onClose={() => setMobileSheetOpen(false)}
         onSearchOpen={onSearchOpen ?? (() => {})}
         isPro={isPro}
-        credits={credits}
       />
     </>
   );

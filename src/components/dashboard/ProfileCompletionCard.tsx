@@ -73,30 +73,7 @@ function buildSteps(profile: UserProfile, prefix: (p: string) => string): Step[]
       done: !!(profile.location?.trim()),
       link: prefix('/settings/profile'),
     },
-    {
-      id: 'payout',
-      label: 'Set up payout method',
-      why: 'Required to withdraw affiliate earnings',
-      icon: Briefcase,
-      done: !!(
-        profile.payoutMethods?.upiId ||
-        profile.payoutMethods?.paypalEmail ||
-        profile.payoutMethods?.bankDetails
-      ),
-      link: prefix('/settings/profile'),
-    },
-    {
-      id: 'ai_key',
-      label: 'Connect an AI key',
-      why: 'Use AI Twin Studio and run prompts',
-      icon: Key,
-      done: !!(
-        profile.aiKeys?.gemini ||
-        profile.aiKeys?.openai ||
-        profile.aiKeys?.anthropic
-      ),
-      link: prefix('/settings/ai'),
-    },
+
     {
       id: 'unlock',
       label: 'Unlock your first prompt',
@@ -153,7 +130,7 @@ export default function ProfileCompletionCard({ profile, userId }: ProfileComple
     if (pct === 100 && !tagged100.current && !localStorage.getItem(key100)) {
       tagged100.current = true;
       localStorage.setItem(key100, '1');
-      tag('profile_complete', 'profile_complete');
+      tag('profile_complete');
     }
   }, [pct, userId]);
 
@@ -163,7 +140,7 @@ export default function ProfileCompletionCard({ profile, userId }: ProfileComple
       <div className="flex items-center gap-3 px-4 py-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl text-sm">
         <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
         <span className="text-emerald-700 dark:text-emerald-400 font-medium flex-1">
-          Profile complete — you've unlocked the Creator Pro badge! 🏅
+          Profile 100% complete! 🎉
         </span>
       </div>
     );

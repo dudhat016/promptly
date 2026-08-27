@@ -34,8 +34,6 @@ export class MarketingService {
       { path: '/',          freq: 'daily',   priority: '1.0' },
       { path: '/explore',   freq: 'daily',   priority: '0.9' },
       { path: '/blog',      freq: 'weekly',  priority: '0.8' },
-      { path: '/pricing',   freq: 'weekly',  priority: '0.8' },
-      { path: '/affiliate', freq: 'monthly', priority: '0.6' },
       { path: '/about',     freq: 'monthly', priority: '0.5' },
     ].map(p => `  <url>\n    <loc>${baseUrl}${p.path}</loc>\n    <changefreq>${p.freq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`);
 
@@ -70,9 +68,7 @@ export class MarketingService {
       const segSnap = await firebase.db.collection("marketing_segments").doc(segmentId).get();
       if (segSnap.exists) {
         const seg = segSnap.data()!;
-        const usersSnap = await firebase.db.collection("users")
-          .where("subscriptionStatus", "==", seg.filter?.subscriptionStatus ?? "free")
-          .get();
+        const usersSnap = await firebase.db.collection("users").get();
         targetEmails = usersSnap.docs.map(d => d.data().email).filter(Boolean);
       }
     } else {

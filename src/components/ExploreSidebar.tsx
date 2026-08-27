@@ -1,6 +1,6 @@
-import { CheckSquare, Coins, Cpu, LayoutGrid, Search, ShieldCheck, Tag as TagIcon, Zap } from 'lucide-react';
+import { CheckSquare, Cpu, LayoutGrid, Search, ShieldCheck, Tag as TagIcon, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useConfig } from '../hooks/useConfig';
 import { usePath } from '../hooks/usePath';
 import { recordPromptInteraction } from '../lib/affinity';
@@ -236,7 +236,7 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
       {/* Pricing */}
       <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
-          <Coins className="w-5 h-5 text-primary" />
+          <Zap className="w-5 h-5 text-primary" />
           Pricing
         </h3>
         <div className="flex flex-col gap-1.5">
@@ -295,11 +295,6 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
                     label={category.name}
                     className="flex-grow"
                   />
-                  {category.isPremium && (
-                    <div title="Premium Category">
-                      <Zap className="w-3.5 h-3.5 text-amber-500 fill-current shrink-0" />
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -345,31 +340,6 @@ export default function ExploreSidebar({ searchTerm, setSearchTerm }: ExploreSid
         ) : (
           <p className="text-sm text-muted-foreground">No tags found.</p>
         )}
-      </div>
-
-      {/* Premium Features Promo */}
-      <div className="bg-foreground text-background rounded-lg p-8 shadow-xl relative overflow-hidden group">
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
-        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
-
-        <div className="relative z-10">
-          <ShieldCheck className="w-10 h-10 text-primary mb-6" />
-          <h3 className="font-bold text-2xl mb-3 tracking-tighter">Promptly Pro</h3>
-          <p className="opacity-70 text-sm mb-8 leading-relaxed font-medium">
-            Unlock elite formulas, advanced neural models, and unlimited assets to dominate the AI landscape.
-          </p>
-          <Button
-            as={Link}
-            to={prefix('/pricing')}
-            variant="primary"
-            size="lg"
-            fullWidth
-            leftIcon={Zap}
-            className="shadow-xl shadow-primary/20"
-          >
-            Upgrade Now
-          </Button>
-        </div>
       </div>
     </aside>
   );

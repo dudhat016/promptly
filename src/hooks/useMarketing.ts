@@ -21,7 +21,6 @@ export function useMarketing() {
     socialProofIntervalMs: 15000,
     socialProofVisibleMs: 5000,
     socialProofUnlockTpl: '',
-    socialProofPurchaseTpl: '',
     socialProofJoinTpl: ''
   });
   const [loading, setLoading] = useState(true);

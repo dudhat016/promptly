@@ -17,16 +17,8 @@ export const EmailService = {
     await send('welcome', { name });
   },
 
-  async sendAffiliateJoinEmail(_userId: string, _email: string, code: string) {
-    await send('affiliate_join', { referral_code: code });
-  },
-
   async sendNewPromptEmail(_userId: string, _email: string, promptTitle: string) {
     await send('new_prompt', { title: promptTitle });
-  },
-
-  async sendSubscriptionEndingEmail(_userId: string, _email: string) {
-    await send('renewal_reminder', {});
   },
 
   async sendOnboardingCompleteEmail(
@@ -41,21 +33,11 @@ export const EmailService = {
     await send('onboarding_complete', { name, interests: interestList });
   },
 
-  async sendBadgeEarnedEmail(
-    _userId: string,
-    _email: string,
-    badgeName: string,
-    badgeDescription: string
-  ) {
-    await send('badge_earned', { badge_name: badgeName, badge_description: badgeDescription });
-  },
-
   async sendPromptApprovedEmail(
     creatorId: string,
     creatorEmail: string,
     displayName: string,
-    promptTitle: string,
-    isPaid: boolean
+    promptTitle: string
   ) {
     try {
       await api.post('/email/send-to', {
@@ -65,7 +47,6 @@ export const EmailService = {
         variables: {
           name: displayName,
           prompt_title: promptTitle,
-          prompt_type: isPaid ? 'premium' : 'free',
           dashboard_url: `${window.location.origin}/dashboard/library`,
         },
       });

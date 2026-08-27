@@ -14,7 +14,6 @@ import Input from '../../components/primitives/Input';
 import Button from '../../components/primitives/Button';
 import Card from '../../components/primitives/Card';
 import Textarea from '../../components/primitives/Textarea';
-import Checkbox from '../../components/primitives/Checkbox';
 
 export default function AdminPromptForm() {
   const { id } = useParams();
@@ -27,8 +26,7 @@ export default function AdminPromptForm() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [prompt, setPrompt] = useState<Partial<Prompt>>({
-    title: '', slug: '', description: '', metaTitle: '', metaDescription: '', metaKeywords: '',
-    content: '', imageUrl: '', model: '', isPaid: false, tags: [],
+    content: '', imageUrl: '', model: '', tags: [],
     sampleOutput: '', usageGuide: '', difficulty: undefined
   });
 
@@ -398,15 +396,7 @@ export default function AdminPromptForm() {
                 isSearchable={false}
               />
             </div>
-            <Checkbox 
-              label="Premium (PRO Only)"
-              description="Users will need a PRO subscription to view this prompt content."
-              id="isPaid"
-              name="isPaid"
-              checked={prompt.isPaid || false}
-              onChange={e => setPrompt({...prompt, isPaid: e.target.checked})}
-              className="flex-1"
-            />
+
           </div>
 
           <div className="pt-6 border-t border-border flex gap-4">

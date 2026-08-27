@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { usePath } from '../hooks/usePath';
@@ -30,6 +31,7 @@ interface PromptCardProps {
 export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false }: PromptCardProps) {
   const { isFavorited, toggleFavorite, user, profile, isPro, isAdmin } = useAuth();
   const { config } = useConfig();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { prefix } = usePath();
   const [isUnlocking, setIsUnlocking] = useState(false);
@@ -49,17 +51,11 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
   const favorited = prompt.id ? isFavorited(prompt.id) : false;
   const isCreation = (prompt as any).isCreation;
 
-  const isActuallyUnlocked =
-    isCreation ||
-    initialUnlocked ||
-    !prompt.isPaid ||
-    isPro ||
-    isAdmin ||
-    (profile?.unlockedPrompts || []).includes(prompt.id!);
-  const isLocked = !isCreation && prompt.isPaid && !isActuallyUnlocked;
+  const isActuallyUnlocked = true;
+  const isLocked = false;
 
   const category = !isCreation ? config.categories.find(c => c.id === prompt.categoryId) : null;
-  const isCategoryLocked = !!(category?.isPremium && !isPro && !isAdmin);
+  const isCategoryLocked = false;
 
   const handleQuickUnlock = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,35 +66,13 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
       navigate(prefix('/login'));
       return;
     }
-    if ((profile.credits || 0) < 1) {
-      toast.error((config as any).msgOutOfCredits || 'Out of credits — upgrade to Pro');
-      navigate(prefix('/pricing'));
-      return;
-    }
 
     setIsUnlocking(true);
     try {
       await updateDoc(doc(db, 'users', user.uid), {
-        credits: increment(-1),
         unlockedPrompts: Array.from(new Set([...(profile.unlockedPrompts || []), prompt.id!])),
-        totalUsedCredits: increment(1),
-      });
-      await addDoc(collection(db, 'credits_history'), {
-        userId: user.uid,
-        type: 'unlock',
-        promptId: prompt.id,
-        promptTitle: prompt.title,
-        amount: 1,
-        createdAt: new Date(),
       });
       toast.success((config as any).msgPromptUnlocked || 'Prompt unlocked!');
-
-      // Fire low-credit nudge email if credits drop below threshold (non-blocking)
-      const newCredits = (profile.credits || 0) - 1;
-      const threshold = (config as any).lowCreditThreshold ?? 5;
-      if (newCredits <= threshold && newCredits >= 0) {
-        api.post('/nudges/low-credits', { creditsRemaining: newCredits }).catch(() => {});
-      }
     } catch {
       toast.error((config as any).msgUnlockFailed || 'Failed to unlock — try again');
     } finally {
@@ -144,17 +118,6 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
               {prompt.model && (
                 <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-black/50 backdrop-blur-sm text-white/90 border border-white/10">
                   {prompt.model}
-                </span>
-              )}
-              {prompt.isPaid && (
-                <span className={cn(
-                  'flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold backdrop-blur-sm border',
-                  isActuallyUnlocked
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/20'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-500/20'
-                )}>
-                  {isActuallyUnlocked ? <Unlock className="w-2.5 h-2.5" /> : <Zap className="w-2.5 h-2.5" />}
-                  {isActuallyUnlocked ? 'Unlocked' : 'Pro'}
                 </span>
               )}
             </>
@@ -204,7 +167,7 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
                     className="flex items-center gap-2 w-full justify-start px-3 py-2.5 text-xs font-semibold text-foreground rounded-none"
                   >
                     <Bookmark className={cn('w-3.5 h-3.5', isSaved(prompt.id!) && 'fill-current text-primary')} />
-                    {isSaved(prompt.id!) ? 'Remove from Queue' : 'Save to Queue'}
+                    {isSaved(prompt.id!) ? t('promptCard.unsave') : t('promptCard.saveForLater')}
                   </Button>
                 )}
                 <Button
@@ -214,7 +177,7 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
                   className="flex items-center gap-2 w-full justify-start px-3 py-2.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 rounded-none"
                 >
                   <Flag className="w-3.5 h-3.5" />
-                  Report Prompt
+                  {t('promptCard.report')}
                 </Button>
               </div>
             )}
@@ -285,7 +248,7 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
                 leftIcon={Zap}
                 className="px-3 shadow-sm shadow-primary/25"
               >
-                {isUnlocking ? '…' : 'Unlock'}
+                {isUnlocking ? '…' : t('promptCard.unlock')}
               </Button>
             )}
             <Button
@@ -310,7 +273,7 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
           <div className="w-10 h-10 rounded-xl flex items-center justify-center gradient-cta shadow-lg mb-3">
             <Lock className="w-4 h-4" />
           </div>
-          <p className="text-sm font-bold text-foreground mb-0.5">Pro Members Only</p>
+          <p className="text-sm font-bold text-foreground mb-0.5">{t('promptCard.pro')} Members Only</p>
           <p className="text-xs text-muted-foreground mb-4 text-center">This collection is reserved for Pro subscribers.</p>
           <Button
             onClick={(e) => { e.preventDefault(); navigate(prefix('/pricing')); }}
@@ -319,7 +282,7 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
             fullWidth
             className="shadow-lg shadow-primary/20"
           >
-            Upgrade to Pro
+            {t('pricing.upgrade')}
           </Button>
         </div>
       )}

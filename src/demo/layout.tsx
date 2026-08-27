@@ -103,7 +103,6 @@ export default function DemoLayout({ children }: { children?: React.ReactNode })
     <NavbarActions
       isAdmin={isAdmin}
       isPro={isPro}
-      credits={profile?.credits ?? 0}
       onTourOpen={() => setTourOpen(true)}
       onSearchOpen={() => setSearchOpen(true)}
     />

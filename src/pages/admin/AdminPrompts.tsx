@@ -69,12 +69,11 @@ export default function AdminPrompts() {
     toast.success(`${rows.length} prompts deleted`);
   };
 
-  const handleApprove = async (prompt: Prompt, isPaid: boolean) => {
+  const handleApprove = async (prompt: Prompt) => {
     setActionLoading(prompt.id!);
     try {
       await updateDoc(doc(db, 'prompts', prompt.id!), {
         status: 'approved',
-        isPaid,
         approvedBy: user?.uid,
         approvedAt: new Date().toISOString(),
         moderationStatus: 'active',
@@ -84,7 +83,7 @@ export default function AdminPrompts() {
       await addDoc(collection(db, 'users', prompt.creatorId, 'notifications'), {
         type: 'prompt_approved',
         title: 'Your prompt was approved!',
-        message: `"${prompt.title}" is now live on the marketplace as a ${isPaid ? 'premium' : 'free'} prompt.`,
+        message: `"${prompt.title}" is now live on the marketplace.`,
         promptId: prompt.id,
         read: false,
         createdAt: serverTimestamp(),
@@ -97,13 +96,13 @@ export default function AdminPrompts() {
           EmailService.sendPromptApprovedEmail(
             prompt.creatorId, data.email,
             data.displayName || 'Creator',
-            prompt.title, isPaid,
+            prompt.title,
           );
         }
       }).catch(() => {});
-      setPrompts(prev => { const next = prev.map(p => p.id === prompt.id ? { ...p, status: 'approved' as const, isPaid, approvedBy: user?.uid } : p); adminCache.set('admin_prompts', next); return next; });
-      logAuditEvent({ action: 'prompt.approved', entityType: 'prompt', entityId: prompt.id, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { title: prompt.title, isPaid } });
-      toast.success(`Approved as ${isPaid ? 'Premium' : 'Free'}!`);
+      setPrompts(prev => { const next = prev.map(p => p.id === prompt.id ? { ...p, status: 'approved' as const, approvedBy: user?.uid } : p); adminCache.set('admin_prompts', next); return next; });
+      logAuditEvent({ action: 'prompt.approved', entityType: 'prompt', entityId: prompt.id, actorId: user?.uid, actorEmail: user?.email ?? undefined, details: { title: prompt.title } });
+      toast.success('Prompt approved!');
     } catch {
       toast.error('Failed to approve');
     } finally {
@@ -177,7 +176,6 @@ export default function AdminPrompts() {
       searchValue: p => `${p.title} ${p.description ?? ''} ${p.model}`,
       render: p => (
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.isPaid ? 'bg-amber-400' : 'bg-emerald-400'}`} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-bold text-foreground truncate">{p.title}</p>
@@ -210,18 +208,6 @@ export default function AdminPrompts() {
       csvValue: p => p.model,
     },
     {
-      key: 'type',
-      header: 'Type',
-      sortable: true,
-      sortValue: p => p.isPaid ? 'paid' : 'free',
-      render: p => (
-        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${p.isPaid ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
-          {p.isPaid ? 'Paid' : 'Free'}
-        </span>
-      ),
-      csvValue: p => p.isPaid ? 'Paid' : 'Free',
-    },
-    {
       key: 'stats',
       header: 'Stats',
       sortable: true,
@@ -244,24 +230,14 @@ export default function AdminPrompts() {
       render: p => (
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => handleApprove(p, false)}
+            onClick={() => handleApprove(p)}
             isLoading={actionLoading === p.id}
             variant="secondary"
             size="sm"
             leftIcon={CheckCircle}
             className="text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10 text-xs"
           >
-            Free
-          </Button>
-          <Button
-            onClick={() => handleApprove(p, true)}
-            isLoading={actionLoading === p.id}
-            variant="secondary"
-            size="sm"
-            leftIcon={CheckCircle}
-            className="text-amber-600 border-amber-500/30 hover:bg-amber-500/10 text-xs"
-          >
-            Premium
+            Approve
           </Button>
           <Button
             onClick={() => setRejectModalPrompt(p)}

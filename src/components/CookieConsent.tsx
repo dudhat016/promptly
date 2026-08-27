@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, X, Check, Settings2 } from 'lucide-react';
+import { Shield, X, Settings2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button, Card, Checkbox } from './primitives';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import { usePath } from '../hooks/usePath';
 
 export interface CookieConsentData {
   analytics: boolean;
@@ -12,11 +14,9 @@ export interface CookieConsentData {
   timestamp: string;
 }
 
-/**
- * A premium Cookie Consent banner that complies with GDPR.
- * Features: Accept/Reject/Manage options, granular controls, and smooth animations.
- */
 export default function CookieConsent() {
+  const { t } = useTranslation();
+  const { prefix } = usePath();
   const [isVisible, setIsVisible] = useState(false);
   const [showManage, setShowManage] = useState(false);
   const [consent, setConsent] = useState({
@@ -28,7 +28,6 @@ export default function CookieConsent() {
   useEffect(() => {
     const saved = localStorage.getItem('promptly_cookie_consent');
     if (!saved) {
-      // Small delay before showing for better UX
       const timer = setTimeout(() => setIsVisible(true), 2500);
       return () => clearTimeout(timer);
     }
@@ -38,7 +37,6 @@ export default function CookieConsent() {
     const fullData: CookieConsentData = { ...data, timestamp: new Date().toISOString() };
     localStorage.setItem('promptly_cookie_consent', JSON.stringify(fullData));
     setIsVisible(false);
-    // Notify application that consent has changed
     window.dispatchEvent(new Event('cookieConsentChanged'));
   };
 
@@ -56,66 +54,68 @@ export default function CookieConsent() {
         >
           <Card variant="raised" padding="none" className="border-primary/20 shadow-2xl shadow-primary/10 overflow-visible">
             <div className="flex flex-col md:flex-row items-stretch">
-              {/* Sidebar / Icon */}
               <div className="hidden md:flex w-32 bg-primary/5 items-center justify-center border-r border-border shrink-0">
                 <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary">
                   <Shield className="w-8 h-8" />
                 </div>
               </div>
 
-              {/* Content */}
               <div className="p-6 md:p-8 flex-1">
                 {!showManage ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-foreground">Cookie Preference</h3>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">Privacy First</span>
+                      <h3 className="text-lg font-bold text-foreground">{t('cookie.title')}</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">
+                        {t('cookie.badge')}
+                      </span>
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. 
-                      By clicking "Accept All", you consent to our use of cookies. Read our <Link to="/privacy" className="text-primary hover:underline font-bold">Privacy Policy</Link>.
+                      {t('cookie.description')}{' '}
+                      <Link to={prefix('/privacy')} className="text-primary hover:underline font-bold">
+                        {t('cookie.privacyLink')}
+                      </Link>.
                     </p>
                     <div className="flex flex-wrap items-center gap-3 pt-2">
-                      <Button onClick={handleAcceptAll} variant="primary" size="sm">Accept All</Button>
-                      <Button onClick={handleRejectAll} variant="outline" size="sm">Reject Non-essential</Button>
+                      <Button onClick={handleAcceptAll} variant="primary" size="sm">{t('cookie.acceptAll')}</Button>
+                      <Button onClick={handleRejectAll} variant="outline" size="sm">{t('cookie.rejectNonEssential')}</Button>
                       <Button variant="ghost" size="sm" leftIcon={Settings2} onClick={() => setShowManage(true)}>
-                        Manage Preferences
+                        {t('cookie.managePreferences')}
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-5">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-bold text-foreground">Manage Cookies</h3>
+                      <h3 className="text-lg font-bold text-foreground">{t('cookie.manageCookies')}</h3>
                       <Button variant="ghost" size="icon" onClick={() => setShowManage(false)}>
                         <X className="w-5 h-5" />
                       </Button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <PreferenceCard 
-                        title="Essential"
-                        description="Required for basic site functionality and security."
+                      <PreferenceCard
+                        title={t('cookie.essential')}
+                        description={t('cookie.essentialDesc')}
                         checked={true}
                         disabled={true}
                       />
-                      <PreferenceCard 
-                        title="Analytics"
-                        description="Helps us understand how visitors interact with our site."
+                      <PreferenceCard
+                        title={t('cookie.analytics')}
+                        description={t('cookie.analyticsDesc')}
                         checked={consent.analytics}
                         onChange={(v: boolean) => setConsent(c => ({ ...c, analytics: v }))}
                       />
-                      <PreferenceCard 
-                        title="Marketing"
-                        description="Used to deliver more relevant advertisements."
+                      <PreferenceCard
+                        title={t('cookie.marketing')}
+                        description={t('cookie.marketingDesc')}
                         checked={consent.marketing}
                         onChange={(v: boolean) => setConsent(c => ({ ...c, marketing: v }))}
                       />
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-2 border-t border-border mt-4">
-                      <Button onClick={() => setShowManage(false)} variant="ghost" size="sm">Back</Button>
-                      <Button onClick={() => saveConsent(consent)} variant="primary" size="sm">Save Preferences</Button>
+                      <Button onClick={() => setShowManage(false)} variant="ghost" size="sm">{t('cookie.back')}</Button>
+                      <Button onClick={() => saveConsent(consent)} variant="primary" size="sm">{t('cookie.savePreferences')}</Button>
                     </div>
                   </div>
                 )}
@@ -137,9 +137,9 @@ function PreferenceCard({ title, description, checked, onChange, disabled = fals
       <div className="flex items-center justify-between mb-2">
         <span className="text-[11px] font-bold uppercase tracking-wider">{title}</span>
         <div className="scale-75 origin-right">
-          <Checkbox 
+          <Checkbox
             variant="simple"
-            checked={checked} 
+            checked={checked}
             onChange={disabled ? undefined : (e) => onChange(e.target.checked)}
             disabled={disabled}
           />

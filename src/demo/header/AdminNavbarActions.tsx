@@ -29,11 +29,8 @@ const ADMIN_APPS = [
   { icon: FileText,        label: 'Blog',       path: '/admin/blog' },
   { icon: Tag,             label: 'Categories', path: '/admin/categories' },
   { icon: Star,            label: 'Reviews',    path: '/admin/reviews' },
-  { icon: Wallet,          label: 'Payouts',    path: '/admin/payouts' },
-  { icon: Gift,            label: 'Affiliate',  path: '/admin/affiliate' },
   { icon: MessageSquare,   label: 'Tickets',    path: '/admin/tickets' },
   { icon: AlertTriangle,   label: 'Reports',    path: '/admin/reports' },
-  { icon: BarChart2,       label: 'Analytics',  path: '/admin/analytics' },
   { icon: Settings,        label: 'Settings',   path: '/admin/settings' },
 ];
 
@@ -109,8 +106,6 @@ const ADMIN_ACTIONS = [
   { icon: FileText,      label: 'New Post',    path: '/admin/blog/new',         color: 'text-emerald-500 bg-emerald-500/10' },
   { icon: Tag,           label: 'New Tag',     path: '/admin/categories',       color: 'text-amber-500  bg-amber-500/10'  },
   { icon: Bell,          label: 'Broadcast',   path: '/admin/notifications',    color: 'text-cyan-500   bg-cyan-500/10'   },
-  { icon: BarChart2,     label: 'Analytics',   path: '/admin/analytics',        color: 'text-rose-500   bg-rose-500/10'   },
-  { icon: Gift,          label: 'Affiliate',   path: '/admin/affiliate',        color: 'text-indigo-500 bg-indigo-500/10' },
   { icon: Settings,      label: 'Settings',    path: '/admin/settings',         color: 'text-sky-500    bg-sky-500/10'    },
 ];
 

@@ -75,7 +75,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         displayName: 'Guest Tester',
         photoURL: null,
         role: 'admin',
-        subscriptionStatus: 'pro',
         createdAt: new Date().toISOString()
       });
       setLoading(false);
@@ -101,50 +100,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               let needsUpdate = false;
               const updates: any = {};
 
-              // 1. Referral Code Check
-              const isOldFormat = data.referralCode && data.referralCode.length === 6 && !/[0-9]{3}$/.test(data.referralCode);
-              if (!data.referralCode || isOldFormat) {
-                const baseName = (user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'USER')
-                  .replace(/[^a-zA-Z0-9]/g, '')
-                  .toUpperCase()
-                  .slice(0, 10);
-                updates.referralCode = `${baseName}${Math.floor(100 + Math.random() * 900)}`;
-                needsUpdate = true;
-              }
-
-              // 2. Admin/Demotion Logic (Only if status actually changed)
+              // Admin/Demotion Logic (Only if status actually changed)
               const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
               const isAdminEmail = adminEmails.length > 0 ? adminEmails.includes(user.email || '') : false;
               const isToDemote = user.email === 'learnwithdudhat016@gmail.com';
 
               if (isAdminEmail && data.role !== 'admin') {
                 updates.role = 'admin';
-                updates.subscriptionStatus = 'pro';
-                updates.credits = 10000;
                 updates.hasCompletedOnboarding = true;
                 needsUpdate = true;
               } else if (isToDemote && data.role === 'admin') {
                 updates.role = 'user';
-                updates.subscriptionStatus = 'free';
-                updates.credits = 5;
                 needsUpdate = true;
-              }
-
-              // 3. Daily Reward (Guarded by session flag)
-              const lastReward = data.lastCreditsRewardAt?.toDate ? data.lastCreditsRewardAt.toDate() : (data.lastCreditsRewardAt ? new Date(data.lastCreditsRewardAt) : null);
-              const today = new Date();
-              today.setHours(0,0,0,0);
-              const rewardKey = `reward_claimed_${today.getTime()}`;
-
-              if ((!lastReward || lastReward < today) && !sessionStorage.getItem(rewardKey)) {
-                const globalSnap = await getDoc(doc(db, 'configs', 'global'));
-                const dailyBonus = globalSnap.exists() ? (globalSnap.data().aiDefaults?.freeCreditsDaily ?? 5) : 5;
-                updates.credits = increment(dailyBonus);
-                updates.lastCreditsRewardAt = serverTimestamp();
-                updates.lastActiveAt = serverTimestamp();
-                sessionStorage.setItem(rewardKey, 'true');
-                needsUpdate = true;
-                toast.success("Daily Reward: +5 Credits added! 🎉", { icon: '🎁' });
               }
 
               // Apply all updates in one shot to avoid triggering multiple snapshots
@@ -180,14 +147,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
 
             } else {
-              // Create new profile
-              const baseName = (user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'USER')
-                .replace(/[^a-zA-Z0-9]/g, '')
-                .toUpperCase()
-                .slice(0, 10);
-              const referralCode = `${baseName}${Math.floor(100 + Math.random() * 900)}`;
-              const referredBy = localStorage.getItem('referralCode') || undefined;
-
               const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
               const isAdminEmail = adminEmails.length > 0 ? adminEmails.includes(user.email || '') : false;
 
@@ -198,14 +157,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 displayName: user.displayName,
                 photoURL: user.photoURL,
                 role: isAdminEmail ? 'admin' : 'user',
-                subscriptionStatus: isAdminEmail ? 'pro' : 'free',
                 createdAt: new Date().toISOString(),
-                referralCode,
-                referredBy,
-                affiliateEarnings: 0,
-                credits: isAdminEmail ? 10000 : 50,
-                totalUsedCredits: 0,
-                monthlyLimit: isAdminEmail ? 10000 : 50
               };
 
               await setDoc(docRef, { ...newProfile, createdAt: serverTimestamp() });
@@ -220,16 +172,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
               // New registration emails (welcome also fires user_signup automation trigger server-side)
               await EmailService.sendWelcomeEmail(user.uid, user.email || '', user.displayName || 'Creator');
-              // Only send affiliate welcome to users who came via a referral link — everyone else
-              // gets their referral code surfaced in-product, not as a cold email on signup.
-              if (referredBy) {
-                await EmailService.sendAffiliateJoinEmail(user.uid, user.email || '', referralCode);
-              }
-
-              // Fire affiliate_join automation trigger
-              if (referralCode) {
-                api.post('/automation/trigger', { triggerType: 'affiliate_join', userId: user.uid, data: { referralCode } }).catch(() => {});
-              }
 
               // Sync to Marketing CRM
               try {
@@ -332,7 +274,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     isAdmin: profile?.role === 'admin',
     isStaff: profile?.role === 'staff',
-    isPro: profile?.subscriptionStatus === 'pro' || profile?.subscriptionStatus === 'enterprise' || profile?.role === 'admin',
+    isPro: true,
     toggleFavorite,
     isFavorited,
     syncMarketingTags,

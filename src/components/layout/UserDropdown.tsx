@@ -105,19 +105,11 @@ export default function UserDropdown({ isAdmin }: UserDropdownProps) {
               <MenuSection label="My Content">
                 <MenuLink to={prefix('/dashboard/favorites')} icon={Heart} onClick={() => setIsOpen(false)}>Favorites</MenuLink>
                 <MenuLink to={prefix('/dashboard/collections')} icon={BookMarked} onClick={() => setIsOpen(false)}>Collections</MenuLink>
-                <MenuLink to={prefix('/dashboard/usage')} icon={Activity} onClick={() => setIsOpen(false)}>Usage Stats</MenuLink>
               </MenuSection>
 
               <div className="h-px bg-border/60 my-1" />
 
               <MenuSection label="Account">
-                <MenuLink to={prefix('/dashboard/credits')} icon={Coins} onClick={() => setIsOpen(false)}>
-                  <span className="flex-1">Credits</span>
-                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-                    {isPro ? '∞' : (profile?.credits ?? 0)}
-                  </span>
-                </MenuLink>
-                <MenuLink to={prefix('/dashboard/affiliate')} icon={Gift} onClick={() => setIsOpen(false)}>Partner Program</MenuLink>
                 <MenuLink to={prefix('/dashboard/support')} icon={HelpCircle} onClick={() => setIsOpen(false)}>Support</MenuLink>
               </MenuSection>
 

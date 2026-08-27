@@ -9,10 +9,7 @@ export enum OperationType {
 
 export interface NotifPrefs {
   securityAlerts: boolean;  // login alerts, password reset — locked on
-  billing: boolean;          // purchase, renewal, dunning — locked on
   onboarding: boolean;       // welcome, onboarding emails, new prompt published
-  nudges: boolean;           // low credits, trial expiry, renewal reminder
-  affiliate: boolean;        // commission, withdrawal, referral milestones
   newsletter: boolean;       // newsletter broadcasts
   promotions: boolean;       // promotional offers and deals
   productUpdates: boolean;   // feature announcements
@@ -27,43 +24,16 @@ export interface UserProfile {
   displayName: string | null;
   photoURL: string | null;
   role: 'user' | 'admin' | 'staff';
-  subscriptionStatus: 'free' | 'pro' | 'enterprise';
-  activePlanId?: string;
-  subscriptionId?: string;
-  subscriptionGateway?: 'cashfree' | 'paypal' | 'stripe';
-  paypalSubscriptionId?: string;
-  billingCycle?: 'monthly' | 'yearly';
-  autoPayEnabled?: boolean;
-  cancelAtPeriodEnd?: boolean;
-  currentPeriodEnd?: any;
   createdAt: string;
-  referralCode?: string;
-  referredBy?: string;
   staffRole?: string;
-  affiliateEarnings?: number;
-  pendingEarnings?: number;
-  withdrawnAmount?: number;
-  trialUsed?: boolean;
-  trialEndsAt?: any;
   favorites?: string[];
-  referralsCount?: number;
-  credits?: number;
-  totalUsedCredits?: number;
-  monthlyLimit?: number;
   unlockedPrompts?: string[];
-  milestones?: string[];
-  lastCreditsRewardAt?: any;
   lastActiveAt?: any;
   suspended?: boolean;
   followerCount?: number;
   following?: string[];
   affinityProfile?: Record<string, number>;
   phoneNumber?: string;
-  payoutMethods?: {
-    upiId?: string;
-    paypalEmail?: string;
-    bankDetails?: string;
-  };
   aiKeys?: {
     gemini?: string;
     openai?: string;
@@ -94,7 +64,6 @@ export interface UserProfile {
   };
   notificationPrefs?: Partial<NotifPrefs>;
   currentStreak?: number;
-  badges?: string[];
   // ── Public creator profile ──
   username?: string;
   bio?: string;
@@ -134,7 +103,6 @@ export interface Contact {
   userId?: string;
   tags: string[];
   status: 'active' | 'unsubscribed' | 'bounced' | 'pending_confirm';
-  subscriptionStatus?: 'free' | 'pro' | 'cancelled';
   lastActivity: any;
   createdAt: any;
   customFields?: Record<string, string>;
@@ -165,7 +133,7 @@ export interface AutomationFlow {
   id: string;
   name: string;
   trigger: {
-    type: 'tag_added' | 'tag_remove' | 'user_signup' | 'user_login' | 'contact_created' | 'subscription_changed' | 'subscription_payment_received' | 'subscription_renewed' | 'subscription_cancelled' | 'prompt_favorite' | 'limit_reached' | 'list_applied' | 'list_removed' | 'form_submited' | 'affiliate_commison';
+    type: 'tag_added' | 'tag_remove' | 'user_signup' | 'user_login' | 'contact_created' | 'prompt_favorite' | 'list_applied' | 'list_removed' | 'form_submited';
     value?: string;
   };
   steps: {
@@ -193,7 +161,6 @@ export interface PermissionSet {
   canExportData: boolean;
   canCreateCollections: boolean;
   canAccessPremiumModels: boolean;
-  canUseAPI: boolean;
   canRemoveWatermarks: boolean;
   hasPrioritySupport: boolean;
   canCustomBrandEmails: boolean;
@@ -214,55 +181,7 @@ export interface AccessConfig {
   lastUpdated: any;
 }
 
-export interface PricingPlan {
-  id: string;
-  name: string;
-  description: string;
-  monthlyPrice: number;
-  yearlyPrice: number;
-  inrMonthlyPrice: number;
-  inrYearlyPrice: number;
-  features: string[];
-  isPopular?: boolean;
-  permissionGroupId: string; // Linked to PermissionGroup.id
-  monthlyCredits: number;
-  limits: {
-    dailyPrompts: number;
-    favorites: number;
-  };
-}
 
-export interface AppConfig {
-  id: 'global';
-  activePromotion: 'trial' | 'yearly_bonus' | 'none';
-  freeTrialEnabled: boolean;
-  freeTrialDays: number;
-  yearlyIncentiveType: 'months' | 'percent';
-  yearlyIncentiveValue: number;
-  vaultLimit: number;
-  lastUpdated: any;
-}
-
-export interface EmailNotification {
-  id: string;
-  type: 'welcome' | 'login' | 'affiliate_join' | 'new_prompt' | 'offer' | 'subs_ending';
-  recipientEmail: string;
-  recipientId?: string;
-  subject: string;
-  content: string;
-  data?: any;
-  sentAt: any;
-  status: 'sent' | 'failed' | 'scheduled';
-}
-
-export interface Payout {
-  id: string;
-  userId: string;
-  userEmail: string;
-  amount: number;
-  status: 'paid';
-  processedAt: any;
-}
 export interface AIModel {
   id: string;
   name: string;
@@ -283,7 +202,6 @@ export interface Prompt {
   metaKeywords?: string;
   content: string;
   imageUrl?: string;
-  isPaid: boolean;
   categoryId: string;
   creatorId: string;
   creatorName?: string;
@@ -359,31 +277,6 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
-  isPremium?: boolean;
-}
-
-export interface BadgeDefinition {
-  id?: string;
-  name: string;
-  description: string;
-  iconName: string;
-  colorClass: string;
-  hint: string;
-  conditionType:
-    | 'unlocks'
-    | 'power_unlocks'
-    | 'prompts'
-    | 'views'
-    | 'following'
-    | 'streak'
-    | 'referrals'
-    | 'subscription_pro'
-    | 'early_adopter'
-    | 'manual';
-  conditionThreshold: number;
-  isActive: boolean;
-  order: number;
-  createdAt?: string;
 }
 
 export type AdminSection =
@@ -398,10 +291,6 @@ export type AdminSection =
   | 'ai_models'
   | 'inquiries'
   | 'tickets'
-  | 'subscriptions'
-  | 'revenue'
-  | 'affiliates'
-  | 'withdrawals'
   | 'marketing'
   | 'permissions'
   | 'roles'
@@ -410,7 +299,6 @@ export type AdminSection =
   | 'emails'
   | 'reports'
   | 'content'
-  | 'badges'
   | 'reviews';
 
 export interface SectionPermission {

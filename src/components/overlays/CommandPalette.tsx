@@ -21,15 +21,9 @@ interface CommandItem {
 
 const ALL_ITEMS: CommandItem[] = [
   { id: 'home',         label: 'Home',            description: 'Your main dashboard',       path: '/dashboard',                  icon: LayoutDashboard, category: 'Navigation' },
-  { id: 'vault',        label: 'My Vault',         description: 'Browse saved prompts',       path: '/dashboard/vault',            icon: LayoutGrid,      category: 'Navigation' },
   { id: 'library',      label: 'My Creations',     description: 'Prompts you have created',   path: '/dashboard/library',          icon: BookOpen,        category: 'Navigation' },
-  { id: 'twin',         label: 'AI Twin Studio',   description: 'AI-powered prompt building', path: '/dashboard/twin-studio',      icon: Sparkles,        category: 'Navigation', keywords: 'ai studio generate' },
   { id: 'favorites',    label: 'Favorites',        description: 'Your liked prompts',         path: '/dashboard/favorites',        icon: Heart,           category: 'Navigation' },
-  { id: 'saved',        label: 'Unlock Queue',     description: 'Saved for later',            path: '/dashboard/saved',            icon: Bookmark,        category: 'Navigation' },
   { id: 'collections',  label: 'Collections',      description: 'Organize your prompts',      path: '/dashboard/collections',      icon: BookMarked,      category: 'Navigation', keywords: 'organize group' },
-  { id: 'credits',      label: 'Credits',          description: 'View your credit balance',   path: '/dashboard/credits',          icon: Coins,           category: 'Navigation', keywords: 'coins balance' },
-  { id: 'usage',        label: 'Usage',            description: 'API & prompt usage stats',   path: '/dashboard/usage',            icon: Activity,        category: 'Navigation' },
-  { id: 'affiliate',    label: 'Partner Program',  description: 'Earn by referring users',    path: '/dashboard/affiliate',        icon: Gift,            category: 'Navigation', keywords: 'refer earn affiliate' },
   { id: 'notif',        label: 'Notifications',    description: 'Your notification inbox',    path: '/dashboard/notifications',    icon: Bell,            category: 'Navigation' },
   { id: 'support',      label: 'Support',          description: 'Get help',                   path: '/dashboard/support',          icon: HelpCircle,      category: 'Navigation' },
   { id: 'profile',      label: 'Profile Settings', description: 'Edit your profile',          path: '/settings/profile',           icon: User,            category: 'Settings' },

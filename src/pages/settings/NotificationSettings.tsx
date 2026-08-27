@@ -14,10 +14,7 @@ type NotifPrefKey = keyof NotifPrefs;
 
 const DEFAULTS: NotifPrefs = {
   securityAlerts: true,
-  billing: true,
   onboarding: true,
-  nudges: true,
-  affiliate: true,
   newsletter: false,
   promotions: false,
   productUpdates: true,
@@ -42,34 +39,13 @@ const SECTIONS: Section[] = [
     icon: <Shield className="w-4 h-4" />,
   },
   {
-    key: 'billing',
-    title: 'Billing & Payments',
-    desc: 'Essential updates about your subscription, payments, and invoices.',
-    covers: ['Purchase receipts', 'Subscription renewal confirmations', 'Payment failure notices'],
-    locked: true,
-    icon: <CreditCard className="w-4 h-4" />,
-  },
-  {
     key: 'onboarding',
     title: 'Onboarding & Tips',
     desc: 'Helpful guidance when you\'re getting started, including personalised content picks.',
-    covers: ['Welcome email', 'Setup tips & personalised prompt picks', 'Credit expiry reminder', 'New prompt published confirmation'],
+    covers: ['Welcome email', 'Setup tips & personalised prompt picks', 'Getting started guide', 'New prompt published confirmation'],
     icon: <Sparkles className="w-4 h-4" />,
   },
-  {
-    key: 'nudges',
-    title: 'Account Reminders',
-    desc: 'Timely alerts about your credit balance, trial, and upcoming renewals.',
-    covers: ['Low credit balance alert', 'Trial expiry warning (3 days before)', 'Upcoming renewal reminder'],
-    icon: <Bell className="w-4 h-4" />,
-  },
-  {
-    key: 'affiliate',
-    title: 'Affiliate Updates',
-    desc: 'Stay on top of your referral earnings and payout activity.',
-    covers: ['Commission earned notification', 'Withdrawal approved / rejected', 'First referral milestone'],
-    icon: <Users className="w-4 h-4" />,
-  },
+
   {
     key: 'newsletter',
     title: 'Newsletter',
@@ -99,10 +75,7 @@ export default function NotificationSettings() {
   const saved = profile?.notificationPrefs ?? {};
   const [prefs, setPrefs] = useState<NotifPrefs>({
     securityAlerts: saved.securityAlerts ?? DEFAULTS.securityAlerts,
-    billing:         saved.billing        ?? DEFAULTS.billing,
     onboarding:      saved.onboarding     ?? DEFAULTS.onboarding,
-    nudges:          saved.nudges         ?? DEFAULTS.nudges,
-    affiliate:       saved.affiliate      ?? DEFAULTS.affiliate,
     newsletter:      saved.newsletter     ?? DEFAULTS.newsletter,
     promotions:      saved.promotions     ?? DEFAULTS.promotions,
     productUpdates:  saved.productUpdates ?? DEFAULTS.productUpdates,
@@ -118,8 +91,6 @@ export default function NotificationSettings() {
     setPrefs(p => ({
       ...p,
       onboarding: false,
-      nudges: false,
-      affiliate: false,
       newsletter: false,
       promotions: false,
       productUpdates: false,
@@ -130,8 +101,6 @@ export default function NotificationSettings() {
     setPrefs(p => ({
       ...p,
       onboarding: true,
-      nudges: true,
-      affiliate: true,
       newsletter: true,
       promotions: true,
       productUpdates: true,

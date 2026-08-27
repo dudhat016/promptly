@@ -19,7 +19,7 @@ interface FAQCategory {
   items: FAQItem[];
 }
 
-function buildFaqData(commission: number, minPayout: number): FAQCategory[] {
+function buildFaqData(): FAQCategory[] {
   return [
     {
       label: 'Getting Started',
@@ -27,29 +27,11 @@ function buildFaqData(commission: number, minPayout: number): FAQCategory[] {
       items: [
         { q: 'What is Promptly?', a: 'Promptly is a premium AI prompt marketplace where you can discover, save, and use thousands of curated prompts for ChatGPT, Claude, Gemini, and other AI tools. Build your personal vault, organize collections, and supercharge your AI workflows.' },
         { q: 'Do I need an account to browse prompts?', a: "No! You can browse the entire prompt library without signing up. To save prompts to your vault, unlock premium content, or submit your own prompts, you'll need a free account." },
-        { q: 'Is Promptly free to use?', a: 'Yes — Promptly has a generous free tier giving you access to thousands of prompts. Pro plans unlock premium prompts, unlimited vault storage, AI Twin Studio, and team features.' },
+        { q: 'Is Promptly free to use?', a: 'Yes — Promptly is 100% free to use. Browse, save, and copy thousands of curated AI prompts.' },
         { q: 'Which AI models does Promptly support?', a: 'Prompts are tagged by compatible model: ChatGPT (GPT-4 / GPT-4o), Claude, Gemini, Llama, Mistral, Midjourney, DALL·E, and more. Filter by model on the Explore page.' },
       ],
     },
-    {
-      label: 'Plans & Billing',
-      icon: '💳',
-      items: [
-        { q: 'What do Pro plans include?', a: 'Pro includes unlimited vault storage, all premium prompt categories, AI Twin Studio, Smart Collections, unlimited AI builder usage, and priority support.' },
-        { q: 'Can I cancel my subscription anytime?', a: 'Absolutely. Cancel with one click from Billing Settings. Your Pro access stays active until the end of the billing period — no extra charges, no questions asked.' },
-        { q: 'Do you offer refunds?', a: "We offer a 7-day money-back guarantee on all paid plans. If you're not satisfied, contact support within 7 days for a full refund." },
-        { q: 'Are there discounts for annual billing?', a: 'Yes — annual billing saves you up to 40% vs monthly. The discount is applied automatically when you select the annual option at checkout.' },
-      ],
-    },
-    {
-      label: 'Credits & Usage',
-      icon: '⚡',
-      items: [
-        { q: 'What are credits?', a: 'Credits unlock premium prompts. Free accounts receive credits monthly. Pro accounts get unlimited access. You also earn bonus credits through the Affiliate Program and by submitting approved prompts.' },
-        { q: 'Do unused credits roll over?', a: "Free plan credits reset monthly and don't roll over. Pro members have unlimited access and don't need to manage credits at all." },
-        { q: 'How do I earn bonus credits?', a: 'Earn credits by referring friends via your affiliate link, submitting quality prompts that get approved, and through special promotions. Check your Affiliate Dashboard for your unique link.' },
-      ],
-    },
+
     {
       label: 'Prompts & Vault',
       icon: '📦',
@@ -57,17 +39,6 @@ function buildFaqData(commission: number, minPayout: number): FAQCategory[] {
         { q: 'Can I submit my own prompts?', a: 'Yes! Submit prompts via the Builder in your dashboard. Submitted prompts go through a brief review, and can be set to free, paid, or private.' },
         { q: 'What is My Vault?', a: 'Your Vault is a personal library of saved and unlocked prompts. Organize with tags, search instantly, and copy to clipboard with one click — accessible from any device.' },
         { q: 'What are Collections?', a: 'Collections let you group related prompts into shareable bundles. Perfect for organizing workflows, sharing with teammates, or building topic-specific libraries.' },
-        { q: 'What is AI Twin Studio?', a: 'AI Twin Studio lets you build custom AI personas trained on your tone and style. Get consistent, on-brand output from any AI model — every time. Available on Pro.' },
-      ],
-    },
-    {
-      label: 'Affiliate Program',
-      icon: '🤝',
-      items: [
-        { q: 'How does the Affiliate Program work?', a: 'Share your unique referral link. When someone signs up and upgrades, you earn a recurring commission — paid automatically to your payout account every month they stay subscribed.' },
-        { q: 'What is the commission rate?', a: `Affiliates earn ${commission}% recurring commission on every subscription payment — monthly or annual — for the entire lifetime of the subscription. No expiry, no cap.` },
-        { q: 'When do I get paid?', a: `Payouts are processed on the 1st of each month for the previous month's verified commissions. Minimum payout threshold is $${minPayout}. We pay via PayPal or UPI.` },
-        { q: 'Do I need technical skills or a big audience?', a: 'None at all. Your referral link works anywhere — a tweet, a newsletter, a YouTube description, or a WhatsApp message. If you can share a link, you can earn.' },
       ],
     },
   ];
@@ -119,10 +90,7 @@ export default function FAQPage() {
   const { content: dynamicContent, loading } = useSiteContent('faq');
   const { marketingConfig } = useMarketing();
 
-  const FAQ_DATA = buildFaqData(
-    marketingConfig.referralCommission ?? 25,
-    marketingConfig.minWithdrawalAmount ?? 50
-  );
+  const FAQ_DATA = buildFaqData();
   const faqSource = dynamicContent?.categories || FAQ_DATA;
 
   const query = search.toLowerCase().trim();

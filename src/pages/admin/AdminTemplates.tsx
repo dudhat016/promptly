@@ -14,12 +14,10 @@ import { usePath } from '../../hooks/usePath';
 import { EmailTemplate } from '../../types';
 
 const GROUP_LABELS: Record<string, string> = {
-  auth: 'Auth', onboarding: 'Onboarding', billing: 'Billing',
-  dunning: 'Dunning', affiliate: 'Affiliate', nudge: 'Nudge', newsletter: 'Newsletter',
+  auth: 'Auth', onboarding: 'Onboarding', nudge: 'Nudge', newsletter: 'Newsletter',
 };
 const GROUP_VARIANT: Record<string, 'soft' | 'success' | 'warning' | 'error' | 'info'> = {
-  auth: 'soft', onboarding: 'success', billing: 'info',
-  dunning: 'error', affiliate: 'warning', nudge: 'soft', newsletter: 'info',
+  auth: 'soft', onboarding: 'success', nudge: 'soft', newsletter: 'info',
 };
 
 export default function AdminTemplates() {

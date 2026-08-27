@@ -387,7 +387,6 @@ export default function BlogDetailPage() {
           onClose={() => setIsShareModalOpen(false)}
           title={post.title}
           url={window.location.href}
-          referralCode={profile?.referralCode}
         />
       )}
     </div>

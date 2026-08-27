@@ -11,10 +11,7 @@ import { cn } from '../../lib/utils';
 const ACTIONS = [
   { icon: FilePlus,      label: 'New Prompt',  path: '/dashboard/prompts/create', color: 'text-violet-500 bg-violet-500/10' },
   { icon: Compass,       label: 'Explore',     path: '/explore',                  color: 'text-blue-500   bg-blue-500/10'   },
-  { icon: Sparkles,      label: 'AI Studio',   path: '/dashboard/ai-twin',        color: 'text-cyan-500   bg-cyan-500/10'   },
   { icon: Heart,         label: 'Favorites',   path: '/dashboard/favorites',      color: 'text-rose-500   bg-rose-500/10'   },
-  { icon: Coins,         label: 'Credits',     path: '/dashboard/credits',        color: 'text-amber-500  bg-amber-500/10'  },
-  { icon: Users,         label: 'Affiliate',   path: '/dashboard/affiliate',      color: 'text-emerald-500 bg-emerald-500/10' },
   { icon: MessageSquare, label: 'Support',     path: '/dashboard/support',        color: 'text-sky-500    bg-sky-500/10'    },
   { icon: BookOpen,      label: 'Docs',        path: '/docs',                     color: 'text-indigo-500 bg-indigo-500/10' },
 ];

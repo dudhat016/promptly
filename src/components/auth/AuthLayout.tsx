@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import React from 'react';
 import { Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { usePath } from '../../hooks/usePath';
 
 interface AuthLayoutProps {
@@ -12,6 +13,8 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   const { prefix } = usePath();
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-muted/30">
       <motion.div
@@ -38,10 +41,14 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground/60">
-          By continuing, you agree to our{' '}
-          <Link to={prefix('/terms')} className="underline hover:text-foreground transition-colors">Terms</Link>
-          {' '}and{' '}
-          <Link to={prefix('/privacy')} className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
+          {t('auth.layout.agree')}{' '}
+          <Link to={prefix('/terms')} className="underline hover:text-foreground transition-colors">
+            {t('auth.layout.terms')}
+          </Link>
+          {' '}{t('common.and')}{' '}
+          <Link to={prefix('/privacy')} className="underline hover:text-foreground transition-colors">
+            {t('auth.layout.privacy')}
+          </Link>
         </p>
       </motion.div>
     </div>

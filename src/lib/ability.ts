@@ -6,7 +6,7 @@ import { PermissionSet } from '../types';
  */
 
 export type Action = 'create' | 'read' | 'update' | 'delete' | 'export' | 'manage';
-export type Subject = 'prompt' | 'collection' | 'admin' | 'billing' | 'affiliate' | 'export';
+export type Subject = 'prompt' | 'collection' | 'admin' | 'export';
 
 export interface Ability {
   can: (action: Action, subject: Subject) => boolean;
@@ -20,7 +20,7 @@ export function defineAbilitiesFor(role: string, permissions: PermissionSet): Ab
     switch (subject) {
       case 'prompt':
         if (action === 'read') return true;
-        if (action === 'create') return true; // Everyone can create? (maybe limit by credits)
+        if (action === 'create') return true;
         return false;
 
       case 'collection':
@@ -31,12 +31,6 @@ export function defineAbilitiesFor(role: string, permissions: PermissionSet): Ab
 
       case 'admin':
         return role === 'admin';
-
-      case 'billing':
-        return true; // Everyone can see their billing?
-
-      case 'affiliate':
-        return true; // Everyone can be an affiliate?
 
       default:
         return false;

@@ -18,12 +18,116 @@
     "getStarted": "Get Started",
     "signUp": "Sign Up Free",
     "logIn": "Log In",
-    "logOut": "Log Out"
+    "logOut": "Log Out",
+    "or": "or",
+    "and": "and"
+  },
+  "nav": {
+    "home": "Home",
+    "explore": "Explore",
+    "leaderboard": "Leaderboard",
+    "pricing": "Pricing",
+    "blog": "Blog",
+    "partner": "Partner",
+    "support": "Support",
+    "changelog": "Changelog",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "admin": "Admin Panel"
+  },
+  "header": {
+    "signIn": "Sign in",
+    "getStarted": "Get started",
+    "toggleTheme": "Toggle theme",
+    "mobile": {
+      "explore": "Explore Library",
+      "upgrade": "Upgrade to Pro",
+      "blog": "Resources & Blog",
+      "contact": "Help & Support",
+      "faq": "Common FAQs",
+      "partner": "Partner Ecosystem",
+      "vault": "My Private Vault",
+      "favorites": "Saved Formulas",
+      "account": "Account Settings",
+      "adminPanel": "Admin Control Tower",
+      "staffPanel": "Staff Panel",
+      "signOut": "Terminate Session",
+      "credits": "Credits Remaining",
+      "unlimitedAccess": "Unlimited Access"
+    }
+  },
+  "footer": {
+    "cols": {
+      "platform": "Platform",
+      "legal": "Legal",
+      "support": "Support",
+      "explore": "Explore Prompts",
+      "pricing": "Pricing",
+      "blog": "Blog",
+      "partner": "Partner Program",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "cookies": "Cookie Policy",
+      "dmca": "DMCA",
+      "contact": "Contact Us",
+      "faq": "Common FAQs",
+      "helpCenter": "Help Center"
+    },
+    "newsletter": {
+      "title": "Get AI prompt tips, weekly.",
+      "desc": "New prompts, tools, and workflow ideas. No spam."
+    },
+    "copyright": "All rights reserved.",
+    "status": {
+      "operational": "All systems operational",
+      "degraded": "Partial outage",
+      "outage": "Service disruption"
+    }
+  },
+  "offline": {
+    "message": "You're offline — some features are unavailable. Changes will sync when you reconnect.",
+    "reconnected": "Back online — your changes have been synced."
+  },
+  "cookie": {
+    "title": "Cookie Preference",
+    "badge": "Privacy First",
+    "description": "We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our",
+    "privacyLink": "Privacy Policy",
+    "acceptAll": "Accept All",
+    "rejectNonEssential": "Reject Non-essential",
+    "managePreferences": "Manage Preferences",
+    "manageCookies": "Manage Cookies",
+    "savePreferences": "Save Preferences",
+    "back": "Back",
+    "essential": "Essential",
+    "essentialDesc": "Required for basic site functionality and security.",
+    "analytics": "Analytics",
+    "analyticsDesc": "Helps us understand how visitors interact with our site.",
+    "marketing": "Marketing",
+    "marketingDesc": "Used to deliver more relevant advertisements."
+  },
+  "promptCard": {
+    "pro": "PRO",
+    "free": "FREE",
+    "locked": "Locked",
+    "unlocked": "Unlocked",
+    "unlock": "Unlock",
+    "unlocking": "Unlocking...",
+    "viewPrompt": "View Prompt",
+    "report": "Report",
+    "saveForLater": "Save for Later",
+    "unsave": "Unsave",
+    "copyPrompt": "Copy Prompt"
   },
   "auth": {
+    "layout": {
+      "agree": "By continuing, you agree to our",
+      "terms": "Terms",
+      "privacy": "Privacy Policy"
+    },
     "login": {
       "title": "Welcome Back",
-      "subtitle": "Sign in to your Promptly account",
+      "subtitle": "Sign in to your professional prompt engineering workspace.",
       "email": "Email Address",
       "password": "Password",
       "submit": "Sign In",
@@ -34,6 +138,9 @@
     "register": {
       "title": "Create Your Account",
       "subtitle": "Join the AI prompt marketplace",
+      "paused": "Registration Paused",
+      "pausedDesc": "New signups are currently restricted by {{name}} administrators.",
+      "backHome": "Back to Home",
       "name": "Full Name",
       "email": "Email Address",
       "password": "Password",
@@ -44,11 +151,40 @@
     },
     "forgot": {
       "title": "Reset Password",
-      "subtitle": "Enter your email to receive a reset link",
+      "subtitle": "Enter your email to receive a secure recovery link.",
       "email": "Email Address",
       "submit": "Send Reset Link",
       "backToLogin": "Back to Login",
       "success": "Reset link sent! Check your email."
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error. Check your connection.",
+    "unauthorized": "Please log in to continue",
+    "forbidden": "You don't have permission to access this",
+    "notFound": "Page not found",
+    "offline": "You're offline — changes will sync when reconnected.",
+    "403": {
+      "title": "Access Denied",
+      "desc": "You don't have permission to view this page. If you think this is a mistake, please contact support.",
+      "back": "Go Back",
+      "signIn": "Sign In"
+    },
+    "500": {
+      "title": "Something Went Wrong",
+      "desc": "Our servers encountered an unexpected error. We've been notified and are working on a fix. Please try again in a few minutes.",
+      "retry": "Try Again",
+      "home": "Go Home"
+    },
+    "maintenance": {
+      "title": "Under Maintenance",
+      "desc": "We're performing scheduled maintenance. We'll be back shortly.",
+      "checkBack": "Check back soon"
+    },
+    "comingSoon": {
+      "title": "Coming Soon",
+      "desc": "This feature is on its way. Stay tuned!"
     }
   },
   "dashboard": {
@@ -82,7 +218,12 @@
     "sort": "Sort By",
     "featured": "Featured",
     "newest": "Newest",
-    "popular": "Most Popular"
+    "popular": "Most Popular",
+    "tabs": {
+      "all": "All",
+      "forYou": "For You",
+      "following": "Following"
+    }
   },
   "pricing": {
     "title": "Simple, Transparent Pricing",
@@ -112,23 +253,5 @@
     "message": "Message",
     "priority": "Priority",
     "submit": "Submit Ticket"
-  },
-  "nav": {
-    "home": "Home",
-    "explore": "Explore",
-    "pricing": "Pricing",
-    "blog": "Blog",
-    "dashboard": "Dashboard",
-    "settings": "Settings",
-    "support": "Support",
-    "admin": "Admin Panel"
-  },
-  "errors": {
-    "generic": "Something went wrong",
-    "network": "Network error. Check your connection.",
-    "unauthorized": "Please log in to continue",
-    "forbidden": "You don't have permission to access this",
-    "notFound": "Page not found",
-    "offline": "You're offline — changes will sync when reconnected."
   }
 }

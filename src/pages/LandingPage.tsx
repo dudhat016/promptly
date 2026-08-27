@@ -89,13 +89,6 @@ const FEATURES = [
     desc: 'Save, label, and search your favourite prompts in your own private library. Organized how you think — accessible everywhere.',
   },
   {
-    icon: Bot,
-    color: 'text-sky-400',
-    bg: 'bg-sky-500/10 border-sky-500/20',
-    title: 'AI Twin Studio',
-    desc: 'Build custom AI personas trained on your tone and style. Get consistent, on-brand output from any AI tool — every single time.',
-  },
-  {
     icon: Layers,
     color: 'text-amber-400',
     bg: 'bg-amber-500/10 border-amber-500/20',
@@ -108,13 +101,6 @@ const FEATURES = [
     bg: 'bg-blue-500/10 border-blue-500/20',
     title: 'Multi-Model Support',
     desc: 'Every prompt specifies which AI model it\'s optimised for. Works seamlessly with ChatGPT, Claude, Gemini, Llama, and more.',
-  },
-  {
-    icon: Award,
-    color: 'text-rose-400',
-    bg: 'bg-rose-500/10 border-rose-500/20',
-    title: 'Affiliate Program',
-    desc: 'Share Promptly and earn commissions on every paying referral. Track clicks, earnings, and withdrawals in your dashboard.',
   },
 ];
 
@@ -201,8 +187,6 @@ export default function LandingPage() {
   useSEO('home');
 
   const displayCategories = config.categories.slice(0, 8);
-  const freePlan = config.plans.find(p => p.monthlyPrice === 0);
-  const proPlan  = config.plans.find(p => p.monthlyPrice > 0);
 
   const [livePrompts,     setLivePrompts]     = useState<Prompt[]>([]);
   const [trendingPrompts, setTrendingPrompts] = useState<any[]>([]);
@@ -340,7 +324,7 @@ export default function LandingPage() {
                 <div className="p-3 md:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                   {(livePrompts.length > 0
                     ? livePrompts
-                    : MOCK_CARDS.map(m => ({ title: m.title, tags: [m.tag], isPaid: m.pro, categoryId: m.tag.toLowerCase() } as Partial<Prompt>))
+                    : MOCK_CARDS.map(m => ({ title: m.title, tags: [m.tag], categoryId: m.tag.toLowerCase() } as Partial<Prompt>))
                   ).map((p, i) => (
                     <Link
                       key={i}
@@ -358,12 +342,6 @@ export default function LandingPage() {
                             style={{ background: 'rgba(139,92,246,0.2)', color: 'rgb(196,181,253)', border: '1px solid rgba(139,92,246,0.25)' }}>
                             {p.tags?.[0] || p.categoryId || 'AI'}
                           </span>
-                          {p.isPaid && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider"
-                              style={{ background: 'rgba(245,158,11,0.2)', color: 'rgb(252,211,77)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                              Pro
-                            </span>
-                          )}
                         </div>
                         <p className="text-sm font-medium text-white/75 truncate">{p.title}</p>
                         {livePrompts.length > 0 && (p as Prompt).copiesCount ? (
@@ -816,13 +794,6 @@ export default function LandingPage() {
             <p className="text-muted-foreground max-w-md mx-auto text-sm md:text-base">
               No credit card required. No hidden fees. Cancel anytime.
             </p>
-            {(config as any).activePromotion === 'trial' && (
-              <div className="mt-6 inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold"
-                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: 'rgb(245,158,11)' }}>
-                <Zap className="w-4 h-4" />
-                Limited time: {(config as any).freeTrialDays || 7}-day free trial — no card required
-              </div>
-            )}
           </div>
           <div className="grid sm:grid-cols-2 gap-4 md:gap-5">
             {/* Free */}
@@ -830,17 +801,17 @@ export default function LandingPage() {
               <div className="mb-5 md:mb-6">
                 <div className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest mb-3">Free Forever</div>
                 <div className="text-4xl md:text-5xl font-bold text-foreground">
-                  {freePlan ? formatPrice(freePlan.monthlyPrice) : formatPrice(0)}
+                  {formatPrice(0)}
                 </div>
                 <div className="text-xs md:text-sm text-muted-foreground/70 mt-1">No credit card needed</div>
               </div>
               <ul className="space-y-2.5 md:space-y-3 mb-6 md:mb-8">
-                {(freePlan?.features ?? [
+                {[
                   'Browse full prompt library',
-                  'Save up to 5 prompts to vault',
-                  'AI Builder — 3 uses per day',
-                  'Access to free categories',
-                ]).map((item, i) => (
+                  'Save prompts to vault',
+                  'AI Builder access',
+                  'Access to all categories',
+                ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-xs md:text-sm text-muted-foreground">
                     <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     {item}
@@ -864,23 +835,22 @@ export default function LandingPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <div className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Pro</div>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                    Most Popular
+                    Full Access
                   </span>
                 </div>
                 <div className="text-4xl md:text-5xl font-bold text-foreground">
-                  {proPlan ? formatPrice(proPlan.monthlyPrice) : formatPrice(9)}
-                  <span className="text-lg md:text-xl text-muted-foreground/70 font-medium">/mo</span>
+                  {formatPrice(0)}
                 </div>
-                <div className="text-xs md:text-sm text-muted-foreground/70 mt-1">Cancel anytime</div>
+                <div className="text-xs md:text-sm text-muted-foreground/70 mt-1">Free for all creators</div>
               </div>
               <ul className="space-y-2.5 md:space-y-3 mb-6 md:mb-8 relative">
-                {(proPlan?.features ?? [
-                  'Everything in Free',
+                {[
+                  'Full library access',
                   'Unlimited vault storage',
-                  'All premium prompt categories',
+                  'All prompt categories',
                   'Unlimited AI Builder usage',
                   'Priority access to new releases',
-                ]).map((item, i) => (
+                ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-xs md:text-sm text-foreground/70">
                     <Check className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
                     {item}

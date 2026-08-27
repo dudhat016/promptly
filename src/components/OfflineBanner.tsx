@@ -1,8 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function OfflineBanner() {
+  const { t } = useTranslation();
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showReconnected, setShowReconnected] = useState(false);
 
@@ -34,7 +36,7 @@ export default function OfflineBanner() {
         >
           <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold">
             <WifiOff className="w-3.5 h-3.5 shrink-0" />
-            <span>You're offline — some features are unavailable. Changes will sync when you reconnect.</span>
+            <span>{t('offline.message')}</span>
           </div>
         </motion.div>
       )}
@@ -48,7 +50,7 @@ export default function OfflineBanner() {
           className="relative z-50 bg-emerald-500 text-white overflow-hidden"
         >
           <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold">
-            <span>Back online — your changes have been synced.</span>
+            <span>{t('offline.reconnected')}</span>
           </div>
         </motion.div>
       )}

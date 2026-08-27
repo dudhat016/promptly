@@ -1,5 +1,5 @@
 import { collection, onSnapshot, getDocs, query, orderBy, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { ArrowUpRight, BarChart3, Flame, LayoutGrid, Star, TrendingUp, Users, DollarSign, Activity, UserMinus } from 'lucide-react';
+import { ArrowUpRight, BarChart3, LayoutGrid, Star, TrendingUp, Users, DollarSign, Activity, UserMinus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -95,28 +95,15 @@ export default function AdminOverview() {
   const [topPrompts, setTopPrompts] = useState<any[]>([]);
   const [growthData, setGrowthData] = useState<{ label: string; signups: number }[]>([]);
 
-  // Featured prompt
-  const [featuredForm, setFeaturedForm] = useState({ promptSlug: '', promptTitle: '', description: '', hours: '24' });
-  const [savingFeatured, setSavingFeatured] = useState(false);
-  const [currentFeatured, setCurrentFeatured] = useState<any>(null);
-
-  useEffect(() => {
-    getDoc(doc(db, 'configs', 'featured_prompt')).then(snap => {
-      if (snap.exists()) setCurrentFeatured(snap.data());
-    }).catch(() => {});
-  }, []);
-
   useEffect(() => {
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const noop = () => {};
 
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-      let pro = 0, newWeek = 0, cancelling = 0;
+      let newWeek = 0;
       const users = snap.docs.map(d => {
         const data = d.data();
-        if (data.subscriptionStatus === 'pro' || data.subscriptionStatus === 'enterprise') pro++;
-        if (data.cancelAtPeriodEnd) cancelling++;
         try {
           const created = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
           if (created > cutoff) newWeek++;
@@ -124,7 +111,7 @@ export default function AdminOverview() {
         return { id: d.id, ...data };
       });
 
-      setStats(prev => ({ ...prev, totalUsers: snap.size, proUsers: pro, newUsersWeek: newWeek, cancellingUsers: cancelling }));
+      setStats(prev => ({ ...prev, totalUsers: snap.size, newUsersWeek: newWeek }));
       setGrowthData(buildLast7Days(users));
       setRecentUsers([...users].sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5));
       setLoading(false);
@@ -313,17 +300,7 @@ export default function AdminOverview() {
           {/* Revenue snapshot */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-foreground">Revenue</h3>
-              <Button
-                as={Link}
-                to={prefix("/admin/revenue")}
-                variant="ghost"
-                size="sm"
-                rightIcon={ArrowUpRight}
-                className="text-primary hover:underline font-bold"
-              >
-                Details
-              </Button>
+              <h3 className="font-bold text-foreground">Revenue Overview</h3>
             </div>
             <div className="space-y-1">
               {[
@@ -427,11 +404,11 @@ export default function AdminOverview() {
                   </div>
                 </div>
                 <Badge
-                  variant={u.subscriptionStatus === 'pro' ? 'soft' : 'outline'}
+                  variant="soft"
                   size="sm"
                   className="shrink-0"
                 >
-                  {u.subscriptionStatus === 'pro' ? 'Pro' : 'Free'}
+                  {u.role ? u.role.toUpperCase() : 'USER'}
                 </Badge>
               </div>
             ))}
@@ -442,95 +419,6 @@ export default function AdminOverview() {
         </Card>
 
       </div>
-
-      {/* ── Featured Prompt Setter ── */}
-      <Card className="!rounded-2xl space-y-4">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center shrink-0">
-            <Flame className="w-4 h-4 text-amber-500" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Set Today's Featured Prompt</h3>
-            <p className="text-xs text-muted-foreground">Pinned on every user's dashboard with a countdown timer.</p>
-          </div>
-        </div>
-        {currentFeatured && (
-          <div className="text-xs bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 text-amber-700 dark:text-amber-300 font-medium">
-            Currently featured: <span className="font-bold">{currentFeatured.promptTitle}</span>
-          </div>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <Input
-              label="Prompt Title"
-              value={featuredForm.promptTitle}
-              onChange={e => setFeaturedForm(p => ({ ...p, promptTitle: e.target.value }))}
-              placeholder="e.g. The Perfect Cold Email"
-              variant="outline"
-            />
-          </div>
-          <div>
-            <Input
-              label="Prompt Slug"
-              value={featuredForm.promptSlug}
-              onChange={e => setFeaturedForm(p => ({ ...p, promptSlug: e.target.value }))}
-              placeholder="e.g. the-perfect-cold-email"
-              variant="outline"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <Input
-              label="Tagline (optional)"
-              value={featuredForm.description}
-              onChange={e => setFeaturedForm(p => ({ ...p, description: e.target.value }))}
-              placeholder="Short description shown on the banner"
-              variant="outline"
-            />
-          </div>
-          <div>
-            <Input
-              label="Duration (hours)"
-              type="number"
-              value={featuredForm.hours}
-              onChange={e => setFeaturedForm(p => ({ ...p, hours: e.target.value }))}
-              min={1}
-              max={168}
-              variant="outline"
-            />
-          </div>
-        </div>
-        <Button
-          size="sm"
-          isLoading={savingFeatured}
-          leftIcon={Flame}
-          onClick={async () => {
-            if (!featuredForm.promptTitle || !featuredForm.promptSlug) {
-              toast.error('Title and slug are required');
-              return;
-            }
-            setSavingFeatured(true);
-            try {
-              const hours = Math.max(1, parseInt(featuredForm.hours) || 24);
-              await setDoc(doc(db, 'configs', 'featured_prompt'), {
-                promptId: featuredForm.promptSlug,
-                promptTitle: featuredForm.promptTitle,
-                promptSlug: featuredForm.promptSlug,
-                description: featuredForm.description,
-                expiresAt: new Date(Date.now() + hours * 3600000).toISOString(),
-                updatedAt: serverTimestamp(),
-              });
-              setCurrentFeatured({ promptTitle: featuredForm.promptTitle });
-              toast.success('Featured prompt updated!');
-            } catch {
-              toast.error('Failed to update featured prompt');
-            } finally {
-              setSavingFeatured(false);
-            }
-          }}
-        >
-          Set as Featured
-        </Button>
-      </Card>
 
     </div>
   );

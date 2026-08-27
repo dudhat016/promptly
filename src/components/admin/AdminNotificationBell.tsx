@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Wallet, MessageSquare, Ticket, Users, Flag, ArrowRight } from 'lucide-react';
+import { Bell, MessageSquare, Ticket, Users, Flag, ArrowRight } from 'lucide-react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Link } from 'react-router-dom';
@@ -36,28 +36,7 @@ export default function AdminNotificationBell() {
   useEffect(() => {
     const updates: Partial<Record<string, NotifGroup>> = {};
 
-    // 1. Pending withdrawals
-    const unsubWithdrawals = onSnapshot(
-      query(collection(db, 'payouts'), where('status', '==', 'pending')),
-      (snap) => {
-        updates['withdrawals'] = {
-          key: 'withdrawals',
-          icon: Wallet,
-          color: 'text-amber-500 bg-amber-500/10',
-          label: 'Pending Withdrawals',
-          count: snap.size,
-          href: prefix('/admin/withdrawals'),
-          items: snap.docs.slice(0, 3).map(d => ({
-            text: d.data().userEmail ?? 'Unknown user',
-            sub: `$${d.data().amount ?? 0} pending`,
-          })),
-        };
-        setGroups(Object.values(updates).filter((g): g is NotifGroup => !!g && g.count > 0));
-      },
-      () => {}
-    );
-
-    // 2. Open support tickets
+    // 1. Open support tickets
     const unsubTickets = onSnapshot(
       query(collection(db, 'tickets'), where('status', '==', 'open'), orderBy('updatedAt', 'desc'), limit(10)),
       (snap) => {
@@ -78,7 +57,7 @@ export default function AdminNotificationBell() {
       () => { /* tickets collection may not exist yet */ }
     );
 
-    // 3. Unread contact messages
+    // 2. Unread contact messages
     const unsubMessages = onSnapshot(
       query(collection(db, 'contact_messages'), where('status', '==', 'unread'), orderBy('createdAt', 'desc'), limit(10)),
       (snap) => {
@@ -99,7 +78,7 @@ export default function AdminNotificationBell() {
       () => {}
     );
 
-    // 4. New users in last 24 h
+    // 3. New users in last 24 h
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const unsubUsers = onSnapshot(
       query(collection(db, 'users'), where('createdAt', '>=', since), orderBy('createdAt', 'desc'), limit(20)),
@@ -113,7 +92,7 @@ export default function AdminNotificationBell() {
           href: prefix('/admin/users'),
           items: snap.docs.slice(0, 3).map(d => ({
             text: d.data().displayName || d.data().email || 'Unknown',
-            sub: d.data().subscriptionStatus === 'pro' ? 'Pro plan' : 'Free plan',
+            sub: d.data().email || '',
           })),
         };
         setGroups(Object.values(updates).filter((g): g is NotifGroup => !!g && g.count > 0));
@@ -121,7 +100,7 @@ export default function AdminNotificationBell() {
       () => {}
     );
 
-    // 5. Pending content reports
+    // 4. Pending content reports
     const unsubReports = onSnapshot(
       query(collection(db, 'prompt_reports'), where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(10)),
       (snap) => {
@@ -142,7 +121,7 @@ export default function AdminNotificationBell() {
       () => {}
     );
 
-    return () => { unsubWithdrawals(); unsubTickets(); unsubMessages(); unsubUsers(); unsubReports(); };
+    return () => { unsubTickets(); unsubMessages(); unsubUsers(); unsubReports(); };
   }, []);
 
   const totalCount = groups.reduce((sum, g) => sum + g.count, 0);

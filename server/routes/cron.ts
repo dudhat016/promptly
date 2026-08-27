@@ -1,10 +1,8 @@
 import { Router } from "express";
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
-import { tick, rebuildSegments } from "../services/automationEngine.js";
-import { NudgeService } from "../services/nudgeService.js";
-import { DunningService } from "../services/dunningService.js";
-import { processExpiredLocks, triggerAutoPayouts } from "../lib/payouts.js";
+import { rebuildSegments, tick } from "../services/automationEngine.js";
+
 import { processBroadcastJobs } from "./transactional.js";
 
 const router = Router();
@@ -65,27 +63,7 @@ router.post("/automation-tick", async (req, res) => {
   }
 });
 
-// POST /api/cron/nudges
-// Schedule: every hour — trial expiry + renewal reminders
-router.post("/nudges", async (req, res) => {
-  if (!verifyCronSecret(req, res)) return;
-  const t0 = Date.now();
 
-  try {
-    const [trial, renewal] = await Promise.all([
-      NudgeService.runTrialExpiryNudges(),
-      NudgeService.runSubscriptionRenewalReminders(),
-    ]);
-    const result = { trial, renewal };
-    console.log(`[Cron] nudges: trial=${trial.sent} renewal=${renewal.sent}`);
-    await writeHealthRecord("nudges", "ok", result, Date.now() - t0);
-    res.json({ ok: true, ...result });
-  } catch (err: any) {
-    console.error("[Cron] nudges error:", err.message);
-    await writeHealthRecord("nudges", "error", { error: err.message }, Date.now() - t0);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // POST /api/cron/segment-rebuild
 // Schedule: every hour — re-evaluates segment filters against live contacts
@@ -108,94 +86,6 @@ router.post("/segment-rebuild", async (req, res) => {
   }
 });
 
-// POST /api/cron/process-locks
-// Schedule: daily at 03:00 UTC — approves affiliate commissions past lock period
-router.post("/process-locks", async (req, res) => {
-  if (!verifyCronSecret(req, res)) return;
-  const t0 = Date.now();
-
-  try {
-    const result = await processExpiredLocks();
-    console.log(`[Cron] process-locks: ${result.processed} commissions approved`);
-    await writeHealthRecord("process-locks", "ok", result, Date.now() - t0);
-    res.json({ ok: true, ...result });
-  } catch (err: any) {
-    console.error("[Cron] process-locks error:", err.message);
-    await writeHealthRecord("process-locks", "error", { error: err.message }, Date.now() - t0);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/cron/expire-trials
-// Schedule: daily at 04:00 UTC — downgrades trial users whose trial period has ended with no payment method
-router.post("/expire-trials", async (req, res) => {
-  if (!verifyCronSecret(req, res)) return;
-  const t0 = Date.now();
-
-  try {
-    const result = await NudgeService.expireTrials();
-    console.log(`[Cron] expire-trials: ${result.expired} expired`);
-    await writeHealthRecord("expire-trials", "ok", result, Date.now() - t0);
-    res.json({ ok: true, ...result });
-  } catch (err: any) {
-    console.error("[Cron] expire-trials error:", err.message);
-    await writeHealthRecord("expire-trials", "error", { error: err.message }, Date.now() - t0);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/cron/auto-payouts
-// Schedule: daily at 05:00 UTC — auto-pays eligible affiliates via PayPal Payouts API
-// Only fires when autoPayoutsEnabled === true in configs/marketing
-router.post("/auto-payouts", async (req, res) => {
-  if (!verifyCronSecret(req, res)) return;
-  const t0 = Date.now();
-
-  try {
-    const result = await triggerAutoPayouts();
-    console.log(`[Cron] auto-payouts: processed=${result.processed} succeeded=${result.succeeded} failed=${result.failed} skipped=${result.skipped}`);
-    await writeHealthRecord("auto-payouts", "ok", result, Date.now() - t0);
-    res.json({ ok: true, ...result });
-  } catch (err: any) {
-    console.error("[Cron] auto-payouts error:", err.message);
-    await writeHealthRecord("auto-payouts", "error", { error: err.message }, Date.now() - t0);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/cron/onboarding-drip
-// Schedule: daily at 08:00 UTC — sends D1 / D3 / D7 emails to new users
-router.post("/onboarding-drip", async (req, res) => {
-  if (!verifyCronSecret(req, res)) return;
-  const t0 = Date.now();
-  try {
-    const result = await NudgeService.runOnboardingDrip();
-    console.log(`[Cron] onboarding-drip: ${result.sent} sent, ${result.skipped} skipped, ${result.errors} errors`);
-    await writeHealthRecord("onboarding-drip", "ok", result, Date.now() - t0);
-    res.json({ ok: true, ...result });
-  } catch (err: any) {
-    console.error("[Cron] onboarding-drip error:", err.message);
-    await writeHealthRecord("onboarding-drip", "error", { error: err.message }, Date.now() - t0);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/cron/weekly-digest
-// Schedule: Mondays at 09:00 UTC — sends top-prompts digest to all active contacts
-router.post("/weekly-digest", async (req, res) => {
-  if (!verifyCronSecret(req, res)) return;
-  const t0 = Date.now();
-  try {
-    const result = await NudgeService.sendWeeklyDigest();
-    console.log(`[Cron] weekly-digest: ${result.sent} sent, ${result.skipped} skipped, ${result.errors} errors`);
-    await writeHealthRecord("weekly-digest", "ok", result, Date.now() - t0);
-    res.json({ ok: true, ...result });
-  } catch (err: any) {
-    console.error("[Cron] weekly-digest error:", err.message);
-    await writeHealthRecord("weekly-digest", "error", { error: err.message }, Date.now() - t0);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // POST /api/cron/process-broadcasts
 // Schedule: every 10 minutes — drains the broadcast_jobs queue in parallel batches
@@ -214,22 +104,7 @@ router.post("/process-broadcasts", async (req, res) => {
   }
 });
 
-// POST /api/cron/process-dunning
-// Schedule: daily at 06:00 UTC — advances dunning email sequence for failing subscribers
-router.post("/process-dunning", async (req, res) => {
-  if (!verifyCronSecret(req, res)) return;
-  const t0 = Date.now();
-  try {
-    const result = await DunningService.processDunningQueue();
-    console.log(`[Cron] process-dunning: ${result.processed} processed, ${result.downgraded} downgraded, ${result.errors} errors`);
-    await writeHealthRecord("process-dunning", "ok", result, Date.now() - t0);
-    res.json({ ok: true, ...result });
-  } catch (err: any) {
-    console.error("[Cron] process-dunning error:", err.message);
-    await writeHealthRecord("process-dunning", "error", { error: err.message }, Date.now() - t0);
-    res.status(500).json({ error: err.message });
-  }
-});
+
 
 // GET /api/cron/health — returns last-run status for all jobs (admin use only)
 router.get("/health", async (req, res) => {

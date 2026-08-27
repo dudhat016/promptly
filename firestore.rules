@@ -19,24 +19,12 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
     function incoming() {
       return request.resource.data;
     }
 
     function existing() {
       return resource.data;
-    }
-
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
-
-    function isPro(userId) {
-      return getUserData(userId).subscriptionStatus == 'pro';
     }
 
     function isAdmin() {
@@ -61,20 +49,18 @@ service cloud.firestore {
 
     // --- Entity Validations ---
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'role', 'subscriptionStatus']) &&
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
              data.keys().size() <= 15 &&
              (data.uid == request.auth.uid || isAdmin()) &&
              data.email is string && data.email.size() <= 256 &&
-             data.role in ['user', 'admin'] &&
-             data.subscriptionStatus in ['free', 'pro', 'enterprise'];
+             data.role in ['user', 'admin', 'staff'];
     }
 
     function isValidPrompt(data) {
-      return data.keys().hasAll(['title', 'description', 'isPaid', 'creatorId']) &&
+      return data.keys().hasAll(['title', 'description', 'creatorId']) &&
              data.keys().size() <= 20 &&
              data.title is string && data.title.size() <= 200 &&
              data.description is string && data.description.size() <= 2000 &&
-             data.isPaid is bool &&
              (data.creatorId == request.auth.uid || isAdmin() || (data.creatorId == 'system' && isAdmin()));
     }
 
@@ -91,11 +77,6 @@ service cloud.firestore {
 
     // --- Collection Routes ---
 
-    // Badge definitions — public read so clients can fetch without auth; admin write
-    match /badges/{badgeId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
 
     // Categories are public
     match /categories/{categoryId} {
@@ -106,16 +87,17 @@ service cloud.firestore {
     // User profiles
     match /users/{userId} {
       allow get: if true;
-      allow list: if true; // Allow searching for creators by referralCode
+      allow list: if true;
       allow create: if isOwner(userId) && isValidUser(incoming());
-      // Admins can update roles/subscriptions
+      // Admins can update roles
       allow update: if isOwner(userId) &&
                    !request.resource.data.diff(resource.data).affectedKeys()
                     .hasAny(['role', 'uid', 'email', 'createdAt']) ||
                    (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys()
-                    .hasOnly(['lastActiveAt', 'lastCreditsRewardAt', 'credits', 'totalUsedCredits', 'referralCode', 'affinityProfile', 'unlockedPrompts'])) ||
+                    .hasOnly(['lastActiveAt', 'affinityProfile', 'unlockedPrompts'])) ||
                    (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followerCount'])) ||
                    (isAdmin());
+      allow delete: if isAdmin();
     }
 
     // Prompts
@@ -157,9 +139,7 @@ service cloud.firestore {
 
       // Secret Content subcollection (The Real Formula)
       match /private/content {
-        allow read: if isAdmin() || 
-                    (isSignedIn() && isPro(request.auth.uid)) || 
-                    (isSignedIn() && promptId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.unlockedPrompts);
+        allow read: if isSignedIn();
         allow write: if isAdmin() || request.auth.token.email == 'learnwithdudhat016@gmail.com';
       }
     }
@@ -173,20 +153,6 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    // Referrals
-    match /referrals/{referralId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.referrerId == request.auth.uid);
-      allow create: if isSignedIn();
-    }
-
-    // Affiliate commission ledger — users read their own rows; admin reads all
-    match /referral_commissions/{id} {
-      allow get: if isAdmin() || (isSignedIn() && resource.data.referrerId == request.auth.uid);
-      allow list: if isAdmin() || (isSignedIn() && request.auth != null);
-      allow create: if false; // written server-side only
-      allow update: if isAdmin(); // lock-period processing
-      allow delete: if false;
-    }
 
     // Email Notifications & Templates
     match /notifications/{notificationId} {
@@ -203,11 +169,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Pricing & Config
-    match /plans/{planId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
     match /config/access_levels {
       allow read: if true;
       allow write: if isAdmin();
@@ -217,12 +178,6 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Payouts
-    match /payouts/{payoutId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
 
     // Developer API Keys — users manage their own; admin can view all
     match /api_keys/{keyId} {
@@ -326,12 +281,6 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    // Credits History
-    match /credits_history/{id} {
-      allow read: if true; // Public for social proof popups
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
 
     // Asset Vault (Images stored on Hostinger)
     match /assets/{assetId} {
@@ -347,12 +296,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Orders & Transactions
-    match /orders/{orderId} {
-      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow list: if isAdmin();
-      allow write: if isAdmin();
-    }
 
     // Site Content (Legal Pages, FAQs)
     match /site_content/{contentId} {
@@ -360,27 +303,6 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Invoices
-    match /invoices/{invoiceId} {
-      allow read, write: if isAdmin();
-    }
-
-    // AI Creations (image generations stored per user)
-    match /creations/{creationId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-    }
-
-    // Coupons — anyone can read for validation; only admin writes
-    match /coupons/{couponId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    match /coupon_redemptions/{id} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isAdmin();
-    }
 
     // Prompt Reports — any user (including anonymous) can create; admin/staff manage
     match /prompt_reports/{reportId} {
@@ -419,11 +341,5 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
-    // Cancellation feedback — users submit their own; admin reads/manages all
-    match /cancellation_feedback/{id} {
-      allow read: if isAdmin();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
   }
 }

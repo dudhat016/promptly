@@ -1,7 +1,7 @@
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { ChevronLeft, ChevronRight, Sparkles, Users, Zap } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ExploreSidebar from '../components/ExploreSidebar';
 import PromptCard from '../components/PromptCard';
 import PromptCardSkeleton from '../components/PromptCardSkeleton';
@@ -57,8 +57,6 @@ export default function ExplorePage() {
     });
     setCurrentPage(1);
   };
-
-  // DERIVE FILTERS DIRECTLY FROM URL (Single Source of Truth)
 
   // Parse Categories
   const catIndex = pathParts.indexOf('categories');
@@ -128,16 +126,7 @@ export default function ExplorePage() {
     fetchPrompts();
   }, []);
 
-  // Security scrubbing as derived state — re-runs when access level changes without re-fetching
-  const prompts = useMemo(() => rawPrompts.map(p => {
-    const isUnlocked = (profile?.unlockedPrompts || []).includes(p.id!);
-    const hasAccess = isPro || isAdmin || isUnlocked || !p.isPaid;
-    if (!hasAccess) {
-      const { content, ...safePrompt } = p;
-      return safePrompt as Prompt;
-    }
-    return p;
-  }), [rawPrompts, isPro, isAdmin, profile?.unlockedPrompts]);
+  const prompts = rawPrompts;
 
   // Sync search term to URL so searches are shareable
   useEffect(() => {
@@ -173,14 +162,6 @@ export default function ExplorePage() {
     if (activeTags.size > 0) {
       const hasTag = p.tags.some(t => activeTags.has(t.toLowerCase()));
       if (!hasTag) return false;
-    }
-
-    // Pricing Filter
-    if (activePricing.size > 0) {
-      const isFree = !p.isPaid;
-      const isPaid = p.isPaid;
-      if (activePricing.has('free') && !isFree && !activePricing.has('paid')) return false;
-      if (activePricing.has('paid') && !isPaid && !activePricing.has('free')) return false;
     }
 
     return true;

@@ -24,19 +24,7 @@ export interface ResetPasswordRequest {
   email: string;
 }
 
-// ─── Payments ───────────────────────────────────────────────
-export interface CreateCheckoutRequest {
-  planId: string;
-  email: string;
-  name: string;
-  affiliateCode?: string;
-  currency?: string;
-}
 
-export interface CreateCheckoutResponse {
-  sessionId: string;
-  url: string;
-}
 
 // ─── Support ────────────────────────────────────────────────
 export interface CreateTicketRequest {

@@ -177,7 +177,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
       params: type === 'wait'             ? { duration: 1, unit: 'days' } :
                type === 'recommend_prompt' ? { category: 'all' } :
                type === 'ab_test'          ? { variants: ['A', 'B'], weight: 50 } :
-               type === 'condition'        ? { field: 'subscriptionStatus', operator: 'equals', value: '' } :
+               type === 'condition'        ? { field: 'role', operator: 'equals', value: 'user' } :
                type === 'send_email'       ? { templateId: '', customSubject: '', customContent: '' } :
                type === 'notify_user'      ? { message: 'New activity detected' } : {}
     };
@@ -348,13 +348,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                            activeFlow.trigger?.type === 'contact_created'              ? 'When a contact is created' :
                            activeFlow.trigger?.type === 'tag_added'                    ? `Tag applied${activeFlow.trigger?.value ? `: "${tags.find(t => t.id === activeFlow.trigger?.value)?.name || activeFlow.trigger.value}"` : ''}` :
                            activeFlow.trigger?.type === 'tag_remove'                   ? `Tag removed${activeFlow.trigger?.value ? `: "${tags.find(t => t.id === activeFlow.trigger?.value)?.name || activeFlow.trigger.value}"` : ''}` :
-                           activeFlow.trigger?.type === 'subscription_changed'         ? 'Subscription changes' :
-                           activeFlow.trigger?.type === 'subscription_payment_received'? 'Payment received' :
-                           activeFlow.trigger?.type === 'subscription_renewed'         ? 'Subscription renews' :
-                           activeFlow.trigger?.type === 'subscription_cancelled'       ? 'Subscription canceled' :
                            activeFlow.trigger?.type === 'prompt_favorite'              ? 'Prompt favorited' :
-                           activeFlow.trigger?.type === 'limit_reached'                ? 'Usage limit reached' :
-                           activeFlow.trigger?.type === 'affiliate_commison'           ? 'Affiliate commission earned' :
                            (activeFlow.trigger?.type as string)?.replace(/_/g, ' ')}
                         </p>
                       </div>
@@ -650,13 +644,7 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                             { label: 'List Applied', value: 'list_applied', description: 'Triggered when a user is added to a list' },
                             { label: 'List Removed', value: 'list_removed', description: 'Triggered when a user is removed from a list' },
                             { label: 'Form Submitted', value: 'form_submited', description: 'Triggered when a specific form is submitted' },
-                            { label: 'Subscription Changed', value: 'subscription_changed', description: 'Triggered on plan upgrades or downgrades' },
-                            { label: 'Payment Received', value: 'subscription_payment_received', description: 'Triggered when a payment is successful' },
-                            { label: 'Subscription Renewed', value: 'subscription_renewed', description: 'Triggered on auto-renewal billing' },
-                            { label: 'Subscription Canceled', value: 'subscription_cancelled', description: 'Triggered when a plan is canceled' },
-                            { label: 'Prompt Favorite', value: 'prompt_favorite', description: 'Triggered when a user favorites a prompt' },
-                            { label: 'Limit Reached', value: 'limit_reached', description: 'Triggered when usage quotas are met' },
-                            { label: 'Affiliate Commission', value: 'affiliate_commison', description: 'Triggered when a commission is earned' }
+                            { label: 'Prompt Favorite', value: 'prompt_favorite', description: 'Triggered when a user favorites a prompt' }
                           ]}
                         />
                       </Card>
@@ -883,12 +871,10 @@ export default function AutomationBuilder({ flow, tags, templates, onSave, onCan
                       <Card variant="flat" padding="md" className="rounded-lg">
                         <label className="block text-xs font-bold uppercase text-muted-foreground mb-2 tracking-widest">Field to Check</label>
                         <Select
-                          value={selectedStep?.params.field || 'subscriptionStatus'}
+                          value={selectedStep?.params.field || 'tags'}
                           onChange={val => updateStep(selectedStepId as string, { ...selectedStep?.params, field: val })}
                           options={[
-                            { label: 'Subscription Status', value: 'subscriptionStatus' },
                             { label: 'Tags', value: 'tags' },
-                            { label: 'Credits', value: 'credits' },
                             { label: 'Button Click', value: 'button_click' },
                             { label: 'Email Response', value: 'email_response' }
                           ]}

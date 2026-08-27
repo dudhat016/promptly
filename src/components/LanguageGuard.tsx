@@ -26,20 +26,25 @@ export default function LanguageGuard({ children }: LanguageGuardProps) {
     const isSupported = SUPPORTED_LANGUAGES.some(l => l.code === lng);
 
     if (!lng || !isSupported) {
+      // Safety: if the first path segment looks like a technical path (e.g. "api"),
+      // do not mangle it — the 404 page will handle it correctly.
+      const isLangLike = !lng || /^[a-z]{2,5}(-[a-zA-Z]{2,4})?$/i.test(lng);
+      if (!isLangLike) return;
+
       // No valid language in URL — redirect to current i18n language or default config language
       const currentLng = SUPPORTED_LANGUAGES.some(l => l.code === i18n.language)
         ? i18n.language
         : (config?.defaultLanguage || 'en');
-      
+
       // Strip the existing invalid language prefix if it exists
       const pathParts = location.pathname.split('/').filter(Boolean);
       let remainingPath = location.pathname;
-      
+
       if (pathParts.length > 0 && (pathParts[0] === lng || !SUPPORTED_LANGUAGES.some(l => l.code === pathParts[0]))) {
         // If the first segment is the current (invalid) lng OR not any supported lng, strip it
         remainingPath = '/' + pathParts.slice(1).join('/');
       }
-      
+
       const targetPath = `${remainingPath}${location.search}`.replace(/\/+$/, '') || '/';
       navigate(`/${currentLng}${targetPath === '/' ? '' : targetPath}`, { replace: true });
       return;

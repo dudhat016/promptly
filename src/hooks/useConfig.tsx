@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { apiService } from '../services/ApiService';
-import { AIModel, Category, PricingPlan } from '../types';
+import { AIModel, Category } from '../types';
 
 /**
  * GlobalConfig — The single source of truth for all static/reference data in the app.
@@ -71,7 +71,6 @@ interface GlobalConfig {
 
   // --- Promotion settings ---
   activePromotion?: string;
-  freeTrialDays?: number;
   yearlyIncentiveType?: string;
   yearlyIncentiveValue?: number;
 
@@ -108,7 +107,6 @@ interface GlobalConfig {
   // --- Reference data (fetched in parallel on startup) ---
   models: AIModel[];
   categories: Category[];
-  plans: PricingPlan[];
 }
 
 // Shared global state for date formatting overrides
@@ -199,8 +197,7 @@ const defaultConfig: GlobalConfig = {
     freeCreditsDaily: 5
   },
   models: [],
-  categories: [],
-  plans: []
+  categories: []
 };
 
 const ConfigContext = createContext<ConfigContextType>({
@@ -217,23 +214,17 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
 
   const fetchGlobalData = async () => {
     try {
-      const [siteConfig, models, categories, plansRaw] = await Promise.all([
+      const [siteConfig, models, categories] = await Promise.all([
         apiService.getDocument<any>('configs', 'global'),
         apiService.getCollection<AIModel>('models'),
-        apiService.getCollection<Category>('categories'),
-        apiService.getCollection<PricingPlan>('plans')
+        apiService.getCollection<Category>('categories')
       ]);
-
-      const plans = Array.isArray(plansRaw) 
-        ? [...plansRaw].sort((a, b) => a.monthlyPrice - b.monthlyPrice)
-        : [];
 
       const mergedConfig = { 
         ...defaultConfig, 
         ...(siteConfig || {}), 
         models: models || [], 
-        categories: categories || [], 
-        plans 
+        categories: categories || []
       };
 
       setConfig(mergedConfig);

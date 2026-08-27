@@ -22,7 +22,6 @@ interface MobileActionsSheetProps {
 const QUICK_LINKS = [
   { icon: Home,         label: 'Dashboard',   path: '/dashboard',              color: 'text-primary   bg-primary/10'      },
   { icon: Compass,      label: 'Explore',     path: '/explore',                color: 'text-blue-500  bg-blue-500/10'     },
-  { icon: Sparkles,     label: 'AI Studio',   path: '/dashboard/twin-studio',  color: 'text-violet-500 bg-violet-500/10' },
   { icon: Heart,        label: 'Favorites',   path: '/dashboard/favorites',    color: 'text-rose-500  bg-rose-500/10'    },
   { icon: BookMarked,   label: 'Collections', path: '/dashboard/collections',  color: 'text-amber-500 bg-amber-500/10'   },
   { icon: FilePlus,     label: 'New Prompt',  path: '/dashboard/library',      color: 'text-emerald-500 bg-emerald-500/10'},
@@ -73,7 +72,7 @@ export function MobileActionsSheet({
 
             <div className="px-4 pb-safe overflow-y-auto max-h-[75vh]">
 
-              {/* Credit + plan strip */}
+              {/* User profile strip */}
               <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-muted/40 border border-border">
                 <div className="flex items-center gap-2 flex-1">
                   {profile?.photoURL ? (
@@ -85,14 +84,7 @@ export function MobileActionsSheet({
                   )}
                   <div>
                     <p className="text-xs font-bold text-foreground">{profile?.displayName || 'User'}</p>
-                    <p className={cn('text-[10px] font-bold uppercase', isPro ? 'text-amber-500' : 'text-muted-foreground')}>
-                      {isPro ? 'Pro Plan' : 'Free Plan'}
-                    </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/8 text-primary rounded-lg border border-primary/15">
-                  <Coins className="w-3.5 h-3.5" />
-                  <span className="text-xs font-bold">{isPro ? '∞' : credits}</span>
                 </div>
               </div>
 

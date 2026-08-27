@@ -11,7 +11,6 @@ import { cn } from '../../lib/utils';
 const APPS = [
   { icon: Home,          label: 'Dashboard',    path: '/dashboard' },
   { icon: Compass,       label: 'Explore',      path: '/explore' },
-  { icon: Wand2,         label: 'AI Studio',    path: '/dashboard/ai-twin' },
   { icon: Star,          label: 'Favorites',    path: '/dashboard/favorites' },
   { icon: Folder,        label: 'Collections',  path: '/dashboard/collections' },
   { icon: BarChart2,     label: 'Analytics',    path: '/dashboard' },

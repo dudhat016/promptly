@@ -1,12 +1,14 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import AuthLayout from '../../components/auth/AuthLayout';
 import UnifiedAuth from '../../components/auth/UnifiedAuth';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
 import { usePath } from '../../hooks/usePath';
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { prefix } = usePath();
 
@@ -17,9 +19,9 @@ export default function LoginPage() {
   }, [user, loading, navigate]);
 
   return (
-    <AuthLayout 
-      title="Welcome Back" 
-      subtitle="Sign in to your professional prompt engineering workspace."
+    <AuthLayout
+      title={t('auth.login.title')}
+      subtitle={t('auth.login.subtitle')}
     >
       <UnifiedAuth initialMode="login" />
     </AuthLayout>

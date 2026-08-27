@@ -9,23 +9,20 @@
         "email": { "type": "string" },
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
-        "role": { "type": "string", "enum": ["user", "admin"] },
-        "subscriptionStatus": { "type": "string", "enum": ["free", "pro"] },
-        "stripeCustomerId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin", "staff"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "email", "role", "subscriptionStatus"]
+      "required": ["uid", "email", "role"]
     },
     "Prompt": {
       "title": "AI Prompt",
-      "description": "An AI prompt shared or sold in the marketplace.",
+      "description": "An AI prompt shared in the marketplace.",
       "type": "object",
       "properties": {
         "title": { "type": "string" },
         "description": { "type": "string" },
         "content": { "type": "string" },
-        "isPaid": { "type": "boolean" },
         "categoryId": { "type": "string" },
         "creatorId": { "type": "string" },
         "model": { "type": "string", "enum": ["GPT-4", "Claude-3", "Gemini Pro", "Llama-3"] },
@@ -34,7 +31,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["title", "description", "content", "isPaid", "creatorId"]
+      "required": ["title", "description", "content", "creatorId"]
     },
     "Category": {
       "title": "Prompt Category",

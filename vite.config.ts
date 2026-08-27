@@ -16,16 +16,16 @@ export default defineConfig(() => {
         workbox: {
           cleanupOutdatedCaches: true,
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          // Prevent the service worker from serving the SPA shell for API paths.
+          // Without this, navigation requests to /api/... are intercepted and served
+          // as index.html, which the React Router then mis-routes.
+          navigateFallback: 'index.html',
+          navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/.*\.(?:png|jpg|jpeg|svg|gif|webp)$/,
               handler: 'StaleWhileRevalidate',
               options: { cacheName: 'images-cache', expiration: { maxEntries: 100 } },
-            },
-            {
-              urlPattern: /\/api\/.*/,
-              handler: 'NetworkFirst',
-              options: { cacheName: 'api-cache', expiration: { maxEntries: 50, maxAgeSeconds: 300 } },
             },
           ],
         },

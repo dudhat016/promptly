@@ -18,29 +18,145 @@
     "getStarted": "Commencer",
     "signUp": "Inscription Gratuite",
     "logIn": "Connexion",
-    "logOut": "Déconnexion"
+    "logOut": "Déconnexion",
+    "or": "ou",
+    "and": "et"
+  },
+  "nav": {
+    "home": "Accueil",
+    "explore": "Explorer",
+    "leaderboard": "Classement",
+    "pricing": "Tarifs",
+    "blog": "Blog",
+    "partner": "Partenaire",
+    "support": "Support",
+    "changelog": "Journal",
+    "dashboard": "Tableau de Bord",
+    "settings": "Paramètres",
+    "admin": "Panneau Admin"
+  },
+  "header": {
+    "signIn": "Se connecter",
+    "getStarted": "Commencer",
+    "toggleTheme": "Changer de thème",
+    "mobile": {
+      "explore": "Explorer la Bibliothèque",
+      "upgrade": "Passer à Pro",
+      "blog": "Ressources & Blog",
+      "contact": "Aide & Support",
+      "faq": "FAQ",
+      "partner": "Écosystème Partenaire",
+      "vault": "Mon Coffre-fort",
+      "favorites": "Mes Favoris",
+      "account": "Paramètres du Compte",
+      "adminPanel": "Panneau Admin",
+      "staffPanel": "Panneau Staff",
+      "signOut": "Déconnexion",
+      "credits": "Crédits Restants",
+      "unlimitedAccess": "Accès Illimité"
+    }
+  },
+  "footer": {
+    "cols": {
+      "platform": "Plateforme",
+      "legal": "Légal",
+      "support": "Support",
+      "explore": "Explorer les Prompts",
+      "pricing": "Tarifs",
+      "blog": "Blog",
+      "partner": "Programme Partenaire",
+      "terms": "Conditions d'Utilisation",
+      "privacy": "Politique de Confidentialité",
+      "cookies": "Politique Cookies",
+      "dmca": "DMCA",
+      "contact": "Nous Contacter",
+      "faq": "FAQ",
+      "helpCenter": "Centre d'Aide"
+    },
+    "newsletter": {
+      "title": "Recevez des conseils IA chaque semaine.",
+      "desc": "Nouveaux prompts, outils et idées de flux de travail. Sans spam."
+    },
+    "copyright": "Tous droits réservés.",
+    "status": {
+      "operational": "Tous les systèmes opérationnels",
+      "degraded": "Panne partielle",
+      "outage": "Interruption de service"
+    }
+  },
+  "offline": {
+    "message": "Vous êtes hors ligne — certaines fonctionnalités sont indisponibles. Les modifications seront synchronisées à la reconnexion.",
+    "reconnected": "De retour en ligne — vos modifications ont été synchronisées."
+  },
+  "cookie": {
+    "title": "Préférences Cookies",
+    "badge": "Vie Privée d'Abord",
+    "description": "Nous utilisons des cookies pour améliorer votre expérience, diffuser des publicités personnalisées et analyser notre trafic. En cliquant sur « Tout Accepter », vous consentez à notre utilisation des cookies. Lisez notre",
+    "privacyLink": "Politique de Confidentialité",
+    "acceptAll": "Tout Accepter",
+    "rejectNonEssential": "Refuser les Non-Essentiels",
+    "managePreferences": "Gérer les Préférences",
+    "manageCookies": "Gérer les Cookies",
+    "savePreferences": "Enregistrer les Préférences",
+    "back": "Retour",
+    "essential": "Essentiels",
+    "essentialDesc": "Requis pour le fonctionnement de base du site.",
+    "analytics": "Analytique",
+    "analyticsDesc": "Nous aide à comprendre comment les visiteurs utilisent notre site.",
+    "marketing": "Marketing",
+    "marketingDesc": "Utilisé pour diffuser des publicités plus pertinentes."
+  },
+  "promptCard": {
+    "pro": "PRO",
+    "free": "GRATUIT",
+    "locked": "Verrouillé",
+    "unlocked": "Déverrouillé",
+    "unlock": "Débloquer",
+    "unlocking": "Déverrouillage...",
+    "viewPrompt": "Voir le Prompt",
+    "report": "Signaler",
+    "saveForLater": "Sauvegarder",
+    "unsave": "Retirer",
+    "copyPrompt": "Copier le Prompt"
   },
   "auth": {
+    "layout": {
+      "agree": "En continuant, vous acceptez nos",
+      "terms": "Conditions",
+      "privacy": "Politique de Confidentialité"
+    },
     "login": {
       "title": "Bon Retour",
-      "subtitle": "Connectez-vous à votre compte Promptly",
+      "subtitle": "Connectez-vous à votre espace de prompt engineering.",
       "email": "Adresse E-mail",
       "password": "Mot de Passe",
       "submit": "Se Connecter",
       "forgotPassword": "Mot de passe oublié ?",
       "noAccount": "Pas encore de compte ?",
       "register": "Créer un Compte"
+    },
+    "register": {
+      "title": "Créez Votre Compte",
+      "subtitle": "Rejoignez la marketplace de prompts IA",
+      "paused": "Inscriptions Suspendues",
+      "pausedDesc": "Les nouvelles inscriptions sont actuellement restreintes par les administrateurs de {{name}}.",
+      "backHome": "Retour à l'Accueil",
+      "name": "Nom Complet",
+      "email": "Adresse E-mail",
+      "password": "Mot de Passe",
+      "confirmPassword": "Confirmer le Mot de Passe",
+      "submit": "Créer un Compte",
+      "hasAccount": "Déjà un compte ?",
+      "login": "Se Connecter"
+    },
+    "forgot": {
+      "title": "Réinitialiser le Mot de Passe",
+      "subtitle": "Entrez votre e-mail pour recevoir un lien de récupération.",
+      "email": "Adresse E-mail",
+      "submit": "Envoyer le Lien",
+      "backToLogin": "Retour à la Connexion",
+      "success": "Lien envoyé ! Vérifiez votre e-mail."
     }
-  },
-  "nav": {
-    "home": "Accueil",
-    "explore": "Explorer",
-    "pricing": "Tarifs",
-    "blog": "Blog",
-    "dashboard": "Tableau de Bord",
-    "settings": "Paramètres",
-    "support": "Support",
-    "admin": "Panneau Admin"
   },
   "errors": {
     "generic": "Une erreur s'est produite",
@@ -48,6 +164,94 @@
     "unauthorized": "Connectez-vous pour continuer",
     "forbidden": "Vous n'avez pas la permission d'accéder à ceci",
     "notFound": "Page non trouvée",
-    "offline": "Vous êtes hors ligne — les modifications seront synchronisées à la reconnexion."
+    "offline": "Vous êtes hors ligne — les modifications seront synchronisées à la reconnexion.",
+    "403": {
+      "title": "Accès Refusé",
+      "desc": "Vous n'avez pas la permission de voir cette page. Si vous pensez qu'il s'agit d'une erreur, contactez le support.",
+      "back": "Retour",
+      "signIn": "Se Connecter"
+    },
+    "500": {
+      "title": "Une Erreur s'Est Produite",
+      "desc": "Nos serveurs ont rencontré une erreur inattendue. Nous avons été notifiés et travaillons sur un correctif. Réessayez dans quelques minutes.",
+      "retry": "Réessayer",
+      "home": "Accueil"
+    },
+    "maintenance": {
+      "title": "En Maintenance",
+      "desc": "Nous effectuons une maintenance planifiée. Nous serons de retour sous peu.",
+      "checkBack": "Revenez bientôt"
+    },
+    "comingSoon": {
+      "title": "Bientôt Disponible",
+      "desc": "Cette fonctionnalité arrive. Restez à l'écoute !"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de Bord",
+    "welcome": "Bon retour",
+    "vault": {
+      "title": "Mon Coffre-fort",
+      "empty": "Votre coffre-fort est vide",
+      "emptyDesc": "Les prompts achetés apparaîtront ici."
+    },
+    "favorites": {
+      "title": "Favoris",
+      "empty": "Pas encore de favoris",
+      "emptyDesc": "Cliquez sur le cœur pour sauvegarder des prompts."
+    },
+    "builder": {
+      "title": "Créateur de Prompts",
+      "generate": "Générer un Prompt"
+    },
+    "credits": {
+      "title": "Historique des Crédits",
+      "balance": "Solde Actuel"
+    }
+  },
+  "explore": {
+    "title": "Explorer les Prompts",
+    "searchPlaceholder": "Rechercher des prompts...",
+    "filters": "Filtres",
+    "category": "Catégorie",
+    "model": "Modèle IA",
+    "sort": "Trier Par",
+    "featured": "En Vedette",
+    "newest": "Plus Récents",
+    "popular": "Plus Populaires",
+    "tabs": {
+      "all": "Tous",
+      "forYou": "Pour Vous",
+      "following": "Abonnements"
+    }
+  },
+  "pricing": {
+    "title": "Tarification Simple et Transparente",
+    "subtitle": "Choisissez le plan qui vous convient",
+    "monthly": "Mensuel",
+    "annual": "Annuel",
+    "free": "Gratuit",
+    "pro": "Pro",
+    "enterprise": "Entreprise",
+    "currentPlan": "Plan Actuel",
+    "upgrade": "Mettre à Niveau",
+    "features": "Fonctionnalités"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "account": "Compte",
+    "billing": "Facturation",
+    "security": "Sécurité",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "theme": "Thème"
+  },
+  "support": {
+    "title": "Support",
+    "newTicket": "Nouveau Ticket",
+    "subject": "Sujet",
+    "message": "Message",
+    "priority": "Priorité",
+    "submit": "Soumettre le Ticket"
   }
 }

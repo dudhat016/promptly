@@ -48,7 +48,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useConfig } from '../../hooks/useConfig';
 import { logAuditEvent } from '../../lib/auditLog';
 import { auth, db } from '../../lib/firebase';
-import { ActivityItem, PricingPlan, UserProfile } from '../../types';
+import { ActivityItem, UserProfile } from '../../types';
 import { useStaffRoles } from '../../hooks/useStaffRoles';
 import Select from '../../components/primitives/Select';
 
@@ -60,21 +60,13 @@ export default function AdminUserDetails() {
   const navigate = useNavigate();
   const { prefix } = usePath();
 
-  const plans = config.plans;
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'security' | 'orders' | 'affiliate'>('overview');
-  const [orders, setOrders] = useState<any[]>([]);
-  const [commissions, setCommissions] = useState<any[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [affiliateLoading, setAffiliateLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'security'>('overview');
 
-  // Credit adjustment state
-  const [adjustAmount, setAdjustAmount] = useState(0);
-  const [adjustReason, setAdjustReason] = useState('');
-  const [adjusting, setAdjusting] = useState(false);
+
 
   // Staff role assignment
   const { staffRoles } = useStaffRoles();
@@ -109,61 +101,12 @@ export default function AdminUserDetails() {
     loadData();
   }, [id, navigate, prefix]);
 
-  // Load orders when that tab is opened
-  useEffect(() => {
-    if (activeTab !== 'orders' || !id || orders.length > 0) return;
-    setOrdersLoading(true);
-    getDocs(query(collection(db, 'orders'), where('userId', '==', id), orderBy('createdAt', 'desc'), limit(50)))
-      .then(snap => setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(() => toast.error('Failed to load orders'))
-      .finally(() => setOrdersLoading(false));
-  }, [activeTab, id]);
 
-  // Load affiliate commissions when that tab is opened
-  useEffect(() => {
-    if (activeTab !== 'affiliate' || !id || commissions.length > 0) return;
-    setAffiliateLoading(true);
-    getDocs(query(collection(db, 'referral_commissions'), where('referrerId', '==', id), orderBy('createdAt', 'desc'), limit(50)))
-      .then(snap => setCommissions(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(() => toast.error('Failed to load commissions'))
-      .finally(() => setAffiliateLoading(false));
-  }, [activeTab, id]);
+
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  const [changingPlan, setChangingPlan] = useState(false);
 
-  const handleChangePlan = async (planId: string) => {
-    if (!user || !id || planId === user.activePlanId) return;
-    const plan = plans.find(p => p.id === planId);
-    if (!plan) return;
-
-    // Derive subscriptionStatus from plan properties
-    const nameLower = plan.name.toLowerCase();
-    let newStatus: 'free' | 'pro' | 'enterprise' = 'pro';
-    if (plan.monthlyPrice === 0) newStatus = 'free';
-    else if (nameLower.includes('enterprise') || nameLower.includes('agency') || nameLower.includes('team')) newStatus = 'enterprise';
-
-    const credits = plan.monthlyCredits ?? (newStatus === 'enterprise' ? 2500 : newStatus === 'pro' ? 500 : 50);
-
-    setChangingPlan(true);
-    try {
-      await updateDoc(doc(db, 'users', id), {
-        subscriptionStatus: newStatus,
-        activePlanId: planId,
-        credits,
-        monthlyLimit: credits,
-        updatedAt: serverTimestamp(),
-      });
-      setUser(prev => prev ? { ...prev, subscriptionStatus: newStatus, activePlanId: planId, credits } : null);
-      logAuditEvent({ action: 'user.plan_changed', entityType: 'user', entityId: id, actorEmail: adminUser?.email ?? undefined, details: { planId, newStatus } });
-      toast.success(`Plan changed to ${plan.name}`);
-    } catch {
-      toast.error('Failed to update plan');
-    } finally {
-      setChangingPlan(false);
-    }
-  };
 
   const handleToggleRole = async () => {
     if (!user || !id) return;
@@ -199,37 +142,7 @@ export default function AdminUserDetails() {
     }
   };
 
-  const handleCreditAdjustment = async () => {
-    if (!adjustAmount || !user || !id) return;
-    setAdjusting(true);
-    try {
-      const newCredits = Math.max(0, (user.credits || 0) + adjustAmount);
-      await updateDoc(doc(db, 'users', id), { credits: newCredits, updatedAt: serverTimestamp() });
-      await addDoc(collection(db, 'credits_history'), {
-        userId: id,
-        amount: adjustAmount,
-        type: adjustAmount > 0 ? 'admin_grant' : 'admin_deduct',
-        reason: adjustReason || 'Admin adjustment',
-        balanceAfter: newCredits,
-        createdAt: serverTimestamp(),
-      });
-      logAuditEvent({
-        action: 'user.credits_adjusted',
-        entityType: 'user',
-        entityId: id,
-        actorEmail: adminUser?.email ?? undefined,
-        details: { delta: adjustAmount, reason: adjustReason, newBalance: newCredits },
-      });
-      setUser(prev => prev ? { ...prev, credits: newCredits } : null);
-      setAdjustAmount(0);
-      setAdjustReason('');
-      toast.success(`Credits ${adjustAmount > 0 ? 'added' : 'deducted'} — new balance: ${newCredits}`);
-    } catch {
-      toast.error('Failed to adjust credits');
-    } finally {
-      setAdjusting(false);
-    }
-  };
+
 
   const handleSendResetEmail = async () => {
     if (!user?.email) return;
@@ -326,10 +239,9 @@ export default function AdminUserDetails() {
                 <h1 className="text-2xl font-black text-foreground tracking-tight">{user.displayName || 'Unknown User'}</h1>
                 <span className={`px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
                   isSuspended ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' :
-                  user.subscriptionStatus === 'pro' ? 'bg-primary/10 text-primary border-primary/20' :
-                  'bg-muted text-muted-foreground border-border'
+                  'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                 }`}>
-                  {isSuspended ? 'Suspended' : user.subscriptionStatus === 'pro' ? 'Pro' : 'Free'}
+                  {isSuspended ? 'Suspended' : 'Active'}
                 </span>
               </div>
               <p className="text-base text-muted-foreground font-medium flex items-center gap-2">
@@ -340,12 +252,6 @@ export default function AdminUserDetails() {
           </div>
 
           <div className="flex gap-4">
-            <div className="bg-muted/30 p-5 rounded-xl border border-border min-w-[140px]">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                <Award className="w-3 h-3 text-amber-500" /> Credits
-              </p>
-              <span className="text-3xl font-black text-foreground leading-none">{user.credits || 0}</span>
-            </div>
             <div className="bg-muted/30 p-5 rounded-xl border border-border min-w-[140px]">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1.5">
                 <Clock className="w-3 h-3 text-primary" /> Joined
@@ -361,8 +267,6 @@ export default function AdminUserDetails() {
         <Tabs
           tabs={[
             { id: 'overview', label: 'Overview', icon: Users },
-            { id: 'orders', label: 'Orders', icon: ShoppingBag },
-            { id: 'affiliate', label: 'Affiliate', icon: Gift },
             { id: 'activity', label: 'Activity', icon: Activity },
             { id: 'security', label: 'Security', icon: Lock },
           ]}
@@ -391,25 +295,9 @@ export default function AdminUserDetails() {
                       value: user.displayName || 'Not set'
                     },
                   {
-                    label: 'Account ID',
+                    label: 'User ID',
                     value: user.uid,
                     mono: true
-                  },
-                  {
-                    label: 'Referral Code',
-                    value: user.referralCode || 'None'
-                  },
-                  {
-                    label: 'Total Used Credits',
-                    value: String(user.totalUsedCredits || 0)
-                  },
-                  {
-                    label: 'Referrals Count',
-                    value: String(user.referralsCount || 0)
-                  },
-                  {
-                    label: 'Affiliate Earnings',
-                    value: `$${(user.affiliateEarnings || 0).toFixed(2)}`
                   },
                 ].map(row => (
                   <div key={row.label} className="bg-muted/30 p-4 rounded-xl border border-border">
@@ -460,7 +348,6 @@ export default function AdminUserDetails() {
                 <div className="bg-muted/20 rounded-xl border border-border divide-y divide-border">
                   {[
                     { label: 'Last Active', value: user.lastActiveAt },
-                    { label: 'Trial Ends At', value: user.trialEndsAt },
                   ].map(row => (
                     <div key={row.label} className="flex items-center justify-between px-5 py-3.5">
                       <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{row.label}</span>
@@ -474,114 +361,7 @@ export default function AdminUserDetails() {
             </Card>
           )}
 
-          {activeTab === 'orders' && (
-            <Card padding="lg" className="!rounded-2xl">
-              <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2 uppercase tracking-tight">
-                <ShoppingBag className="w-4 h-4 text-primary" /> Purchase History
-              </h3>
-              {ordersLoading ? (
-                <div className="text-center py-10 text-muted-foreground animate-pulse font-bold text-sm">Loading orders...</div>
-              ) : orders.length === 0 ? (
-                <div className="text-center py-16 bg-muted/20 rounded-xl border-2 border-dashed border-border">
-                  <ShoppingBag className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground font-bold">No orders found for this user.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {orders.map(o => (
-                    <div key={o.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border border-border">
-                      <div className="min-w-0">
-                        <p className="font-mono text-xs text-muted-foreground truncate">{o.orderId}</p>
-                        <p className="font-bold text-foreground text-sm">{o.planName} · {o.billingCycle}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {(() => { try { return o.createdAt?.toDate().toLocaleString(); } catch { return ''; } })()}
-                          {' · '}<span className="uppercase font-bold">{o.gateway}</span>
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0 ml-4">
-                        <p className="text-xl font-black text-emerald-600">
-                          ${Number(o.amount).toFixed(2)}
-                        </p>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                          o.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
-                        }`}>{o.status}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          )}
 
-          {activeTab === 'affiliate' && (
-            <div className="space-y-6">
-              {/* Balance summary */}
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { label: 'Available Balance', value: `$${(user.affiliateEarnings || 0).toFixed(2)}`, color: 'emerald', icon: TrendingUp },
-                  { label: 'Pending (Locked)', value: `$${(user.pendingEarnings || 0).toFixed(2)}`, color: 'amber', icon: Clock },
-                  { label: 'Total Withdrawn', value: `$${(user.withdrawnAmount || 0).toFixed(2)}`, color: 'primary', icon: Gift },
-                ].map(s => (
-                  <Card key={s.label} padding="none" className="p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <s.icon className={`w-4 h-4 ${s.color === 'emerald' ? 'text-emerald-500' : s.color === 'amber' ? 'text-amber-500' : 'text-primary'}`} />
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{s.label}</p>
-                    </div>
-                    <p className={`text-2xl font-black ${s.color === 'emerald' ? 'text-emerald-600' : s.color === 'amber' ? 'text-amber-600' : 'text-primary'}`}>
-                      {s.value}
-                    </p>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Referred by */}
-              {user.referredBy && (
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center gap-3 text-sm">
-                  <AlertCircle className="w-4 h-4 text-primary shrink-0" />
-                  <span>This user was referred by code <strong className="font-mono">{user.referredBy}</strong>. Commissions for their purchases are credited to that referrer.</span>
-                </div>
-              )}
-
-              {/* Commission history */}
-              <Card className="!rounded-2xl">
-                <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 uppercase tracking-tight">
-                  <Gift className="w-4 h-4 text-primary" /> Commissions Earned (as Referrer)
-                </h3>
-                {affiliateLoading ? (
-                  <div className="text-center py-8 text-muted-foreground animate-pulse text-sm font-bold">Loading...</div>
-                ) : commissions.length === 0 ? (
-                  <div className="text-center py-10 bg-muted/20 rounded-xl border-2 border-dashed border-border">
-                    <Gift className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground font-bold">No commissions earned yet.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {commissions.map(c => (
-                      <div key={c.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border border-border">
-                        <div>
-                          <p className="font-mono text-xs text-muted-foreground">{c.orderId}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Sale: ${Number(c.grossSaleAmount).toFixed(2)}
-                            {' · '}Rate: {c.commissionRate}%
-                            {' · '}
-                            {(() => { try { return c.lockUntil?.toDate ? `Unlocks ${c.lockUntil.toDate().toLocaleDateString()}` : ''; } catch { return ''; } })()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-black text-foreground text-base">${Number(c.netCommission).toFixed(2)}</p>
-                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                            c.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600' :
-                            c.status === 'paid' ? 'bg-primary/10 text-primary' :
-                            'bg-amber-500/10 text-amber-600'
-                          }`}>{c.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            </div>
-          )}
 
           {activeTab === 'activity' && (
             <Card padding="lg" className="!rounded-2xl">
@@ -753,9 +533,7 @@ export default function AdminUserDetails() {
               {[
                 { label: 'Role', value: user.role.toUpperCase(), color: user.role === 'admin' ? 'text-rose-400' : user.role === 'staff' ? 'text-amber-400' : 'text-primary' },
                 ...(user.role === 'staff' && user.staffRole ? [{ label: 'Staff Role', value: user.staffRole, color: 'text-amber-300' }] : []),
-                { label: 'Plan', value: user.subscriptionStatus.toUpperCase(), color: user.subscriptionStatus === 'pro' ? 'text-emerald-400' : user.subscriptionStatus === 'enterprise' ? 'text-amber-400' : 'opacity-60' },
                 { label: 'Status', value: isSuspended ? 'SUSPENDED' : 'ACTIVE', color: isSuspended ? 'text-rose-400' : 'text-emerald-400' },
-                { label: 'Affiliate', value: 'ENABLED', color: 'text-emerald-400' },
               ].map(row => (
                 <div key={row.label} className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase opacity-50">{row.label}</span>
@@ -764,114 +542,6 @@ export default function AdminUserDetails() {
               ))}
             </div>
           </div>
-
-          {/* Plan selector */}
-          {plans.length > 0 && (
-            <Card className="!rounded-2xl">
-              <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
-                <CreditCard className="w-3.5 h-3.5 text-primary" /> Change Plan
-              </h4>
-              <Select
-                value={user.activePlanId || ''}
-                onChange={(val) => handleChangePlan(val)}
-                disabled={changingPlan}
-                options={plans.map(p => ({
-                  value: p.id,
-                  label: p.name,
-                  description: p.monthlyPrice === 0
-                    ? 'Free'
-                    : `$${p.monthlyPrice}/mo · ${p.monthlyCredits ?? 0} credits`,
-                }))}
-                placeholder="Select a plan..."
-                isSearchable={false}
-              />
-              {user.activePlanId && (
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  Current: <span className="font-bold text-foreground">{plans.find(p => p.id === user.activePlanId)?.name ?? user.activePlanId}</span>
-                  {' · '}{user.subscriptionStatus.toUpperCase()}
-                </p>
-              )}
-            </Card>
-          )}
-
-          {/* Credit adjustment */}
-          <Card className="!rounded-2xl">
-            <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
-              <Award className="w-3.5 h-3.5 text-amber-500" /> Adjust Credits
-            </h4>
-            <p className="text-2xl font-black text-foreground mb-4">
-              {user.credits || 0} <span className="text-sm font-medium text-muted-foreground">current balance</span>
-            </p>
-
-            <div className="space-y-3">
-              {/* Amount buttons */}
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Amount</p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => setAdjustAmount(v => v - 10)}
-                    variant="ghost"
-                    size="icon"
-                    className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </Button>
-                  <Input
-                    id="adjustAmount"
-                    name="adjustAmount"
-                    type="number"
-                    value={adjustAmount}
-                    onChange={e => setAdjustAmount(Number(e.target.value))}
-                    className="flex-1 text-center"
-                    variant="outline"
-                  />
-                  <Button
-                    onClick={() => setAdjustAmount(v => v + 10)}
-                    variant="ghost"
-                    size="icon"
-                    className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-                <div className="flex gap-1.5 mt-2">
-                  {[10, 50, 100, 500].map(n => (
-                    <Button
-                      key={n}
-                      onClick={() => setAdjustAmount(n)}
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1 h-7 text-[10px]"
-                    >
-                      +{n}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <Input
-                label="Reason"
-                id="adjustReason"
-                name="adjustReason"
-                type="text"
-                value={adjustReason}
-                onChange={e => setAdjustReason(e.target.value)}
-                placeholder="e.g. Compensation, bonus..."
-                variant="outline"
-              />
-
-              <Button
-                onClick={handleCreditAdjustment}
-                isLoading={adjusting}
-                variant={adjustAmount > 0 ? 'success' : adjustAmount < 0 ? 'danger' : 'outline'}
-                fullWidth
-                disabled={adjustAmount === 0}
-                leftIcon={adjustAmount > 0 ? Plus : adjustAmount < 0 ? Minus : undefined}
-              >
-                {adjustAmount > 0 ? `Add ${adjustAmount} credits` : adjustAmount < 0 ? `Deduct ${Math.abs(adjustAmount)} credits` : 'Enter amount'}
-              </Button>
-            </div>
-          </Card>
         </div>
       </div>
     </div>

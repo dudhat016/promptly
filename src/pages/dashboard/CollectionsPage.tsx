@@ -9,7 +9,6 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ProGate } from '../../components/ProGate';
 import Button from '../../components/primitives/Button';
 import Input from '../../components/primitives/Input';
 import { useAuth } from '../../hooks/useAuth';
@@ -17,6 +16,15 @@ import { usePath } from '../../hooks/usePath';
 import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import { PromptCollection } from '../../types';
+
+const slugify = (text: string) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
 
 // ── Create / Edit Modal ────────────────────────────────────────────────
 interface CollectionModalProps {
@@ -165,7 +173,7 @@ function CollectionCard({ col, onEdit, onDelete }: CollectionCardProps) {
           {col.promptIds.length} {col.promptIds.length === 1 ? 'prompt' : 'prompts'}
         </span>
         <Link
-          to={prefix(`/dashboard/collections/${col.id}`)}
+          to={prefix(`/dashboard/collections/${slugify(col.name) || col.id}`)}
           className="text-xs font-bold text-primary hover:underline"
         >
           View →
@@ -259,10 +267,6 @@ export default function CollectionsPage() {
         )}
       </div>
 
-      <ProGate
-        feature="Prompt Collections"
-        description="Upgrade to Pro to create unlimited collections and organise your favourite prompts."
-      >
         {/* Grid */}
         {loading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -308,7 +312,6 @@ export default function CollectionsPage() {
             </Button>
           </div>
         )}
-      </ProGate>
 
       {/* Modals */}
       <AnimatePresence>

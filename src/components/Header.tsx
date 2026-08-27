@@ -1,5 +1,5 @@
 import {
-  ChevronDown, Coins, FileText, Gift, Heart, LayoutGrid,
+  Coins, FileText, Gift, Heart, LayoutGrid,
   LogOut, Mail, Menu, Moon, Search, Settings, ShieldCheck,
   Sparkles, Sun, X, HelpCircle
 } from 'lucide-react';
@@ -97,6 +97,7 @@ function LanguageSwitcher() {
 export default function Header() {
   const { config } = useConfig();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { user, profile, isPro, isAdmin, isStaff, loading } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -108,12 +109,9 @@ export default function Header() {
   };
 
   const NAV_LINKS = [
-    { to: prefix('/explore'),     label: 'Explore'     },
-    { to: prefix('/leaderboard'), label: 'Leaderboard' },
-    { to: prefix('/pricing'),     label: 'Pricing'     },
-    { to: prefix('/blog'),        label: 'Blog'        },
-    { to: prefix('/affiliate'),   label: 'Partner'     },
-    { to: prefix('/contact'),     label: 'Support'     },
+    { to: prefix('/explore'),     label: t('nav.explore')     },
+    { to: prefix('/blog'),        label: t('nav.blog')        },
+    { to: prefix('/contact'),     label: t('nav.support')     },
   ];
 
   return (
@@ -193,7 +191,7 @@ export default function Header() {
                     size="sm"
                     className="hidden sm:inline-flex px-4 font-bold text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted"
                   >
-                    Sign in
+                    {t('header.signIn')}
                   </Button>
                   <Button
                     onClick={signInWithGoogle}
@@ -201,7 +199,7 @@ export default function Header() {
                     size="md"
                     className="px-6 font-black text-xs uppercase tracking-[0.1em] shadow-lg shadow-primary/25 gradient-cta"
                   >
-                    Get started
+                    {t('header.getStarted')}
                   </Button>
                 </div>
               )
@@ -253,8 +251,7 @@ export default function Header() {
                       <p className="font-black text-sm text-foreground truncate uppercase tracking-tight">{user.displayName || 'User'}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
-                          <Coins className="w-3 h-3 text-primary" />
-                          {isPro ? 'Unlimited Access' : `${profile?.credits ?? 0} Credits Remaining`}
+                          {t('header.mobile.unlimitedAccess')}
                         </span>
                       </div>
                     </div>
@@ -262,24 +259,21 @@ export default function Header() {
                 )}
   
                 <div className="grid grid-cols-1 gap-1">
-                  <MobileLink to={prefix('/explore')}   icon={Search}    onClick={() => setMobileOpen(false)}>Explore Library</MobileLink>
-                  <MobileLink to={prefix('/pricing')}   icon={Sparkles}  onClick={() => setMobileOpen(false)}>Upgrade to Pro</MobileLink>
-                  <MobileLink to={prefix('/blog')}      icon={FileText}  onClick={() => setMobileOpen(false)}>Resources & Blog</MobileLink>
-                  <MobileLink to={prefix('/contact')}   icon={Mail}      onClick={() => setMobileOpen(false)}>Help & Support</MobileLink>
-                  <MobileLink to={prefix('/faq')}       icon={HelpCircle} onClick={() => setMobileOpen(false)}>Common FAQs</MobileLink>
-                  <MobileLink to={prefix('/affiliate')} icon={Gift}      onClick={() => setMobileOpen(false)}>Partner Ecosystem</MobileLink>
+                  <MobileLink to={prefix('/explore')}   icon={Search}    onClick={() => setMobileOpen(false)}>{t('header.mobile.explore')}</MobileLink>
+                  <MobileLink to={prefix('/blog')}      icon={FileText}  onClick={() => setMobileOpen(false)}>{t('header.mobile.blog')}</MobileLink>
+                  <MobileLink to={prefix('/contact')}   icon={Mail}      onClick={() => setMobileOpen(false)}>{t('header.mobile.contact')}</MobileLink>
+                  <MobileLink to={prefix('/faq')}       icon={HelpCircle} onClick={() => setMobileOpen(false)}>{t('header.mobile.faq')}</MobileLink>
                 </div>
   
                 {user && (
                   <>
                     <div className="h-px my-4 bg-border/50" />
                     <div className="grid grid-cols-1 gap-1">
-                      <MobileLink to={prefix('/dashboard/vault')}     icon={LayoutGrid} onClick={() => setMobileOpen(false)}>My Private Vault</MobileLink>
-                      <MobileLink to={prefix('/dashboard/favorites')} icon={Heart}     onClick={() => setMobileOpen(false)}>Saved Formulas</MobileLink>
-                      <MobileLink to={prefix('/settings/profile')}    icon={Settings}  onClick={() => setMobileOpen(false)}>Account Settings</MobileLink>
+                      <MobileLink to={prefix('/dashboard/favorites')} icon={Heart}     onClick={() => setMobileOpen(false)}>{t('header.mobile.favorites')}</MobileLink>
+                      <MobileLink to={prefix('/settings/profile')}    icon={Settings}  onClick={() => setMobileOpen(false)}>{t('header.mobile.account')}</MobileLink>
                       {(isAdmin || isStaff) && (
                         <MobileLink to={prefix('/admin')} icon={ShieldCheck} onClick={() => setMobileOpen(false)} accent>
-                          {isAdmin ? 'Admin Control Tower' : 'Staff Panel'}
+                          {isAdmin ? t('header.mobile.adminPanel') : t('header.mobile.staffPanel')}
                         </MobileLink>
                       )}
                     </div>
@@ -292,7 +286,7 @@ export default function Header() {
                       leftIcon={LogOut}
                       className="justify-start px-3 py-3 text-destructive hover:bg-destructive/10 font-bold text-xs uppercase tracking-[0.2em]"
                     >
-                      Terminate Session
+                      {t('header.mobile.signOut')}
                     </Button>
                   </>
                 )}
@@ -308,7 +302,7 @@ export default function Header() {
                       fullWidth
                       className="font-bold text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted border-border"
                     >
-                      Sign in to Account
+                      {t('header.signIn')}
                     </Button>
                     <Button
                       onClick={() => { setMobileOpen(false); signInWithGoogle(); }}
@@ -317,7 +311,7 @@ export default function Header() {
                       fullWidth
                       className="font-black text-xs uppercase tracking-[0.15em] gradient-cta shadow-xl shadow-primary/20"
                     >
-                      Initialize Account
+                      {t('header.getStarted')}
                     </Button>
                   </div>
                 )}

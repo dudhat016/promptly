@@ -34,7 +34,6 @@ export default function AdminLayout() {
   const { canAccessSection } = useStaffRoles();
   const isAdmin = profile?.role === 'admin';
 
-  const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
   const [openTickets, setOpenTickets] = useState(0);
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const [pendingReports, setPendingReports] = useState(0);
@@ -56,17 +55,16 @@ export default function AdminLayout() {
 
   useEffect(() => {
     const noop = () => {};
-    const unsubW   = onSnapshot(query(collection(db, 'payouts'),        where('status', '==', 'pending')),          snap => setPendingWithdrawals(snap.size), noop);
     const unsubT   = onSnapshot(query(collection(db, 'tickets'),        where('status', '==', 'open')),             snap => setOpenTickets(snap.size), noop);
     const unsubI   = onSnapshot(collection(db, 'contact_messages'),     snap => setUnreadInquiries(snap.docs.filter(d => !d.data().readAt).length), noop);
     const unsubR   = onSnapshot(query(collection(db, 'prompt_reports'), where('status', '==', 'pending')),          snap => setPendingReports(snap.size), noop);
     const unsubP   = onSnapshot(query(collection(db, 'prompts'),        where('status', '==', 'pending')),          snap => setPendingPrompts(snap.size), noop);
     const unsubRev = onSnapshot(query(collectionGroup(db, 'reviews'),   where('moderationStatus', '==', 'pending')), snap => setPendingReviews(snap.size), noop);
-    return () => { unsubW(); unsubT(); unsubI(); unsubR(); unsubP(); unsubRev(); };
+    return () => { unsubT(); unsubI(); unsubR(); unsubP(); unsubRev(); };
   }, []);
 
   const adminNavItems = filterNavForRole(
-    buildAdminNavItems({ pendingWithdrawals, openTickets, unreadInquiries, pendingReports, pendingPrompts, pendingReviews }),
+    buildAdminNavItems({ openTickets, unreadInquiries, pendingReports, pendingPrompts, pendingReviews }),
     isAdmin ? () => true : (sec) => canAccessSection(sec as AdminSection)
   );
 

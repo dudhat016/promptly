@@ -2,41 +2,46 @@ import { Link } from 'react-router-dom';
 import { Github, Globe, Linkedin, Sparkles, Twitter, Facebook, Instagram, Youtube } from 'lucide-react';
 import { useConfig } from '../hooks/useConfig';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import NewsletterSignup from './marketing/NewsletterSignup';
 
 export default function Footer() {
   const { config } = useConfig();
   const { lng } = useParams();
+  const { t } = useTranslation();
   const prefix = (path: string) => `/${lng}${path.startsWith('/') ? path : '/' + path}`;
 
   const COLS = [
     {
-      heading: 'Platform',
+      heading: t('footer.cols.platform'),
       links: [
-        { to: prefix('/explore'),   label: 'Explore Prompts' },
-        { to: prefix('/pricing'),   label: 'Pricing'          },
-        { to: prefix('/blog'),      label: 'Blog'             },
-        { to: prefix('/affiliate'), label: 'Partner Program'  },
+        { to: prefix('/explore'),   label: t('footer.cols.explore')  },
+        { to: prefix('/blog'),      label: t('footer.cols.blog')     },
       ],
     },
     {
-      heading: 'Legal',
+      heading: t('footer.cols.legal'),
       links: [
-        { to: prefix('/terms'),   label: 'Terms of Service' },
-        { to: prefix('/privacy'), label: 'Privacy Policy'   },
-        { to: prefix('/cookies'), label: 'Cookie Policy'    },
-        { to: prefix('/dmca'),    label: 'DMCA'             },
+        { to: prefix('/terms'),   label: t('footer.cols.terms')   },
+        { to: prefix('/privacy'), label: t('footer.cols.privacy') },
+        { to: prefix('/cookies'), label: t('footer.cols.cookies') },
+        { to: prefix('/dmca'),    label: t('footer.cols.dmca')    },
       ],
     },
     {
-      heading: 'Support',
+      heading: t('footer.cols.support'),
       links: [
-        { to: prefix('/contact'), label: 'Contact Us'  },
-        { to: prefix('/faq'),     label: 'Common FAQs' },
-        { to: prefix('/dashboard/support'), label: 'Help Center' },
+        { to: prefix('/contact'),           label: t('footer.cols.contact')    },
+        { to: prefix('/faq'),               label: t('footer.cols.faq')        },
+        { to: prefix('/dashboard/support'), label: t('footer.cols.helpCenter') },
       ],
     },
   ];
+
+  const statusText =
+    config.systemStatus === 'degraded' ? t('footer.status.degraded') :
+    config.systemStatus === 'outage'   ? t('footer.status.outage')   :
+    config.statusText || t('footer.status.operational');
 
   return (
     <footer className="bg-background border-t border-border">
@@ -103,7 +108,7 @@ export default function Footer() {
                     </Link>
                   </li>
                 ))}
-                {col.heading === 'Support' && config.supportEmail && (
+                {col.heading === t('footer.cols.support') && config.supportEmail && (
                   <li>
                     <a
                       href={`mailto:${config.supportEmail}`}
@@ -121,8 +126,8 @@ export default function Footer() {
         {/* Newsletter strip */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-8 border-b border-border">
           <div>
-            <p className="text-sm font-bold text-foreground">Get AI prompt tips, weekly.</p>
-            <p className="text-xs text-muted-foreground mt-0.5">New prompts, tools, and workflow ideas. No spam.</p>
+            <p className="text-sm font-bold text-foreground">{t('footer.newsletter.title')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('footer.newsletter.desc')}</p>
           </div>
           <NewsletterSignup variant="inline" label="" className="w-full sm:w-auto sm:min-w-[340px]" />
         </div>
@@ -130,7 +135,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
           <p className="text-xs font-medium text-muted-foreground/50">
-            © {new Date().getFullYear()} {config.siteName}. All rights reserved.
+            © {new Date().getFullYear()} {config.siteName}. {t('footer.copyright')}
           </p>
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-1.5">
@@ -139,9 +144,7 @@ export default function Footer() {
                 config.systemStatus === 'outage'   ? 'bg-rose-500'  : 'bg-emerald-500'
               }`} />
               <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground/40">
-                {config.systemStatus === 'degraded' ? 'Partial outage' :
-                 config.systemStatus === 'outage'   ? 'Service disruption' :
-                 config.statusText || 'All systems operational'}
+                {statusText}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-muted-foreground/40">

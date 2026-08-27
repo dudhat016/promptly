@@ -24,9 +24,8 @@ import { logAuditEvent } from '../../lib/auditLog';
 import { db } from '../../lib/firebase';
 import AdminContentSettings from './AdminContentSettings';
 import AdminEmailSettings from './AdminEmailSettings';
-import AdminPaymentSettings from './AdminPaymentSettings';
 
-type TabType = 'general' | 'branding' | 'auth' | 'ai' | 'email' | 'payments' | 'content' | 'security';
+type TabType = 'general' | 'branding' | 'auth' | 'email' | 'content' | 'security';
 
 interface SitePage {
   id: string;
@@ -46,7 +45,6 @@ const TAB_ALIASES: Record<string, TabType> = {
   regional:   'general',
   seo:        'content',
   advanced:   'security',
-  payment:    'payments',
   assets:     'security',
 };
 
@@ -92,7 +90,7 @@ export default function AdminSettings() {
   useEffect(() => {
     const raw = subPath?.split('/')[0] ?? '';
     const tab = (TAB_ALIASES[raw] ?? raw) as TabType;
-    setActiveTab(['general','branding','auth','ai','email','payments','content','security'].includes(tab) ? tab : 'general');
+    setActiveTab(['general','branding','auth','email','content','security'].includes(tab) ? tab : 'general');
   }, [subPath]);
 
   const [loading, setLoading] = useState(true);
@@ -151,7 +149,7 @@ export default function AdminSettings() {
     msgUnlockFailed: '',
     lowCreditThreshold: '',
     // ── Admin notifications ──
-    adminNotify: { newUser: true, newOrder: true, newTicket: false, failedPayment: true },
+    adminNotify: { newUser: true, newTicket: false },
     // ── Branding ──
     logoLight: '',
     logoDark: '',
@@ -278,7 +276,7 @@ export default function AdminSettings() {
         label="Configuration"
         labelIcon={Settings}
         title="Global Settings"
-        subtitle="Configure your platform identity, branding, payments, and compliance."
+        subtitle="Configure your platform identity, branding, and compliance."
         actions={
           <Button onClick={handleSave} isLoading={saving} variant="primary" leftIcon={Save} size="sm" className="rounded-xl shadow-lg shadow-primary/20">
             Save Changes
@@ -346,50 +344,14 @@ export default function AdminSettings() {
               </div>
             </Card>
 
-            <Card icon={Target} title="Checkout & Trust Signals">
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm font-semibold text-foreground mb-1">Checkout Unlock Benefits</p>
-                  <p className="text-xs text-muted-foreground mb-2">One benefit per line — shown on the checkout page.</p>
-                  <Textarea label="" value={(config.checkoutBenefits || []).join('\n')} onChange={e => setConfig({ ...config, checkoutBenefits: e.target.value.split('\n').filter(Boolean) })} variant="outline" rows={4} placeholder={"5,000+ expert-engineered AI prompts\nCopy, save & organise unlimited prompts\nNew prompts added every week"} />
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Input label="Money-Back Guarantee (days, 0 to hide)" type="number" value={config.moneyBackDays ?? 0} onChange={e => setConfig({ ...config, moneyBackDays: parseInt(e.target.value) || 0 })} variant="outline" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground mb-1">Trust Badges</p>
-                  <p className="text-xs text-muted-foreground mb-2">One label per line — shown on the pricing page.</p>
-                  <Textarea label="" value={(config.trustBadges || []).map((b: any) => b.label || b).join('\n')} onChange={e => setConfig({ ...config, trustBadges: e.target.value.split('\n').filter(Boolean).map(l => ({ label: l })) })} variant="outline" rows={3} placeholder={"Secure Bank-Level Payments\nCashfree & PayPal Support\nInstant Access After Payment"} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground mb-1">Social Proof Stats</p>
-                  <p className="text-xs text-muted-foreground mb-2">Format: <code className="bg-muted px-1 rounded text-xs">12,000+ | Expert Prompts</code> — one per line.</p>
-                  <Textarea label="" value={(config.socialProofStats || []).map((s: any) => `${s.value} | ${s.label}`).join('\n')} onChange={e => setConfig({ ...config, socialProofStats: e.target.value.split('\n').filter(Boolean).map(line => { const [value, label] = line.split('|').map((s: string) => s.trim()); return { value: value || '', label: label || '' }; }) })} variant="outline" rows={4} placeholder={"12,000+ | Expert Prompts\n5,000+ | Active Users\n20+ | Categories\n4.9★ | Average Rating"} />
-                </div>
-              </div>
-            </Card>
 
-            <Card icon={MessageSquare} title="Custom UI Messages">
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground mb-4">Override default toast and error messages shown to users. Leave blank to use defaults.</p>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <Input label="Sign-in prompt (unlock)" placeholder="Sign in to unlock prompts" value={config.msgSignInToUnlock || ''} onChange={e => setConfig({ ...config, msgSignInToUnlock: e.target.value })} variant="outline" />
-                  <Input label="Out of credits message" placeholder="Out of credits — upgrade to Pro" value={config.msgOutOfCredits || ''} onChange={e => setConfig({ ...config, msgOutOfCredits: e.target.value })} variant="outline" />
-                  <Input label="Prompt unlocked success" placeholder="Prompt unlocked!" value={config.msgPromptUnlocked || ''} onChange={e => setConfig({ ...config, msgPromptUnlocked: e.target.value })} variant="outline" />
-                  <Input label="Unlock failed error" placeholder="Failed to unlock — try again" value={config.msgUnlockFailed || ''} onChange={e => setConfig({ ...config, msgUnlockFailed: e.target.value })} variant="outline" />
-                  <Input label="Low credit nudge threshold" type="number" placeholder="5" helperText="Send a nudge email when credits drop to or below this." value={config.lowCreditThreshold ?? ''} onChange={e => setConfig({ ...config, lowCreditThreshold: e.target.value ? parseInt(e.target.value) : undefined })} variant="outline" />
-                </div>
-              </div>
-            </Card>
 
             <Card icon={Bell} title="Admin Notifications">
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground mb-4">Send an email to the support address when any of these events occur.</p>
                 <div className="grid md:grid-cols-2 gap-3">
                   <ToggleRow label="New User Signup" description="Notify when a new account is created." value={config.adminNotify?.newUser ?? true} onToggle={() => setConfig({ ...config, adminNotify: { ...config.adminNotify, newUser: !config.adminNotify?.newUser } })} />
-                  <ToggleRow label="New Order / Purchase" description="Notify on every successful payment." value={config.adminNotify?.newOrder ?? true} onToggle={() => setConfig({ ...config, adminNotify: { ...config.adminNotify, newOrder: !config.adminNotify?.newOrder } })} />
                   <ToggleRow label="New Support Ticket" description="Notify when a user opens a ticket." value={config.adminNotify?.newTicket ?? false} onToggle={() => setConfig({ ...config, adminNotify: { ...config.adminNotify, newTicket: !config.adminNotify?.newTicket } })} />
-                  <ToggleRow label="Failed Payment" description="Notify on dunning / payment failure events." value={config.adminNotify?.failedPayment ?? true} onToggle={() => setConfig({ ...config, adminNotify: { ...config.adminNotify, failedPayment: !config.adminNotify?.failedPayment } })} />
                 </div>
               </div>
             </Card>
@@ -469,31 +431,7 @@ export default function AdminSettings() {
         {/* ── EMAIL / SMTP ──────────────────────────────────────── */}
         {activeTab === 'email' && <AdminEmailSettings />}
 
-        {/* ── PAYMENTS ─────────────────────────────────────────── */}
-        {activeTab === 'payments' && <AdminPaymentSettings />}
 
-        {/* ── AI ENGINE ────────────────────────────────────────── */}
-        {activeTab === 'ai' && (
-          <Card icon={Sparkles} title="AI Intelligence Defaults">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Select
-                label="Default LLM Model"
-                value={config.aiDefaults.defaultModel}
-                onChange={val => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, defaultModel: val } })}
-                options={[
-                  { label: 'GPT-4o (Omni)',        value: 'gpt-4o' },
-                  { label: 'GPT-4 Turbo',          value: 'gpt-4-turbo' },
-                  { label: 'Claude 3.5 Sonnet',    value: 'claude-3-5-sonnet' },
-                  { label: 'Claude 3 Haiku',       value: 'claude-3-haiku' },
-                  { label: 'Gemini 1.5 Pro',       value: 'gemini-1.5-pro' },
-                ]}
-              />
-              <Input label="Daily Free Credits per User" type="number" value={config.aiDefaults.freeCreditsDaily} onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, freeCreditsDaily: Number(e.target.value) } })} variant="outline" />
-              <Input label="Default Temperature (0–2)" type="number" step="0.1" min="0" max="2" value={config.aiDefaults.defaultTemperature} onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, defaultTemperature: Number(e.target.value) } })} variant="outline" />
-              <Input label="Max Output Tokens per Run" type="number" value={config.aiDefaults.maxTokens} onChange={e => setConfig({ ...config, aiDefaults: { ...config.aiDefaults, maxTokens: Number(e.target.value) } })} variant="outline" />
-            </div>
-          </Card>
-        )}
 
         {/* ── CONTENT & SEO ────────────────────────────────────── */}
         {activeTab === 'content' && (
@@ -630,7 +568,7 @@ export default function AdminSettings() {
 
             <Card icon={Link2} title="Webhooks & Integrations">
               <div className="space-y-4">
-                <p className="text-xs text-muted-foreground">Send a POST request to an external URL whenever a key platform event fires (new user, new order, failed payment).</p>
+                <p className="text-xs text-muted-foreground">Send a POST request to an external URL whenever a key platform event fires (new user signup, new ticket, content report).</p>
                 <Input label="Webhook Endpoint URL" value={config.webhookUrl || ''} onChange={e => setConfig({ ...config, webhookUrl: e.target.value })} variant="outline" placeholder="https://hooks.example.com/events" helperText="Must accept POST with JSON body. Leave blank to disable." />
               </div>
             </Card>

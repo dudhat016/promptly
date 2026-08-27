@@ -401,7 +401,7 @@ function StepProfile({ displayName, username, bio, location, usernameError, onCh
           value={username}
           onChange={e => onChangeUsername(e.target.value.replace(/[^a-z0-9_-]/gi, '').toLowerCase())}
           variant="outline"
-          helperText={usernameError || 'Optional. Your public URL: /creator/handle'}
+          helperText={usernameError || 'Optional.'}
           error={usernameError || undefined}
         />
         <Textarea

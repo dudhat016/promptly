@@ -35,7 +35,6 @@ import { NavItem } from '../components/layout/types';
 // ─── Badge counts passed in from live Firestore listeners ────────────────────
 
 export interface AdminBadgeCounts {
-  pendingWithdrawals: number;
   openTickets: number;
   unreadInquiries: number;
   pendingReports: number;
@@ -44,7 +43,6 @@ export interface AdminBadgeCounts {
 }
 
 export const EMPTY_BADGE_COUNTS: AdminBadgeCounts = {
-  pendingWithdrawals: 0,
   openTickets: 0,
   unreadInquiries: 0,
   pendingReports: 0,
@@ -55,7 +53,7 @@ export const EMPTY_BADGE_COUNTS: AdminBadgeCounts = {
 // ─── Nav factory ─────────────────────────────────────────────────────────────
 
 export function buildAdminNavItems(counts: AdminBadgeCounts): NavItem[] {
-  const { pendingWithdrawals, openTickets, unreadInquiries, pendingReports, pendingPrompts, pendingReviews } = counts;
+  const { openTickets, unreadInquiries, pendingReports, pendingPrompts, pendingReviews } = counts;
 
   return [
     // ── Overview ──────────────────────────────
@@ -72,7 +70,6 @@ export function buildAdminNavItems(counts: AdminBadgeCounts): NavItem[] {
     { label: 'Reviews',    icon: Star,       path: '/admin/reviews',    section: 'reviews' as AdminSection,    ...(pendingReviews > 0 ? { badge: pendingReviews, badgeVariant: 'warning' as const } : {}) },
     { label: 'Categories', icon: Tag,        path: '/admin/categories', section: 'categories' as AdminSection },
     { label: 'AI Models',  icon: Cpu,        path: '/admin/models',     section: 'ai_models' as AdminSection },
-    { label: 'Badges',     icon: Medal,      path: '/admin/badges',     section: 'badges' as AdminSection },
 
     // ── Content ───────────────────────────────
     { sectionTitle: 'Content' },
@@ -94,17 +91,6 @@ export function buildAdminNavItems(counts: AdminBadgeCounts): NavItem[] {
     { label: 'Inquiries', icon: MessageCircle, path: '/admin/inquiries', badge: unreadInquiries || undefined, badgeVariant: 'danger' as const, section: 'inquiries' as AdminSection },
     { label: 'Tickets',   icon: LifeBuoy,      path: '/admin/tickets',   badge: openTickets    || undefined, badgeVariant: 'danger' as const, section: 'tickets' as AdminSection },
     { label: 'Reports',   icon: Flag,          path: '/admin/reports',   badge: pendingReports || undefined, badgeVariant: 'danger' as const, section: 'reports' as AdminSection },
-
-    // ── Revenue ───────────────────────────────
-    { sectionTitle: 'Revenue' },
-    { label: 'Financials',        icon: BarChart2,    path: '/admin/revenue',        section: 'revenue' as AdminSection },
-    { label: 'Plans',             icon: Zap,          path: '/admin/subscriptions',  section: 'subscriptions' as AdminSection },
-    { label: 'Churn & Retention', icon: TrendingDown, path: '/admin/churn',          section: 'revenue' as AdminSection },
-    { label: 'Orders',            icon: ShoppingBag,  path: '/admin/orders',         section: 'revenue' as AdminSection },
-    { label: 'Coupons',           icon: Percent,      path: '/admin/coupons',        section: 'revenue' as AdminSection },
-    { label: 'Invoices',          icon: Receipt,      path: '/admin/invoices',       section: 'revenue' as AdminSection },
-    { label: 'Affiliates',        icon: Share2,       path: '/admin/referrals',      section: 'affiliates' as AdminSection },
-    { label: 'Withdrawals',       icon: Wallet,       path: '/admin/withdrawals',    badge: pendingWithdrawals || undefined, badgeVariant: 'danger' as const, section: 'withdrawals' as AdminSection },
 
     // ── Marketing ─────────────────────────────
     { sectionTitle: 'Marketing' },
@@ -134,17 +120,16 @@ export function buildAdminNavItems(counts: AdminBadgeCounts): NavItem[] {
         { label: 'Broadcast',   path: '/admin/emails/broadcast' },
       ],
     },
-    { label: 'Push Notifications', icon: Bell,   path: '/admin/push', section: 'marketing' as AdminSection },
+
     { label: 'SEO Audit',          icon: Search, path: '/admin/seo',  section: 'seo' as AdminSection },
 
     // ── System ────────────────────────────────
     { sectionTitle: 'System' },
-    { label: 'Site Analytics', icon: BarChart3, path: '/admin/analytics',  section: 'settings' as AdminSection },
     { label: 'Permissions',    icon: Shield,    path: '/admin/permissions', section: 'permissions' as AdminSection },
     { label: 'Staff Roles',    icon: Globe,     path: '/admin/roles',       section: 'roles' as AdminSection },
     { label: 'Activity Log',   icon: Activity,  path: '/admin/activity',    section: 'activity' as AdminSection },
-    { label: 'System Health',  icon: Server,    path: '/admin/system',      section: 'settings' as AdminSection },
-    { label: 'RTL Test',       icon: Globe,     path: '/admin/rtl-test',    section: 'settings' as AdminSection },
+
+
     {
       label: 'Settings',
       icon: Settings,
@@ -155,8 +140,6 @@ export function buildAdminNavItems(counts: AdminBadgeCounts): NavItem[] {
         { label: 'Branding',      path: '/admin/settings/branding' },
         { label: 'Users & Auth',  path: '/admin/settings/auth' },
         { label: 'Email / SMTP',  path: '/admin/settings/email' },
-        { label: 'Payments',      path: '/admin/settings/payments' },
-        { label: 'AI Engine',     path: '/admin/settings/ai' },
         { label: 'Content & SEO', path: '/admin/settings/content' },
         { label: 'Security',      path: '/admin/settings/security' },
       ],

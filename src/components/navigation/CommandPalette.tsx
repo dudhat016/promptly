@@ -87,9 +87,7 @@ export default function CommandPalette() {
 
   const STATIC_ACTIONS = [
     { id: 'explore', label: 'Explore Prompts', icon: Sparkles, to: prefix('/explore') },
-    { id: 'vault', label: 'My Vault', icon: LayoutGrid, to: prefix('/dashboard/vault'), private: true },
     { id: 'profile', label: 'Account Settings', icon: User, to: prefix('/settings/profile'), private: true },
-    { id: 'billing', label: 'Billing & Plans', icon: CreditCard, to: prefix('/settings/billing'), private: true },
     { id: 'admin', label: 'Admin Dashboard', icon: ShieldCheck, to: prefix('/admin'), admin: true },
   ].filter(a => {
     if (a.admin && !isAdmin) return false;

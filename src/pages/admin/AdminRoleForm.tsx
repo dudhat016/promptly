@@ -41,15 +41,7 @@ const SECTION_GROUPS: { title: string; sections: { id: AdminSection; label: stri
       { id: 'tickets', label: 'Tickets' },
     ],
   },
-  {
-    title: 'Revenue',
-    sections: [
-      { id: 'subscriptions', label: 'Plans / Subscriptions' },
-      { id: 'revenue', label: 'Financials & Invoices' },
-      { id: 'affiliates', label: 'Affiliates' },
-      { id: 'withdrawals', label: 'Withdrawals' },
-    ],
-  },
+
   {
     title: 'Marketing',
     sections: [{ id: 'marketing', label: 'CRM & Campaigns' }],

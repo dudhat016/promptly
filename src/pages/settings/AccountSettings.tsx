@@ -41,13 +41,7 @@ export default function AccountSettings() {
     linkedin:  profile?.socialLinks?.linkedin  || '',
   });
 
-  // Payout fields
-  const [upiId,        setUpiId]        = useState(profile?.payoutMethods?.upiId || '');
-  const [paypalEmail,  setPaypalEmail]  = useState(profile?.payoutMethods?.paypalEmail || '');
-  const [bankDetails,  setBankDetails]  = useState(profile?.payoutMethods?.bankDetails || '');
-
   const [isSaving,          setIsSaving]          = useState(false);
-  const [isSavingPayouts,   setIsSavingPayouts]   = useState(false);
   const [exportingData,     setExportingData]     = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -98,36 +92,16 @@ export default function AccountSettings() {
     }
   };
 
-  const handleSavePayouts = async () => {
-    if (!user) return;
-    setIsSavingPayouts(true);
-    try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        payoutMethods: { upiId, paypalEmail, bankDetails },
-        updatedAt: serverTimestamp(),
-      });
-      toast.success('Payout methods saved!');
-    } catch {
-      toast.error('Failed to save payout methods');
-    } finally {
-      setIsSavingPayouts(false);
-    }
-  };
+
 
   const handleExportData = async () => {
     if (!user) return;
     setExportingData(true);
     try {
-      const [userSnap, ordersSnap, activitySnap] = await Promise.all([
-        getDoc(doc(db, 'users', user.uid)),
-        getDocs(query(collection(db, 'orders'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'))),
-        getDocs(query(collection(db, 'credits_history'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(100))),
-      ]);
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
       const exportData = {
         exportedAt: new Date().toISOString(),
         profile: userSnap.exists() ? { ...userSnap.data(), uid: user.uid } : null,
-        orders: ordersSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-        activity: activitySnap.docs.map(d => ({ id: d.id, ...d.data() })),
       };
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -150,8 +124,6 @@ export default function AccountSettings() {
         deletedAt: serverTimestamp(),
         email: `deleted_${user.uid}@deleted.invalid`,
         displayName: 'Deleted User',
-        photoURL: null,
-        subscriptionStatus: 'free',
         role: 'user',
       });
       await deleteUser(user);
@@ -211,7 +183,6 @@ export default function AccountSettings() {
               onChange={e => { setUsername(e.target.value.replace(/[^a-z0-9_-]/gi, '').toLowerCase()); setUsernameError(''); }}
               variant="filled"
               placeholder="e.g. janedoe"
-              helperText={usernameError || 'Your public URL: /creator/handle'}
               error={usernameError || undefined}
             />
           </div>
@@ -262,16 +233,7 @@ export default function AccountSettings() {
           />
         </div>
 
-        <div className="mt-6 flex items-center justify-between gap-4">
-          {user && (
-            <Link
-              to={prefix(`/creator/${profile?.username || user.uid}`)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              View public profile
-            </Link>
-          )}
+        <div className="mt-6 flex items-center justify-end gap-4">
           <Button onClick={handleSaveProfile} isLoading={isSaving} variant="primary" size="sm">
             Save Profile
           </Button>
@@ -300,45 +262,7 @@ export default function AccountSettings() {
         </Card.Body>
       </Card>
 
-      {/* ── Creator Payouts ──────────────────────────────────── */}
-      <Card className="!rounded-lg">
-        <Card.Header
-          title={<div className="flex items-center gap-3"><div className="w-8 h-8 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0"><Coins className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-foreground">Creator Payouts</h3><p className="text-xs text-muted-foreground mt-0.5">How you receive earnings from the affiliate and creator programs.</p></div></div>}
-        />
-        <Card.Body>
-        <div className="grid sm:grid-cols-2 gap-5">
-          <Input
-            label="UPI ID (India)"
-            value={upiId}
-            onChange={e => setUpiId(e.target.value)}
-            variant="filled"
-            placeholder="username@okaxis"
-          />
-          <Input
-            label="PayPal Email (Global)"
-            type="email"
-            value={paypalEmail}
-            onChange={e => setPaypalEmail(e.target.value)}
-            variant="filled"
-            placeholder="you@example.com"
-          />
-          <Textarea
-            label="Bank / Wire Details"
-            value={bankDetails}
-            onChange={e => setBankDetails(e.target.value)}
-            rows={3}
-            variant="filled"
-            placeholder="Bank name, account number, IFSC / SWIFT code…"
-            className="sm:col-span-2"
-          />
-        </div>
-        <div className="mt-6 flex justify-end">
-          <Button onClick={handleSavePayouts} isLoading={isSavingPayouts} variant="primary" size="sm">
-            Save Payout Methods
-          </Button>
-        </div>
-        </Card.Body>
-      </Card>
+
 
       {/* ── Data & Privacy ───────────────────────────────────── */}
       <Card className="!rounded-lg">
@@ -350,7 +274,7 @@ export default function AccountSettings() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border border-border">
             <div>
               <p className="text-sm font-semibold text-foreground">Download My Data</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Export your profile, orders, and credit history as JSON.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Export your profile data as JSON.</p>
             </div>
             <Button onClick={handleExportData} isLoading={exportingData} variant="outline" size="sm" leftIcon={Download} className="shrink-0">
               Export Data

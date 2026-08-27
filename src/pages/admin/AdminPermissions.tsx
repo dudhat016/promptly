@@ -18,7 +18,6 @@ const DEFAULT_PERMISSIONS: PermissionSet = {
   canExportData: false,
   canCreateCollections: false,
   canAccessPremiumModels: false,
-  canUseAPI: false,
   canRemoveWatermarks: false,
   hasPrioritySupport: false,
   canCustomBrandEmails: false,
@@ -40,7 +39,7 @@ export default function AdminPermissions() {
         const initialGroups: PermissionGroup[] = [
           { id: 'free', name: 'Free Tier', description: 'Basic access for all users', permissions: { ...DEFAULT_PERMISSIONS }, createdAt: new Date() },
           { id: 'pro', name: 'Pro Pack', description: 'Advanced tools for power users', permissions: { ...DEFAULT_PERMISSIONS, canViewPremium: true, canCopyPrompts: true, canAccessPremiumModels: true }, createdAt: new Date() },
-          { id: 'enterprise', name: 'Enterprise', description: 'Full access for companies', permissions: { ...DEFAULT_PERMISSIONS, canViewPremium: true, canCopyPrompts: true, canExportData: true, canCreateCollections: true, canAccessPremiumModels: true, canUseAPI: true, canRemoveWatermarks: true, hasPrioritySupport: true, canCustomBrandEmails: true }, createdAt: new Date() }
+          { id: 'enterprise', name: 'Enterprise', description: 'Full access for companies', permissions: { ...DEFAULT_PERMISSIONS, canViewPremium: true, canCopyPrompts: true, canExportData: true, canCreateCollections: true, canAccessPremiumModels: true, canRemoveWatermarks: true, hasPrioritySupport: true, canCustomBrandEmails: true }, createdAt: new Date() }
         ];
         setConfig({ id: 'access_levels', groups: initialGroups, lastUpdated: new Date() });
       }

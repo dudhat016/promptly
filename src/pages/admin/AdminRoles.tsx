@@ -13,8 +13,7 @@ import { useStaffRoles } from '../../hooks/useStaffRoles';
 const SECTION_LABELS: Partial<Record<AdminSection, string>> = {
   dashboard: 'Dashboard', users: 'Users', prompts: 'Prompts', categories: 'Categories',
   templates: 'Templates', media: 'Media', blog: 'Blog', seo: 'SEO', ai_models: 'AI Models',
-  inquiries: 'Inquiries', tickets: 'Tickets', subscriptions: 'Plans', revenue: 'Revenue',
-  affiliates: 'Affiliates', withdrawals: 'Withdrawals', marketing: 'CRM', permissions: 'Permissions',
+  inquiries: 'Inquiries', tickets: 'Tickets', marketing: 'CRM', permissions: 'Permissions',
   roles: 'Roles', activity: 'Activity', settings: 'Settings', emails: 'Emails', reports: 'Reports',
 };
 

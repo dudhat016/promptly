@@ -10,12 +10,10 @@ import Breadcrumbs from '../components/navigation/Breadcrumbs';
 import NeuralAdBanner from '../components/NeuralAdBanner';
 import Button from '../components/primitives/Button';
 import Textarea from '../components/primitives/Textarea';
-import { ProGate } from '../components/ProGate';
 import PromptCard from '../components/PromptCard';
 import ReportModal from '../components/ReportModal';
 import Schema from '../components/SEO/Schema';
 import ShareModal from '../components/ShareModal';
-import UpgradeModal from '../components/UpgradeModal';
 import { useAuth } from '../hooks/useAuth';
 import { useConfig } from '../hooks/useConfig';
 import { usePath } from '../hooks/usePath';
@@ -29,12 +27,7 @@ import { generateSmartDescription, generateSmartKeywords } from '../utils/seo';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
-const UNLOCK_PERKS = [
-  'Full prompt text with all variables',
-  'Optimized system prompt + parameters',
-  'Step-by-step usage guide',
-  'Copy-to-clipboard in one click',
-];
+
 
 const DIFFICULTY_CONFIG = {
   beginner:     { label: 'Beginner',     color: 'text-emerald-600 dark:text-emerald-400', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)' },
@@ -80,7 +73,6 @@ export default function PromptDetailPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
   const [userCollections, setUserCollections] = useState<PromptCollection[]>([]);
@@ -97,7 +89,7 @@ export default function PromptDetailPage() {
 
   const unlockedKey = JSON.stringify(profile?.unlockedPrompts || []);
   const isLiked = prompt?.id ? isFavorited(prompt.id) : false;
-  const hasNoCredits = user && profile && (profile.credits || 0) <= 0 && !isPro && !isAdmin;
+
 
   // Load recently viewed from localStorage
   useEffect(() => {
@@ -140,18 +132,21 @@ export default function PromptDetailPage() {
         if (docSnap) {
           // Always use Firestore document ID — prevent custom 'id' field in data from overriding it
           const pData = { ...docSnap.data(), id: docSnap.id } as Prompt;
-          const alreadyUnlocked = (profile?.unlockedPrompts || []).includes(pData.id!);
-          const hasAccess = isPro || isAdmin || alreadyUnlocked || !pData.isPaid;
 
-          if (!hasAccess) delete pData.content;
-
-          if (hasAccess) {
+          // Always ensure formula/content is loaded without security gating
+          if (!pData.content) {
             try {
               const privateDoc = await getDoc(doc(db, 'prompts', pData.id!, 'private', 'content'));
-              if (privateDoc.exists()) pData.content = privateDoc.data().formula;
+              if (privateDoc.exists()) {
+                pData.content = privateDoc.data().formula || privateDoc.data().content || privateDoc.data().prompt;
+              }
             } catch (secErr) {
-              console.warn("Secure content unavailable.", secErr);
+              console.warn("Private content unavailable.", secErr);
             }
+          }
+
+          if (!pData.content) {
+            pData.content = (pData as any).formula || (pData as any).prompt || pData.description || '';
           }
 
           setPrompt(pData);
@@ -216,7 +211,7 @@ export default function PromptDetailPage() {
   }, [prompt?.id]);
 
   const openCollectionPicker = async () => {
-    if (!user || !isPro && !isAdmin) { setIsUpgradeModalOpen(true); return; }
+    if (!user) { navigate(prefix('/login')); return; }
     setIsCollectionModalOpen(true);
     if (userCollections.length === 0) {
       setCollectionsLoading(true);
@@ -317,37 +312,14 @@ export default function PromptDetailPage() {
   };
 
   const handleCopy = async () => {
-    if (!prompt || !user || !profile) { toast.error("Please login."); navigate(prefix('/login')); return; }
+    if (!prompt) return;
 
-    // 1. Check permissions — admin and pro always bypass
-    if (!permissions.canCopyPrompts && !isAdmin && !isPro) { setIsUpgradeModalOpen(true); return; }
-
-    const alreadyUnlocked = (profile?.unlockedPrompts || []).includes(prompt.id!);
-    const userIsPro = isPro || isAdmin;
-
-    // 2. If it's a paid prompt, not unlocked, and not a pro/admin user, charge a credit
-    if (prompt.isPaid && !alreadyUnlocked && !userIsPro) {
-      if ((profile.credits || 0) <= 0) {
-        setIsUpgradeModalOpen(true);
-        return;
-      }
-      // If they have credits, auto-unlock it
-      try {
-        await handleUnlock();
-      } catch (e) {
-        return; // handleUnlock shows toast
-      }
-    }
-
-    // 3. For pro/admin: silently add to vault on first copy of a paid prompt
-    if (prompt.isPaid && !alreadyUnlocked && userIsPro) {
-      updateDoc(doc(db, 'users', user.uid), { unlockedPrompts: arrayUnion(prompt.id!) }).catch(() => {});
-    }
-
-    // 4. Perform Copy
     try {
-      await updateDoc(doc(db, 'prompts', prompt.id!), { copiesCount: increment(1) });
-      navigator.clipboard.writeText(prompt.content || '');
+      if (prompt.id) {
+        updateDoc(doc(db, 'prompts', prompt.id), { copiesCount: increment(1) }).catch(() => {});
+      }
+      const textToCopy = prompt.content || (prompt as any).formula || (prompt as any).prompt || prompt.description || '';
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       recordPromptInteraction(prompt, INTERACTION_WEIGHTS.COPY);
       toast.success("Prompt copied!");
@@ -355,39 +327,10 @@ export default function PromptDetailPage() {
     } catch (err) { toast.error("Copy failed."); }
   };
 
-  const handleUnlock = async () => {
-    if (!prompt || !user || !profile) { navigate(prefix('/login')); return; }
-    if (hasNoCredits) { setIsUpgradeModalOpen(true); return; }
-    const unlockedCount = (profile.unlockedPrompts || []).length;
-    const vaultLimit = config?.vaultLimit || 10;
 
-    if (!isPro && !isAdmin && unlockedCount >= vaultLimit) {
-      toast.error(`Vault full! Upgrade for more than ${vaultLimit} prompts.`);
-      setIsUpgradeModalOpen(true);
-      return;
-    }
 
-    try {
-      if (!isPro && !isAdmin) {
-        await updateDoc(doc(db, 'users', user.uid), {
-          credits: increment(-1), totalUsedCredits: increment(1), unlockedPrompts: arrayUnion(prompt.id!)
-        });
-        await addDoc(collection(db, 'credits_history'), {
-          userId: user.uid, type: 'unlock', promptId: prompt.id, promptTitle: prompt.title, amount: 1, createdAt: new Date()
-        });
-      } else {
-        await updateDoc(doc(db, 'users', user.uid), { unlockedPrompts: arrayUnion(prompt.id!) });
-      }
-
-      recordPromptInteraction(prompt, INTERACTION_WEIGHTS.UNLOCK);
-      const privateDoc = await getDoc(doc(db, 'prompts', prompt.id!, 'private', 'content'));
-      if (privateDoc.exists()) setPrompt({ ...prompt, content: privateDoc.data().formula });
-      toast.success("Unlocked! Ready to use.");
-    } catch (err) { toast.error("Unlock failed."); }
-  };
-
-  const isUnlocked = !!(prompt && (!prompt.isPaid || isPro || isAdmin || (profile?.unlockedPrompts || []).includes(prompt.id!)));
-  const isCategoryLocked = !!(category?.isPremium && !isPro && !isAdmin);
+  const isUnlocked = true;
+  const isCategoryLocked = false;
   const diffConfig = prompt?.difficulty ? DIFFICULTY_CONFIG[prompt.difficulty] : null;
 
   // Pre-filled share tweet text
@@ -577,162 +520,45 @@ export default function PromptDetailPage() {
                   <div className="flex items-center gap-2">
                     <Terminal className="w-4 h-4 text-primary" />
                     <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">The Formula</h3>
-                    {isUnlocked && prompt!.content && (
+                    {prompt!.content && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
                         {(prompt!.content.match(/(\[[\w\s.,!?'-]+\]|\{\{[\w\s.,!?'-]+\}\})/g) || []).length} variables
                       </span>
                     )}
                   </div>
-                   {isUnlocked && (
-                     <Button
-                       onClick={handleCopy}
-                       variant={copied ? 'success' : 'secondary'}
-                       size="sm"
-                       leftIcon={copied ? Check : Copy}
-                     >
-                       {copied ? 'Copied!' : 'Copy Formula'}
-                     </Button>
-                   )}
+                  <Button
+                    onClick={handleCopy}
+                    variant={copied ? 'success' : 'secondary'}
+                    size="sm"
+                    leftIcon={copied ? Check : Copy}
+                  >
+                    {copied ? 'Copied!' : 'Copy Formula'}
+                  </Button>
                 </div>
 
                 {/* Formula content */}
-                <div className={cn(
-                  "rounded-2xl p-8 md:p-10 min-h-[300px] bg-muted border border-border",
-                  !isUnlocked && "blur-[10px] pointer-events-none select-none overflow-hidden h-[300px] opacity-20"
-                )}>
-                  {isUnlocked
-                    ? <HighlightedFormula content={prompt!.content || ''} />
-                    : <pre className="font-mono text-sm leading-loose text-foreground/40 whitespace-pre-wrap">
-                        {"### [PREMIUM BLUEPRINT LOCKED]\n--model v6.0 --parameter [HIDDEN]\n--logic [ENCRYPTED_FLOW]\n--system-prompt [REDACTED]\n\n1. [HIDDEN_STEP_A]\n2. [HIDDEN_STEP_B]\n3. [HIDDEN_STEP_C]"}
-                      </pre>
-                  }
+                <div className="rounded-2xl p-8 md:p-10 min-h-[300px] bg-muted border border-border">
+                  <HighlightedFormula content={prompt!.content || (prompt as any)!.formula || (prompt as any)!.prompt || prompt!.description || ''} />
                 </div>
-
-                {/* ── Locked overlay ── */}
-                {!isUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center p-6 z-10">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="rounded-2xl p-8 max-w-sm w-full text-center relative overflow-hidden bg-background border border-primary/25"
-                      style={{ boxShadow: '0 0 40px rgba(139,92,246,0.1)' }}
-                    >
-                      <div className="absolute top-0 left-0 right-0 h-0.5"
-                        style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary)), transparent)' }} />
-
-                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                        style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                        <Lock className="w-6 h-6 text-violet-400" />
-                      </div>
-
-                      {/* Context-aware heading */}
-                      <h3 className="text-xl font-bold text-foreground mb-1.5">
-                        {hasNoCredits
-                          ? "You're out of credits"
-                          : isCategoryLocked
-                          ? 'Pro Members Only'
-                          : 'Unlock This Prompt'}
-                      </h3>
-                      <p className="text-sm mb-5 text-muted-foreground">
-                        {hasNoCredits
-                          ? 'Upgrade to Pro for unlimited access — no credits needed.'
-                          : isCategoryLocked
-                          ? 'This collection is reserved for Pro subscribers.'
-                          : 'Use 1 credit to unlock permanently, or go Pro for unlimited.'}
-                      </p>
-
-                      {/* Perks */}
-                      <ul className="space-y-2 mb-5 text-left">
-                        {UNLOCK_PERKS.map(perk => (
-                          <li key={perk} className="flex items-center gap-2.5 text-xs text-muted-foreground">
-                            <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0"
-                              style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                              <Check className="w-2.5 h-2.5 text-violet-400" />
-                            </div>
-                            {perk}
-                          </li>
-                        ))}
-                      </ul>
-
-                      {/* Urgency + social proof */}
-                      <div className="flex items-center justify-between mb-5 px-1 text-xs text-muted-foreground/60">
-                        <span className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                          {(prompt!.copiesCount || 0) + 12} used this week
-                        </span>
-                        <span className="flex -space-x-1">
-                          {['V', 'A', 'K'].map(l => (
-                            <span key={l} className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border"
-                              style={{ background: 'rgba(139,92,246,0.2)', borderColor: 'rgba(139,92,246,0.3)', color: 'rgb(167,139,250)' }}>{l}</span>
-                          ))}
-                          <span className="ml-2 self-center">{(prompt!.likesCount || 0) + 42} creators</span>
-                        </span>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {!isCategoryLocked && !hasNoCredits && (
-                          <Button
-                            onClick={handleUnlock}
-                            variant="primary"
-                            fullWidth
-                            size="lg"
-                            leftIcon={Zap}
-                          >
-                            Unlock for 1 Credit
-                          </Button>
-                        )}
-                        <Button
-                          onClick={() => setIsUpgradeModalOpen(true)}
-                          variant={hasNoCredits || isCategoryLocked ? 'primary' : 'secondary'}
-                          fullWidth
-                          size="lg"
-                          leftIcon={Sparkles}
-                        >
-                          {hasNoCredits || isCategoryLocked ? 'Go Pro — Unlimited Access' : 'Upgrade to Pro — Unlimited'}
-                        </Button>
-                      </div>
-                    </motion.div>
-                  </div>
-                )}
               </div>
 
-              {/* ── Sample Output ── */}
-              {isUnlocked && prompt!.sampleOutput && (
-                <div className="mb-10 rounded-2xl border border-border overflow-hidden">
+
+
+              {/* ── Usage Guide ── */}
+              {isUnlocked && prompt!.usageGuide && (
+                <div className="rounded-2xl border border-border overflow-hidden mb-10">
                   <div className="flex items-center gap-2 px-6 py-4 bg-muted border-b border-border">
-                    <Star className="w-4 h-4 text-amber-500" />
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sample Output</h3>
-                    <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20">
-                      AI Generated
-                    </span>
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">How to Use This Prompt</h3>
                   </div>
-                  <div className="p-6 bg-card">
-                    <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{prompt!.sampleOutput}</p>
+                  <div className="p-6 bg-card prose prose-neutral dark:prose-invert prose-sm max-w-none
+                    prose-p:text-muted-foreground prose-li:text-muted-foreground
+                    prose-headings:text-foreground prose-strong:text-foreground">
+                    {prompt!.usageGuide.split('\n').map((line, i) => (
+                      <p key={i} className="text-sm leading-relaxed text-muted-foreground mb-2 last:mb-0">{line}</p>
+                    ))}
                   </div>
                 </div>
-              )}
-
-              {/* ── Usage Guide — Pro gate ── */}
-              {isUnlocked && prompt!.usageGuide && (
-                <ProGate
-                  feature="Full Usage Guide"
-                  description="Step-by-step instructions, workflow tips, and variable guidance are available on Pro."
-                  className="mb-10"
-                >
-                  <div className="rounded-2xl border border-border overflow-hidden">
-                    <div className="flex items-center gap-2 px-6 py-4 bg-muted border-b border-border">
-                      <BookOpen className="w-4 h-4 text-primary" />
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">How to Use This Prompt</h3>
-                    </div>
-                    <div className="p-6 bg-card prose prose-neutral dark:prose-invert prose-sm max-w-none
-                      prose-p:text-muted-foreground prose-li:text-muted-foreground
-                      prose-headings:text-foreground prose-strong:text-foreground">
-                      {prompt!.usageGuide.split('\n').map((line, i) => (
-                        <p key={i} className="text-sm leading-relaxed text-muted-foreground mb-2 last:mb-0">{line}</p>
-                      ))}
-                    </div>
-                  </div>
-                </ProGate>
               )}
 
               {/* ── Action bar ── */}
@@ -755,17 +581,6 @@ export default function PromptDetailPage() {
                 >
                   Save to Collection
                 </Button>
-                {!isPro && (
-                  <Button
-                    onClick={() => setIsUpgradeModalOpen(true)}
-                    variant="primary"
-                    size="lg"
-                    leftIcon={Zap}
-                    className="w-full sm:w-auto"
-                  >
-                    Go Pro — Unlimited Access
-                  </Button>
-                )}
                 <Button
                   onClick={() => setIsReportModalOpen(true)}
                   variant="ghost"
@@ -793,14 +608,7 @@ export default function PromptDetailPage() {
                 const isOfficial = prompt!.creatorRole === 'admin' || prompt!.creatorRole === 'staff' || prompt!.creatorId === 'system';
                 const displayName = prompt!.creatorName || creator?.displayName || 'Creator';
                 const avatarLetter = displayName.charAt(0).toUpperCase();
-                const profileHref = !isOfficial && prompt!.creatorId ? prefix(`/creator/${creator?.username || prompt!.creatorId}`) : null;
-                const CardWrapper = profileHref
-                  ? ({ children }: { children: React.ReactNode }) => (
-                      <Link to={profileHref} className="flex items-center gap-3 mb-5 group/creator hover:opacity-90 transition-opacity">
-                        {children}
-                      </Link>
-                    )
-                  : ({ children }: { children: React.ReactNode }) => (
+                const CardWrapper = ({ children }: { children: React.ReactNode }) => (
                       <div className="flex items-center gap-3 mb-5">{children}</div>
                     );
                 return (
@@ -821,8 +629,6 @@ export default function PromptDetailPage() {
                       <div className="text-xs font-semibold flex items-center gap-1 text-primary">
                         {isOfficial ? (
                           <><ShieldCheck className="w-3 h-3" /> Official Content</>
-                        ) : creator?.subscriptionStatus === 'pro' ? (
-                          'Verified Expert'
                         ) : (
                           'Creator'
                         )}
@@ -844,80 +650,14 @@ export default function PromptDetailPage() {
                   </div>
                 ))}
               </div>
-              {prompt!.creatorId && prompt!.creatorId !== 'system' && (prompt!.creatorRole === 'user' || !prompt!.creatorRole) && (
-                <Link
-                  to={prefix(`/creator/${creator?.username || prompt!.creatorId}`)}
-                  className="mt-4 flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-bold text-primary hover:bg-primary/8 border border-primary/20 hover:border-primary/40 transition-all"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  View Creator Profile
-                </Link>
-              )}
+
             </div>
 
             <NeuralAdBanner slot="sidebar-ad" format="rectangle" />
 
-            {/* Upgrade CTA — sticky sidebar */}
-            {!isPro && (
-              <div className="rounded-2xl p-6 relative overflow-hidden"
-                style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                <div className="absolute top-0 right-0 w-28 h-28 pointer-events-none"
-                  style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)' }} />
-                <div className="relative z-10">
-                  <div className="text-xs font-bold uppercase tracking-widest text-primary mb-3">Pro Plan</div>
-                  <h4 className="text-lg font-bold text-foreground mb-1.5">Unlimited Access</h4>
-                  <p className="text-sm mb-4 leading-relaxed text-muted-foreground">
-                    Get every prompt. Copy without limits. Cancel anytime.
-                  </p>
-                  <ul className="space-y-1.5 mb-5">
-                    {['5,000+ expert prompts', 'Unlimited copies', 'New prompts weekly'].map(item => (
-                      <li key={item} className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Check className="w-3.5 h-3.5 text-violet-400 shrink-0" /> {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    onClick={() => setIsUpgradeModalOpen(true)}
-                    variant="primary"
-                    fullWidth
-                    size="lg"
-                    leftIcon={Sparkles}
-                  >
-                    See Plans
-                  </Button>
-                </div>
-              </div>
-            )}
 
-            {/* Credits meter (free users) */}
-            {user && !isPro && !isAdmin && (
-              <div className="rounded-xl p-4 bg-card border border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-muted-foreground">Credits remaining</span>
-                  <span className={`text-sm font-bold ${(profile?.credits || 0) === 0 ? 'text-rose-500' : 'text-foreground'}`}>
-                    {profile?.credits || 0}
-                  </span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${(profile?.credits || 0) === 0 ? 'bg-destructive' : 'gradient-cta'}`}
-                    style={{
-                      width: `${Math.min(100, ((profile?.credits || 0) / (profile?.monthlyLimit || 50)) * 100)}%`,
-                    }}
-                  />
-                </div>
-                {(profile?.credits || 0) === 0 && (
-                   <Button
-                    onClick={() => setIsUpgradeModalOpen(true)}
-                    variant="primary"
-                    fullWidth
-                    size="sm"
-                  >
-                    Upgrade for Unlimited
-                  </Button>
-                )}
-              </div>
-            )}
+
+
           </div>
         </div>
 
@@ -1114,14 +854,8 @@ export default function PromptDetailPage() {
           onClose={() => setIsShareModalOpen(false)}
           title={prompt.title}
           url={window.location.href}
-          referralCode={profile?.referralCode}
         />
       )}
-
-      <UpgradeModal
-        isOpen={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
-      />
 
       {prompt && (
         <ReportModal

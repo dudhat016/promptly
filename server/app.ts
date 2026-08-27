@@ -10,16 +10,13 @@ import type { AuthenticatedRequest } from "./middleware/auth.js";
 import { adminOnly, authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { authLimiter, checkoutLimiter, contactLimiter, generalLimiter } from "./middleware/rateLimit.js";
-import affiliatesRouter from "./routes/affiliates.js";
 import authRouter from "./routes/auth.js";
 import automationRouter from "./routes/automation.js";
-import couponsRouter from "./routes/coupons.js";
 import cronRouter from "./routes/cron.js";
 import dataRouter from "./routes/data.js";
 import locationRouter from "./routes/location.js";
 import marketingRouter from "./routes/marketing.js";
-import nudgesRouter from "./routes/nudges.js";
-import paymentsRouter from "./routes/payments.js";
+
 import supportRouter from "./routes/support.js";
 import transactionalRouter from "./routes/transactional.js";
 import { GeneralService } from "./services/generalService.js";
@@ -68,16 +65,13 @@ app.use(express.json({
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use("/api/location",   locationRouter);
 app.use("/api/data",       dataRouter);
-app.use("/api/payments",   checkoutLimiter, paymentsRouter);
 app.use("/api/auth",       authLimiter,     authRouter);
 app.use("/api/support",    contactLimiter,  supportRouter);
 app.use("/api/marketing",  marketingRouter);
-app.use("/api/nudges",     nudgesRouter);
+
 app.use("/api/email",      transactionalRouter);
 app.use("/api/automation", automationRouter);
 app.use("/api/cron",       cronRouter);
-app.use("/api/affiliates", affiliatesRouter);
-app.use("/api/coupons",    couponsRouter);
 app.use("/",               marketingRouter);
 
 // ── Health ────────────────────────────────────────────────────────────────────

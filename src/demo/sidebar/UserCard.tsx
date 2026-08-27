@@ -39,19 +39,9 @@ export function UserCard({ collapsed, isGradient }: UserCardProps) {
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className={cn('text-xs font-bold truncate', isGradient ? 'text-white' : 'text-foreground')}>
-            {profile?.displayName || 'User'}
-          </p>
-          <span className={cn(
-            'shrink-0 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full leading-none',
-            isPro
-              ? 'bg-primary/20 text-primary'
-              : isGradient ? 'bg-white/20 text-white' : 'bg-border text-muted-foreground'
-          )}>
-            {isPro ? 'Pro' : 'Free'}
-          </span>
-        </div>
+        <p className={cn('text-xs font-bold truncate', isGradient ? 'text-white' : 'text-foreground')}>
+          {profile?.displayName || 'User'}
+        </p>
         <p className={cn('text-[10px] truncate mt-0.5', isGradient ? 'text-white/60' : 'text-muted-foreground')}>
           {profile?.email}
         </p>

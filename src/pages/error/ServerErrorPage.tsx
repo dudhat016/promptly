@@ -1,10 +1,12 @@
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ServerCrash, RotateCcw, Home } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import Button from '../../components/primitives/Button';
 
 export default function ServerErrorPage() {
   const { lng } = useParams<{ lng: string }>();
+  const { t } = useTranslation();
   const base = `/${lng || 'en'}`;
 
   return (
@@ -19,17 +21,14 @@ export default function ServerErrorPage() {
           <ServerCrash className="w-12 h-12 text-amber-500" />
         </div>
         <div className="text-7xl font-black text-amber-500/20 leading-none mb-4 select-none">500</div>
-        <h1 className="text-2xl font-bold text-foreground mb-3">Something Went Wrong</h1>
-        <p className="text-muted-foreground mb-8 leading-relaxed">
-          Our servers encountered an unexpected error. We've been notified and are working on a fix.
-          Please try again in a few minutes.
-        </p>
+        <h1 className="text-2xl font-bold text-foreground mb-3">{t('errors.500.title')}</h1>
+        <p className="text-muted-foreground mb-8 leading-relaxed">{t('errors.500.desc')}</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button variant="secondary" leftIcon={RotateCcw} onClick={() => window.location.reload()}>
-            Try Again
+            {t('errors.500.retry')}
           </Button>
           <Button as={Link} to={base} variant="gradient" leftIcon={Home}>
-            Go Home
+            {t('errors.500.home')}
           </Button>
         </div>
       </motion.div>

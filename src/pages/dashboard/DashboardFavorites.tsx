@@ -35,14 +35,7 @@ export default function DashboardFavorites() {
           const pSnap = await getDocs(pQuery);
           if (favPromptIds.length > 30) setTruncated(favPromptIds.length - 30);
 
-          const sanitized = pSnap.docs.map(d => {
-            const data = d.data();
-            const id = d.id;
-            const isUnlocked = (profile?.unlockedPrompts || []).includes(id);
-            const hasAccess = isPro || isAdmin || isUnlocked || !data.isPaid;
-            if (!hasAccess) delete data.content;
-            return { id, ...data } as Prompt;
-          });
+          const sanitized = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt));
 
           setFavorites(sanitized);
         }

@@ -17,7 +17,6 @@ interface Props {
 const OPERATORS_BY_FIELD: Record<string, string[]> = {
   email: ['equals', 'contains', 'in', 'not_in'],
   displayName: ['equals', 'contains', 'in', 'not_in'],
-  subscriptionStatus: ['equals', 'in', 'not_in'],
   lastActivity: ['greater_than', 'less_than', 'equals'],
   tags: ['in', 'not_in', 'contains'],
 };
@@ -144,7 +143,6 @@ export default function SegmentBuilder({ segment, contacts, onSave, onCancel }: 
                       options={[
                         { label: 'Email Address', value: 'email' },
                         { label: 'Display Name', value: 'displayName' },
-                        { label: 'Subscription', value: 'subscriptionStatus' },
                         { label: 'Last Activity', value: 'lastActivity' },
                         { label: 'Tags', value: 'tags' }
                       ]}
