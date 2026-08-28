@@ -82,22 +82,23 @@ app.use(express.json({
 }));
 
 // ── API Routes ────────────────────────────────────────────────────────────────
-app.use("/api/location",   locationRouter);
-app.use("/api/data",       dataRouter);
-app.use("/api/auth",       authLimiter,     authRouter);
-app.use("/api/support",    contactLimiter,  supportRouter);
-app.use("/api/marketing",  marketingRouter);
+app.use(["/api/location", "/location"],   locationRouter);
+app.use(["/api/data", "/data"],           dataRouter);
+app.use(["/api/auth", "/auth"],           authLimiter,     authRouter);
+app.use(["/api/support", "/support"],      contactLimiter,  supportRouter);
+app.use(["/api/marketing", "/marketing"],  marketingRouter);
 
-app.use("/api/email",      transactionalRouter);
-app.use("/api/automation", automationRouter);
-app.use("/api/cron",       cronRouter);
-app.use("/",               marketingRouter);
+app.use(["/api/email", "/email"],          transactionalRouter);
+app.use(["/api/automation", "/automation"], automationRouter);
+app.use(["/api/cron", "/cron"],           cronRouter);
+app.use("/",                               marketingRouter);
 
 // ── Health ────────────────────────────────────────────────────────────────────
-app.get("/api/health", async (_req, res) => {
+app.get(["/api/health", "/health"], async (_req, res) => {
   const firebase = await initFirebase();
   res.json({ status: "ok", firebase: firebase ? "connected" : "failed" });
 });
+
 
 // ── General utilities ─────────────────────────────────────────────────────────
 app.post("/api/test-ftp", authMiddleware, adminOnly, async (req, res) => {
