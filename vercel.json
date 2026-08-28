@@ -3,6 +3,12 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
+  "functions": {
+    "api/index.ts": {
+      "memory": 1024,
+      "maxDuration": 15
+    }
+  },
   "headers": [
     {
       "source": "/(index.html|sitemap.xml|manifest.json)",
@@ -23,15 +29,13 @@
       ]
     }
   ],
-
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/:path*",
       "destination": "/api/index"
     },
-
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ],
@@ -50,5 +54,3 @@
     }
   ]
 }
-
-
