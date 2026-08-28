@@ -1,4 +1,5 @@
-import { initFirebase } from '../lib/firebase.js';
+import { initFirebase } from '../lib/firebase';
+
 
 export class DataService {
   private static async getDb() {

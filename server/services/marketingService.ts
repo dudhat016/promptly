@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
-import { initFirebase } from "../lib/firebase.js";
-import { getAppUrl } from "../lib/config.js";
+import { initFirebase } from "../lib/firebase";
+import { getAppUrl } from "../lib/config";
+
 import nodemailer from "nodemailer";
 
 export class MarketingService {

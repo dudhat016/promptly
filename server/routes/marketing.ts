@@ -1,7 +1,8 @@
 import { Router, json } from "express";
-import { MarketingService } from "../services/marketingService.js";
-import { authMiddleware, adminOnly } from "../middleware/auth.js";
-import { initFirebase } from "../lib/firebase.js";
+import { MarketingService } from "../services/marketingService";
+import { authMiddleware, adminOnly } from "../middleware/auth";
+import { initFirebase } from "../lib/firebase";
+
 const router = Router();
 
 router.get("/sitemap.xml", async (req, res) => {
@@ -108,7 +109,8 @@ router.post("/segments/rebuild", authMiddleware, adminOnly, async (req, res) => 
     const firebase = await initFirebase();
     if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
 
-    const { rebuildSegments } = await import("../services/automationEngine.js");
+    const { rebuildSegments } = await import("../services/automationEngine");
+
     const result = await rebuildSegments(firebase.db);
     res.json({ ok: true, ...result });
   } catch (err: any) {

@@ -1,6 +1,7 @@
 import express from 'express';
-import { DataService } from '../services/dataService.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { DataService } from '../services/dataService';
+import { authMiddleware } from '../middleware/auth';
+
 
 const router = express.Router();
 

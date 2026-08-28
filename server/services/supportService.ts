@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
-import { initFirebase } from "../lib/firebase.js";
+import { initFirebase } from "../lib/firebase";
+
 
 export class SupportService {
   /**

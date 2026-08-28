@@ -1,11 +1,12 @@
 import { Router, json } from "express";
 import admin from "firebase-admin";
-import { initFirebase } from "../lib/firebase.js";
-import { getAppUrl, getLangUrl } from "../lib/config.js";
-import { sendEmail } from "../lib/mailer.js";
-import { EMAIL_TYPE_LIST } from "../lib/emailTypes.js";
-import { triggerFlow, rebuildSegments } from "../services/automationEngine.js";
-import { authMiddleware, adminOnly, AuthenticatedRequest } from "../middleware/auth.js";
+import { initFirebase } from "../lib/firebase";
+import { getAppUrl, getLangUrl } from "../lib/config";
+import { sendEmail } from "../lib/mailer";
+import { EMAIL_TYPE_LIST } from "../lib/emailTypes";
+import { triggerFlow, rebuildSegments } from "../services/automationEngine";
+import { authMiddleware, adminOnly, AuthenticatedRequest } from "../middleware/auth";
+
 
 const router = Router();
 

@@ -1,10 +1,11 @@
 import { Router, json } from "express";
-import { AuthService } from "../services/authService.js";
-import { authLimiter } from "../middleware/rateLimit.js";
-import { authMiddleware } from "../middleware/auth.js";
-import type { AuthenticatedRequest } from "../middleware/auth.js";
-import { initFirebase } from "../lib/firebase.js";
-import { sendEmail } from "../lib/mailer.js";
+import { AuthService } from "../services/authService";
+import { authLimiter } from "../middleware/rateLimit";
+import { authMiddleware } from "../middleware/auth";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { initFirebase } from "../lib/firebase";
+import { sendEmail } from "../lib/mailer";
+
 
 function parseBrowser(ua: string): string {
   if (/Edg\//.test(ua))         return 'Microsoft Edge';
