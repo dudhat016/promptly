@@ -41,18 +41,36 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-const corsOrigins: string[] = process.env.CORS_ORIGIN
+const defaultOrigins = [
+  'https://aipromptcopypaste.in',
+  'https://promptly.techworldproduct.com',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175'
+];
+
+const customOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
-  : process.env.VERCEL_URL
-    ? [`https://${process.env.VERCEL_URL}`, 'http://localhost:5173', 'http://localhost:5175']
-    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
+  : [];
+
+const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+
+const corsOrigins = Array.from(new Set([...defaultOrigins, ...customOrigins, vercelOrigin].filter(Boolean)));
 
 app.use(cors({
-  origin: corsOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (corsOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 
 app.use(generalLimiter);
 
