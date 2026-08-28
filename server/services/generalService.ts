@@ -1,9 +1,7 @@
-import * as ftp from "basic-ftp";
 import fs from "fs";
 import path from "path";
 import { initFirebase } from "../lib/firebase";
 import { getSmtpTransport } from "../lib/mailer";
-
 
 export class GeneralService {
   static async uploadFtp(file: any, folder: string): Promise<{ success: boolean; url: string; name: string }> {
@@ -22,6 +20,7 @@ export class GeneralService {
 
     if (!ftpHost || !ftpUser || !ftpPass) throw new Error("FTP credentials not configured");
 
+    const ftp = await import("basic-ftp");
     const client = new ftp.Client();
     try {
       await client.access({ host: ftpHost, user: ftpUser, password: ftpPass, secure });
@@ -50,6 +49,7 @@ export class GeneralService {
     password?: string;
     secure?: boolean;
   }): Promise<{ ok: boolean; message: string }> {
+    const ftp = await import("basic-ftp");
     const client = new ftp.Client();
     try {
       await client.access({
@@ -82,5 +82,4 @@ export class GeneralService {
 
     return { ok: true, message: `Test email sent to ${smtp.fromEmail}` };
   }
-
 }

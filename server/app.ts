@@ -1,6 +1,6 @@
-import * as ftp from "basic-ftp";
 import cors from "cors";
 import dotenv from "dotenv";
+
 import express from "express";
 import helmet from "helmet";
 import fs from "fs";
@@ -132,7 +132,9 @@ app.post("/api/vault/upload", (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     const file = files.file[0];
     const pathOnServer = fields.path[0];
+    const ftp = await import("basic-ftp");
     const client = new ftp.Client();
+
     try {
       const firebase = await initFirebase();
       if (!firebase) throw new Error("Firebase not connected");
