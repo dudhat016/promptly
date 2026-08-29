@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { initFirebase } from '../lib/firebase';
+import { initFirebase } from '../lib/firebase.js';
+
 
 
 /**

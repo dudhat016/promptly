@@ -1,7 +1,8 @@
 import admin from "firebase-admin";
 import nodemailer from "nodemailer";
-import { EMAIL_TYPES } from "./emailTypes";
-import { getAppUrl, getAppName, getDefaultLang } from "./config";
+import { EMAIL_TYPES } from "./emailTypes.js";
+import { getAppUrl, getAppName, getDefaultLang } from "./config.js";
+
 
 
 // ─── SMTP ─────────────────────────────────────────────────────────────────────

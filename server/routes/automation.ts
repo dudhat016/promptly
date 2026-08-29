@@ -1,7 +1,8 @@
 import { Router, json } from "express";
-import { initFirebase } from "../lib/firebase";
-import { triggerFlow, tick } from "../services/automationEngine";
-import { authMiddleware, adminOnly, AuthenticatedRequest } from "../middleware/auth";
+import { initFirebase } from "../lib/firebase.js";
+import { triggerFlow, tick } from "../services/automationEngine.js";
+import { authMiddleware, adminOnly, AuthenticatedRequest } from "../middleware/auth.js";
+
 
 
 const router = Router();

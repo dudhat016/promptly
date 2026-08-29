@@ -1,6 +1,7 @@
-import { initFirebase } from "../lib/firebase";
-import { sendEmail } from "../lib/mailer";
-import { getLangUrl } from "../lib/config";
+import { initFirebase } from "../lib/firebase.js";
+import { sendEmail } from "../lib/mailer.js";
+import { getLangUrl } from "../lib/config.js";
+
 
 
 export class AuthService {

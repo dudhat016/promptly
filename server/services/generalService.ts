@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { initFirebase } from "../lib/firebase";
-import { getSmtpTransport } from "../lib/mailer";
+import { initFirebase } from "../lib/firebase.js";
+import { getSmtpTransport } from "../lib/mailer.js";
+
 
 export class GeneralService {
   static async uploadFtp(file: any, folder: string): Promise<{ success: boolean; url: string; name: string }> {

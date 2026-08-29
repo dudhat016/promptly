@@ -1,9 +1,10 @@
 import { Router } from "express";
 import admin from "firebase-admin";
-import { initFirebase } from "../lib/firebase";
-import { rebuildSegments, tick } from "../services/automationEngine";
+import { initFirebase } from "../lib/firebase.js";
+import { rebuildSegments, tick } from "../services/automationEngine.js";
 
-import { processBroadcastJobs } from "./transactional";
+import { processBroadcastJobs } from "./transactional.js";
+
 
 
 const router = Router();

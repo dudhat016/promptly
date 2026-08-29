@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
-import { initFirebase } from "./firebase";
-import { sendEmail } from "./mailer";
+import { initFirebase } from "./firebase.js";
+import { sendEmail } from "./mailer.js";
+
 
 
 export async function sendSuccessEmail(

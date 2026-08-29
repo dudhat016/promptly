@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
-import { sendEmail } from "../lib/mailer";
-import { getAppUrl } from "../lib/config";
+import { sendEmail } from "../lib/mailer.js";
+import { getAppUrl } from "../lib/config.js";
+
 
 
 interface AutomationStep {
