@@ -5,21 +5,22 @@ import express from "express";
 import helmet from "helmet";
 import fs from "fs";
 import multiparty from "multiparty";
-import { initFirebase } from "./lib/firebase";
-import type { AuthenticatedRequest } from "./middleware/auth";
-import { adminOnly, authMiddleware } from "./middleware/auth";
-import { errorHandler } from "./middleware/errorHandler";
-import { authLimiter, checkoutLimiter, contactLimiter, generalLimiter } from "./middleware/rateLimit";
-import authRouter from "./routes/auth";
-import automationRouter from "./routes/automation";
-import cronRouter from "./routes/cron";
-import dataRouter from "./routes/data";
-import locationRouter from "./routes/location";
-import marketingRouter from "./routes/marketing";
+import { initFirebase } from "./lib/firebase.js";
+import type { AuthenticatedRequest } from "./middleware/auth.js";
+import { adminOnly, authMiddleware } from "./middleware/auth.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { authLimiter, checkoutLimiter, contactLimiter, generalLimiter } from "./middleware/rateLimit.js";
+import authRouter from "./routes/auth.js";
+import automationRouter from "./routes/automation.js";
+import cronRouter from "./routes/cron.js";
+import dataRouter from "./routes/data.js";
+import locationRouter from "./routes/location.js";
+import marketingRouter from "./routes/marketing.js";
 
-import supportRouter from "./routes/support";
-import transactionalRouter from "./routes/transactional";
-import { GeneralService } from "./services/generalService";
+import supportRouter from "./routes/support.js";
+import transactionalRouter from "./routes/transactional.js";
+import { GeneralService } from "./services/generalService.js";
+
 
 
 dotenv.config();
