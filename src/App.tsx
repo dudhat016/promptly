@@ -20,6 +20,7 @@ import { useStaffRoles } from './hooks/useStaffRoles';
 import { ThemeProvider } from './hooks/useTheme';
 import HorizontalLayout from './layouts/HorizontalLayout';
 import AdminLayout from './pages/admin/AdminLayout';
+import { initGA, trackPageView } from './lib/gtag';
 import { AdminSection } from './types';
 
 // ── Page lazy imports (code-split per route) ──────────────────────────────────
@@ -118,7 +119,9 @@ function PageLoader() {
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
+    initGA();
     window.scrollTo(0, 0);
+    trackPageView(pathname);
   }, [pathname]);
   return null;
 }
