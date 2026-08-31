@@ -3,8 +3,10 @@ import { ArrowUpRight, BarChart3, LayoutGrid, Star, TrendingUp, Users, DollarSig
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { api } from '../../lib/api';
 import { db } from '../../lib/firebase';
 import { AdminPageHeader } from '../../components/admin';
+import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
 import Button from '../../components/primitives/Button';
 import Card from '../../components/primitives/Card';
@@ -84,6 +86,7 @@ function buildLast7Days(users: any[]) {
 
 export default function AdminOverview() {
   const { prefix } = usePath();
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalUsers: 0, totalPrompts: 0, proUsers: 0,
     totalCopies: 0, totalViews: 0, newUsersWeek: 0,
@@ -97,7 +100,6 @@ export default function AdminOverview() {
 
   useEffect(() => {
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
     const noop = () => {};
 
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {

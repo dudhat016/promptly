@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
 import { apiService } from '../services/ApiService';
+import { db } from '../lib/firebase';
 import { AIModel, Category } from '../types';
 
 /**
@@ -197,7 +199,16 @@ const defaultConfig: GlobalConfig = {
     freeCreditsDaily: 5
   },
   models: [],
-  categories: []
+  categories: [
+    { id: 'marketing', name: 'Marketing', slug: 'marketing' },
+    { id: 'coding', name: 'Coding & Dev', slug: 'coding' },
+    { id: 'writing', name: 'Writing & Copy', slug: 'writing' },
+    { id: 'design', name: 'Art & Design', slug: 'design' },
+    { id: 'business', name: 'Business & Strategy', slug: 'business' },
+    { id: 'seo', name: 'SEO & Analytics', slug: 'seo' },
+    { id: 'education', name: 'Education & Learning', slug: 'education' },
+    { id: 'productivity', name: 'Productivity', slug: 'productivity' },
+  ]
 };
 
 const ConfigContext = createContext<ConfigContextType>({
@@ -220,11 +231,23 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         apiService.getCollection<Category>('categories')
       ]);
 
+      let finalCategories = categories || [];
+      if (finalCategories.length === 0) {
+        try {
+          const snap = await getDocs(collection(db, 'categories'));
+          finalCategories = snap.docs.map(d => ({ id: d.id, ...d.data() } as Category));
+        } catch {}
+      }
+
+      if (finalCategories.length === 0) {
+        finalCategories = defaultConfig.categories;
+      }
+
       const mergedConfig = { 
         ...defaultConfig, 
         ...(siteConfig || {}), 
         models: models || [], 
-        categories: categories || []
+        categories: finalCategories
       };
 
       setConfig(mergedConfig);

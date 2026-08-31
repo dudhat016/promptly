@@ -1,5 +1,4 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { api } from '../lib/api';
 import { ActivityItem } from '../types';
 
 export const CRMService = {
@@ -10,19 +9,18 @@ export const CRMService = {
     metadata?: Record<string, any>
   ) => {
     try {
-      await addDoc(collection(db, 'marketing_activities'), {
+      await api.post('/marketing/activity', {
         contactId,
         type,
         description,
         metadata,
-        timestamp: serverTimestamp()
       });
     } catch (err) {
       console.error('Failed to log CRM activity:', err);
     }
   },
 
-  getActivities: async (contactId: string) => {
-    // This could be implemented with a query
+  getActivities: async (_contactId: string) => {
+    // Queries handled via server API
   }
 };

@@ -1,13 +1,11 @@
 import axios from 'axios';
-import { auth, db } from '../lib/firebase';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
 
 const API_BASE_URL = '/api';
 
 /**
  * Enterprise API Service
- * Centralizes all network requests to ensure consistent headers,
- * error handling, graceful fallbacks, and data synchronization.
+ * Centralizes network requests through server endpoints.
  */
 class ApiService {
   private instance = axios.create({
@@ -25,12 +23,14 @@ class ApiService {
       return config;
     });
 
-    // Handle global errors without throwing unhandled exceptions
+    // Handle global errors cleanly
     this.instance.interceptors.response.use(
       (response) => response,
       (error) => {
-        const message = error.response?.data?.error || error.message;
-        console.warn(`[ApiService] Network Warning:`, message);
+        if (error.response?.status !== 404) {
+          const message = error.response?.data?.error || error.message;
+          console.warn(`[ApiService] Network Warning:`, message);
+        }
         return Promise.reject(error);
       }
     );
@@ -43,14 +43,7 @@ class ApiService {
       const res = await this.instance.get(`/data/${collName}`);
       return res.data?.data || [];
     } catch {
-      // Fallback directly to Firebase Client SDK if API route fails
-      try {
-        const snap = await getDocs(collection(db, collName));
-        return snap.docs.map(d => ({ ...d.data(), id: d.id })) as T[];
-      } catch (clientErr) {
-        console.warn(`[ApiService] Firestore client fallback failed for ${collName}:`, clientErr);
-        return [];
-      }
+      return [];
     }
   }
 
@@ -59,17 +52,7 @@ class ApiService {
       const res = await this.instance.get(`/data/${collName}/${id}`);
       return res.data?.data || null;
     } catch {
-      // Fallback directly to Firebase Client SDK if API route fails
-      try {
-        const snap = await getDoc(doc(db, collName, id));
-        if (snap.exists()) {
-          return { ...snap.data(), id: snap.id } as T;
-        }
-        return null;
-      } catch (clientErr) {
-        console.warn(`[ApiService] Firestore client fallback failed for ${collName}/${id}:`, clientErr);
-        return null;
-      }
+      return null;
     }
   }
 

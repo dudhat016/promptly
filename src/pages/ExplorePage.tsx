@@ -12,6 +12,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePath } from '../hooks/usePath';
 import { useSEO } from '../hooks/useSEO';
 import { calculatePromptScore, getAffinityProfile } from '../lib/affinity';
+import { api } from '../lib/api';
 import { db } from '../lib/firebase';
 import { cn, toSlug, toTitleCase } from '../lib/utils';
 import { Prompt } from '../types';
@@ -120,7 +121,7 @@ export default function ExplorePage() {
         const stored = sessionStorage.getItem(CACHE_KEY);
         if (stored) {
           const { data, ts } = JSON.parse(stored);
-          if (Date.now() - ts < CACHE_TTL) {
+          if (Array.isArray(data) && data.length > 0 && Date.now() - ts < CACHE_TTL) {
             setRawPrompts(data);
             setLoading(false);
             return;
@@ -129,15 +130,22 @@ export default function ExplorePage() {
       } catch {}
       setLoading(true);
       try {
-        const q = query(collection(db, 'prompts'), orderBy('createdAt', 'desc'), limit(500));
-        const snap = await getDocs(q);
-        const all = snap.docs
-          .map(d => ({ ...d.data(), id: d.id } as Prompt))
-          .filter(p => p.status === 'approved')
+        let all: Prompt[] = [];
+        try {
+          const res: any = await api.get('/prompts?limit=500');
+          all = Array.isArray(res) ? res : (res?.data || []);
+        } catch {}
+
+        if (!all || all.length === 0) {
+          const snap = await getDocs(collection(db, 'prompts'));
+          all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Prompt));
+        }
+
+        all = all
+          .filter(p => !p.status || p.status === 'approved')
           .filter(p => p.moderationStatus !== 'hidden');
 
-        // Deduplicate by slug — keeps the newest (first due to orderBy desc)
-        // prevents duplicate Firestore docs with the same slug from showing as separate cards
+        // Deduplicate by slug — keeps the newest
         const seenSlugs = new Set<string>();
         const data = all.filter(p => {
           const key = p.slug || p.id!;
@@ -146,7 +154,9 @@ export default function ExplorePage() {
           return true;
         });
 
-        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+        if (data.length > 0) {
+          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+        }
         setRawPrompts(data);
         setFetchError(null);
       } catch (err) {
@@ -175,26 +185,26 @@ export default function ExplorePage() {
   // Filtering Logic
   const filteredPrompts = prompts.filter(p => {
     // Model Filter
-    if (activeModel !== 'All' && p.model.toLowerCase() !== activeModel.toLowerCase()) return false;
+    if (activeModel !== 'All' && (p.model || '').toLowerCase() !== activeModel.toLowerCase()) return false;
 
     // Search Filter
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      const inTitle = p.title.toLowerCase().includes(search);
-      const inDesc = p.description.toLowerCase().includes(search);
-      const inTags = p.tags.some(t => t.toLowerCase().includes(search));
+      const inTitle = (p.title || '').toLowerCase().includes(search);
+      const inDesc = (p.description || '').toLowerCase().includes(search);
+      const inTags = Array.isArray(p.tags) && p.tags.some(t => String(t || '').toLowerCase().includes(search));
       if (!inTitle && !inDesc && !inTags) return false;
     }
 
     // Category Filter
-    if (activeCategories.size > 0) {
+    if (activeCategories.size > 0 && p.categoryId) {
       const catSlug = toSlug(p.categoryId);
       if (!activeCategories.has(catSlug) && !activeCategories.has(p.categoryId.toLowerCase())) return false;
     }
 
     // Tag Filter
-    if (activeTags.size > 0) {
-      const hasTag = p.tags.some(t => activeTags.has(toSlug(t)) || activeTags.has(t.toLowerCase()));
+    if (activeTags.size > 0 && Array.isArray(p.tags)) {
+      const hasTag = p.tags.some(t => activeTags.has(toSlug(t)) || activeTags.has(String(t || '').toLowerCase()));
       if (!hasTag) return false;
     }
 

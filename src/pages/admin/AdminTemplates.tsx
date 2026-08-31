@@ -1,5 +1,5 @@
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
-import { Mail, Plus, Send, Sparkles } from 'lucide-react';
+import { Mail, Plus, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -25,8 +25,6 @@ export default function AdminTemplates() {
   const { prefix } = usePath();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [digestSending, setDigestSending] = useState(false);
-  const [digestPreview, setDigestPreview] = useState<number | null>(null);
   const [seeding, setSeeding] = useState(false);
 
   useEffect(() => { fetchTemplates(); }, []);
@@ -60,9 +58,7 @@ export default function AdminTemplates() {
     toast.success(`${rows.length} template${rows.length > 1 ? 's' : ''} deleted`);
   };
 
-  useEffect(() => {
-    api.get('/email/broadcast/preview').then((r: any) => setDigestPreview(r.total ?? 0)).catch(() => {});
-  }, []);
+
 
   const handleSeedTemplates = async () => {
     setSeeding(true);
@@ -78,64 +74,6 @@ export default function AdminTemplates() {
     finally { setSeeding(false); }
   };
 
-  const handleSendDigest = async () => {
-    const hasTemplate = templates.some(t => (t as any).type === 'weekly_digest');
-    if (!hasTemplate) {
-      toast.error('weekly_digest template not found — create it in Email Templates first');
-      return;
-    }
-    setDigestSending(true);
-    const toastId = toast.loading('Initiating weekly digest…');
-    try {
-      const week = new Date().toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' });
-      const initRes: any = await api.post('/email/broadcast', {
-        type: 'weekly_digest',
-        variables: { week, dashboard_url: window.location.origin + '/dashboard' },
-      });
-
-      if (!initRes || !initRes.jobId) {
-        throw new Error(initRes?.error || 'Failed to queue broadcast');
-      }
-
-      const jobId = initRes.jobId;
-
-      // Poll status
-      const poll = async (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-          const interval = setInterval(async () => {
-            try {
-              const statusRes = await api.get(`/email/broadcast/status/${jobId}`) as any;
-              if (!statusRes || statusRes.error) {
-                clearInterval(interval);
-                reject(new Error(statusRes?.error || 'Failed to check status'));
-                return;
-              }
-
-              if (statusRes.status === 'done') {
-                clearInterval(interval);
-                resolve(statusRes);
-              } else if (statusRes.status === 'error') {
-                clearInterval(interval);
-                reject(new Error(statusRes.error || 'Broadcast failed during processing'));
-              } else {
-                toast.loading(`Processing weekly digest… (${statusRes.status === 'processing' ? 'sending' : statusRes.status})`, { id: toastId });
-              }
-            } catch (err) {
-              clearInterval(interval);
-              reject(err);
-            }
-          }, 1500);
-        });
-      };
-
-      const finalResult = await poll();
-      toast.success(`Digest sent to ${finalResult.sent} contacts (${finalResult.skipped} skipped, ${finalResult.failed} failed)`, { id: toastId });
-    } catch (err: any) {
-      toast.error(err?.message || 'Broadcast failed', { id: toastId });
-    } finally {
-      setDigestSending(false);
-    }
-  };
 
   // Stats by group
   const groupCounts = useMemo(() => {
@@ -301,34 +239,6 @@ export default function AdminTemplates() {
         emptyTitle="No templates yet"
         emptyMessage="Click 'New Template' to create your first email template."
       />
-
-      {/* ── Weekly Digest Broadcast ── */}
-      <Card className="!rounded-2xl flex-col sm:flex-row sm:items-center gap-5">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0">
-            <Send className="w-5 h-5 text-blue-500" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-sm font-bold text-foreground">Weekly Creator Digest</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Broadcast the <code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">weekly_digest</code> template to all active contacts.
-              {digestPreview !== null && (
-                <span className="ml-1 font-medium text-foreground">{digestPreview} recipients</span>
-              )}
-            </p>
-          </div>
-        </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          leftIcon={Send}
-          isLoading={digestSending}
-          onClick={handleSendDigest}
-          className="shrink-0"
-        >
-          Send This Week's Digest
-        </Button>
-      </Card>
     </div>
   );
 }

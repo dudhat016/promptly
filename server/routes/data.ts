@@ -25,10 +25,7 @@ router.get('/:collection', async (req, res, next) => {
 router.get('/:collection/:id', async (req, res, next) => {
   try {
     const data = await DataService.getDocument(req.params.collection, req.params.id);
-    if (!data) {
-      return res.status(404).json({ success: false, error: 'Document not found' });
-    }
-    res.json({ success: true, data });
+    res.json({ success: true, data: data || null });
   } catch (error) {
     next(error);
   }

@@ -13,6 +13,7 @@ import Button from '../components/primitives/Button';
 import { usePath } from '../hooks/usePath';
 import { useSEO } from '../hooks/useSEO';
 import { INTERACTION_WEIGHTS, recordBlogInteraction } from '../lib/affinity';
+import { api } from '../lib/api';
 import { db } from '../lib/firebase';
 import { RAKSHA_BANDHAN_BLOG } from '../lib/seedRakhiBlog';
 import { BlogPost, UserProfile } from '../types';
@@ -127,23 +128,24 @@ export default function BlogDetailPage() {
     async function fetchPost() {
       if (!slug) return;
       try {
-        const q = query(collection(db, 'blog_posts'), where('slug', '==', slug), limit(1));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const docSnap = querySnapshot.docs[0];
-          const postData = { id: docSnap.id, ...docSnap.data() } as BlogPost;
+        let postData: BlogPost | null = null;
+        const res: any = await api.get('/blog/post/' + slug);
+        if (res && res.id) {
+          postData = res as BlogPost;
+        } else if (res && res.data && res.data.id) {
+          postData = res.data as BlogPost;
+        } else if (slug === RAKSHA_BANDHAN_BLOG.slug) {
+          postData = RAKSHA_BANDHAN_BLOG;
+        }
+
+        if (postData) {
           setPost(postData);
-          import('firebase/firestore').then(({ updateDoc, increment }) => {
-            updateDoc(docSnap.ref, { viewsCount: increment(1) }).catch(() => {});
-          });
           recordBlogInteraction(postData, INTERACTION_WEIGHTS.VIEW);
 
-          // Fetch related posts safely
           try {
-            const allPostsSnap = await getDocs(query(collection(db, 'blog_posts'), limit(20)));
-            const candidates = allPostsSnap.docs
-              .map(d => ({ id: d.id, ...d.data() } as BlogPost))
-              .filter(p => p.slug !== postData.slug && p.status === 'published');
+            const allRes: any = await api.get('/blog/posts');
+            const allPosts: BlogPost[] = Array.isArray(allRes) ? allRes : (allRes?.data || []);
+            const candidates = allPosts.filter(p => p.slug !== postData!.slug);
 
             const scored = candidates.map(p => {
               let score = 0;

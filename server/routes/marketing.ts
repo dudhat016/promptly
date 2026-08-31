@@ -119,5 +119,29 @@ router.post("/segments/rebuild", authMiddleware, adminOnly, async (req, res) => 
     res.status(500).json({ error: err.message });
   }
 });
+// POST /api/marketing/activity — Log CRM contact activity item
+router.post("/activity", json(), async (req, res) => {
+  const { contactId, type, description, metadata } = req.body;
+  if (!contactId || !type) {
+    return res.status(400).json({ error: "contactId and type are required" });
+  }
+
+  try {
+    const firebase = await initFirebase();
+    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
+
+    const docRef = await firebase.db.collection("marketing_activities").add({
+      contactId,
+      type,
+      description: description || "",
+      metadata: metadata || {},
+      timestamp: new Date().toISOString(),
+    });
+
+    res.json({ success: true, id: docRef.id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

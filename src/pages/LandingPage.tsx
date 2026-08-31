@@ -38,6 +38,7 @@ import PageContainer from '../components/layout/PageContainer';
 import { useConfig } from '../hooks/useConfig';
 import { usePath } from '../hooks/usePath';
 import { useSEO } from '../hooks/useSEO';
+import { api } from '../lib/api';
 import { db } from '../lib/firebase';
 import { Prompt } from '../types';
 
@@ -194,13 +195,30 @@ export default function LandingPage() {
   const [socialStats,     setSocialStats]     = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
-    getDocs(query(collection(db, 'prompts'), where('status', '==', 'approved'), orderBy('viewsCount', 'desc'), limit(4)))
-      .then(s => setLivePrompts(s.docs.map(d => ({ ...d.data(), id: d.id } as Prompt))))
-      .catch(() => {});
+    async function loadPrompts() {
+      let list: Prompt[] = [];
+      try {
+        const res: any = await api.get('/prompts?limit=50');
+        list = Array.isArray(res) ? res : (res?.data || []);
+      } catch {}
 
-    getDocs(query(collection(db, 'prompts'), where('status', '==', 'approved'), orderBy('copiesCount', 'desc'), limit(3)))
-      .then(s => setTrendingPrompts(s.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(() => {});
+      if (!list || list.length === 0) {
+        try {
+          const snap = await getDocs(collection(db, 'prompts'));
+          list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Prompt));
+        } catch {}
+      }
+
+      list = list.filter(p => !p.status || p.status === 'approved');
+
+      if (list.length > 0) {
+        const sortedByViews = [...list].sort((a: any, b: any) => (b.viewsCount || 0) - (a.viewsCount || 0));
+        const sortedByCopies = [...list].sort((a: any, b: any) => (b.copiesCount || 0) - (a.copiesCount || 0));
+        setLivePrompts(sortedByViews.slice(0, 4));
+        setTrendingPrompts(sortedByCopies.slice(0, 3));
+      }
+    }
+    loadPrompts();
 
     getDocs(query(collection(db, 'testimonials'), where('featured', '==', true), limit(6)))
       .then(s => { if (!s.empty) setTestimonials(s.docs.map(d => ({ id: d.id, ...d.data() }))); })

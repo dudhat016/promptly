@@ -1,4 +1,4 @@
-﻿import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { BlogPost } from '../types';
 
@@ -60,10 +60,8 @@ export async function seedRakhiBlog(): Promise<string | null> {
       publishedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    console.log('Raksha Bandhan blog post seeded with ID:', SLUG);
     return SLUG;
-  } catch (err) {
-    console.error('Error seeding blog to Firestore:', err);
+  } catch {
     return null;
   }
 }

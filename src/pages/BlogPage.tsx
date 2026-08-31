@@ -10,6 +10,7 @@ import Select from '../components/primitives/Select';
 import { usePath } from '../hooks/usePath';
 import { useSEO } from '../hooks/useSEO';
 import { calculateBlogScore, getAffinityProfile } from '../lib/affinity';
+import { api } from '../lib/api';
 import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { BlogPost } from '../types';
@@ -44,17 +45,19 @@ export default function BlogPage() {
   useEffect(() => {
     async function fetchPosts() {
       try {
-        const q = query(
-          collection(db, 'blog_posts'),
-          where('status', '==', 'published'),
-          orderBy('publishedAt', 'desc')
-        );
-        const snap = await getDocs(q);
-        let fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+        let fetched: BlogPost[] = [];
+        try {
+          const res: any = await api.get('/blog/posts');
+          fetched = Array.isArray(res) ? res : (res?.data || []);
+        } catch {}
+
+        if (!fetched || fetched.length === 0) {
+          const snap = await getDocs(collection(db, 'blog_posts'));
+          fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
+        }
 
         if (!fetched.some(p => p.slug === RAKSHA_BANDHAN_BLOG.slug)) {
           fetched = [RAKSHA_BANDHAN_BLOG, ...fetched];
-          seedRakhiBlog().catch(() => {});
         }
 
         setPosts(fetched);

@@ -21,7 +21,6 @@ interface AuditLog {
 const ACTION_META: Record<string, { icon: LucideIcon; color: string; label: string }> = {
   'user.role_changed':    { icon: Shield,   color: 'text-primary bg-primary/10',       label: 'Role Change' },
   'user.deleted':         { icon: Trash2,   color: 'text-rose-600 bg-rose-500/10',     label: 'User Deleted' },
-  'payout.processed':     { icon: CreditCard, color: 'text-emerald-600 bg-emerald-500/10', label: 'Payout' },
   'prompt.deleted':       { icon: Trash2,   color: 'text-rose-600 bg-rose-500/10',     label: 'Prompt Deleted' },
   'prompt.edited':        { icon: Edit,     color: 'text-amber-600 bg-amber-500/10',   label: 'Prompt Edited' },
   'blog.published':       { icon: FileText, color: 'text-emerald-600 bg-emerald-500/10', label: 'Blog Published' },

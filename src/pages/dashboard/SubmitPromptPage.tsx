@@ -11,6 +11,7 @@ import Select from '../../components/primitives/Select';
 import Textarea from '../../components/primitives/Textarea';
 import { useAuth } from '../../hooks/useAuth';
 import { usePath } from '../../hooks/usePath';
+import { api } from '../../lib/api';
 import { db } from '../../lib/firebase';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import { EmailService } from '../../services/emailService';
@@ -52,12 +53,20 @@ export default function SubmitPromptPage() {
 
   useEffect(() => {
     async function load() {
-      const [catSnap, modSnap] = await Promise.all([
-        getDocs(collection(db, 'categories')),
-        getDocs(collection(db, 'models')),
-      ]);
-      setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
-      setModels(modSnap.docs.map(d => ({ id: d.id, ...d.data() } as AIModel)));
+      try {
+        const [catRes, modRes]: [any, any] = await Promise.all([
+          api.get('/categories'),
+          api.get('/models'),
+        ]);
+
+        const catData = Array.isArray(catRes) ? catRes : (catRes?.data || []);
+        const modData = Array.isArray(modRes) ? modRes : (modRes?.data || []);
+
+        setCategories(catData);
+        setModels(modData);
+      } catch (err) {
+        console.error('Failed to load categories/models via API:', err);
+      }
 
       if (editId) {
         try {

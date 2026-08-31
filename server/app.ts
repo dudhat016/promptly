@@ -19,6 +19,11 @@ import marketingRouter from "./routes/marketing.js";
 
 import supportRouter from "./routes/support.js";
 import transactionalRouter from "./routes/transactional.js";
+import metaRouter from "./routes/meta.js";
+import blogRouter from "./routes/blog.js";
+import promptsRouter from "./routes/prompts.js";
+import adminRouter from "./routes/admin.js";
+import aiRouter from "./routes/ai.js";
 import { GeneralService } from "./services/generalService.js";
 
 
@@ -92,6 +97,11 @@ app.use(["/api/marketing", "/marketing"],  marketingRouter);
 app.use(["/api/email", "/email"],          transactionalRouter);
 app.use(["/api/automation", "/automation"], automationRouter);
 app.use(["/api/cron", "/cron"],           cronRouter);
+app.use(["/api/prompts", "/prompts"],       promptsRouter);
+app.use(["/api/blog", "/blog"],           blogRouter);
+app.use(["/api/admin", "/admin"],          adminRouter);
+app.use(["/api/ai", "/ai"],                aiRouter);
+app.use("/api",                            metaRouter);
 app.use("/",                               marketingRouter);
 
 // ── Health ────────────────────────────────────────────────────────────────────

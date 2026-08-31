@@ -7,14 +7,14 @@ const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
  * Disables trustProxy validation warnings in serverless environments (Vercel).
  */
 
-/** General API rate limit — 100 requests per 15 minutes */
+/** General API rate limit — 50,000 requests in dev, 2,000 in production */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isVercel ? 1000 : 100,
+  max: process.env.NODE_ENV === 'production' ? 2000 : 50000,
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },
-  skip: () => isVercel, // Vercel handles edge rate limiting natively
+  skip: () => isVercel || process.env.NODE_ENV !== 'production',
   message: {
     success: false,
     error: 'Too many requests. Please try again later.',

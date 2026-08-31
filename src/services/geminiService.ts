@@ -64,32 +64,44 @@ function getBrowserGeminiApiKey(customApiKey?: string) {
 }
 
 export async function listGeminiModels(customApiKey?: string): Promise<GeminiModelInfo[]> {
-  const apiKey = getBrowserGeminiApiKey(customApiKey);
-  if (!apiKey) throw new Error("Gemini API key is missing");
-
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const message = errorData?.error?.message || `Failed to list models (status ${response.status})`;
-    throw new Error(message);
-  }
-
-  const data = (await response.json()) as any;
-  const models = Array.isArray(data?.models) ? data.models : [];
-
-  return models
-    .map((m: any) => {
-      const rawName = String(m?.name || "");
-      const id = rawName.replace(/^models\//, "");
-      return {
-        id,
-        name: rawName,
+  try {
+    const url = customApiKey ? `/api/ai/gemini/models?customApiKey=${encodeURIComponent(customApiKey)}` : `/api/ai/gemini/models`;
+    const response = await axios.get(url);
+    const data = response.data;
+    const models = Array.isArray(data?.models) ? data.models : [];
+    return models
+      .map((m: any) => {
+        const rawName = String(m?.name || "");
+        const id = rawName.replace(/^models\//, "");
+        return {
+          id,
+          name: rawName,
+          displayName: m?.displayName,
+          description: m?.description,
+          supportedGenerationMethods: Array.isArray(m?.supportedGenerationMethods) ? m.supportedGenerationMethods : undefined,
+        } satisfies GeminiModelInfo;
+      })
+      .filter((m: GeminiModelInfo) => !!m.id);
+  } catch (err: any) {
+    const apiKey = getBrowserGeminiApiKey(customApiKey);
+    if (!apiKey) throw new Error("Gemini API key is missing");
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.error?.message || `Failed to list models (status ${response.status})`);
+    }
+    const data = (await response.json()) as any;
+    const models = Array.isArray(data?.models) ? data.models : [];
+    return models
+      .map((m: any) => ({
+        id: String(m?.name || "").replace(/^models\//, ""),
+        name: String(m?.name || ""),
         displayName: m?.displayName,
         description: m?.description,
         supportedGenerationMethods: Array.isArray(m?.supportedGenerationMethods) ? m.supportedGenerationMethods : undefined,
-      } satisfies GeminiModelInfo;
-    })
-    .filter((m: GeminiModelInfo) => !!m.id);
+      }))
+      .filter((m: GeminiModelInfo) => !!m.id);
+  }
 }
 
 export async function listOpenAIModels(apiKey: string): Promise<OpenAIModelInfo[]> {
@@ -175,44 +187,28 @@ async function chatDirectWithGemini(
   apiKey: string,
   model?: string
 ): Promise<string> {
-  if (messages.some((m) => Array.isArray(m.images) && m.images.length > 0)) {
-    throw new Error("Gemini proxy is unavailable, and direct browser chat doesn't support image messages yet.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  let attempt = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    try {
-      const chat = ai.chats.create({
-        model: model || getBrowserGeminiChatModel(),
-        config: { systemInstruction },
-        history: messages.slice(0, -1).map((m) => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }],
-        })),
-      });
-
-      const last = messages[messages.length - 1];
-      const result = await chat.sendMessage({ message: [{ text: last?.content || "" }] });
-      return result.text || "No response from AI";
-    } catch (e: any) {
-      const status = e?.status;
-      const message = String(e?.message || "");
-      if (status !== 429) throw e;
-
-      if (hasZeroQuota(message)) {
-        throw new Error(
-          `Gemini quota for this API key is 0 for model \"${model || getBrowserGeminiChatModel()}\". Enable billing / request access in Google AI Studio, choose a different model, or use a different API key.`
-        );
-      }
-
-      if (attempt >= 2) throw e;
-      const retryAfterSeconds = extractGeminiRetryAfterSeconds(message) ?? 15;
-      attempt += 1;
-      await sleep(retryAfterSeconds * 1000 + Math.floor(Math.random() * 250));
-    }
+  try {
+    const res = await postWith429Retry<{ text?: string }>('/api/ai/gemini/chat', {
+      messages,
+      systemInstruction,
+      customApiKey: apiKey,
+      model,
+    });
+    return res.text || "No response from AI";
+  } catch (err: any) {
+    if (!apiKey) throw err;
+    const ai = new GoogleGenAI({ apiKey });
+    const chat = ai.chats.create({
+      model: model || getBrowserGeminiChatModel(),
+      config: { systemInstruction },
+      history: messages.slice(0, -1).map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+    });
+    const last = messages[messages.length - 1];
+    const result = await chat.sendMessage({ message: [{ text: last?.content || "" }] });
+    return result.text || "No response from AI";
   }
 }
 

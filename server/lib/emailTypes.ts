@@ -360,30 +360,6 @@ Following multiple community reports, **"{{prompt_title}}"** has been temporaril
 — The Moderation Team`,
 };
 
-const weekly_digest: EmailTypeDefinition = {
-  type: 'weekly_digest',
-  name: 'Weekly Creator Digest',
-  group: 'newsletter',
-  prefKey: 'newsletter',
-  variables: [
-    { name: 'name',          description: 'User name',           example: 'Sarah' },
-    { name: 'week',          description: 'Week label',          example: 'May 12, 2026' },
-    { name: 'top_prompts',   description: 'Top prompts list',    example: '• SEO Writer\n• Cold Email' },
-    { name: 'dashboard_url', description: 'Dashboard link',      example: 'https://aipromptcopypaste.in/dashboard' },
-  ],
-  defaultSubject: '📬 Your Promptly weekly digest — {{week}}',
-  defaultBody: `Hi {{name}},
-
-Here's your weekly Promptly digest for the week of **{{week}}**.
-
-## 🔥 Top Prompts This Week
-{{top_prompts}}
-
-→ [Go to Dashboard]({{dashboard_url}})
-
-— The Promptly Team`,
-};
-
 // ─── REGISTRY ────────────────────────────────────────────────────────────────
 
 export const EMAIL_TYPES: Record<string, EmailTypeDefinition> = {
@@ -401,7 +377,6 @@ export const EMAIL_TYPES: Record<string, EmailTypeDefinition> = {
   prompt_rejected,
   prompt_warning,
   prompt_hidden,
-  weekly_digest,
 };
 
 export const EMAIL_TYPE_LIST = Object.values(EMAIL_TYPES);

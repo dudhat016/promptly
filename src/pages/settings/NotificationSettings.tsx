@@ -50,7 +50,7 @@ const SECTIONS: Section[] = [
     key: 'newsletter',
     title: 'Newsletter',
     desc: 'Our regular roundup of new prompts, AI workflows, and platform highlights.',
-    covers: ['Weekly digest', 'New prompt releases', 'Community highlights'],
+    covers: ['New prompt releases', 'Community highlights'],
     icon: <Mail className="w-4 h-4" />,
   },
   {

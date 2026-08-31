@@ -19,6 +19,7 @@ import { useConfig } from '../hooks/useConfig';
 import { usePath } from '../hooks/usePath';
 import { useSEO } from '../hooks/useSEO';
 import { INTERACTION_WEIGHTS, recordPromptInteraction } from '../lib/affinity';
+import { api } from '../lib/api';
 import { db } from '../lib/firebase';
 import { cn, formatDate, toSlug } from '../lib/utils';
 import { Prompt, PromptCollection, PromptReview, UserProfile } from '../types';
@@ -83,9 +84,14 @@ export default function PromptDetailPage() {
   useEffect(() => {
     async function fetchAllTags() {
       try {
-        const snap = await getDocs(collection(db, 'tags'));
-        const tagsList = snap.docs.map(d => d.data().name || d.id).filter(Boolean);
-        setDbTags(tagsList);
+        const res: any = await api.get('/tags');
+        const list = Array.isArray(res) ? res : (res?.data || []);
+        const tagsList = list.map((d: any) => d.name || d.id).filter(Boolean);
+        if (tagsList.length > 0) setDbTags(tagsList);
+        else {
+          const snap = await getDocs(collection(db, 'tags'));
+          setDbTags(snap.docs.map(d => d.data().name || d.id).filter(Boolean));
+        }
       } catch {}
     }
     fetchAllTags();
