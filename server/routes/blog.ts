@@ -6,6 +6,7 @@ const router = Router();
 // GET /api/blog/posts — List blog posts
 router.get("/posts", async (_req, res) => {
   try {
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     const posts: any[] = await DataService.getCollection("blog_posts");
     posts.sort((a: any, b: any) => {
       const ta = new Date(a.publishedAt || a.createdAt || 0).getTime();
@@ -23,6 +24,7 @@ router.get("/posts", async (_req, res) => {
 router.get("/post/:slug", async (req, res) => {
   const { slug } = req.params;
   try {
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     const posts: any[] = await DataService.getCollection("blog_posts");
     const found = posts.find(p => p.slug === slug || p.id === slug);
     if (!found) {

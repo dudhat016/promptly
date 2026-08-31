@@ -80,6 +80,7 @@ export default function PromptDetailPage() {
   const [myComment, setMyComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [dbTags, setDbTags] = useState<string[]>([]);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     async function fetchAllTags() {
@@ -532,13 +533,13 @@ export default function PromptDetailPage() {
               </div>
 
               {/* ── Cover image ── */}
-              {prompt!.imageUrl && (() => {
+              {prompt!.imageUrl && !imgError && (() => {
                 const ratio = config.storage?.promptImageRatio ?? '16:9';
                 const [rw, rh] = ratio.split(':').map(Number);
                 const paddingTop = `${((rh / rw) * 100).toFixed(4)}%`;
                 return (
                   <div className="mb-8 rounded-2xl overflow-hidden border border-border/80 relative bg-muted/40 shadow-md" style={{ paddingTop }}>
-                    <img src={prompt!.imageUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-[1.01]" alt={prompt!.title} />
+                    <img src={prompt!.imageUrl} onError={() => setImgError(true)} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-[1.01]" alt={prompt!.title} />
                   </div>
                 );
               })()}

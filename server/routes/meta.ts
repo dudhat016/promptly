@@ -3,6 +3,12 @@ import { DataService } from "../services/dataService.js";
 
 const router = Router();
 
+// Vercel Edge CDN Caching Header Middleware
+router.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
+  next();
+});
+
 // GET /api/categories — Returns active categories
 router.get("/categories", async (_req, res) => {
   try {

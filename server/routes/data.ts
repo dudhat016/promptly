@@ -14,6 +14,7 @@ const router = express.Router();
 // GET collection
 router.get('/:collection', async (req, res, next) => {
   try {
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     const data = await DataService.getCollection(req.params.collection);
     res.json({ success: true, data });
   } catch (error) {
@@ -24,6 +25,7 @@ router.get('/:collection', async (req, res, next) => {
 // GET document
 router.get('/:collection/:id', async (req, res, next) => {
   try {
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     const data = await DataService.getDocument(req.params.collection, req.params.id);
     res.json({ success: true, data: data || null });
   } catch (error) {

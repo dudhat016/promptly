@@ -11,6 +11,7 @@ router.get("/", async (req, res) => {
   const { category, model, status, search, limit = "100" } = req.query;
 
   try {
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     let prompts: any[] = await DataService.getCollection("prompts");
 
     if (status && typeof status === "string") {

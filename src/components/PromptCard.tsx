@@ -53,6 +53,8 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const [imgError, setImgError] = useState(false);
+
   const favorited = prompt.id ? isFavorited(prompt.id) : false;
   const isCreation = (prompt as any).isCreation;
 
@@ -74,24 +76,30 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
 
     setIsUnlocking(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        unlockedPrompts: Array.from(new Set([...(profile.unlockedPrompts || []), prompt.id!])),
-      });
+      if (prompt.id) {
+        const ref = doc(db, 'users', user.uid);
+        const currentUnlocked = profile.unlockedPrompts || [];
+        if (!currentUnlocked.includes(prompt.id)) {
+          await updateDoc(ref, { unlockedPrompts: [...currentUnlocked, prompt.id] });
+          await addDoc(collection(db, 'unlock_events'), {
+            userId: user.uid,
+            promptId: prompt.id,
+            unlockedAt: new Date().toISOString()
+          });
+        }
+      }
       toast.success((config as any).msgPromptUnlocked || 'Prompt unlocked!');
     } catch {
-      toast.error((config as any).msgUnlockFailed || 'Failed to unlock — try again');
+      toast.error((config as any).msgUnlockFailed || 'Failed to unlock prompt');
     } finally {
       setIsUnlocking(false);
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.3 }}
-      className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 flex flex-col"
+    <div
+      onClick={() => onQuickView ? onQuickView(prompt) : navigate(prefix(`/prompt/${prompt.slug || prompt.id}`))}
+      className="group relative flex flex-col h-full bg-card hover:bg-card/90 rounded-2xl border border-border/60 hover:border-primary/40 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 cursor-pointer overflow-hidden"
     >
       {/* Thumbnail — ratio driven by admin storage config */}
       {(() => {
@@ -100,11 +108,12 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
         const paddingTop = `${((rh / rw) * 100).toFixed(4)}%`;
         return (
           <div className="relative overflow-hidden bg-muted/60 shrink-0" style={{ paddingTop }}>
-            {prompt.imageUrl ? (
+            {prompt.imageUrl && !imgError ? (
               <Link to={prefix(`/prompt/${prompt.slug || prompt.id}`)} className="absolute inset-0 block">
                 <img
                   src={prompt.imageUrl}
                   alt={prompt.title}
+                  onError={() => setImgError(true)}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               </Link>
@@ -279,6 +288,6 @@ export default function PromptCard({ prompt, isUnlocked: initialUnlocked = false
           </Button>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

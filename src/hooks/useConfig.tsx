@@ -278,6 +278,12 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     fetchGlobalData();
   }, []);
 
+  useEffect(() => {
+    if (config.googleAnalyticsId) {
+      initGA(config.googleAnalyticsId);
+    }
+  }, [config.googleAnalyticsId]);
+
   const formatPrice = (price: number): string => {
     const symbol = config.currencySymbol || '$';
     const format = config.currencyFormat || 'before';

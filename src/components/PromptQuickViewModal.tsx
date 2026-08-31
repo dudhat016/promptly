@@ -31,7 +31,9 @@ export default function PromptQuickViewModal({ prompt, isOpen, onClose }: Prompt
     };
   }, [isOpen, onClose]);
 
-  if (!prompt || !isOpen) return null;
+  const [imgError, setImgError] = useState(false);
+
+  if (!isOpen || !prompt) return null;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(prompt.content);
@@ -82,10 +84,11 @@ export default function PromptQuickViewModal({ prompt, isOpen, onClose }: Prompt
 
           {/* Left: Image Display */}
           <div className="md:w-1/2 bg-muted/40 relative flex items-center justify-center min-h-[280px] md:min-h-[460px] overflow-hidden group">
-            {prompt.imageUrl ? (
+            {prompt.imageUrl && !imgError ? (
               <img
                 src={prompt.imageUrl}
                 alt={prompt.title}
+                onError={() => setImgError(true)}
                 className="w-full h-full object-cover max-h-[450px] md:max-h-[550px]"
               />
             ) : (

@@ -7,6 +7,7 @@ declare global {
   interface Window {
     dataLayer: any[];
     gtag?: (...args: any[]) => void;
+    ga_active_id?: string;
   }
 }
 
@@ -16,37 +17,54 @@ export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || '';
  * Initializes GA4 script dynamically if measurement ID is set
  */
 export function initGA(measurementId?: string) {
-  const id = measurementId || GA_MEASUREMENT_ID;
+  const id = measurementId || window.ga_active_id || GA_MEASUREMENT_ID;
   if (!id || typeof window === 'undefined') return;
 
-  // Prevent duplicate script injection
-  if (document.getElementById('ga-script')) return;
+  window.ga_active_id = id;
 
-  const script = document.createElement('script');
-  script.id = 'ga-script';
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
-  document.head.appendChild(script);
-
+  // Initialize dataLayer and gtag queue immediately
   window.dataLayer = window.dataLayer || [];
-  window.gtag = function () {
-    window.dataLayer.push(arguments);
-  };
-  window.gtag('js', new Date());
-  window.gtag('config', id, {
-    send_page_view: false, // We manually trigger pageviews on route changes
-  });
+  if (!window.gtag) {
+    window.gtag = function () {
+      window.dataLayer.push(arguments);
+    };
+  }
+
+  // Prevent duplicate script injection
+  if (!document.getElementById('ga-script')) {
+    console.log(`[GA4 Analytics] Initializing tracking with ID: ${id}`);
+    const script = document.createElement('script');
+    script.id = 'ga-script';
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
+    document.head.appendChild(script);
+
+    window.gtag('js', new Date());
+    window.gtag('config', id);
+  }
 }
 
 /**
  * Tracks SPA Page Views in GA4
  */
 export function trackPageView(url: string, title?: string) {
-  if (typeof window === 'undefined' || !window.gtag || !GA_MEASUREMENT_ID) return;
-  window.gtag('event', 'page_view', {
-    page_location: url,
-    page_title: title || document.title,
-  });
+  if (typeof window === 'undefined') return;
+
+  const id = window.ga_active_id || GA_MEASUREMENT_ID;
+  if (!id) return;
+
+  // Ensure gtag queue is ready
+  if (!window.gtag) {
+    initGA(id);
+  }
+
+  if (window.gtag) {
+    window.gtag('config', id, {
+      page_path: url,
+      page_location: window.location.origin + url,
+      page_title: title || document.title,
+    });
+  }
 }
 
 /**
