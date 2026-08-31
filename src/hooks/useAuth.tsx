@@ -123,14 +123,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setProfile(data);
 
               // Login alert — fires once per browser session for existing users only.
-              // New registrations are excluded (they receive a welcome email instead).
-              // Server dedup (atomic Firestore transaction) handles cross-device dedup.
               const loginAlertKey = `login_alert_${user.uid}`;
               if (!sessionStorage.getItem(loginAlertKey)) {
                 sessionStorage.setItem(loginAlertKey, '1');
-                api.post('/auth/login-alert', {
-                  name: user.displayName || user.email?.split('@')[0] || '',
-                  time: new Date().toLocaleString(),
+                user.getIdToken().then(token => {
+                  if (token) {
+                    api.post('/auth/login-alert', {
+                      name: user.displayName || user.email?.split('@')[0] || '',
+                      time: new Date().toLocaleString(),
+                    }).catch(() => {});
+                  }
                 }).catch(() => {});
               }
 
