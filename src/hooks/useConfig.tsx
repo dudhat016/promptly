@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { apiService } from '../services/ApiService';
 import { db } from '../lib/firebase';
+import { initGA } from '../lib/gtag';
 import { AIModel, Category } from '../types';
 
 /**
@@ -251,6 +252,10 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
       };
 
       setConfig(mergedConfig);
+
+      if (mergedConfig.googleAnalyticsId) {
+        initGA(mergedConfig.googleAnalyticsId);
+      }
 
       // Sync settings to global formats closure
       formatSettings.locale = mergedConfig.defaultLanguage || 'en';

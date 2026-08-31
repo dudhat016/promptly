@@ -346,6 +346,30 @@ export default function AdminSettings() {
 
 
 
+            <Card icon={BarChart} title="Analytics & SEO Verification">
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">Configure your tracking measurement ID and Search Console verification key.</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Input
+                    label="Google Analytics (GA4) Measurement ID"
+                    placeholder="G-XXXXXXXXXX"
+                    value={config.googleAnalyticsId || ''}
+                    onChange={e => setConfig({ ...config, googleAnalyticsId: e.target.value })}
+                    variant="outline"
+                    leftIcon={BarChart}
+                  />
+                  <Input
+                    label="Google Search Console Verification Code"
+                    placeholder="Verification code or meta key"
+                    value={(config as any).googleSearchConsoleCode || ''}
+                    onChange={e => setConfig({ ...config, googleSearchConsoleCode: e.target.value } as any)}
+                    variant="outline"
+                    leftIcon={Search}
+                  />
+                </div>
+              </div>
+            </Card>
+
             <Card icon={Bell} title="Admin Notifications">
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground mb-4">Send an email to the support address when any of these events occur.</p>
