@@ -30,6 +30,16 @@ export default defineConfig(() => {
           ],
         },
       }),
+      {
+        name: 'html-transform',
+        transformIndexHtml(html) {
+          const verification = process.env.VITE_GOOGLE_SITE_VERIFICATION || '';
+          if (verification) {
+            return html.replace('%VITE_GOOGLE_SITE_VERIFICATION%', verification);
+          }
+          return html.replace(/<meta name="google-site-verification" content="%VITE_GOOGLE_SITE_VERIFICATION%" \/>\s*/g, '');
+        },
+      },
     ],
     resolve: {
       alias: {
