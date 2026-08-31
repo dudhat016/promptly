@@ -1,16 +1,12 @@
 import { Router } from "express";
-import { initFirebase } from "../lib/firebase.js";
+import { DataService } from "../services/dataService.js";
 
 const router = Router();
 
-// GET /api/blog — List blog posts
+// GET /api/blog/posts — List blog posts
 router.get("/posts", async (_req, res) => {
   try {
-    const firebase = await initFirebase();
-    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
-
-    const snap = await firebase.db.collection("blog_posts").get();
-    const posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const posts: any[] = await DataService.getCollection("blog_posts");
     posts.sort((a: any, b: any) => {
       const ta = new Date(a.publishedAt || a.createdAt || 0).getTime();
       const tb = new Date(b.publishedAt || b.createdAt || 0).getTime();
@@ -27,15 +23,12 @@ router.get("/posts", async (_req, res) => {
 router.get("/post/:slug", async (req, res) => {
   const { slug } = req.params;
   try {
-    const firebase = await initFirebase();
-    if (!firebase) return res.status(500).json({ error: "Firebase not connected" });
-
-    const snap = await firebase.db.collection("blog_posts").where("slug", "==", slug).limit(1).get();
-    if (snap.empty) {
+    const posts: any[] = await DataService.getCollection("blog_posts");
+    const found = posts.find(p => p.slug === slug || p.id === slug);
+    if (!found) {
       return res.status(404).json({ error: "Blog post not found" });
     }
-    const doc = snap.docs[0];
-    res.json({ id: doc.id, ...doc.data() });
+    res.json(found);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

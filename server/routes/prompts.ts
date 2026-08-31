@@ -1,37 +1,28 @@
 import { Router, json } from "express";
 import admin from "firebase-admin";
 import { initFirebase } from "../lib/firebase.js";
+import { DataService } from "../services/dataService.js";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth.js";
 
 const router = Router();
 
 // GET /api/prompts — Fetch list of prompts with optional query filters
 router.get("/", async (req, res) => {
-  const { category, model, status = "approved", search, limit = "100" } = req.query;
+  const { category, model, status, search, limit = "100" } = req.query;
 
   try {
-    const firebase = await initFirebase();
-    if (!firebase) return res.json([]);
-
-    let query: admin.firestore.Query = firebase.db.collection("prompts");
+    let prompts: any[] = await DataService.getCollection("prompts");
 
     if (status && typeof status === "string") {
-      query = query.where("status", "==", status);
+      prompts = prompts.filter(p => !p.status || p.status === status);
     }
     if (category && typeof category === "string") {
-      query = query.where("category", "==", category);
+      prompts = prompts.filter(p => p.category === category || p.categoryId === category);
     }
     if (model && typeof model === "string") {
-      query = query.where("model", "==", model);
+      prompts = prompts.filter(p => p.model === model);
     }
 
-    const limitNum = parseInt(limit as string, 10) || 100;
-    query = query.limit(limitNum);
-
-    const snap = await query.get();
-    let prompts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    // In-memory search filtering if search term provided
     if (search && typeof search === "string" && search.trim()) {
       const q = search.toLowerCase().trim();
       prompts = prompts.filter((p: any) =>
@@ -41,7 +32,8 @@ router.get("/", async (req, res) => {
       );
     }
 
-    res.json(prompts);
+    const limitNum = parseInt(limit as string, 10) || 100;
+    res.json(prompts.slice(0, limitNum));
   } catch (err: any) {
     console.error("[Prompts Route] Error fetching prompts:", err.message);
     res.json([]);

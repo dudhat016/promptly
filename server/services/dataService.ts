@@ -1,6 +1,16 @@
 import { initFirebase } from '../lib/firebase.js';
 
+const cache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in-memory cache for ultra-fast responses
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs = 1500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Firestore query timeout after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
+}
 
 export class DataService {
   private static async getDb() {
@@ -10,31 +20,53 @@ export class DataService {
   }
 
   static async getCollection(collectionName: string) {
+    const cacheKey = `coll_${collectionName}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      return cached.data;
+    }
+
     try {
       const db = await DataService.getDb();
       if (!db) return [];
-      const snap = await db.collection(collectionName).get();
-      return snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+      const snap = await withTimeout(db.collection(collectionName).get(), 1500);
+      const data = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      cache.set(cacheKey, { data, ts: Date.now() });
+      return data;
     } catch (err: any) {
       console.warn(`⚠️ getCollection("${collectionName}") fallback:`, err.message);
-      return [];
+      return cached?.data || [];
     }
   }
 
   static async getDocument(collectionName: string, id: string) {
+    const cacheKey = `doc_${collectionName}_${id}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      return cached.data;
+    }
+
     try {
       const db = await DataService.getDb();
       if (!db) return null;
-      const doc = await db.collection(collectionName).doc(id).get();
-      if (!doc.exists) return null;
-      return { ...doc.data(), id: doc.id };
+
+      const doc = await withTimeout(db.collection(collectionName).doc(id).get(), 1500);
+      if (!doc.exists) {
+        cache.set(cacheKey, { data: null, ts: Date.now() });
+        return null;
+      }
+      const data = { ...doc.data(), id: doc.id };
+      cache.set(cacheKey, { data, ts: Date.now() });
+      return data;
     } catch (err: any) {
       console.warn(`⚠️ getDocument("${collectionName}", "${id}") fallback:`, err.message);
-      return null;
+      return cached?.data || null;
     }
   }
 
   static async createDocument(collectionName: string, data: any) {
+    cache.delete(`coll_${collectionName}`);
     const db = await DataService.getDb();
     if (!db) throw new Error('Database connection failed');
     const docRef = await db.collection(collectionName).add({
@@ -46,6 +78,8 @@ export class DataService {
   }
 
   static async updateDocument(collectionName: string, id: string, data: any) {
+    cache.delete(`coll_${collectionName}`);
+    cache.delete(`doc_${collectionName}_${id}`);
     const db = await DataService.getDb();
     if (!db) throw new Error('Database connection failed');
     await db.collection(collectionName).doc(id).update({
@@ -56,6 +90,8 @@ export class DataService {
   }
 
   static async deleteDocument(collectionName: string, id: string) {
+    cache.delete(`coll_${collectionName}`);
+    cache.delete(`doc_${collectionName}_${id}`);
     const db = await DataService.getDb();
     if (!db) throw new Error('Database connection failed');
     await db.collection(collectionName).doc(id).delete();
